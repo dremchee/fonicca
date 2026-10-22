@@ -10,7 +10,7 @@ import { usePlayerStore } from '@/stores/player'
 
 const library = useLibraryStore()
 const player = usePlayerStore()
-const { query, total, selected, selectedIndex } = storeToRefs(library)
+const { query, total, focused, selectedIds } = storeToRefs(library)
 const search = ref<HTMLInputElement | null>(null)
 
 onMounted(() => library.init())
@@ -19,29 +19,49 @@ function isTyping(e: KeyboardEvent) {
   return e.target instanceof HTMLInputElement && e.target.type !== 'checkbox'
 }
 
-async function move(delta: number) {
-  library.select(selectedIndex.value < 0 ? 0 : selectedIndex.value + delta)
-  // The target row may be on a page that is still loading.
-  await library.ensureRange(selectedIndex.value, selectedIndex.value)
-  const s = library.selected
+async function move(delta: number, extend: boolean) {
+  await library.moveFocus(delta, extend)
+  const s = library.focused
   if (s && player.autoplay)
     player.play(s)
 }
 
 onKeyStroke('ArrowDown', (e) => {
+  if (isTyping(e) && e.target !== search.value)
+    return
   e.preventDefault()
-  move(1)
+  move(1, e.shiftKey)
 })
 onKeyStroke('ArrowUp', (e) => {
+  if (isTyping(e) && e.target !== search.value)
+    return
   e.preventDefault()
-  move(-1)
+  move(-1, e.shiftKey)
 })
 onKeyStroke(' ', (e) => {
   if (isTyping(e))
     return
   e.preventDefault()
-  if (selected.value)
-    player.toggle(selected.value)
+  if (focused.value)
+    player.toggle(focused.value)
+})
+onKeyStroke('a', (e) => {
+  if ((e.metaKey || e.ctrlKey) && !isTyping(e)) {
+    e.preventDefault()
+    library.selectAll()
+  }
+})
+onKeyStroke(['f', 'а'], (e) => {
+  if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey)
+    return
+  e.preventDefault()
+  library.toggleFavorite()
+})
+onKeyStroke(['t', 'е'], (e) => {
+  if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey)
+    return
+  e.preventDefault()
+  library.requestTagInput()
 })
 onKeyStroke('Escape', () => {
   if (player.playingId !== null)
@@ -49,7 +69,7 @@ onKeyStroke('Escape', () => {
   else
     search.value?.blur()
 })
-onKeyStroke('f', (e) => {
+onKeyStroke(['f', 'а'], (e) => {
   if (e.metaKey || e.ctrlKey) {
     e.preventDefault()
     search.value?.focus()
@@ -74,12 +94,13 @@ onKeyStroke('f', (e) => {
           >
         </div>
         <span class="text-xs text-muted tabular" data-tauri-drag-region>
+          <template v-if="selectedIds.size > 1">{{ selectedIds.size.toLocaleString() }} selected · </template>
           {{ total.toLocaleString() }} {{ total === 1 ? 'sample' : 'samples' }}
           <template v-if="library.isScanning"> · scanning…</template>
         </span>
       </header>
       <SampleList />
-      <WaveformView :sample="selected" />
+      <WaveformView :sample="focused" />
     </main>
   </div>
 </template>

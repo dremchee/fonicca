@@ -2,6 +2,7 @@ mod audio;
 mod commands;
 mod db;
 mod error;
+mod library;
 mod player;
 mod scan;
 
@@ -49,6 +50,14 @@ pub fn run() {
             commands::rescan_source,
             commands::count_samples,
             commands::list_samples,
+            commands::sample_ids,
+            commands::sample_paths,
+            commands::set_favorite,
+            commands::list_tags,
+            commands::tag_samples,
+            commands::untag_samples,
+            commands::rename_tag,
+            commands::delete_tag,
             commands::get_peaks,
             commands::play,
             commands::stop,

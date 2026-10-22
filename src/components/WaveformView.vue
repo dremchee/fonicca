@@ -2,13 +2,46 @@
 import type { Sample } from '@/api'
 import { useResizeObserver } from '@vueuse/core'
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
-import { api, startFileDrag } from '@/api'
+import { api } from '@/api'
 import { formatChannels, formatDuration, formatRate, formatSize } from '@/format'
+import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 
 const props = defineProps<{ sample: Sample | undefined }>()
 
+const library = useLibraryStore()
 const player = usePlayerStore()
+const tagInput = ref<HTMLInputElement | null>(null)
+const newTag = ref('')
+
+const selectionSize = computed(() => {
+  const n = library.selectedIds.size
+  return props.sample && (n > 1 || (n === 1 && !library.selectedIds.has(props.sample.id))) ? n : 1
+})
+
+watch(() => library.tagInputRequest, () => {
+  tagInput.value?.focus()
+})
+
+async function submitTag() {
+  const name = newTag.value.trim()
+  if (!name)
+    return
+  newTag.value = ''
+  await library.addTag(name)
+}
+
+function onTagKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    submitTag()
+  }
+  else if (e.key === 'Escape') {
+    e.stopPropagation()
+    newTag.value = ''
+    tagInput.value?.blur()
+  }
+}
 const canvas = ref<HTMLCanvasElement | null>(null)
 const box = ref<HTMLElement | null>(null)
 const peaks = shallowRef<Int8Array | null>(null)
@@ -102,12 +135,12 @@ function onSeek(e: MouseEvent) {
 function onDragStart(e: DragEvent) {
   e.preventDefault()
   if (props.sample)
-    startFileDrag([props.sample.path]).catch(err => console.error('drag failed', err))
+    library.dragSamples(props.sample).catch(err => console.error('drag failed', err))
 }
 </script>
 
 <template>
-  <section class="h-44 shrink-0 border-t border-line bg-panel flex flex-col">
+  <section class="h-52 shrink-0 border-t border-line bg-panel flex flex-col">
     <template v-if="sample">
       <div class="h-10 px-3 flex items-center gap-3">
         <button
@@ -142,6 +175,34 @@ function onDragStart(e: DragEvent) {
           Autoplay
         </label>
       </div>
+      <div class="h-8 px-3 flex items-center gap-1.5 min-w-0">
+        <button
+          class="size-6 shrink-0 rounded grid place-items-center hover:bg-raised"
+          :title="sample.favorite ? 'Remove from favorites (F)' : 'Add to favorites (F)'"
+          @click="library.toggleFavorite()"
+        >
+          <span :class="sample.favorite ? 'i-lucide-star text-amber-400' : 'i-lucide-star text-muted'" class="text-sm" />
+        </button>
+        <div class="flex gap-1 overflow-x-auto min-w-0">
+          <span v-for="t in sample.tags" :key="t.id" class="tag">
+            {{ t.name }}
+            <button class="opacity-60 hover:opacity-100" title="Remove tag" @click="library.removeTag(t.id)">
+              <span class="i-lucide-x text-[10px]" />
+            </button>
+          </span>
+        </div>
+        <input
+          ref="tagInput"
+          v-model="newTag"
+          list="known-tags"
+          :placeholder="selectionSize > 1 ? `Tag ${selectionSize} samples… (T)` : 'Add tag… (T)'"
+          class="w-44 shrink-0 h-6 px-2 rounded bg-raised border border-transparent outline-none focus:border-accent placeholder:text-muted text-xs"
+          @keydown="onTagKeydown"
+        >
+        <datalist id="known-tags">
+          <option v-for="t in library.tags" :key="t.id" :value="t.name" />
+        </datalist>
+      </div>
       <div ref="box" class="relative flex-1 mx-3 mb-3 rounded-md bg-bg overflow-hidden">
         <canvas ref="canvas" class="absolute inset-0 size-full cursor-pointer" @mousedown="onSeek" />
         <div v-if="loading" class="absolute inset-0 grid place-items-center text-muted text-xs">
@@ -160,3 +221,18 @@ function onDragStart(e: DragEvent) {
     </div>
   </section>
 </template>
+
+<style scoped>
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 0 4px 0 8px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  line-height: 20px;
+}
+</style>

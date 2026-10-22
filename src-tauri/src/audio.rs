@@ -211,3 +211,17 @@ pub fn compute_peaks(path: &Path) -> Result<Vec<i8>> {
     }
     Ok(peaks)
 }
+
+#[cfg(test)]
+mod tests {
+    /// `PEAKS_FILE=/path/to/file cargo test -- --ignored --nocapture peaks_timing`
+    #[test]
+    #[ignore]
+    fn peaks_timing() {
+        let path = std::env::var("PEAKS_FILE").expect("set PEAKS_FILE");
+        let t = std::time::Instant::now();
+        let peaks = super::compute_peaks(std::path::Path::new(&path)).unwrap();
+        let nonzero = peaks.iter().filter(|&&p| p != 0).count();
+        println!("{} values, {} non-zero, {:?}", peaks.len(), nonzero, t.elapsed());
+    }
+}

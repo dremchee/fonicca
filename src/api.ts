@@ -17,6 +17,17 @@ export interface Sample {
   sampleRate: number | null
   channels: number | null
   bitDepth: number | null
+  favorite: boolean
+  tags: TagRef[]
+}
+
+export interface TagRef {
+  id: number
+  name: string
+}
+
+export interface Tag extends TagRef {
+  sampleCount: number
 }
 
 export interface ScanProgress {
@@ -30,6 +41,8 @@ export interface ScanProgress {
 export interface SampleFilter {
   query?: string
   sourceId?: number | null
+  tagId?: number | null
+  favorites?: boolean
 }
 
 export const SCAN_PROGRESS_EVENT = 'scan-progress'
@@ -39,10 +52,17 @@ export const api = {
   addSource: (path: string) => invoke<number>('add_source', { path }),
   removeSource: (id: number) => invoke<void>('remove_source', { id }),
   rescanSource: (id: number) => invoke<void>('rescan_source', { id }),
-  countSamples: (f: SampleFilter) =>
-    invoke<number>('count_samples', { query: f.query || null, sourceId: f.sourceId ?? null }),
-  listSamples: (f: SampleFilter, offset: number, limit: number) =>
-    invoke<Sample[]>('list_samples', { query: f.query || null, sourceId: f.sourceId ?? null, offset, limit }),
+  countSamples: (filter: SampleFilter) => invoke<number>('count_samples', { filter }),
+  listSamples: (filter: SampleFilter, offset: number, limit: number) =>
+    invoke<Sample[]>('list_samples', { filter, offset, limit }),
+  sampleIds: (filter: SampleFilter) => invoke<number[]>('sample_ids', { filter }),
+  samplePaths: (ids: number[]) => invoke<string[]>('sample_paths', { ids }),
+  setFavorite: (ids: number[], favorite: boolean) => invoke<void>('set_favorite', { ids, favorite }),
+  listTags: () => invoke<Tag[]>('list_tags'),
+  tagSamples: (ids: number[], name: string) => invoke<TagRef>('tag_samples', { ids, name }),
+  untagSamples: (ids: number[], tagId: number) => invoke<void>('untag_samples', { ids, tagId }),
+  renameTag: (id: number, name: string) => invoke<void>('rename_tag', { id, name }),
+  deleteTag: (id: number) => invoke<void>('delete_tag', { id }),
   getPeaks: (id: number) => invoke<number[]>('get_peaks', { id }),
   play: (id: number, start = 0) => invoke<void>('play', { id, start }),
   stop: () => invoke<void>('stop'),

@@ -43,3 +43,7 @@ strip = true
 [dev-dependencies]
 hound = "3.5.1"
 tempfile = "3.27.0"
+
+# Audio decoding is ~70x slower unoptimized; optimize dependencies even in dev builds.
+[profile.dev.package."*"]
+opt-level = 3
