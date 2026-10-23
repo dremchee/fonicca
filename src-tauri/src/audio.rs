@@ -76,6 +76,27 @@ fn probe_symphonia(path: &Path) -> Result<AudioInfo> {
     })
 }
 
+/// Cheap content fingerprint: xxh3 over the size plus the first and last 64 KiB.
+/// Stable across renames and moves; reading whole files would make scans I/O-bound.
+pub fn fingerprint(path: &Path, size: u64) -> Result<i64> {
+    use std::io::{Read, Seek, SeekFrom};
+    const CHUNK: u64 = 64 * 1024;
+
+    let mut f = File::open(path)?;
+    let mut hasher = xxhash_rust::xxh3::Xxh3::new();
+    hasher.update(&size.to_le_bytes());
+    let mut buf = Vec::with_capacity(CHUNK as usize);
+    (&mut f).take(CHUNK).read_to_end(&mut buf)?;
+    hasher.update(&buf);
+    if size > CHUNK {
+        f.seek(SeekFrom::Start(size.saturating_sub(CHUNK).max(CHUNK)))?;
+        buf.clear();
+        f.take(CHUNK).read_to_end(&mut buf)?;
+        hasher.update(&buf);
+    }
+    Ok(hasher.digest() as i64)
+}
+
 /// Minimal RIFF/WAVE header reader: `fmt `, `fact` and `data` chunks only.
 fn probe_riff(path: &Path) -> Option<AudioInfo> {
     use std::io::{Read, Seek, SeekFrom};

@@ -89,7 +89,61 @@ pub const MIGRATIONS: &[&str] = &[r#"
         UPDATE samples_fts SET tags = (SELECT f.tags FROM samples_fts_source f WHERE f.id = samples_fts.rowid)
         WHERE rowid IN (SELECT sample_id FROM sample_tags WHERE tag_id = new.id);
     END;
+"#, r#"
+    -- Content fingerprint (size + head/tail hash) used to recognise moved or renamed files.
+    ALTER TABLE samples ADD COLUMN fingerprint INTEGER;
+    CREATE INDEX samples_fingerprint ON samples(fingerprint);
+
+    -- User data of removed samples, waiting for the same file to reappear elsewhere.
+    CREATE TABLE detached (
+        fingerprint INTEGER NOT NULL,
+        size        INTEGER NOT NULL,
+        favorite    INTEGER NOT NULL,
+        tag_ids     TEXT NOT NULL,
+        detached_at INTEGER NOT NULL
+    );
+    CREATE INDEX detached_key ON detached(fingerprint, size);
+
+    -- Runs before the FK cascade removes the sample's tags.
+    CREATE TRIGGER samples_detach BEFORE DELETE ON samples
+    WHEN old.fingerprint IS NOT NULL
+     AND (old.favorite = 1 OR EXISTS (SELECT 1 FROM sample_tags WHERE sample_id = old.id))
+    BEGIN
+        INSERT INTO detached (fingerprint, size, favorite, tag_ids, detached_at)
+        VALUES (old.fingerprint, old.size, old.favorite,
+                (SELECT json_group_array(tag_id) FROM sample_tags WHERE sample_id = old.id),
+                unixepoch());
+    END;
+
+    CREATE TRIGGER samples_reattach AFTER INSERT ON samples
+    WHEN new.fingerprint IS NOT NULL
+     AND EXISTS (SELECT 1 FROM detached WHERE fingerprint = new.fingerprint AND size = new.size)
+    BEGIN
+        UPDATE samples SET favorite = (
+            SELECT favorite FROM detached WHERE fingerprint = new.fingerprint AND size = new.size
+            ORDER BY detached_at DESC, rowid DESC LIMIT 1)
+        WHERE id = new.id;
+        INSERT OR IGNORE INTO sample_tags (sample_id, tag_id)
+        SELECT new.id, j.value FROM detached d, json_each(d.tag_ids) j
+        WHERE d.rowid = (SELECT rowid FROM detached WHERE fingerprint = new.fingerprint AND size = new.size
+                         ORDER BY detached_at DESC, rowid DESC LIMIT 1)
+          AND j.value IN (SELECT id FROM tags);
+        DELETE FROM detached WHERE rowid = (
+            SELECT rowid FROM detached WHERE fingerprint = new.fingerprint AND size = new.size
+            ORDER BY detached_at DESC, rowid DESC LIMIT 1);
+    END;
 "#];
+
+/// How long user data of removed files is kept for possible reattachment.
+const DETACHED_TTL_DAYS: i64 = 90;
+
+pub fn prune_detached(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "DELETE FROM detached WHERE detached_at < unixepoch() - ?1 * 86400",
+        [DETACHED_TTL_DAYS],
+    )?;
+    Ok(())
+}
 
 pub fn open(path: &Path) -> Result<Connection> {
     let conn = Connection::open(path)?;

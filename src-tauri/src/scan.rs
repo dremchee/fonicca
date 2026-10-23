@@ -21,6 +21,8 @@ pub struct ScanProgress {
     pub processed: usize,
     pub total: usize,
     pub done: bool,
+    /// Rows added, updated or removed (set on the final event).
+    pub changes: usize,
     pub error: Option<String>,
 }
 
@@ -33,6 +35,7 @@ struct Candidate {
 struct Scanned {
     candidate: Candidate,
     info: AudioInfo,
+    fingerprint: Option<i64>,
 }
 
 /// Runs a full (incremental) scan of one source on the current thread.
@@ -40,26 +43,26 @@ struct Scanned {
 /// `on_progress` is throttled and always receives a final `done` event.
 pub fn scan_source(db_path: &Path, source_id: i64, on_progress: impl Fn(ScanProgress) + Sync) {
     let result = run(db_path, source_id, &on_progress);
-    on_progress(ScanProgress {
-        source_id,
-        processed: 0,
-        total: 0,
-        done: true,
-        error: result.err().map(|e| e.to_string()),
-    });
+    let (changes, error) = match result {
+        Ok(n) => (n, None),
+        Err(e) => (0, Some(e.to_string())),
+    };
+    on_progress(ScanProgress { source_id, processed: 0, total: 0, done: true, changes, error });
 }
 
-fn run(db_path: &Path, source_id: i64, on_progress: &(impl Fn(ScanProgress) + Sync)) -> Result<()> {
+/// Returns the number of rows added, updated or removed.
+fn run(db_path: &Path, source_id: i64, on_progress: &(impl Fn(ScanProgress) + Sync)) -> Result<usize> {
     let mut conn = db::open(db_path)?;
     let root: String =
         conn.query_row("SELECT path FROM sources WHERE id = ?1", [source_id], |r| r.get(0))?;
 
     let mut known: HashMap<String, (i64, i64, i64)> = HashMap::new();
     {
-        // Rows without stream info get a mtime of -1 so they are probed again
-        // (e.g. after a probe fallback is added for their codec).
+        // Rows without stream info or fingerprint get a mtime of -1 so they are probed
+        // again (e.g. after a probe fallback or a new column was added).
         let mut stmt = conn.prepare(
-            "SELECT id, path, size, CASE WHEN sample_rate IS NULL THEN -1 ELSE mtime END
+            "SELECT id, path, size,
+                    CASE WHEN sample_rate IS NULL OR fingerprint IS NULL THEN -1 ELSE mtime END
              FROM samples WHERE source_id = ?1",
         )?;
         let rows = stmt.query_map([source_id], |r| {
@@ -104,7 +107,7 @@ fn run(db_path: &Path, source_id: i64, on_progress: &(impl Fn(ScanProgress) + Sy
         let mut last = last_emit.lock().unwrap();
         if last.elapsed() >= Duration::from_millis(100) {
             *last = Instant::now();
-            on_progress(ScanProgress { source_id, processed: n, total, done: false, error: None });
+            on_progress(ScanProgress { source_id, processed: n, total, done: false, changes: 0, error: None });
         }
     };
 
@@ -113,22 +116,40 @@ fn run(db_path: &Path, source_id: i64, on_progress: &(impl Fn(ScanProgress) + Sy
         .into_par_iter()
         .map(|candidate| {
             let info = audio::probe(&candidate.path).unwrap_or_default();
+            let fingerprint = audio::fingerprint(&candidate.path, candidate.size as u64).ok();
             emit(processed.fetch_add(1, Ordering::Relaxed) + 1);
-            Scanned { candidate, info }
+            Scanned { candidate, info, fingerprint }
         })
         .collect();
 
+    // Paths of new files, to tell vanished rows from rows being re-probed.
+    let new_paths: HashSet<String> =
+        scanned.iter().map(|s| s.candidate.path.to_string_lossy().into_owned()).collect();
+    let mut changes = 0;
+
     let tx = conn.transaction()?;
     {
+        // Delete vanished files first: the delete trigger detaches their tags so the
+        // insert trigger can reattach them if the same file shows up at a new path.
+        let mut delete = tx.prepare("DELETE FROM samples WHERE id = ?1")?;
+        for (path, (id, _, _)) in &known {
+            if !seen.contains(id) && !new_paths.contains(path) {
+                delete.execute([id])?;
+                changes += 1;
+            }
+        }
+
         let mut upsert = tx.prepare(
-            "INSERT INTO samples (source_id, path, name, ext, size, mtime, duration, sample_rate, channels, bit_depth, peaks)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, NULL)
+            "INSERT INTO samples (source_id, path, name, ext, size, mtime, duration, sample_rate,
+                                  channels, bit_depth, fingerprint, peaks)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, NULL)
              ON CONFLICT(path) DO UPDATE SET
                 source_id = excluded.source_id, name = excluded.name, ext = excluded.ext,
-                size = excluded.size, mtime = excluded.mtime, duration = excluded.duration,
-                sample_rate = excluded.sample_rate, channels = excluded.channels,
-                bit_depth = excluded.bit_depth, peaks = NULL
-             RETURNING id",
+                duration = excluded.duration, sample_rate = excluded.sample_rate,
+                channels = excluded.channels, bit_depth = excluded.bit_depth,
+                fingerprint = excluded.fingerprint,
+                peaks = CASE WHEN size = excluded.size AND mtime = excluded.mtime THEN peaks END,
+                size = excluded.size, mtime = excluded.mtime",
         )?;
         for s in &scanned {
             let c = &s.candidate;
@@ -138,33 +159,24 @@ fn run(db_path: &Path, source_id: i64, on_progress: &(impl Fn(ScanProgress) + Sy
                 .extension()
                 .map(|e| e.to_string_lossy().to_ascii_lowercase())
                 .unwrap_or_default();
-            let id: i64 = upsert.query_row(
-                params![
-                    source_id,
-                    c.path.to_string_lossy(),
-                    name,
-                    ext,
-                    c.size,
-                    c.mtime,
-                    s.info.duration,
-                    s.info.sample_rate,
-                    s.info.channels,
-                    s.info.bit_depth,
-                ],
-                |r| r.get(0),
-            )?;
-            seen.insert(id);
-        }
-
-        let mut delete = tx.prepare("DELETE FROM samples WHERE id = ?1")?;
-        for (id, _, _) in known.values() {
-            if !seen.contains(id) {
-                delete.execute([id])?;
-            }
+            upsert.execute(params![
+                source_id,
+                c.path.to_string_lossy(),
+                name,
+                ext,
+                c.size,
+                c.mtime,
+                s.info.duration,
+                s.info.sample_rate,
+                s.info.channels,
+                s.info.bit_depth,
+                s.fingerprint,
+            ])?;
+            changes += 1;
         }
     }
     tx.commit()?;
-    Ok(())
+    Ok(changes)
 }
 
 #[cfg(test)]
@@ -269,6 +281,157 @@ mod tests {
             .unwrap();
         assert_eq!(same_id, id_a);
         assert_eq!(peaks, Some(vec![1]));
+    }
+
+    fn add_source(db_path: &Path, root: &Path) -> i64 {
+        db::open(db_path)
+            .unwrap()
+            .query_row(
+                "INSERT INTO sources (path, added_at) VALUES (?1, 0) RETURNING id",
+                [root.to_string_lossy()],
+                |r| r.get(0),
+            )
+            .unwrap()
+    }
+
+    fn sample_id(db_path: &Path, name: &str) -> Option<i64> {
+        use rusqlite::OptionalExtension;
+        db::open(db_path)
+            .unwrap()
+            .query_row("SELECT id FROM samples WHERE name = ?1", [name], |r| r.get(0))
+            .optional()
+            .unwrap()
+    }
+
+    /// (favorite, tag names) of the sample with this name.
+    fn user_data(db_path: &Path, name: &str) -> (bool, Vec<String>) {
+        let conn = db::open(db_path).unwrap();
+        let id = sample_id(db_path, name).expect("sample exists");
+        let fav: bool = conn.query_row("SELECT favorite FROM samples WHERE id = ?1", [id], |r| r.get(0)).unwrap();
+        let mut stmt = conn
+            .prepare("SELECT t.name FROM sample_tags st JOIN tags t ON t.id = st.tag_id WHERE st.sample_id = ?1 ORDER BY t.name")
+            .unwrap();
+        let tags = stmt.query_map([id], |r| r.get(0)).unwrap().collect::<rusqlite::Result<_>>().unwrap();
+        (fav, tags)
+    }
+
+    fn tag_and_favorite(db_path: &Path, name: &str, tags: &[&str]) {
+        let mut conn = db::open(db_path).unwrap();
+        let id = sample_id(db_path, name).unwrap();
+        for t in tags {
+            let tag = crate::library::ensure_tag(&conn, t).unwrap();
+            crate::library::tag_samples(&mut conn, &[id], tag.id).unwrap();
+        }
+        crate::library::set_favorite(&mut conn, &[id], true).unwrap();
+    }
+
+    fn detached_count(db_path: &Path) -> i64 {
+        db::open(db_path).unwrap().query_row("SELECT COUNT(*) FROM detached", [], |r| r.get(0)).unwrap()
+    }
+
+    #[test]
+    fn renamed_file_keeps_tags_and_favorite() {
+        let (_dir, root, db_path, id) = setup();
+        write_sine(&root.join("drums/kick.wav"), 44100, 1, 16, 0.2);
+        write_sine(&root.join("drums/snare.wav"), 44100, 1, 16, 0.3);
+        scan(&db_path, id);
+        tag_and_favorite(&db_path, "kick", &["punchy", "808"]);
+
+        std::fs::create_dir_all(root.join("favs")).unwrap();
+        std::fs::rename(root.join("drums/kick.wav"), root.join("favs/Big Kick.wav")).unwrap();
+        let events = scan(&db_path, id);
+        assert_eq!(events.last().unwrap().changes, 2); // one delete + one insert
+
+        assert_eq!(sample_id(&db_path, "kick"), None);
+        assert_eq!(user_data(&db_path, "Big Kick"), (true, vec!["808".into(), "punchy".into()]));
+        assert_eq!(user_data(&db_path, "snare"), (false, vec![]));
+        assert_eq!(detached_count(&db_path), 0);
+    }
+
+    #[test]
+    fn file_moved_to_another_source_keeps_tags() {
+        let (dir, root, db_path, a) = setup();
+        let other = dir.path().join("other");
+        std::fs::create_dir_all(&other).unwrap();
+        let b = add_source(&db_path, &other);
+        write_sine(&root.join("pad.wav"), 48000, 2, 24, 0.5);
+        scan(&db_path, a);
+        tag_and_favorite(&db_path, "pad", &["warm"]);
+
+        std::fs::rename(root.join("pad.wav"), other.join("pad.wav")).unwrap();
+        scan(&db_path, a);
+        assert_eq!(detached_count(&db_path), 1);
+        scan(&db_path, b);
+        assert_eq!(user_data(&db_path, "pad"), (true, vec!["warm".into()]));
+        assert_eq!(detached_count(&db_path), 0);
+    }
+
+    #[test]
+    fn removing_and_readding_a_source_restores_tags() {
+        let (_dir, root, db_path, id) = setup();
+        write_sine(&root.join("hat.wav"), 44100, 1, 16, 0.1);
+        scan(&db_path, id);
+        tag_and_favorite(&db_path, "hat", &["crisp"]);
+
+        db::open(&db_path).unwrap().execute("DELETE FROM sources WHERE id = ?1", [id]).unwrap();
+        assert_eq!(detached_count(&db_path), 1);
+        let id = add_source(&db_path, &root);
+        scan(&db_path, id);
+        assert_eq!(user_data(&db_path, "hat"), (true, vec!["crisp".into()]));
+    }
+
+    #[test]
+    fn edited_file_keeps_tags_and_untagged_deletes_leave_nothing_behind() {
+        let (_dir, root, db_path, id) = setup();
+        write_sine(&root.join("loop.wav"), 44100, 2, 16, 1.0);
+        write_sine(&root.join("plain.wav"), 44100, 2, 16, 1.0);
+        scan(&db_path, id);
+        tag_and_favorite(&db_path, "loop", &["groove"]);
+
+        // Same path, new content: the row is updated in place.
+        write_sine(&root.join("loop.wav"), 44100, 2, 16, 2.0);
+        std::fs::remove_file(root.join("plain.wav")).unwrap();
+        scan(&db_path, id);
+        assert_eq!(user_data(&db_path, "loop"), (true, vec!["groove".into()]));
+        assert_eq!(detached_count(&db_path), 0);
+    }
+
+    #[test]
+    fn detached_data_expires() {
+        let (_dir, root, db_path, id) = setup();
+        write_sine(&root.join("old.wav"), 44100, 1, 16, 0.1);
+        scan(&db_path, id);
+        tag_and_favorite(&db_path, "old", &["x"]);
+        std::fs::remove_file(root.join("old.wav")).unwrap();
+        scan(&db_path, id);
+        let conn = db::open(&db_path).unwrap();
+        db::prune_detached(&conn).unwrap();
+        assert_eq!(detached_count(&db_path), 1);
+        conn.execute("UPDATE detached SET detached_at = detached_at - 91 * 86400", []).unwrap();
+        db::prune_detached(&conn).unwrap();
+        assert_eq!(detached_count(&db_path), 0);
+    }
+
+    #[test]
+    fn fingerprint_depends_on_content_not_name() {
+        let (_dir, root, _db, _id) = setup();
+        // Long enough that head and tail chunks are hashed separately.
+        write_sine(&root.join("a.wav"), 44100, 2, 16, 3.0);
+        std::fs::copy(root.join("a.wav"), root.join("b.wav")).unwrap();
+        write_sine(&root.join("c.wav"), 44100, 2, 16, 3.01);
+        let fp = |n: &str| {
+            let p = root.join(n);
+            audio::fingerprint(&p, std::fs::metadata(&p).unwrap().len()).unwrap()
+        };
+        assert_eq!(fp("a.wav"), fp("b.wav"));
+        assert_ne!(fp("a.wav"), fp("c.wav"));
+
+        // A change in the tail only is still detected.
+        let mut bytes = std::fs::read(root.join("b.wav")).unwrap();
+        let last = bytes.len() - 1;
+        bytes[last] ^= 0xff;
+        std::fs::write(root.join("b.wav"), bytes).unwrap();
+        assert_ne!(fp("a.wav"), fp("b.wav"));
     }
 
     #[test]

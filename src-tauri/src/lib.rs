@@ -5,17 +5,18 @@ mod error;
 mod library;
 mod player;
 mod scan;
+mod watch;
 
-use std::path::PathBuf;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use rusqlite::Connection;
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 
 pub struct AppState {
     pub db: Mutex<Connection>,
-    pub db_path: PathBuf,
     pub player: player::Player,
+    pub scanner: Arc<watch::Scanner>,
+    pub watcher: watch::LibraryWatcher,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -30,17 +31,30 @@ pub fn run() {
             let db_path = dir.join("library.db");
             let mut conn = db::open(&db_path)?;
             db::migrate(&mut conn)?;
-            let source_ids: Vec<i64> = conn
-                .prepare("SELECT id FROM sources")?
-                .query_map([], |r| r.get(0))?
+            db::prune_detached(&conn)?;
+            let sources: Vec<(i64, String)> = conn
+                .prepare("SELECT id, path FROM sources")?
+                .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
                 .collect::<rusqlite::Result<_>>()?;
-            app.manage(AppState { db: Mutex::new(conn), db_path, player: player::Player::new() });
 
-            // Pick up changes made while the app was closed.
-            let state = app.state::<AppState>();
-            for id in source_ids {
-                commands::spawn_scan(app.handle(), &state, id);
+            let handle = app.handle().clone();
+            let scanner = watch::Scanner::new(db_path, move |p| {
+                let _ = handle.emit(scan::PROGRESS_EVENT, p);
+            });
+            let watcher = watch::LibraryWatcher::new(Arc::clone(&scanner));
+            for (id, path) in &sources {
+                if let Err(e) = watcher.watch(*id, std::path::Path::new(path)) {
+                    eprintln!("cannot watch {path}: {e}");
+                }
+                // Pick up changes made while the app was closed.
+                scanner.request(*id);
             }
+            app.manage(AppState {
+                db: Mutex::new(conn),
+                player: player::Player::new(),
+                scanner,
+                watcher,
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

@@ -3,12 +3,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusqlite::{params, OptionalExtension};
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, State};
+use tauri::State;
 
 use crate::audio;
 use crate::error::{Error, Result};
 use crate::library::{self, Filter, Sample, Tag, TagRef};
-use crate::scan;
 use crate::AppState;
 
 #[derive(Serialize)]
@@ -17,16 +16,6 @@ pub struct Source {
     id: i64,
     path: String,
     sample_count: i64,
-}
-
-pub fn spawn_scan(app: &AppHandle, state: &AppState, source_id: i64) {
-    let app = app.clone();
-    let db_path = state.db_path.clone();
-    std::thread::spawn(move || {
-        scan::scan_source(&db_path, source_id, |p| {
-            let _ = app.emit(scan::PROGRESS_EVENT, p);
-        })
-    });
 }
 
 #[tauri::command]
@@ -44,7 +33,7 @@ pub fn list_sources(state: State<'_, AppState>) -> Result<Vec<Source>> {
 }
 
 #[tauri::command]
-pub fn add_source(app: AppHandle, state: State<'_, AppState>, path: String) -> Result<i64> {
+pub fn add_source(state: State<'_, AppState>, path: String) -> Result<i64> {
     if !PathBuf::from(&path).is_dir() {
         return Err(Error::Other(format!("not a folder: {path}")));
     }
@@ -58,19 +47,32 @@ pub fn add_source(app: AppHandle, state: State<'_, AppState>, path: String) -> R
             |r| r.get(0),
         )?
     };
-    spawn_scan(&app, &state, id);
+    if let Err(e) = state.watcher.watch(id, std::path::Path::new(&path)) {
+        eprintln!("cannot watch {path}: {e}");
+    }
+    state.scanner.request(id);
     Ok(id)
 }
 
 #[tauri::command]
 pub fn remove_source(state: State<'_, AppState>, id: i64) -> Result<()> {
-    state.db.lock().unwrap().execute("DELETE FROM sources WHERE id = ?1", [id])?;
+    let path: Option<String> = {
+        let conn = state.db.lock().unwrap();
+        let path = conn
+            .query_row("SELECT path FROM sources WHERE id = ?1", [id], |r| r.get(0))
+            .optional()?;
+        conn.execute("DELETE FROM sources WHERE id = ?1", [id])?;
+        path
+    };
+    if let Some(path) = path {
+        state.watcher.unwatch(id, std::path::Path::new(&path));
+    }
     Ok(())
 }
 
 #[tauri::command]
-pub fn rescan_source(app: AppHandle, state: State<'_, AppState>, id: i64) {
-    spawn_scan(&app, &state, id);
+pub fn rescan_source(state: State<'_, AppState>, id: i64) {
+    state.scanner.request(id);
 }
 
 #[tauri::command]

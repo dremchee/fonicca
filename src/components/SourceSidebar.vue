@@ -61,8 +61,8 @@ function onRenameKeydown(e: KeyboardEvent) {
 
 <template>
   <aside class="w-60 shrink-0 flex flex-col border-r border-line bg-panel">
-    <div class="h-11 px-3 flex items-center justify-between" data-tauri-drag-region>
-      <span class="pl-16 text-xs font-semibold uppercase tracking-wide text-muted" data-tauri-drag-region>Library</span>
+    <!-- Left part of this bar sits under the macOS traffic lights (overlay title bar). -->
+    <div class="h-11 px-3 flex items-center justify-end" data-tauri-drag-region>
       <button
         class="size-7 rounded-md grid place-items-center text-muted hover:bg-raised hover:text-fg"
         title="Add folders"

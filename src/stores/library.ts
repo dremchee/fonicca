@@ -253,7 +253,7 @@ export const useLibraryStore = defineStore('library', () => {
     const paths = Array.isArray(picked) ? picked : picked ? [picked] : []
     for (const path of paths) {
       const id = await api.addSource(path)
-      scans.set(id, { sourceId: id, processed: 0, total: 0, done: false, error: null })
+      scans.set(id, { sourceId: id, processed: 0, total: 0, done: false, changes: 0, error: null })
     }
     await loadSources()
   }
@@ -266,7 +266,7 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   async function rescanSource(id: number) {
-    scans.set(id, { sourceId: id, processed: 0, total: 0, done: false, error: null })
+    scans.set(id, { sourceId: id, processed: 0, total: 0, done: false, changes: 0, error: null })
     await api.rescanSource(id)
   }
 
@@ -279,7 +279,9 @@ export const useLibraryStore = defineStore('library', () => {
       scans.delete(payload.sourceId)
       if (payload.error)
         console.error(`scan of source ${payload.sourceId} failed:`, payload.error)
-      await Promise.all([loadSources(), loadTags(), refresh({ keepSelection: true })])
+      // Background rescans (startup, file watching) usually find nothing new.
+      if (payload.changes > 0)
+        await Promise.all([loadSources(), loadTags(), refresh({ keepSelection: true })])
     })
     await Promise.all([loadSources(), loadTags(), refresh()])
   }

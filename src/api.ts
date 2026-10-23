@@ -35,6 +35,8 @@ export interface ScanProgress {
   processed: number
   total: number
   done: boolean
+  /** Rows added, updated or removed; set on the final event. */
+  changes: number
   error: string | null
 }
 
