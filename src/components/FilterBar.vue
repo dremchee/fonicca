@@ -4,6 +4,7 @@ import type { SampleKind } from '@/api'
 import { Check, ChevronDown, Download, Pause, Play } from '@lucide/vue'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -205,34 +206,37 @@ function parseBpm(e: Event): number | null {
 
     <div class="ml-auto min-w-0 flex items-center gap-2 text-muted-foreground tabular whitespace-nowrap">
       <template v-if="modelDownload">
-        <span v-if="modelDownload.error" class="truncate text-destructive" :title="modelDownload.error">
-          Download failed
-        </span>
+        <Hint v-if="modelDownload.error" :text="modelDownload.error">
+          <span class="truncate text-destructive">Download failed</span>
+        </Hint>
         <template v-else>
           <Spinner class="text-primary" />
           Downloading sound model · {{ downloadPercent }}%
         </template>
       </template>
-      <Button
+      <Hint
         v-else-if="soundModel && !soundModel.installed"
-        variant="outline" size="sm"
-        title="Classify unnamed samples (kick, bass, pad…) by how they sound and detect keys of tonal loops. Runs offline."
-        @click="library.downloadSoundModel()"
+        text="Classify unnamed samples (kick, bass, pad…) by how they sound and detect keys of tonal loops. Runs offline."
       >
-        <Download /> Sound model · {{ formatSize(soundModel.size) }}
-      </Button>
+        <Button variant="outline" size="sm" @click="library.downloadSoundModel()">
+          <Download /> Sound model · {{ formatSize(soundModel.size) }}
+        </Button>
+      </Hint>
       <template v-if="pending > 0">
         <Spinner v-if="!analysis.paused" class="text-primary" />
-        <span class="truncate" title="Loudness, one-shot/loop, BPM, categories and keys are analyzed in the background">
-          {{ analysis.paused ? 'Analysis paused' : 'Analyzing' }} · {{ pending.toLocaleString() }} left
-        </span>
-        <Button
-          variant="ghost" size="icon-sm"
-          :title="analysis.paused ? 'Resume analysis' : 'Pause analysis'"
-          @click="library.setAnalysisPaused(!analysis.paused)"
-        >
-          <component :is="analysis.paused ? Play : Pause" />
-        </Button>
+        <Hint text="Loudness, one-shot/loop, BPM, categories and keys are analyzed in the background">
+          <span class="truncate">
+            {{ analysis.paused ? 'Analysis paused' : 'Analyzing' }} · {{ pending.toLocaleString() }} left
+          </span>
+        </Hint>
+        <Hint :text="analysis.paused ? 'Resume analysis' : 'Pause analysis'">
+          <Button
+            variant="ghost" size="icon-sm" :aria-label="analysis.paused ? 'Resume analysis' : 'Pause analysis'"
+            @click="library.setAnalysisPaused(!analysis.paused)"
+          >
+            <component :is="analysis.paused ? Play : Pause" />
+          </Button>
+        </Hint>
       </template>
       <span v-else-if="!modelDownload" class="flex items-center gap-1.5">
         <Check class="size-4" /> Analyzed

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Sample } from '@/api'
 import { useVirtualizer } from '@tanstack/vue-virtual'
-import { AudioLines, X } from '@lucide/vue'
+import { AudioLines, FolderPlus, Layers, SearchX, Sparkles, Star, Tag, X } from '@lucide/vue'
 import { onKeyStroke, useEventListener } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
@@ -10,6 +10,7 @@ import Hint from '@/components/Hint.vue'
 import SampleContextMenu from '@/components/SampleContextMenu.vue'
 import { Button } from '@/components/ui/button'
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 
@@ -21,12 +22,36 @@ const { total, focusIndex, selectedIds, scope } = storeToRefs(library)
 
 const similarTo = computed(() => (scope.value.kind === 'similar' ? scope.value : null))
 
+// What to say when the list is empty depends on why it is empty.
+const empty = computed(() => {
+  if (!library.sources.length)
+    return { icon: FolderPlus, title: 'No samples yet', text: 'Add a folder with samples to start. Files stay where they are — Samplette only indexes them.' }
+  if (library.query || library.hasAnalysisFilters)
+    return { icon: SearchX, title: 'Nothing matches', text: 'Try another search or loosen the filters.' }
+  switch (scope.value.kind) {
+    case 'favorites':
+      return { icon: Star, title: 'No favorites yet', text: 'Press F on a sample, or click its star, to keep it here.' }
+    case 'collection':
+      return { icon: Layers, title: 'This collection is empty', text: 'Right-click samples and choose Add to collection.' }
+    case 'tag':
+      return { icon: Tag, title: 'No samples with this tag', text: 'Select samples and press T to tag them.' }
+    case 'similar':
+      return { icon: Sparkles, title: 'No similar sounds yet', text: 'Similarity needs the sound model and finished analysis.' }
+    case 'source':
+      return library.isScanning
+        ? { icon: AudioLines, title: 'Scanning…', text: 'Samples show up here as the folder is indexed.' }
+        : { icon: AudioLines, title: 'No samples in this folder', text: 'Samplette reads WAV, AIFF, FLAC, MP3, OGG, M4A and CAF files.' }
+    default:
+      return { icon: AudioLines, title: 'No samples', text: '' }
+  }
+})
+
 // Esc leaves the similar view once nothing is playing (the first Esc stops playback).
 // Capture phase: checked before the app-wide Esc handler stops the player.
 useEventListener(window, 'keydown', (e: KeyboardEvent) => {
   if (e.key !== 'Escape' || !similarTo.value || player.playingId !== null)
     return
-  if (e.target instanceof Element && e.target.closest('[role="menu"], [role="alertdialog"], input'))
+  if (e.target instanceof Element && e.target.closest('[role="menu"], [role="dialog"], [role="alertdialog"], input'))
     return
   library.exitSimilar()
 }, { capture: true })
@@ -160,14 +185,30 @@ function onDragStart(e: DragEvent, sample: Sample) {
     <ContextMenu v-model:open="menuOpen">
       <ContextMenuTrigger as-child>
         <div ref="scroller" class="flex-1 overflow-y-auto outline-none" tabindex="-1" @contextmenu="onContextMenu">
-          <div v-if="total === 0" class="h-full grid place-items-center text-muted-foreground">
-            <div class="text-center">
-              <span class="i-lucide-audio-waveform text-3xl opacity-50" />
-              <p class="mt-2">
-                {{ library.query ? 'Nothing matches your search' : 'No samples yet' }}
-              </p>
-            </div>
-          </div>
+          <Empty v-if="total === 0" class="h-full">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <component :is="empty.icon" />
+              </EmptyMedia>
+              <EmptyTitle>{{ empty.title }}</EmptyTitle>
+              <EmptyDescription v-if="empty.text">
+                {{ empty.text }}
+              </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent v-if="!library.sources.length || library.query || library.hasAnalysisFilters">
+              <div class="flex gap-2">
+                <Button v-if="!library.sources.length" size="sm" @click="library.addSources()">
+                  <FolderPlus /> Add folders
+                </Button>
+                <Button v-if="library.query" variant="outline" size="sm" @click="library.query = ''">
+                  Clear search
+                </Button>
+                <Button v-if="library.hasAnalysisFilters" variant="outline" size="sm" @click="library.clearAnalysisFilters()">
+                  Clear filters
+                </Button>
+              </div>
+            </EmptyContent>
+          </Empty>
 
           <div v-else class="relative w-full" :style="{ height: `${virtualizer.getTotalSize()}px` }">
             <template v-for="{ item, sample: s } in rows" :key="item.index">
@@ -182,7 +223,6 @@ function onDragStart(e: DragEvent, sample: Sample) {
                 :style="{ height: `${item.size}px`, transform: `translateY(${item.start}px)` }"
                 :data-index="item.index"
                 draggable="true"
-                :title="s.path"
                 @mousedown="onMouseDown($event, item.index, s)"
                 @click="onClick(item.index)"
                 @dblclick="onDoubleClick(item.index)"
@@ -191,37 +231,42 @@ function onDragStart(e: DragEvent, sample: Sample) {
                 <span class="grid place-items-center">
                   <span v-if="s.id === player.playingId" class="i-lucide-volume-2 text-primary text-xs" />
                 </span>
-                <button
-                  class="star grid place-items-center" :class="{ on: s.favorite }"
-                  :title="s.favorite ? 'Remove from favorites (F)' : 'Add to favorites (F)'"
-                  @mousedown.stop
-                  @click.stop="library.toggleFavorite(s)"
-                >
-                  <span :class="s.favorite ? 'i-lucide-star text-amber-400' : 'i-lucide-star'" class="text-xs" />
-                </button>
+                <Hint :text="s.favorite ? 'Remove from favorites' : 'Add to favorites'" shortcut="F">
+                  <button
+                    class="star grid place-items-center" :class="{ on: s.favorite }"
+                    :aria-label="s.favorite ? 'Remove from favorites' : 'Add to favorites'"
+                    @mousedown.stop
+                    @click.stop="library.toggleFavorite(s)"
+                  >
+                    <span :class="s.favorite ? 'i-lucide-star text-amber-400' : 'i-lucide-star'" class="text-xs" />
+                  </button>
+                </Hint>
                 <span class="flex items-center gap-2 min-w-0">
-                  <span class="truncate">{{ s.name }}</span>
-                  <span
-                    v-if="s.similarity != null && s.id !== similarTo?.id"
-                    class="shrink-0 text-[11px] text-primary"
-                    title="How similar it sounds"
-                  >{{ Math.round(Math.max(0, s.similarity) * 100) }}%</span>
+                  <Hint :text="s.path" side="top">
+                    <span class="truncate">{{ s.name }}</span>
+                  </Hint>
+                  <Hint v-if="s.similarity != null && s.id !== similarTo?.id" text="How similar it sounds" side="top">
+                    <span class="shrink-0 text-[11px] text-primary">{{ Math.round(Math.max(0, s.similarity) * 100) }}%</span>
+                  </Hint>
                 </span>
                 <span class="flex gap-1 overflow-hidden">
                   <span v-for="t in s.tags" :key="t.id" class="chip">{{ t.name }}</span>
                 </span>
-                <span
-                  class="truncate text-[11px]" :class="s.categorySource === 'audio' ? 'text-muted-foreground' : ''"
-                  :title="categoryHint(s.categorySource, s.categoryConfidence)"
-                >{{ s.category ? CATEGORY_LABELS[s.category] ?? s.category : '' }}</span>
+                <Hint :text="categoryHint(s.categorySource, s.categoryConfidence)" side="top">
+                  <span class="truncate text-[11px]" :class="s.categorySource === 'audio' ? 'text-muted-foreground' : ''">{{ s.category ? CATEGORY_LABELS[s.category] ?? s.category : '' }}</span>
+                </Hint>
                 <span class="text-muted-foreground text-[11px]">
                   <template v-if="s.kind">{{ KIND_LABELS[s.kind] }}</template>
                   <span v-else-if="!s.analyzed" class="opacity-50">…</span>
                 </span>
-                <span class="text-right" :class="s.bpmSource === 'audio' ? 'text-muted-foreground' : ''" :title="sourceHint(s.bpmSource)">
-                  {{ s.bpm != null ? formatBpm(s.bpm) : '' }}
-                </span>
-                <span :class="s.keySource === 'audio' ? 'text-muted-foreground' : ''" :title="sourceHint(s.keySource)">{{ s.key ?? '' }}</span>
+                <Hint :text="sourceHint(s.bpmSource)" side="top">
+                  <span class="text-right" :class="s.bpmSource === 'audio' ? 'text-muted-foreground' : ''">
+                    {{ s.bpm != null ? formatBpm(s.bpm) : '' }}
+                  </span>
+                </Hint>
+                <Hint :text="sourceHint(s.keySource)" side="top">
+                  <span :class="s.keySource === 'audio' ? 'text-muted-foreground' : ''">{{ s.key ?? '' }}</span>
+                </Hint>
                 <span class="text-right text-muted-foreground">{{ formatDuration(s.duration) }}</span>
                 <span class="text-muted-foreground uppercase text-[11px]">{{ s.ext }}</span>
               </div>

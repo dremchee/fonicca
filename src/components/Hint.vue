@@ -3,6 +3,7 @@ import { Kbd } from '@/components/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 // Tooltip around a single control: <Hint text="Rescan"><Button … /></Hint>
+// An empty text renders the control alone.
 withDefaults(defineProps<{
   text: string
   shortcut?: string
@@ -11,11 +12,12 @@ withDefaults(defineProps<{
 </script>
 
 <template>
-  <Tooltip>
+  <slot v-if="!text" />
+  <Tooltip v-else>
     <TooltipTrigger as-child>
       <slot />
     </TooltipTrigger>
-    <TooltipContent :side="side" class="flex items-center gap-2">
+    <TooltipContent :side="side" class="flex max-w-72 items-center gap-2">
       {{ text }}
       <Kbd v-if="shortcut">
         {{ shortcut }}
