@@ -1,7 +1,7 @@
-import type { Sample, SampleFilter, ScanProgress, Source, Tag } from '@/api'
+import type { Collection, Sample, SampleFilter, ScanProgress, Source, Tag } from '@/api'
 import { listen } from '@tauri-apps/api/event'
-import { open } from '@tauri-apps/plugin-dialog'
-import { defineStore } from 'pinia'
+import { open, save } from '@tauri-apps/plugin-dialog'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, reactive, ref, shallowReactive, watch } from 'vue'
 import { api, SCAN_PROGRESS_EVENT, startFileDrag } from '@/api'
 
@@ -13,10 +13,15 @@ export type Scope
     | { kind: 'favorites' }
     | { kind: 'source', id: number }
     | { kind: 'tag', id: number }
+    | { kind: 'collection', id: number }
 
 export const useLibraryStore = defineStore('library', () => {
   const sources = ref<Source[]>([])
   const tags = ref<Tag[]>([])
+  const collections = ref<Collection[]>([])
+  /** Short status message shown at the bottom of the sidebar. */
+  const notice = ref<{ text: string, error?: boolean } | null>(null)
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined
   const scope = ref<Scope>({ kind: 'all' })
   const query = ref('')
   const total = ref(0)
@@ -43,6 +48,7 @@ export const useLibraryStore = defineStore('library', () => {
       sourceId: s.kind === 'source' ? s.id : null,
       tagId: s.kind === 'tag' ? s.id : null,
       favorites: s.kind === 'favorites',
+      collectionId: s.kind === 'collection' ? s.id : null,
     }
   })
   const focused = computed(() => sampleAt(focusIndex.value))
@@ -242,6 +248,97 @@ export const useLibraryStore = defineStore('library', () => {
     await Promise.all([loadTags(), refresh({ keepSelection: true })])
   }
 
+  // --- Collections ---------------------------------------------------------
+
+  async function loadCollections() {
+    collections.value = await api.listCollections()
+  }
+
+  /** Creates a collection, filled with the current selection when `withSelection`. */
+  async function createCollection(name: string, withSelection = false) {
+    await api.createCollection(name, withSelection ? targetIds() : [])
+    await loadCollections()
+    if (withSelection)
+      showNotice(`Added to “${name.trim()}”`)
+  }
+
+  async function addToCollection(id: number) {
+    const ids = targetIds()
+    if (!ids.length)
+      return
+    await api.addToCollection(ids, id)
+    await loadCollections()
+    const name = collections.value.find(c => c.id === id)?.name
+    showNotice(`${ids.length === 1 ? 'Sample' : `${ids.length} samples`} added to “${name}”`)
+  }
+
+  async function removeFromCollection(id: number) {
+    const ids = targetIds()
+    if (!ids.length)
+      return
+    await api.removeFromCollection(ids, id)
+    await loadCollections()
+    if (scope.value.kind === 'collection' && scope.value.id === id)
+      await refresh({ keepSelection: false })
+  }
+
+  async function renameCollection(id: number, name: string) {
+    await api.renameCollection(id, name)
+    await loadCollections()
+  }
+
+  async function deleteCollection(id: number) {
+    await api.deleteCollection(id)
+    if (scope.value.kind === 'collection' && scope.value.id === id)
+      scope.value = { kind: 'all' }
+    await loadCollections()
+  }
+
+  // --- Export / import -----------------------------------------------------
+
+  function showNotice(text: string, error = false) {
+    clearTimeout(noticeTimer)
+    notice.value = { text, error }
+    noticeTimer = setTimeout(() => (notice.value = null), error ? 8000 : 4000)
+  }
+
+  async function exportUserData() {
+    const date = new Date().toISOString().slice(0, 10)
+    const path = await save({
+      title: 'Export favorites, tags and collections',
+      defaultPath: `samplette-${date}.json`,
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+    })
+    if (!path)
+      return
+    try {
+      const n = await api.exportUserData(path)
+      showNotice(`Exported ${n.toLocaleString()} samples`)
+    }
+    catch (e) {
+      showNotice(String(e), true)
+    }
+  }
+
+  async function importUserData() {
+    const path = await open({
+      title: 'Import favorites, tags and collections',
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+    })
+    if (typeof path !== 'string')
+      return
+    try {
+      const r = await api.importUserData(path)
+      showNotice(r.unmatched
+        ? `Imported ${r.matched.toLocaleString()} samples, ${r.unmatched.toLocaleString()} not found in the library`
+        : `Imported ${r.matched.toLocaleString()} samples`)
+      await Promise.all([loadTags(), loadCollections(), refresh({ keepSelection: true })])
+    }
+    catch (e) {
+      showNotice(String(e), true)
+    }
+  }
+
   // --- Sources -------------------------------------------------------------
 
   async function loadSources() {
@@ -262,7 +359,7 @@ export const useLibraryStore = defineStore('library', () => {
     await api.removeSource(id)
     if (scope.value.kind === 'source' && scope.value.id === id)
       scope.value = { kind: 'all' }
-    await Promise.all([loadSources(), loadTags(), refresh()])
+    await Promise.all([loadSources(), loadTags(), loadCollections(), refresh()])
   }
 
   async function rescanSource(id: number) {
@@ -281,14 +378,16 @@ export const useLibraryStore = defineStore('library', () => {
         console.error(`scan of source ${payload.sourceId} failed:`, payload.error)
       // Background rescans (startup, file watching) usually find nothing new.
       if (payload.changes > 0)
-        await Promise.all([loadSources(), loadTags(), refresh({ keepSelection: true })])
+        await Promise.all([loadSources(), loadTags(), loadCollections(), refresh({ keepSelection: true })])
     })
-    await Promise.all([loadSources(), loadTags(), refresh()])
+    await Promise.all([loadSources(), loadTags(), loadCollections(), refresh()])
   }
 
   return {
     sources,
     tags,
+    collections,
+    notice,
     scope,
     query,
     total,
@@ -312,9 +411,19 @@ export const useLibraryStore = defineStore('library', () => {
     removeTag,
     renameTag,
     deleteTag,
+    createCollection,
+    addToCollection,
+    removeFromCollection,
+    renameCollection,
+    deleteCollection,
+    exportUserData,
+    importUserData,
     addSources,
     removeSource,
     rescanSource,
     init,
   }
 })
+
+if (import.meta.hot)
+  import.meta.hot.accept(acceptHMRUpdate(useLibraryStore, import.meta.hot))

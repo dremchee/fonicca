@@ -7,7 +7,7 @@ use tauri::State;
 
 use crate::audio;
 use crate::error::{Error, Result};
-use crate::library::{self, Filter, Sample, Tag, TagRef};
+use crate::library::{self, Collection, Filter, ImportReport, Sample, Tag, TagRef};
 use crate::AppState;
 
 #[derive(Serialize)]
@@ -132,6 +132,56 @@ pub fn rename_tag(state: State<'_, AppState>, id: i64, name: String) -> Result<(
 #[tauri::command]
 pub fn delete_tag(state: State<'_, AppState>, id: i64) -> Result<()> {
     library::delete_tag(&state.db.lock().unwrap(), id)
+}
+
+#[tauri::command]
+pub fn list_collections(state: State<'_, AppState>) -> Result<Vec<Collection>> {
+    library::list_collections(&state.db.lock().unwrap())
+}
+
+#[tauri::command]
+pub fn create_collection(state: State<'_, AppState>, name: String, ids: Vec<i64>) -> Result<i64> {
+    let mut conn = state.db.lock().unwrap();
+    let id = library::create_collection(&conn, &name)?;
+    library::add_to_collection(&mut conn, &ids, id)?;
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn rename_collection(state: State<'_, AppState>, id: i64, name: String) -> Result<()> {
+    library::rename_collection(&state.db.lock().unwrap(), id, &name)
+}
+
+#[tauri::command]
+pub fn delete_collection(state: State<'_, AppState>, id: i64) -> Result<()> {
+    library::delete_collection(&state.db.lock().unwrap(), id)
+}
+
+#[tauri::command]
+pub fn add_to_collection(state: State<'_, AppState>, ids: Vec<i64>, collection_id: i64) -> Result<()> {
+    library::add_to_collection(&mut state.db.lock().unwrap(), &ids, collection_id)
+}
+
+#[tauri::command]
+pub fn remove_from_collection(state: State<'_, AppState>, ids: Vec<i64>, collection_id: i64) -> Result<()> {
+    library::remove_from_collection(&mut state.db.lock().unwrap(), &ids, collection_id)
+}
+
+/// Writes favorites, tags and collections to a JSON file. Returns the number of samples.
+#[tauri::command]
+pub fn export_user_data(state: State<'_, AppState>, path: String) -> Result<usize> {
+    let data = library::export_user_data(&state.db.lock().unwrap())?;
+    let json = serde_json::to_vec_pretty(&data).map_err(|e| Error::Other(e.to_string()))?;
+    std::fs::write(&path, json)?;
+    Ok(data.samples.len())
+}
+
+#[tauri::command]
+pub fn import_user_data(state: State<'_, AppState>, path: String) -> Result<ImportReport> {
+    let bytes = std::fs::read(&path)?;
+    let data: library::UserData =
+        serde_json::from_slice(&bytes).map_err(|e| Error::Other(format!("invalid export file: {e}")))?;
+    library::import_user_data(&mut state.db.lock().unwrap(), &data)
 }
 
 fn sample_path(state: &AppState, id: i64) -> Result<PathBuf> {

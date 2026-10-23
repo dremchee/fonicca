@@ -1,5 +1,5 @@
 import type { Sample } from '@/api'
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref } from 'vue'
 import { api } from '@/api'
 
@@ -69,3 +69,6 @@ export const usePlayerStore = defineStore('player', () => {
 
   return { playingId, position, autoplay, error, play, stop, toggle, seek }
 })
+
+if (import.meta.hot)
+  import.meta.hot.accept(acceptHMRUpdate(usePlayerStore, import.meta.hot))

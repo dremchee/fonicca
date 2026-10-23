@@ -4,6 +4,7 @@ import { useVirtualizer } from '@tanstack/vue-virtual'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { formatChannels, formatDuration, formatRate } from '@/format'
+import SampleContextMenu from '@/components/SampleContextMenu.vue'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 
@@ -67,6 +68,14 @@ function onDoubleClick(index: number) {
     player.toggle(s)
 }
 
+const menu = ref<{ sample: Sample, x: number, y: number } | null>(null)
+
+async function onContextMenu(e: MouseEvent, index: number, sample: Sample) {
+  if (!selectedIds.value.has(sample.id))
+    await library.clickRow(index)
+  menu.value = { sample, x: e.clientX, y: e.clientY }
+}
+
 function onDragStart(e: DragEvent, sample: Sample) {
   // Replace the HTML drag with a native file drag so DAWs and Finder accept it.
   e.preventDefault()
@@ -114,6 +123,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
             :title="s.path"
             @mousedown="onMouseDown($event, item.index, s)"
             @click="onClick(item.index)"
+            @contextmenu.prevent="onContextMenu($event, item.index, s)"
             @dblclick="onDoubleClick(item.index)"
             @dragstart="onDragStart($event, s)"
           >
@@ -150,6 +160,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
         </template>
       </div>
     </div>
+    <SampleContextMenu v-if="menu" v-bind="menu" @close="menu = null" />
   </div>
 </template>
 

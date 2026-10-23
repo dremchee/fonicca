@@ -132,6 +132,59 @@ pub const MIGRATIONS: &[&str] = &[r#"
             SELECT rowid FROM detached WHERE fingerprint = new.fingerprint AND size = new.size
             ORDER BY detached_at DESC, rowid DESC LIMIT 1);
     END;
+"#, r#"
+    CREATE TABLE collections (
+        id         INTEGER PRIMARY KEY,
+        name       TEXT NOT NULL UNIQUE COLLATE NOCASE,
+        created_at INTEGER NOT NULL
+    );
+
+    CREATE TABLE collection_items (
+        collection_id INTEGER NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
+        sample_id     INTEGER NOT NULL REFERENCES samples(id) ON DELETE CASCADE,
+        added_at      INTEGER NOT NULL,
+        PRIMARY KEY (collection_id, sample_id)
+    ) WITHOUT ROWID;
+    CREATE INDEX collection_items_sample ON collection_items(sample_id);
+
+    -- Collections membership follows moved files just like tags.
+    ALTER TABLE detached ADD COLUMN collection_ids TEXT NOT NULL DEFAULT '[]';
+
+    DROP TRIGGER samples_detach;
+    CREATE TRIGGER samples_detach BEFORE DELETE ON samples
+    WHEN old.fingerprint IS NOT NULL
+     AND (old.favorite = 1
+          OR EXISTS (SELECT 1 FROM sample_tags WHERE sample_id = old.id)
+          OR EXISTS (SELECT 1 FROM collection_items WHERE sample_id = old.id))
+    BEGIN
+        INSERT INTO detached (fingerprint, size, favorite, tag_ids, collection_ids, detached_at)
+        VALUES (old.fingerprint, old.size, old.favorite,
+                (SELECT json_group_array(tag_id) FROM sample_tags WHERE sample_id = old.id),
+                (SELECT json_group_array(collection_id) FROM collection_items WHERE sample_id = old.id),
+                unixepoch());
+    END;
+
+    DROP TRIGGER samples_reattach;
+    CREATE TRIGGER samples_reattach AFTER INSERT ON samples
+    WHEN new.fingerprint IS NOT NULL
+     AND EXISTS (SELECT 1 FROM detached WHERE fingerprint = new.fingerprint AND size = new.size)
+    BEGIN
+        UPDATE samples SET favorite = (SELECT favorite FROM detached WHERE rowid = (SELECT rowid FROM detached WHERE fingerprint = new.fingerprint AND size = new.size
+                       ORDER BY detached_at DESC, rowid DESC LIMIT 1))
+        WHERE id = new.id;
+        INSERT OR IGNORE INTO sample_tags (sample_id, tag_id)
+        SELECT new.id, j.value FROM detached d, json_each(d.tag_ids) j
+        WHERE d.rowid = (SELECT rowid FROM detached WHERE fingerprint = new.fingerprint AND size = new.size
+                       ORDER BY detached_at DESC, rowid DESC LIMIT 1)
+          AND j.value IN (SELECT id FROM tags);
+        INSERT OR IGNORE INTO collection_items (collection_id, sample_id, added_at)
+        SELECT j.value, new.id, unixepoch() FROM detached d, json_each(d.collection_ids) j
+        WHERE d.rowid = (SELECT rowid FROM detached WHERE fingerprint = new.fingerprint AND size = new.size
+                       ORDER BY detached_at DESC, rowid DESC LIMIT 1)
+          AND j.value IN (SELECT id FROM collections);
+        DELETE FROM detached WHERE rowid = (SELECT rowid FROM detached WHERE fingerprint = new.fingerprint AND size = new.size
+                       ORDER BY detached_at DESC, rowid DESC LIMIT 1);
+    END;
 "#];
 
 /// How long user data of removed files is kept for possible reattachment.

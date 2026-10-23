@@ -30,6 +30,17 @@ export interface Tag extends TagRef {
   sampleCount: number
 }
 
+export interface Collection {
+  id: number
+  name: string
+  sampleCount: number
+}
+
+export interface ImportReport {
+  matched: number
+  unmatched: number
+}
+
 export interface ScanProgress {
   sourceId: number
   processed: number
@@ -45,6 +56,7 @@ export interface SampleFilter {
   sourceId?: number | null
   tagId?: number | null
   favorites?: boolean
+  collectionId?: number | null
 }
 
 export const SCAN_PROGRESS_EVENT = 'scan-progress'
@@ -65,6 +77,15 @@ export const api = {
   untagSamples: (ids: number[], tagId: number) => invoke<void>('untag_samples', { ids, tagId }),
   renameTag: (id: number, name: string) => invoke<void>('rename_tag', { id, name }),
   deleteTag: (id: number) => invoke<void>('delete_tag', { id }),
+  listCollections: () => invoke<Collection[]>('list_collections'),
+  createCollection: (name: string, ids: number[] = []) => invoke<number>('create_collection', { name, ids }),
+  renameCollection: (id: number, name: string) => invoke<void>('rename_collection', { id, name }),
+  deleteCollection: (id: number) => invoke<void>('delete_collection', { id }),
+  addToCollection: (ids: number[], collectionId: number) => invoke<void>('add_to_collection', { ids, collectionId }),
+  removeFromCollection: (ids: number[], collectionId: number) =>
+    invoke<void>('remove_from_collection', { ids, collectionId }),
+  exportUserData: (path: string) => invoke<number>('export_user_data', { path }),
+  importUserData: (path: string) => invoke<ImportReport>('import_user_data', { path }),
   getPeaks: (id: number) => invoke<number[]>('get_peaks', { id }),
   play: (id: number, start = 0) => invoke<void>('play', { id, start }),
   stop: () => invoke<void>('stop'),
