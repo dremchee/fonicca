@@ -137,7 +137,8 @@ function draw() {
       scale: waveScale,
       colors: waveColors,
       zoom: vZoom.value,
-      color: color('--wave'),
+      color: color('--wave-strong'),
+      shade: color('--card'),
       lineColor: color('--border'),
     })
   }
@@ -153,11 +154,11 @@ function draw() {
     ctx.fillText(formatTime(t, step < 1), px + 3, 11)
   }
 
-  // Cursor and playhead.
-  ctx.fillStyle = color('--primary')
+  // Cursor (text colour, the wave is the brand colour) and playhead (amber).
+  ctx.fillStyle = color('--foreground')
   ctx.fillRect(x(editor.cursor), RULER, 1, h - RULER)
   if (editor.playhead !== null) {
-    ctx.fillStyle = color('--foreground')
+    ctx.fillStyle = '#f59e0b'
     ctx.fillRect(x(editor.playhead), RULER, 1.5, h - RULER)
   }
 }

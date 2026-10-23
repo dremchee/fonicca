@@ -20,6 +20,8 @@
   --ring: var(--primary);
   --radius: 0.5rem;
   --wave: #8b8b99;
+  /* Editor waveform: the brand colour. */
+  --wave-strong: var(--primary);
   --wave-played: var(--primary);
 
   color-scheme: light dark;

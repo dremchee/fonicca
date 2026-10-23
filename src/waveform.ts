@@ -11,6 +11,8 @@ export interface WaveLook {
   /** Vertical zoom; 1 = full scale. */
   zoom: number
   color: string
+  /** Darkens the RMS body in "peaks + RMS" (usually the background colour). */
+  shade: string
   /** Centre and lane separator lines. */
   lineColor: string
 }
@@ -96,21 +98,21 @@ export function drawWave(ctx: CanvasRenderingContext2D, data: Wave, area: WaveAr
         }
       }
       else {
-        // Peaks (lighter when RMS is drawn on top), then the RMS body.
-        ctx.globalAlpha = look.style === 'peaksRms' ? 0.45 : 1
+        // Bright peaks, then the RMS body shaded darker inside them.
         for (let i = 0; i < data.count; i++) {
           const top = y(at(i, 1))
           ctx.fillStyle = fill(i)
           ctx.fillRect(i * colW, top, Math.max(1 / dpr, colW), Math.max(1 / dpr, y(at(i, 0)) - top))
         }
-        ctx.globalAlpha = 1
         if (look.style === 'peaksRms') {
+          ctx.globalAlpha = 0.4
+          ctx.fillStyle = look.shade
           for (let i = 0; i < data.count; i++) {
             const r = at(i, 2)
             const top = y(r)
-            ctx.fillStyle = fill(i)
             ctx.fillRect(i * colW, top, Math.max(1 / dpr, colW), Math.max(1 / dpr, y(-r) - top))
           }
+          ctx.globalAlpha = 1
         }
       }
     }

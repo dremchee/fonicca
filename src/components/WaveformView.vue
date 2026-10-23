@@ -97,7 +97,7 @@ function draw() {
   const style = getComputedStyle(el)
   const color = (name: string) => style.getPropertyValue(name).trim()
   const { waveStyle, waveScale, waveColors } = settings.settings
-  const look = { style: waveStyle, scale: waveScale, colors: waveColors, zoom: 1, color: color('--wave'), lineColor: color('--border') }
+  const look = { style: waveStyle, scale: waveScale, colors: waveColors, zoom: 1, color: color('--wave'), shade: color('--card'), lineColor: color('--border') }
   const area = { top: 0, width: w, height: h, dpr }
   drawWave(ctx, data, area, look)
 

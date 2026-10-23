@@ -72,6 +72,7 @@ function draw() {
     colors: s.waveColors,
     zoom: 1,
     color: color('--wave'),
+    shade: color('--background'),
     lineColor: 'transparent',
   })
 
@@ -87,10 +88,11 @@ function draw() {
   ctx.lineWidth = 1
   ctx.strokeRect(a + 0.5, 0.5, b - a - 1, h - 1)
 
-  ctx.fillStyle = color('--primary')
+  // Same marks as the main view: cursor in the text colour, playhead amber.
+  ctx.fillStyle = color('--foreground')
   ctx.fillRect(x(editor.cursor), 0, 1, h)
   if (editor.playhead !== null) {
-    ctx.fillStyle = color('--foreground')
+    ctx.fillStyle = '#f59e0b'
     ctx.fillRect(x(editor.playhead), 0, 1, h)
   }
 }
