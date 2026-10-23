@@ -14,6 +14,12 @@ pub struct Filter {
     pub tag_id: Option<i64>,
     pub favorites: bool,
     pub collection_id: Option<i64>,
+    /// "oneshot", "loop" or "long".
+    pub kind: Option<String>,
+    pub bpm_min: Option<f64>,
+    pub bpm_max: Option<f64>,
+    /// Exact key name, e.g. "Am" or "F#".
+    pub key: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -37,6 +43,14 @@ pub struct Sample {
     pub bit_depth: Option<i64>,
     pub favorite: bool,
     pub tags: Vec<TagRef>,
+    pub kind: Option<String>,
+    pub bpm: Option<f64>,
+    pub bpm_source: Option<String>,
+    pub key: Option<String>,
+    pub key_source: Option<String>,
+    pub peak_db: Option<f64>,
+    pub lufs: Option<f64>,
+    pub analyzed: bool,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -82,6 +96,22 @@ fn where_clause(f: &Filter) -> (String, Vec<Box<dyn ToSql>>) {
         clauses.push("s.id IN (SELECT sample_id FROM collection_items WHERE collection_id = ?)");
         args.push(Box::new(id));
     }
+    if let Some(kind) = &f.kind {
+        clauses.push("s.kind = ?");
+        args.push(Box::new(kind.clone()));
+    }
+    if let Some(min) = f.bpm_min {
+        clauses.push("s.bpm >= ?");
+        args.push(Box::new(min));
+    }
+    if let Some(max) = f.bpm_max {
+        clauses.push("s.bpm <= ?");
+        args.push(Box::new(max));
+    }
+    if let Some(key) = &f.key {
+        clauses.push("s.musical_key = ?");
+        args.push(Box::new(key.clone()));
+    }
     if f.favorites {
         clauses.push("s.favorite = 1");
     }
@@ -118,7 +148,9 @@ pub fn list(conn: &Connection, f: &Filter, offset: i64, limit: i64) -> Result<Ve
                 (SELECT json_group_array(json_object('id', t.id, 'name', t.name)
                                          ORDER BY t.name COLLATE NOCASE)
                  FROM sample_tags st JOIN tags t ON t.id = st.tag_id
-                 WHERE st.sample_id = s.id)
+                 WHERE st.sample_id = s.id),
+                s.kind, s.bpm, s.bpm_source, s.musical_key, s.key_source, s.peak_db, s.lufs,
+                s.analysis_version IS NOT NULL
          FROM samples s {filter} {ORDER} LIMIT ? OFFSET ?"
     ))?;
     let rows = stmt
@@ -137,6 +169,14 @@ pub fn list(conn: &Connection, f: &Filter, offset: i64, limit: i64) -> Result<Ve
                 bit_depth: r.get(9)?,
                 favorite: r.get(10)?,
                 tags: serde_json::from_str(&tags).unwrap_or_default(),
+                kind: r.get(12)?,
+                bpm: r.get(13)?,
+                bpm_source: r.get(14)?,
+                key: r.get(15)?,
+                key_source: r.get(16)?,
+                peak_db: r.get(17)?,
+                lufs: r.get(18)?,
+                analyzed: r.get(19)?,
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;

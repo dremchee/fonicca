@@ -19,6 +19,24 @@ export interface Sample {
   bitDepth: number | null
   favorite: boolean
   tags: TagRef[]
+  kind: SampleKind | null
+  bpm: number | null
+  bpmSource: ValueSource | null
+  key: string | null
+  keySource: ValueSource | null
+  peakDb: number | null
+  lufs: number | null
+  analyzed: boolean
+}
+
+export type SampleKind = 'oneshot' | 'loop' | 'long'
+/** Whether a BPM/key value was read from the file name or detected from audio. */
+export type ValueSource = 'name' | 'audio'
+
+export interface AnalysisProgress {
+  pending: number
+  paused: boolean
+  updated: number[]
 }
 
 export interface TagRef {
@@ -57,9 +75,14 @@ export interface SampleFilter {
   tagId?: number | null
   favorites?: boolean
   collectionId?: number | null
+  kind?: SampleKind | null
+  bpmMin?: number | null
+  bpmMax?: number | null
+  key?: string | null
 }
 
 export const SCAN_PROGRESS_EVENT = 'scan-progress'
+export const ANALYSIS_PROGRESS_EVENT = 'analysis-progress'
 
 export const api = {
   listSources: () => invoke<Source[]>('list_sources'),
@@ -87,6 +110,9 @@ export const api = {
   exportUserData: (path: string) => invoke<number>('export_user_data', { path }),
   importUserData: (path: string) => invoke<ImportReport>('import_user_data', { path }),
   getPeaks: (id: number) => invoke<number[]>('get_peaks', { id }),
+  prioritizeAnalysis: (ids: number[]) => invoke<void>('prioritize_analysis', { ids }),
+  setAnalysisPaused: (paused: boolean) => invoke<void>('set_analysis_paused', { paused }),
+  analysisStatus: () => invoke<AnalysisProgress>('analysis_status'),
   play: (id: number, start = 0) => invoke<void>('play', { id, start }),
   stop: () => invoke<void>('stop'),
   seek: (position: number) => invoke<void>('seek', { position }),

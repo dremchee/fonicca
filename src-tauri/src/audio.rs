@@ -153,6 +153,72 @@ fn probe_riff(path: &Path) -> Option<AudioInfo> {
     })
 }
 
+/// Decoded PCM, interleaved.
+pub struct Pcm {
+    pub samples: Vec<f32>,
+    pub channels: usize,
+    pub sample_rate: u32,
+}
+
+impl Pcm {
+    pub fn frames(&self) -> usize {
+        self.samples.len() / self.channels.max(1)
+    }
+
+    pub fn mono(&self) -> Vec<f32> {
+        let ch = self.channels.max(1);
+        self.samples.chunks(ch).map(|f| f.iter().sum::<f32>() / ch as f32).collect()
+    }
+}
+
+/// Decodes up to `max_seconds` of audio into memory.
+pub fn decode(path: &Path, max_seconds: f64) -> Result<Pcm> {
+    let mut format = open_format(path)?;
+    let track = format
+        .tracks()
+        .iter()
+        .find(|t| t.codec_params.codec != CODEC_TYPE_NULL)
+        .ok_or_else(|| Error::Audio("no audio track".into()))?;
+    let track_id = track.id;
+    let mut decoder =
+        symphonia::default::get_codecs().make(&track.codec_params, &DecoderOptions::default())?;
+
+    let mut pcm = Pcm { samples: Vec::new(), channels: 0, sample_rate: 0 };
+    let mut buf: Option<SampleBuffer<f32>> = None;
+    loop {
+        let packet = match format.next_packet() {
+            Ok(p) => p,
+            Err(SymphoniaError::IoError(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(SymphoniaError::ResetRequired) => break,
+            Err(e) => return Err(e.into()),
+        };
+        if packet.track_id() != track_id {
+            continue;
+        }
+        let decoded = match decoder.decode(&packet) {
+            Ok(d) => d,
+            Err(SymphoniaError::DecodeError(_)) => continue,
+            Err(e) => return Err(e.into()),
+        };
+        let spec = *decoded.spec();
+        pcm.channels = spec.channels.count().max(1);
+        pcm.sample_rate = spec.rate;
+        let sb = buf.get_or_insert_with(|| SampleBuffer::new(decoded.capacity() as u64, spec));
+        if sb.capacity() < decoded.capacity() * pcm.channels {
+            *sb = SampleBuffer::new(decoded.capacity() as u64, spec);
+        }
+        sb.copy_interleaved_ref(decoded);
+        pcm.samples.extend_from_slice(sb.samples());
+        if pcm.frames() as f64 >= max_seconds * pcm.sample_rate as f64 {
+            break;
+        }
+    }
+    if pcm.sample_rate == 0 {
+        return Err(Error::Audio("no audio decoded".into()));
+    }
+    Ok(pcm)
+}
+
 /// Decodes the whole file and returns `PEAK_BUCKETS` interleaved (min, max) pairs
 /// of the mono downmix, scaled to i8.
 pub fn compute_peaks(path: &Path) -> Result<Vec<i8>> {

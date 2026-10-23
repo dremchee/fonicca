@@ -149,6 +149,8 @@ fn run(db_path: &Path, source_id: i64, on_progress: &(impl Fn(ScanProgress) + Sy
                 channels = excluded.channels, bit_depth = excluded.bit_depth,
                 fingerprint = excluded.fingerprint,
                 peaks = CASE WHEN size = excluded.size AND mtime = excluded.mtime THEN peaks END,
+                analysis_version = CASE WHEN size = excluded.size AND mtime = excluded.mtime
+                                        THEN analysis_version END,
                 size = excluded.size, mtime = excluded.mtime",
         )?;
         for s in &scanned {

@@ -3,7 +3,7 @@ import type { Sample } from '@/api'
 import { useResizeObserver } from '@vueuse/core'
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { api } from '@/api'
-import { formatChannels, formatDuration, formatRate, formatSize } from '@/format'
+import { formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, KIND_LABELS, sourceHint } from '@/format'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 
@@ -164,6 +164,11 @@ function onDragStart(e: DragEvent) {
           </div>
         </div>
         <div class="flex gap-3 text-[11px] text-muted tabular shrink-0">
+          <span v-if="sample.kind">{{ KIND_LABELS[sample.kind] }}</span>
+          <span v-if="sample.bpm != null" :title="sourceHint(sample.bpmSource)">{{ formatBpm(sample.bpm) }} BPM</span>
+          <span v-if="sample.key" :title="sourceHint(sample.keySource)">{{ sample.key }}</span>
+          <span v-if="sample.peakDb != null" title="Sample peak">{{ formatDb(sample.peakDb) }}</span>
+          <span v-if="sample.lufs != null" title="Integrated loudness">{{ formatDb(sample.lufs, 'LUFS') }}</span>
           <span>{{ formatDuration(sample.duration) }}</span>
           <span>{{ formatRate(sample.sampleRate) }}</span>
           <span v-if="sample.bitDepth">{{ sample.bitDepth }}-bit</span>

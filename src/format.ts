@@ -36,3 +36,21 @@ export function formatSize(bytes: number): string {
 export function folderName(path: string): string {
   return path.split(/[\\/]/).filter(Boolean).pop() ?? path
 }
+
+export function formatBpm(bpm: number | null | undefined): string {
+  if (bpm == null)
+    return '—'
+  return Number.isInteger(bpm) ? String(bpm) : bpm.toFixed(1)
+}
+
+export function formatDb(db: number | null | undefined, unit = 'dB'): string {
+  if (db == null || !Number.isFinite(db))
+    return '—'
+  return `${db.toFixed(1)} ${unit}`
+}
+
+export const KIND_LABELS = { oneshot: 'One-shot', loop: 'Loop', long: 'Long' } as const
+
+export function sourceHint(source: 'name' | 'audio' | null | undefined): string {
+  return source === 'name' ? 'From the file name' : source === 'audio' ? 'Detected from audio' : ''
+}

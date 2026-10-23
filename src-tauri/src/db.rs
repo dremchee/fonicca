@@ -185,6 +185,21 @@ pub const MIGRATIONS: &[&str] = &[r#"
         DELETE FROM detached WHERE rowid = (SELECT rowid FROM detached WHERE fingerprint = new.fingerprint AND size = new.size
                        ORDER BY detached_at DESC, rowid DESC LIMIT 1);
     END;
+"#, r#"
+    -- Results of audio analysis; analysis_version is NULL until analyzed and reset
+    -- when the file content changes.
+    ALTER TABLE samples ADD COLUMN kind TEXT;
+    ALTER TABLE samples ADD COLUMN bpm REAL;
+    ALTER TABLE samples ADD COLUMN bpm_source TEXT;
+    ALTER TABLE samples ADD COLUMN musical_key TEXT;
+    ALTER TABLE samples ADD COLUMN key_source TEXT;
+    ALTER TABLE samples ADD COLUMN peak_db REAL;
+    ALTER TABLE samples ADD COLUMN lufs REAL;
+    ALTER TABLE samples ADD COLUMN analysis_version INTEGER;
+    CREATE INDEX samples_analysis_version ON samples(analysis_version);
+    CREATE INDEX samples_kind ON samples(kind);
+    CREATE INDEX samples_bpm ON samples(bpm);
+    CREATE INDEX samples_key ON samples(musical_key);
 "#];
 
 /// How long user data of removed files is kept for possible reattachment.

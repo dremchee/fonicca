@@ -1,3 +1,5 @@
+mod analysis;
+mod analyzer;
 mod audio;
 mod commands;
 mod db;
@@ -16,6 +18,7 @@ pub struct AppState {
     pub db: Mutex<Connection>,
     pub player: player::Player,
     pub scanner: Arc<watch::Scanner>,
+    pub analyzer: Arc<analyzer::Analyzer>,
     pub watcher: watch::LibraryWatcher,
 }
 
@@ -38,7 +41,15 @@ pub fn run() {
                 .collect::<rusqlite::Result<_>>()?;
 
             let handle = app.handle().clone();
+            let analyzer = analyzer::Analyzer::start(db_path.clone(), move |p| {
+                let _ = handle.emit(analyzer::PROGRESS_EVENT, p);
+            });
+            let handle = app.handle().clone();
+            let scan_analyzer = Arc::clone(&analyzer);
             let scanner = watch::Scanner::new(db_path, move |p| {
+                if p.done && p.changes > 0 {
+                    scan_analyzer.wake();
+                }
                 let _ = handle.emit(scan::PROGRESS_EVENT, p);
             });
             let watcher = watch::LibraryWatcher::new(Arc::clone(&scanner));
@@ -53,6 +64,7 @@ pub fn run() {
                 db: Mutex::new(conn),
                 player: player::Player::new(),
                 scanner,
+                analyzer,
                 watcher,
             });
             Ok(())
@@ -81,6 +93,9 @@ pub fn run() {
             commands::export_user_data,
             commands::import_user_data,
             commands::get_peaks,
+            commands::prioritize_analysis,
+            commands::set_analysis_paused,
+            commands::analysis_status,
             commands::play,
             commands::stop,
             commands::seek,

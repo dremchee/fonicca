@@ -1,9 +1,9 @@
-import type { Collection, Sample, SampleFilter, ScanProgress, Source, Tag } from '@/api'
+import type { AnalysisProgress, Collection, Sample, SampleFilter, SampleKind, ScanProgress, Source, Tag } from '@/api'
 import { listen } from '@tauri-apps/api/event'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, reactive, ref, shallowReactive, watch } from 'vue'
-import { api, SCAN_PROGRESS_EVENT, startFileDrag } from '@/api'
+import { ANALYSIS_PROGRESS_EVENT, api, SCAN_PROGRESS_EVENT, startFileDrag } from '@/api'
 
 const PAGE_SIZE = 200
 
@@ -24,6 +24,11 @@ export const useLibraryStore = defineStore('library', () => {
   let noticeTimer: ReturnType<typeof setTimeout> | undefined
   const scope = ref<Scope>({ kind: 'all' })
   const query = ref('')
+  const kindFilter = ref<SampleKind | null>(null)
+  const bpmMin = ref<number | null>(null)
+  const bpmMax = ref<number | null>(null)
+  const keyFilter = ref<string | null>(null)
+  const analysis = ref<{ pending: number, paused: boolean }>({ pending: 0, paused: false })
   const total = ref(0)
   const scans = reactive(new Map<number, ScanProgress>())
 
@@ -49,6 +54,10 @@ export const useLibraryStore = defineStore('library', () => {
       tagId: s.kind === 'tag' ? s.id : null,
       favorites: s.kind === 'favorites',
       collectionId: s.kind === 'collection' ? s.id : null,
+      kind: kindFilter.value,
+      bpmMin: bpmMin.value,
+      bpmMax: bpmMax.value,
+      key: keyFilter.value,
     }
   })
   const focused = computed(() => sampleAt(focusIndex.value))
@@ -104,6 +113,50 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   watch(filter, () => refresh())
+
+  const hasAnalysisFilters = computed(() =>
+    kindFilter.value !== null || bpmMin.value !== null || bpmMax.value !== null || keyFilter.value !== null)
+
+  function clearAnalysisFilters() {
+    kindFilter.value = null
+    bpmMin.value = null
+    bpmMax.value = null
+    keyFilter.value = null
+  }
+
+  /** Re-fetches loaded pages in place (no flashing) after background updates. */
+  let reloadTimer: ReturnType<typeof setTimeout> | undefined
+  function scheduleReload() {
+    if (reloadTimer)
+      return
+    reloadTimer = setTimeout(async () => {
+      reloadTimer = undefined
+      const gen = generation
+      // Filters on analysis results can change which rows match.
+      if (hasAnalysisFilters.value) {
+        const n = await api.countSamples(filter.value)
+        if (gen === generation)
+          total.value = n
+      }
+      await Promise.all([...pages.keys()].map(async (page) => {
+        const rows = await api.listSamples(filter.value, page * PAGE_SIZE, PAGE_SIZE)
+        if (gen === generation)
+          pages.set(page, rows)
+      }))
+    }, 1500)
+  }
+
+  /** Moves not-yet-analyzed samples to the front of the analysis queue. */
+  function prioritizeAnalysis(samples: (Sample | undefined)[]) {
+    const ids = samples.filter((s): s is Sample => !!s && !s.analyzed).map(s => s.id)
+    if (ids.length && !analysis.value.paused)
+      api.prioritizeAnalysis(ids)
+  }
+
+  async function setAnalysisPaused(paused: boolean) {
+    analysis.value = { ...analysis.value, paused }
+    await api.setAnalysisPaused(paused)
+  }
 
   // --- Selection -----------------------------------------------------------
 
@@ -368,6 +421,14 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   async function init() {
+    await listen<AnalysisProgress>(ANALYSIS_PROGRESS_EVENT, ({ payload }) => {
+      analysis.value = { pending: payload.pending, paused: payload.paused }
+      if (payload.updated.length)
+        scheduleReload()
+    })
+    api.analysisStatus().then((s) => {
+      analysis.value = { pending: s.pending, paused: s.paused }
+    })
     await listen<ScanProgress>(SCAN_PROGRESS_EVENT, async ({ payload }) => {
       if (!payload.done) {
         scans.set(payload.sourceId, payload)
@@ -390,6 +451,15 @@ export const useLibraryStore = defineStore('library', () => {
     notice,
     scope,
     query,
+    kindFilter,
+    bpmMin,
+    bpmMax,
+    keyFilter,
+    hasAnalysisFilters,
+    clearAnalysisFilters,
+    analysis,
+    prioritizeAnalysis,
+    setAnalysisPaused,
     total,
     scans,
     isScanning,

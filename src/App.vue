@@ -2,6 +2,7 @@
 import { onKeyStroke } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { onMounted, ref } from 'vue'
+import FilterBar from '@/components/FilterBar.vue'
 import SampleList from '@/components/SampleList.vue'
 import SourceSidebar from '@/components/SourceSidebar.vue'
 import WaveformView from '@/components/WaveformView.vue'
@@ -99,6 +100,7 @@ onKeyStroke(['f', 'а'], (e) => {
           <template v-if="library.isScanning"> · scanning…</template>
         </span>
       </header>
+      <FilterBar />
       <SampleList />
       <WaveformView :sample="focused" />
     </main>

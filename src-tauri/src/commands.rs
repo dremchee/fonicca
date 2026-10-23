@@ -217,6 +217,26 @@ pub async fn get_peaks(state: State<'_, AppState>, id: i64) -> Result<Vec<i8>> {
 }
 
 #[tauri::command]
+pub fn prioritize_analysis(state: State<'_, AppState>, ids: Vec<i64>) {
+    state.analyzer.prioritize(&ids);
+}
+
+#[tauri::command]
+pub fn set_analysis_paused(state: State<'_, AppState>, paused: bool) {
+    state.analyzer.set_paused(paused);
+}
+
+#[tauri::command]
+pub fn analysis_status(state: State<'_, AppState>) -> Result<crate::analyzer::Progress> {
+    let pending = state.db.lock().unwrap().query_row(
+        "SELECT COUNT(*) FROM samples WHERE analysis_version IS NULL OR analysis_version < ?1",
+        [crate::analysis::ANALYSIS_VERSION],
+        |r| r.get(0),
+    )?;
+    Ok(crate::analyzer::Progress { pending, paused: state.analyzer.is_paused(), updated: Vec::new() })
+}
+
+#[tauri::command]
 pub fn play(state: State<'_, AppState>, id: i64, start: Option<f64>) -> Result<()> {
     let path = sample_path(&state, id)?;
     state.player.play(&path, start.unwrap_or(0.0))

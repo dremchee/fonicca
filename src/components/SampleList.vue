@@ -3,7 +3,7 @@ import type { Sample } from '@/api'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import { formatChannels, formatDuration, formatRate } from '@/format'
+import { formatBpm, formatDuration, formatRate, KIND_LABELS, sourceHint } from '@/format'
 import SampleContextMenu from '@/components/SampleContextMenu.vue'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
@@ -30,6 +30,13 @@ watch(items, (list) => {
   if (list.length)
     library.ensureRange(list[0].index, list[list.length - 1].index)
 }, { immediate: true })
+
+// Analyze what is on screen first.
+let prioritizeTimer: ReturnType<typeof setTimeout> | undefined
+watch(rows, (list) => {
+  clearTimeout(prioritizeTimer)
+  prioritizeTimer = setTimeout(() => library.prioritizeAnalysis(list.map(r => r.sample)), 300)
+})
 
 watch(focusIndex, (i) => {
   if (i >= 0)
@@ -91,10 +98,11 @@ function onDragStart(e: DragEvent, sample: Sample) {
       <span />
       <span>Name</span>
       <span>Tags</span>
+      <span>Kind</span>
+      <span class="text-right">BPM</span>
+      <span>Key</span>
       <span class="text-right">Length</span>
       <span class="text-right">Rate</span>
-      <span class="text-right">Bits</span>
-      <span class="text-right">Ch</span>
       <span>Type</span>
     </div>
 
@@ -142,10 +150,16 @@ function onDragStart(e: DragEvent, sample: Sample) {
             <span class="flex gap-1 overflow-hidden">
               <span v-for="t in s.tags" :key="t.id" class="chip">{{ t.name }}</span>
             </span>
+            <span class="text-muted text-[11px]">
+              <template v-if="s.kind">{{ KIND_LABELS[s.kind] }}</template>
+              <span v-else-if="!s.analyzed" class="opacity-50">…</span>
+            </span>
+            <span class="text-right" :class="s.bpmSource === 'audio' ? 'text-muted' : ''" :title="sourceHint(s.bpmSource)">
+              {{ s.bpm != null ? formatBpm(s.bpm) : '' }}
+            </span>
+            <span :class="s.keySource === 'audio' ? 'text-muted' : ''" :title="sourceHint(s.keySource)">{{ s.key ?? '' }}</span>
             <span class="text-right text-muted">{{ formatDuration(s.duration) }}</span>
             <span class="text-right text-muted">{{ formatRate(s.sampleRate) }}</span>
-            <span class="text-right text-muted">{{ s.bitDepth ?? '—' }}</span>
-            <span class="text-right text-muted">{{ formatChannels(s.channels) }}</span>
             <span class="text-muted uppercase text-[11px]">{{ s.ext }}</span>
           </div>
           <div
@@ -167,7 +181,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
 <style scoped>
 .header,
 .row {
-  grid-template-columns: 16px 18px minmax(0, 2fr) minmax(0, 1fr) 64px 72px 40px 60px 44px;
+  grid-template-columns: 16px 18px minmax(0, 2fr) minmax(0, 1fr) 60px 44px 36px 56px 64px 40px;
   column-gap: 12px;
 }
 .row:hover {

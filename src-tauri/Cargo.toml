@@ -32,6 +32,9 @@ thiserror = "2.0.21"
 rayon = "1.12.0"
 notify = "8"
 xxhash-rust = { version = "0.8.19", features = ["xxh3"] }
+stratum-dsp = "1.0.0"
+ebur128 = "0.1.10"
+regex = "1.13.1"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
@@ -46,6 +49,10 @@ strip = true
 hound = "3.5.1"
 tempfile = "3.27.0"
 
-# Audio decoding is ~70x slower unoptimized; optimize dependencies even in dev builds.
+# Audio decoding is ~70x slower unoptimized; optimize dependencies even in dev builds,
+# and our own per-sample analysis loops a little.
+[profile.dev]
+opt-level = 1
+
 [profile.dev.package."*"]
 opt-level = 3
