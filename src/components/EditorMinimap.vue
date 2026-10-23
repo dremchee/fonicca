@@ -72,7 +72,6 @@ function draw() {
     colors: s.waveColors,
     zoom: 1,
     color: color('--wave'),
-    shade: color('--background'),
     lineColor: 'transparent',
   })
 

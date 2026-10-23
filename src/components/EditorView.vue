@@ -138,7 +138,6 @@ function draw() {
       colors: waveColors,
       zoom: vZoom.value,
       color: color('--wave-strong'),
-      shade: color('--card'),
       lineColor: color('--border'),
     })
   }

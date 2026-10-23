@@ -36,7 +36,6 @@ function draw() {
     colors: s.waveColors,
     zoom: 1,
     color: style.getPropertyValue('--wave-strong').trim(),
-    shade: style.getPropertyValue('--background').trim(),
     lineColor: style.getPropertyValue('--border').trim(),
   })
 }
