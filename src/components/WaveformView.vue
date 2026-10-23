@@ -122,7 +122,7 @@ function onDragStart(e: DragEvent) {
 
 <template>
   <!-- Hidden until a sample is selected, so the list gets the whole height. -->
-  <section v-if="sample" class="h-56 shrink-0 border-t border-border bg-card flex flex-col">
+  <section v-if="sample" class="h-full bg-card flex flex-col">
     <div class="h-12 px-3 flex items-center gap-3">
       <Hint :text="player.playingId === sample.id ? 'Stop' : 'Play'" shortcut="Space">
         <Button size="icon-sm" class="rounded-full shrink-0" @click="player.toggle(sample)">

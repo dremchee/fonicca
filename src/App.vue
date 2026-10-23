@@ -8,22 +8,26 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import FilterBar from '@/components/FilterBar.vue'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Kbd } from '@/components/ui/kbd'
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import SampleList from '@/components/SampleList.vue'
+import SettingsDialog from '@/components/SettingsDialog.vue'
 import SourceSidebar from '@/components/SourceSidebar.vue'
 import WaveformView from '@/components/WaveformView.vue'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
+import { useSettingsStore } from '@/stores/settings'
 
 const library = useLibraryStore()
 const player = usePlayerStore()
+const settings = useSettingsStore()
 const { query, total, focused, selectedIds } = storeToRefs(library)
 const searchInput = useTemplateRef<ComponentPublicInstance>('searchInput')
 // InputGroupInput renders a bare <input> as its root.
 const search = computed(() => searchInput.value?.$el as HTMLInputElement | undefined)
 
-onMounted(() => library.init())
+onMounted(() => Promise.all([settings.init(), library.init()]))
 
 // Typing in a field or working in an open menu, popover or dialog: global shortcuts stay out of the way.
 function isTyping(e: KeyboardEvent) {
@@ -91,13 +95,24 @@ onKeyStroke(['f', 'а'], (e) => {
     search.value?.select()
   }
 })
+onKeyStroke(',', (e) => {
+  if (e.metaKey || e.ctrlKey) {
+    e.preventDefault()
+    settings.openDialog()
+  }
+})
 </script>
 
 <template>
   <TooltipProvider :delay-duration="500" :skip-delay-duration="300">
-    <div class="h-full flex">
-      <SourceSidebar />
-      <main class="flex-1 min-w-0 flex flex-col">
+    <!-- Sidebar and player sizes are in px and saved by the splitters (localStorage). -->
+    <ResizablePanelGroup direction="horizontal" auto-save-id="samplette-layout-columns" class="h-full">
+      <ResizablePanel id="sidebar" :order="1" size-unit="px" :default-size="210" :min-size="170" :max-size="320">
+        <SourceSidebar />
+      </ResizablePanel>
+      <ResizableHandle />
+      <!-- The list needs ~520px for its columns; the sidebar gives way before it does. -->
+      <ResizablePanel id="main" :order="2" as="main" size-unit="px" :min-size="520" class="min-w-0 flex flex-col">
         <header class="h-11 shrink-0 px-3 flex items-center gap-3 border-b border-border" data-tauri-drag-region>
           <InputGroup class="flex-1 max-w-md">
             <InputGroupAddon>
@@ -121,10 +136,21 @@ onKeyStroke(['f', 'а'], (e) => {
           </span>
         </header>
         <FilterBar />
-        <SampleList />
-        <WaveformView :sample="focused" />
-      </main>
-    </div>
+        <ResizablePanelGroup direction="vertical" auto-save-id="samplette-layout-rows" class="min-h-0 flex-1">
+          <ResizablePanel id="list" :order="1" :min-size="20" class="flex flex-col">
+            <SampleList />
+          </ResizablePanel>
+          <!-- The player only exists once a sample is selected. -->
+          <template v-if="focused">
+            <ResizableHandle />
+            <ResizablePanel id="player" :order="2" size-unit="px" :default-size="196" :min-size="150" :max-size="480">
+              <WaveformView :sample="focused" />
+            </ResizablePanel>
+          </template>
+        </ResizablePanelGroup>
+      </ResizablePanel>
+    </ResizablePanelGroup>
+    <SettingsDialog />
     <ConfirmDialog />
     <Toaster theme="system" position="bottom-right" />
   </TooltipProvider>

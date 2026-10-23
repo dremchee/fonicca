@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Scope } from '@/stores/library'
-import { Download, Ellipsis, FolderOpen, FolderPlus, Pencil, Plus, RefreshCw, Trash2, Upload, X } from '@lucide/vue'
+import { FolderOpen, FolderPlus, Pencil, Plus, RefreshCw, Settings, Trash2, X } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, ref } from 'vue'
@@ -14,17 +14,13 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
 import { confirm } from '@/composables/confirm'
 import { folderName } from '@/format'
 import { useLibraryStore } from '@/stores/library'
+import { useSettingsStore } from '@/stores/settings'
 
 const library = useLibraryStore()
+const settings = useSettingsStore()
 const { sources, tags, collections, scope, scans } = storeToRefs(library)
 
 type Editable = 'tag' | 'collection'
@@ -229,25 +225,11 @@ async function confirmDeleteTag(id: number) {
           <FolderPlus />
         </Button>
       </Hint>
-      <DropdownMenu>
-        <Hint text="More">
-          <DropdownMenuTrigger as-child>
-            <Button variant="ghost" size="icon-sm" class="text-muted-foreground data-[state=open]:bg-accent" aria-label="More">
-              <Ellipsis />
-            </Button>
-          </DropdownMenuTrigger>
-        </Hint>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem @select="library.exportUserData()">
-            <Download />
-            Export favorites, tags &amp; collections…
-          </DropdownMenuItem>
-          <DropdownMenuItem @select="library.importUserData()">
-            <Upload />
-            Import…
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Hint text="Settings" shortcut="⌘,">
+        <Button variant="ghost" size="icon-sm" class="text-muted-foreground" aria-label="Settings" @click="settings.openDialog()">
+          <Settings />
+        </Button>
+      </Hint>
     </div>
 
     <ContextMenu>
