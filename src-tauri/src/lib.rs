@@ -12,6 +12,7 @@ mod player;
 mod scan;
 mod settings;
 mod similar;
+mod sync;
 mod watch;
 
 use std::sync::{Arc, Mutex};

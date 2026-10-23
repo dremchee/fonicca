@@ -5,6 +5,7 @@ import { useResizeObserver } from '@vueuse/core'
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { api } from '@/api'
 import Hint from '@/components/Hint.vue'
+import ProjectSync from '@/components/ProjectSync.vue'
 import TagPicker from '@/components/TagPicker.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -162,6 +163,7 @@ function onDragStart(e: DragEvent) {
       </div>
       <TagPicker :assigned="sample.tags" :count="selectionSize" />
       <div class="ml-auto flex items-center gap-2 shrink-0">
+        <ProjectSync />
         <Checkbox
           id="autoplay"
           :model-value="player.autoplay"

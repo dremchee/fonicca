@@ -1,6 +1,6 @@
-import type { Sample } from '@/api'
+import type { Adjust, Sample } from '@/api'
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { api } from '@/api'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -14,7 +14,15 @@ export const usePlayerStore = defineStore('player', () => {
     set: (autoplay: boolean) => settings.update({ autoplay }),
   })
   const error = ref<string | null>(null)
+  /** Change applied to the sample playing now (tempo/key sync). */
+  const adjust = ref<Adjust | null>(null)
+  let playing: Sample | null = null
   let frame = 0
+
+  const syncTarget = computed(() => {
+    const s = settings.settings
+    return s.syncEnabled && (s.projectBpm || s.projectKey) ? { bpm: s.projectBpm, key: s.projectKey } : null
+  })
 
   // Poll the backend for the playhead while something plays.
   function track() {
@@ -38,7 +46,8 @@ export const usePlayerStore = defineStore('player', () => {
   async function play(sample: Sample, start = 0) {
     error.value = null
     try {
-      await api.play(sample.id, start)
+      adjust.value = await api.play(sample.id, start, syncTarget.value)
+      playing = sample
       playingId.value = sample.id
       position.value = start
       track()
@@ -73,7 +82,13 @@ export const usePlayerStore = defineStore('player', () => {
     }
   }
 
-  return { playingId, position, autoplay, error, play, stop, toggle, seek }
+  // Changing the project tempo/key restarts the playing sample where it was.
+  watch(syncTarget, (next, prev) => {
+    if (JSON.stringify(next) !== JSON.stringify(prev) && playing && playingId.value === playing.id)
+      play(playing, position.value)
+  })
+
+  return { playingId, position, autoplay, error, adjust, syncTarget, play, stop, toggle, seek }
 })
 
 if (import.meta.hot)

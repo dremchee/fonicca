@@ -7,7 +7,16 @@ import { api } from '@/api'
 export type SettingsSection = 'general' | 'library' | 'playback' | 'analysis' | 'shortcuts' | 'about'
 
 // Mirrors settings.json, which the backend owns; used until it loads.
-const DEFAULTS: Settings = { theme: 'system', watchFolders: true, autoplay: true, volume: 1, analysisThreads: null }
+const DEFAULTS: Settings = {
+  theme: 'system',
+  watchFolders: true,
+  autoplay: true,
+  volume: 1,
+  analysisThreads: null,
+  syncEnabled: false,
+  projectBpm: null,
+  projectKey: null,
+}
 
 export const useSettingsStore = defineStore('settings', () => {
   const settings = ref<Settings>({ ...DEFAULTS })

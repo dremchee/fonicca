@@ -71,6 +71,18 @@ export interface Settings {
   volume: number
   /** Analysis threads; null picks half the cores. */
   analysisThreads: number | null
+  /** Preview loops in the project tempo and tonal samples in the project key. */
+  syncEnabled: boolean
+  projectBpm: number | null
+  /** Key name like "Am" or "F#". */
+  projectKey: string | null
+}
+
+/** How playback changed a sample to fit the project. */
+export interface Adjust {
+  /** Output length ÷ input length (2 = half speed). */
+  stretch: number
+  semitones: number
 }
 
 export interface AppInfo {
@@ -168,7 +180,8 @@ export const api = {
   getSettings: () => invoke<Settings>('get_settings'),
   updateSettings: (settings: Settings) => invoke<Settings>('update_settings', { settings }),
   appInfo: () => invoke<AppInfo>('app_info'),
-  play: (id: number, start = 0) => invoke<void>('play', { id, start }),
+  play: (id: number, start = 0, sync: { bpm: number | null, key: string | null } | null = null) =>
+    invoke<Adjust>('play', { id, start, sync }),
   stop: () => invoke<void>('stop'),
   seek: (position: number) => invoke<void>('seek', { position }),
   playbackPosition: () => invoke<number | null>('playback_position'),

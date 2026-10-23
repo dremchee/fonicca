@@ -8,6 +8,10 @@ use rodio::{Decoder, DeviceSinkBuilder, Player as RodioPlayer};
 use rodio::mixer::Mixer;
 
 use crate::error::{Error, Result};
+use crate::sync::{self, Adjust};
+
+/// Longer files play unadjusted: they are rendered in one pass before playback.
+const MAX_ADJUST_SECONDS: f64 = 60.0;
 
 /// Preview player. The output device lives on its own thread (cpal streams are not
 /// `Send` on every platform); only the mixer handle is shared.
@@ -15,6 +19,9 @@ pub struct Player {
     mixer: Option<Mixer>,
     current: Mutex<Option<RodioPlayer>>,
     volume: Mutex<f32>,
+    /// Seconds of the original file per second of playback (≠ 1 when stretched),
+    /// so positions and seeks stay in the file's own time.
+    time_scale: Mutex<f64>,
 }
 
 impl Player {
@@ -37,11 +44,37 @@ impl Player {
                 }
             })
             .expect("spawn audio thread");
-        Self { mixer: rx.recv().ok().flatten(), current: Mutex::new(None), volume: Mutex::new(1.0) }
+        Self {
+            mixer: rx.recv().ok().flatten(),
+            current: Mutex::new(None),
+            volume: Mutex::new(1.0),
+            time_scale: Mutex::new(1.0),
+        }
     }
 
-    pub fn play(&self, path: &Path, start: f64) -> Result<()> {
+    /// Plays from `start` (seconds in the file). Returns the adjustment actually
+    /// applied: none for files too long to render up front.
+    pub fn play(&self, path: &Path, start: f64, adjust: Adjust) -> Result<Adjust> {
         let mixer = self.mixer.as_ref().ok_or_else(|| Error::Audio("no output device".into()))?;
+        if !adjust.is_none() {
+            let pcm = crate::audio::decode(path, MAX_ADJUST_SECONDS + 0.5)?;
+            if (pcm.frames() as f64) < MAX_ADJUST_SECONDS * pcm.sample_rate as f64 {
+                let out = sync::render(&pcm, adjust);
+                let channels = std::num::NonZero::new(out.channels as u16).ok_or_else(|| Error::Audio("no channels".into()))?;
+                let rate = std::num::NonZero::new(out.sample_rate).ok_or_else(|| Error::Audio("no sample rate".into()))?;
+                let player = RodioPlayer::connect_new(mixer);
+                player.set_volume(*self.volume.lock().unwrap());
+                player.append(rodio::buffer::SamplesBuffer::new(channels, rate, out.samples));
+                let scale = 1.0 / adjust.stretch;
+                if start > 0.0 {
+                    let _ = player.try_seek(Duration::from_secs_f64(start / scale));
+                }
+                *self.time_scale.lock().unwrap() = scale;
+                *self.current.lock().unwrap() = Some(player);
+                return Ok(adjust);
+            }
+        }
+
         let file = File::open(path)?;
         let len = file.metadata()?.len();
         let mut builder = Decoder::builder()
@@ -60,8 +93,9 @@ impl Player {
             let _ = player.try_seek(Duration::from_secs_f64(start));
         }
         // Replacing the previous player drops it, which stops its sound.
+        *self.time_scale.lock().unwrap() = 1.0;
         *self.current.lock().unwrap() = Some(player);
-        Ok(())
+        Ok(Adjust::NONE)
     }
 
     /// Preview volume, 0..=1; also applies to the sound playing now.
@@ -78,16 +112,18 @@ impl Player {
 
     pub fn seek(&self, pos: f64) -> Result<()> {
         if let Some(p) = self.current.lock().unwrap().as_ref() {
-            p.try_seek(Duration::from_secs_f64(pos)).map_err(|e| Error::Audio(e.to_string()))?;
+            let scale = *self.time_scale.lock().unwrap();
+            p.try_seek(Duration::from_secs_f64(pos / scale)).map_err(|e| Error::Audio(e.to_string()))?;
         }
         Ok(())
     }
 
-    /// Current position in seconds, or `None` when nothing is playing.
+    /// Current position in seconds of the file, or `None` when nothing is playing.
     pub fn position(&self) -> Option<f64> {
+        let scale = *self.time_scale.lock().unwrap();
         let mut guard = self.current.lock().unwrap();
         match guard.as_ref() {
-            Some(p) if !p.empty() => Some(p.get_pos().as_secs_f64()),
+            Some(p) if !p.empty() => Some(p.get_pos().as_secs_f64() * scale),
             Some(_) => {
                 guard.take();
                 None

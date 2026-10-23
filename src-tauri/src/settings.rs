@@ -28,11 +28,25 @@ pub struct Settings {
     pub volume: f32,
     /// Analysis threads; `None` picks half the cores.
     pub analysis_threads: Option<usize>,
+    /// Preview loops in the project tempo and tonal samples in the project key.
+    pub sync_enabled: bool,
+    pub project_bpm: Option<f64>,
+    /// Key name like "Am" or "F#".
+    pub project_key: Option<String>,
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        Self { theme: Theme::System, watch_folders: true, autoplay: true, volume: 1.0, analysis_threads: None }
+        Self {
+            theme: Theme::System,
+            watch_folders: true,
+            autoplay: true,
+            volume: 1.0,
+            analysis_threads: None,
+            sync_enabled: false,
+            project_bpm: None,
+            project_key: None,
+        }
     }
 }
 
@@ -41,6 +55,7 @@ impl Settings {
     fn sanitized(mut self) -> Self {
         self.volume = if self.volume.is_finite() { self.volume.clamp(0.0, 1.0) } else { 1.0 };
         self.analysis_threads = self.analysis_threads.map(|n| n.clamp(1, cores()));
+        self.project_bpm = self.project_bpm.filter(|b| b.is_finite()).map(|b| b.clamp(20.0, 400.0));
         self
     }
 }
@@ -111,9 +126,9 @@ mod tests {
         assert_eq!(s.analysis_threads, Some(cores()));
         assert!(s.watch_folders && s.autoplay && s.theme == Theme::System);
 
-        store.replace(Settings { theme: Theme::Dark, volume: 0.5, ..s }).unwrap();
+        store.replace(Settings { theme: Theme::Dark, volume: 0.5, project_bpm: Some(1000.0), ..s }).unwrap();
         let reloaded = SettingsStore::load(path).get();
-        assert_eq!((reloaded.theme, reloaded.volume), (Theme::Dark, 0.5));
+        assert_eq!((reloaded.theme, reloaded.volume, reloaded.project_bpm), (Theme::Dark, 0.5, Some(400.0)));
         std::fs::remove_dir_all(dir).unwrap();
     }
 }
