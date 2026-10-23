@@ -118,6 +118,22 @@ impl Analyzer {
         Ok(())
     }
 
+    /// Computes and stores one sample's embedding right away (e.g. "find similar"
+    /// on a sample the background queue has not reached). Returns false without
+    /// the sound model or for unreadable audio.
+    pub fn embed_now(&self, conn: &Connection, id: i64) -> Result<bool> {
+        let Some(model) = self.model.lock().unwrap().clone() else { return Ok(false) };
+        let path: String = conn.query_row("SELECT path FROM samples WHERE id = ?1", [id], |r| r.get(0))?;
+        let Ok(pcm) = crate::audio::decode(Path::new(&path), 10.5) else { return Ok(false) };
+        let features = clap::log_mel(&clap::prepare(&pcm)?);
+        let Some(embedding) = model.embed(&[features])?.pop() else { return Ok(false) };
+        conn.execute(
+            "UPDATE samples SET embedding = ?1, embedding_version = ?2 WHERE id = ?3",
+            params![clap::to_bytes(&embedding), EMBEDDING_VERSION, id],
+        )?;
+        Ok(true)
+    }
+
     pub fn model_ready(&self) -> bool {
         self.model.lock().unwrap().is_some()
     }
@@ -220,12 +236,21 @@ impl Analyzer {
                 .collect()
         });
         let features: Vec<Vec<f32>> = decoded.iter().filter_map(|(_, p)| p.as_ref().map(|(f, _)| f.clone())).collect();
-        let mut embeddings = model.embed(&features)?.into_iter();
+        // If the batch fails, retry one by one so a single bad input cannot block
+        // the queue forever; inputs that still fail get no embedding.
+        let embeddings: Vec<Option<Vec<f32>>> = match model.embed(&features) {
+            Ok(e) => e.into_iter().map(Some).collect(),
+            Err(e) => {
+                eprintln!("analyzer: {e}; retrying samples one by one");
+                features.iter().map(|f| model.embed(std::slice::from_ref(f)).ok().and_then(|mut v| v.pop())).collect()
+            }
+        };
+        let mut embeddings = embeddings.into_iter();
         let results: Vec<EmbeddingResult> = decoded
             .into_iter()
             .map(|(job, prepared)| {
                 let (embedding, key) = match prepared {
-                    Some((_, key)) => (embeddings.next(), key),
+                    Some((_, key)) => (embeddings.next().flatten(), key),
                     None => (None, None),
                 };
                 let category = match (&job.category_source, &embedding) {

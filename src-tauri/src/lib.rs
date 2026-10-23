@@ -10,6 +10,7 @@ mod library;
 mod models;
 mod player;
 mod scan;
+mod similar;
 mod watch;
 
 use std::sync::{Arc, Mutex};
@@ -23,6 +24,7 @@ pub struct AppState {
     pub scanner: Arc<watch::Scanner>,
     pub analyzer: Arc<analyzer::Analyzer>,
     pub models_dir: std::path::PathBuf,
+    pub similar: Mutex<similar::Similar>,
     pub model_downloading: std::sync::atomic::AtomicBool,
     pub watcher: watch::LibraryWatcher,
 }
@@ -81,6 +83,7 @@ pub fn run() {
                 scanner,
                 analyzer,
                 models_dir,
+                similar: Default::default(),
                 model_downloading: Default::default(),
                 watcher,
             });

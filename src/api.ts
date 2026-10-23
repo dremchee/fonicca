@@ -30,6 +30,8 @@ export interface Sample {
   category: string | null
   categorySource: ValueSource | null
   categoryConfidence: number | null
+  /** Cosine similarity to the sample being matched in a "find similar" view. */
+  similarity: number | null
 }
 
 export type SampleKind = 'oneshot' | 'loop' | 'long'
@@ -99,6 +101,8 @@ export interface SampleFilter {
   bpmMax?: number | null
   key?: string | null
   category?: string | null
+  /** Show samples that sound like this one, most similar first. */
+  similarTo?: number | null
 }
 
 export const SCAN_PROGRESS_EVENT = 'scan-progress'

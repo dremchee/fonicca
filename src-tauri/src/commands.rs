@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusqlite::{params, OptionalExtension};
@@ -8,6 +9,7 @@ use tauri::State;
 use crate::audio;
 use crate::error::{Error, Result};
 use crate::library::{self, Collection, Filter, ImportReport, Sample, Tag, TagRef};
+use crate::similar::Ranking;
 use crate::AppState;
 
 #[derive(Serialize)]
@@ -75,9 +77,29 @@ pub fn rescan_source(state: State<'_, AppState>, id: i64) {
     state.scanner.request(id);
 }
 
+/// Similarity ranking for `filter.similar_to`, embedding the sample on demand.
+fn ranking_for(state: &AppState, filter: &Filter) -> Result<Option<Arc<Ranking>>> {
+    let Some(id) = filter.similar_to else { return Ok(None) };
+    let conn = state.db.lock().unwrap();
+    let mut similar = state.similar.lock().unwrap();
+    if let Some(r) = similar.search(&conn, id)? {
+        return Ok(Some(r));
+    }
+    if !state.analyzer.model_ready() {
+        return Err(Error::Other("Download the sound model to find similar sounds".into()));
+    }
+    if state.analyzer.embed_now(&conn, id)? {
+        if let Some(r) = similar.search(&conn, id)? {
+            return Ok(Some(r));
+        }
+    }
+    Err(Error::Other("This sample could not be analyzed".into()))
+}
+
 #[tauri::command]
 pub fn count_samples(state: State<'_, AppState>, filter: Filter) -> Result<i64> {
-    library::count(&state.db.lock().unwrap(), &filter)
+    let ranking = ranking_for(&state, &filter)?;
+    library::count_ranked(&state.db.lock().unwrap(), &filter, ranking.as_deref())
 }
 
 #[tauri::command]
@@ -87,12 +109,14 @@ pub fn list_samples(
     offset: i64,
     limit: i64,
 ) -> Result<Vec<Sample>> {
-    library::list(&state.db.lock().unwrap(), &filter, offset, limit)
+    let ranking = ranking_for(&state, &filter)?;
+    library::list_ranked(&state.db.lock().unwrap(), &filter, ranking.as_deref(), offset, limit)
 }
 
 #[tauri::command]
 pub fn sample_ids(state: State<'_, AppState>, filter: Filter) -> Result<Vec<i64>> {
-    library::ids(&state.db.lock().unwrap(), &filter)
+    let ranking = ranking_for(&state, &filter)?;
+    library::ids_ranked(&state.db.lock().unwrap(), &filter, ranking.as_deref())
 }
 
 #[tauri::command]

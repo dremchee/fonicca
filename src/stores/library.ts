@@ -15,6 +15,8 @@ export type Scope
     | { kind: 'source', id: number }
     | { kind: 'tag', id: number }
     | { kind: 'collection', id: number }
+    /** Samples that sound like `id`, most similar first. */
+    | { kind: 'similar', id: number, name: string }
 
 export const useLibraryStore = defineStore('library', () => {
   const sources = ref<Source[]>([])
@@ -55,6 +57,7 @@ export const useLibraryStore = defineStore('library', () => {
       tagId: s.kind === 'tag' ? s.id : null,
       favorites: s.kind === 'favorites',
       collectionId: s.kind === 'collection' ? s.id : null,
+      similarTo: s.kind === 'similar' ? s.id : null,
       kind: kindFilter.value,
       bpmMin: bpmMin.value,
       bpmMax: bpmMax.value,
@@ -109,9 +112,33 @@ export const useLibraryStore = defineStore('library', () => {
       anchorIndex.value = -1
       selectedIds.clear()
     }
-    total.value = await api.countSamples(filter.value)
+    try {
+      total.value = await api.countSamples(filter.value)
+    }
+    catch (e) {
+      // E.g. "find similar" without the sound model: go back to where we were.
+      if (scope.value.kind !== 'similar')
+        throw e
+      toast.error(String(e))
+      exitSimilar()
+      return
+    }
     if (focusIndex.value >= total.value)
       focusIndex.value = total.value - 1
+  }
+
+  /** Where to return when leaving a "find similar" view. */
+  let scopeBeforeSimilar: Scope = { kind: 'all' }
+
+  function findSimilar(sample: Sample) {
+    if (scope.value.kind !== 'similar')
+      scopeBeforeSimilar = scope.value
+    scope.value = { kind: 'similar', id: sample.id, name: sample.name }
+  }
+
+  function exitSimilar() {
+    if (scope.value.kind === 'similar')
+      scope.value = scopeBeforeSimilar
   }
 
   watch(filter, () => refresh())
@@ -493,6 +520,8 @@ export const useLibraryStore = defineStore('library', () => {
     moveFocus,
     selectAll,
     dragSamples,
+    findSimilar,
+    exitSimilar,
     toggleFavorite,
     addTag,
     removeTag,

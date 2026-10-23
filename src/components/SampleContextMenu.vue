@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Sample } from '@/api'
-import { CircleMinus, FolderOpen, Layers, Play, Square, Star, Tag } from '@lucide/vue'
+import { AudioLines, CircleMinus, FolderOpen, Layers, Play, Square, Star, Tag } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { computed, ref } from 'vue'
 import {
@@ -64,6 +64,15 @@ async function submitNew() {
       <component :is="player.playingId === sample.id ? Square : Play" />
       {{ player.playingId === sample.id ? 'Stop' : 'Play' }}
       <ContextMenuShortcut>Space</ContextMenuShortcut>
+    </ContextMenuItem>
+    <ContextMenuItem
+      :disabled="!library.soundModel?.installed"
+      :title="library.soundModel?.installed ? undefined : 'Needs the sound model (filter bar → Sound model)'"
+      @select="library.findSimilar(sample)"
+    >
+      <AudioLines />
+      Find similar
+      <ContextMenuShortcut>S</ContextMenuShortcut>
     </ContextMenuItem>
     <ContextMenuSeparator />
     <ContextMenuGroup>

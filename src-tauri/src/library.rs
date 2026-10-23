@@ -5,6 +5,7 @@ use rusqlite::{params, params_from_iter, Connection, OptionalExtension, ToSql};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
+use crate::similar::Ranking;
 
 #[derive(Debug, Default, Clone, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -22,6 +23,8 @@ pub struct Filter {
     pub key: Option<String>,
     /// Category id, e.g. "kick" (see `category::CATEGORIES`).
     pub category: Option<String>,
+    /// Show samples that sound like this one, most similar first.
+    pub similar_to: Option<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -56,6 +59,8 @@ pub struct Sample {
     pub category: Option<String>,
     pub category_source: Option<String>,
     pub category_confidence: Option<f64>,
+    /// Cosine similarity to the sample in `Filter::similar_to`.
+    pub similarity: Option<f32>,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -136,19 +141,43 @@ fn args_iter(args: &[Box<dyn ToSql>]) -> impl Iterator<Item = &dyn ToSql> {
     args.iter().map(|a| a.as_ref())
 }
 
-pub fn count(conn: &Connection, f: &Filter) -> Result<i64> {
+/// `FROM … WHERE …` and `ORDER BY` for a filter. With a similarity ranking the
+/// rows are limited to the ranked ids and keep the ranking's order.
+fn source(f: &Filter, ranking: Option<&Ranking>) -> (String, Vec<Box<dyn ToSql>>, &'static str) {
     let (filter, args) = where_clause(f);
-    Ok(conn.query_row(
-        &format!("SELECT COUNT(*) FROM samples s {filter}"),
-        params_from_iter(args_iter(&args)),
-        |r| r.get(0),
-    )?)
+    match ranking {
+        Some(r) => {
+            let mut all: Vec<Box<dyn ToSql>> = vec![Box::new(r.ids_json())];
+            all.extend(args);
+            (format!("FROM samples s JOIN json_each(?) r ON r.value = s.id {filter}"), all, "ORDER BY r.key")
+        }
+        None => (format!("FROM samples s {filter}"), args, "ORDER BY s.name COLLATE NOCASE, s.path"),
+    }
 }
 
-const ORDER: &str = "ORDER BY s.name COLLATE NOCASE, s.path";
+#[cfg(test)]
+pub fn count(conn: &Connection, f: &Filter) -> Result<i64> {
+    count_ranked(conn, f, None)
+}
 
+pub fn count_ranked(conn: &Connection, f: &Filter, ranking: Option<&Ranking>) -> Result<i64> {
+    let (from, args, _) = source(f, ranking);
+    Ok(conn.query_row(&format!("SELECT COUNT(*) {from}"), params_from_iter(args_iter(&args)), |r| r.get(0))?)
+}
+
+#[cfg(test)]
 pub fn list(conn: &Connection, f: &Filter, offset: i64, limit: i64) -> Result<Vec<Sample>> {
-    let (filter, mut args) = where_clause(f);
+    list_ranked(conn, f, None, offset, limit)
+}
+
+pub fn list_ranked(
+    conn: &Connection,
+    f: &Filter,
+    ranking: Option<&Ranking>,
+    offset: i64,
+    limit: i64,
+) -> Result<Vec<Sample>> {
+    let (from, mut args, order) = source(f, ranking);
     args.push(Box::new(limit));
     args.push(Box::new(offset));
     let mut stmt = conn.prepare_cached(&format!(
@@ -161,7 +190,7 @@ pub fn list(conn: &Connection, f: &Filter, offset: i64, limit: i64) -> Result<Ve
                 s.kind, s.bpm, s.bpm_source, s.musical_key, s.key_source, s.peak_db, s.lufs,
                 s.analysis_version IS NOT NULL,
                 s.category, s.category_source, s.category_confidence
-         FROM samples s {filter} {ORDER} LIMIT ? OFFSET ?"
+         {from} {order} LIMIT ? OFFSET ?"
     ))?;
     let rows = stmt
         .query_map(params_from_iter(args_iter(&args)), |r| {
@@ -190,16 +219,28 @@ pub fn list(conn: &Connection, f: &Filter, offset: i64, limit: i64) -> Result<Ve
                 category: r.get(20)?,
                 category_source: r.get(21)?,
                 category_confidence: r.get(22)?,
+                similarity: None,
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
+    let mut rows = rows;
+    if let Some(r) = ranking {
+        for s in &mut rows {
+            s.similarity = r.scores.get(&s.id).copied();
+        }
+    }
     Ok(rows)
 }
 
-/// Ids of all matching samples in list order (for select-all and range selection).
+#[cfg(test)]
 pub fn ids(conn: &Connection, f: &Filter) -> Result<Vec<i64>> {
-    let (filter, args) = where_clause(f);
-    let mut stmt = conn.prepare(&format!("SELECT s.id FROM samples s {filter} {ORDER}"))?;
+    ids_ranked(conn, f, None)
+}
+
+/// Ids of all matching samples in list order (for select-all and range selection).
+pub fn ids_ranked(conn: &Connection, f: &Filter, ranking: Option<&Ranking>) -> Result<Vec<i64>> {
+    let (from, args, order) = source(f, ranking);
+    let mut stmt = conn.prepare(&format!("SELECT s.id {from} {order}"))?;
     let ids = stmt
         .query_map(params_from_iter(args_iter(&args)), |r| r.get(0))?
         .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -718,6 +759,24 @@ mod tests {
         // Importing twice changes nothing.
         assert_eq!(import_user_data(&mut other, &parsed).unwrap(), report);
         assert_eq!(list_collections(&other).unwrap()[0].sample_count, 1);
+    }
+
+    #[test]
+    fn similarity_ranking_orders_rows_and_combines_with_filters() {
+        let conn = setup();
+        conn.execute("UPDATE samples SET kind = 'oneshot'", []).unwrap();
+        conn.execute("UPDATE samples SET kind = 'loop' WHERE id = 2", []).unwrap();
+        let ranking = Ranking {
+            ids: vec![3, 1, 2],
+            scores: [(3, 1.0), (1, 0.8), (2, 0.5)].into_iter().collect(),
+        };
+        let all = Filter::default();
+        assert_eq!(ids_ranked(&conn, &all, Some(&ranking)).unwrap(), vec![3, 1, 2]);
+        assert_eq!(count_ranked(&conn, &all, Some(&ranking)).unwrap(), 3);
+        let rows = list_ranked(&conn, &all, Some(&ranking), 1, 10).unwrap();
+        assert_eq!(rows.iter().map(|s| (s.id, s.similarity)).collect::<Vec<_>>(), vec![(1, Some(0.8)), (2, Some(0.5))]);
+        let oneshots = Filter { kind: Some("oneshot".into()), ..Default::default() };
+        assert_eq!(ids_ranked(&conn, &oneshots, Some(&ranking)).unwrap(), vec![3, 1]);
     }
 
     #[test]

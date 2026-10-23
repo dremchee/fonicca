@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import type { Sample } from '@/api'
 import { useVirtualizer } from '@tanstack/vue-virtual'
-import { useEventListener } from '@vueuse/core'
+import { AudioLines, X } from '@lucide/vue'
+import { onKeyStroke, useEventListener } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { CATEGORY_LABELS, categoryHint, formatBpm, formatDuration, KIND_LABELS, sourceHint } from '@/format'
+import Hint from '@/components/Hint.vue'
 import SampleContextMenu from '@/components/SampleContextMenu.vue'
+import { Button } from '@/components/ui/button'
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
@@ -14,7 +17,30 @@ const ROW_HEIGHT = 30
 
 const library = useLibraryStore()
 const player = usePlayerStore()
-const { total, focusIndex, selectedIds } = storeToRefs(library)
+const { total, focusIndex, selectedIds, scope } = storeToRefs(library)
+
+const similarTo = computed(() => (scope.value.kind === 'similar' ? scope.value : null))
+
+// Esc leaves the similar view once nothing is playing (the first Esc stops playback).
+// Capture phase: checked before the app-wide Esc handler stops the player.
+useEventListener(window, 'keydown', (e: KeyboardEvent) => {
+  if (e.key !== 'Escape' || !similarTo.value || player.playingId !== null)
+    return
+  if (e.target instanceof Element && e.target.closest('[role="menu"], [role="alertdialog"], input'))
+    return
+  library.exitSimilar()
+}, { capture: true })
+
+// S: find samples that sound like the focused one (Esc or × to go back).
+onKeyStroke(['s', 'ы'], (e) => {
+  if (e.metaKey || e.ctrlKey || e.altKey || e.target instanceof HTMLInputElement)
+    return
+  const s = library.focused
+  if (s) {
+    e.preventDefault()
+    library.findSimilar(s)
+  }
+})
 
 const scroller = ref<HTMLElement | null>(null)
 
@@ -107,6 +133,16 @@ function onDragStart(e: DragEvent, sample: Sample) {
 
 <template>
   <div class="flex-1 min-h-0 flex flex-col">
+    <div v-if="similarTo" class="h-9 shrink-0 px-3 flex items-center gap-2 border-b border-border bg-primary-soft text-sm">
+      <AudioLines class="size-4 text-primary" />
+      <span class="truncate">Sounds like <span class="font-medium">{{ similarTo.name }}</span></span>
+      <span class="text-muted-foreground text-xs">· most similar first</span>
+      <Hint text="Back" shortcut="Esc">
+        <Button variant="ghost" size="icon-sm" class="ml-auto" aria-label="Back" @click="library.exitSimilar()">
+          <X />
+        </Button>
+      </Hint>
+    </div>
     <div class="header grid items-center px-3 h-7 border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
       <span />
       <span />
@@ -163,7 +199,14 @@ function onDragStart(e: DragEvent, sample: Sample) {
                 >
                   <span :class="s.favorite ? 'i-lucide-star text-amber-400' : 'i-lucide-star'" class="text-xs" />
                 </button>
-                <span class="truncate">{{ s.name }}</span>
+                <span class="flex items-center gap-2 min-w-0">
+                  <span class="truncate">{{ s.name }}</span>
+                  <span
+                    v-if="s.similarity != null && s.id !== similarTo?.id"
+                    class="shrink-0 text-[11px] text-primary"
+                    title="How similar it sounds"
+                  >{{ Math.round(Math.max(0, s.similarity) * 100) }}%</span>
+                </span>
                 <span class="flex gap-1 overflow-hidden">
                   <span v-for="t in s.tags" :key="t.id" class="chip">{{ t.name }}</span>
                 </span>
