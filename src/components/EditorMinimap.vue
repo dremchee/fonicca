@@ -2,6 +2,7 @@
 import type { Wave } from '@/stores/editor'
 import { useResizeObserver } from '@vueuse/core'
 import { ref, shallowRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
 import { drawWave } from '@/waveform'
@@ -14,6 +15,7 @@ const emit = defineEmits<{
   fit: []
 }>()
 
+const { t } = useI18n()
 const editor = useEditorStore()
 const settings = useSettingsStore()
 const box = ref<HTMLElement | null>(null)
@@ -135,11 +137,11 @@ function onWheel(e: WheelEvent) {
 </script>
 
 <template>
-  <div ref="box" class="relative h-11 shrink-0 border-b border-border bg-background" title="Drag to move the view · scroll to zoom · double-click to show everything">
+  <div ref="box" class="relative h-11 shrink-0 border-b border-border bg-background" :title="t('editor.minimap.hint')">
     <canvas
       ref="canvas"
       class="absolute inset-0 size-full cursor-grab active:cursor-grabbing"
-      aria-label="Overview of the whole file"
+      :aria-label="t('editor.minimap.label')"
       @mousedown="onMouseDown"
       @wheel="onWheel"
       @dblclick="emit('fit')"

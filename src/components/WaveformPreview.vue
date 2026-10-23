@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { useResizeObserver } from '@vueuse/core'
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
 import { demoWave, drawWave } from '@/waveform'
 
 // Live preview of the waveform settings on a made-up groove.
+const { t } = useI18n()
 const settings = useSettingsStore()
 const box = ref<HTMLElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
@@ -42,7 +44,7 @@ watch([size, () => settings.settings], draw, { deep: true })
 </script>
 
 <template>
-  <div ref="box" class="relative h-28 rounded-md bg-background overflow-hidden" aria-label="Waveform preview" role="img">
+  <div ref="box" class="relative h-28 rounded-md bg-background overflow-hidden" :aria-label="t('player.wavePreview')" role="img">
     <canvas ref="canvas" class="absolute inset-0 size-full" />
   </div>
 </template>

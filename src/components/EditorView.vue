@@ -18,6 +18,7 @@ import {
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { useResizeObserver } from '@vueuse/core'
 import { computed, nextTick, ref, shallowRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import EditorMinimap from '@/components/EditorMinimap.vue'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,7 @@ import { drawWave } from '@/waveform'
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
 
+const { t } = useI18n()
 const editor = useEditorStore()
 const settings = useSettingsStore()
 
@@ -302,9 +304,9 @@ const status = computed(() => {
 })
 
 const curves: { value: Curve, label: string }[] = [
-  { value: 'smooth', label: 'Smooth' },
-  { value: 'linear', label: 'Linear' },
-  { value: 'exponential', label: 'Exponential' },
+  { value: 'smooth', label: 'editor.curves.smooth' },
+  { value: 'linear', label: 'editor.curves.linear' },
+  { value: 'exponential', label: 'editor.curves.exponential' },
 ]
 </script>
 
@@ -317,110 +319,110 @@ const curves: { value: Curve, label: string }[] = [
         <span v-if="editor.state?.dirty" class="text-primary"> •</span>
       </div>
       <div class="ml-auto flex items-center gap-2">
-        <Hint text="Save as a new file next to the original" shortcut="⇧⌘S">
+        <Hint :text="t('editor.save.asNewHint')" shortcut="⇧⌘S">
           <Button variant="outline" size="sm" @click="editor.save(true)">
-            Save as new
+            {{ t('editor.save.asNew') }}
           </Button>
         </Hint>
         <Hint
-          :text="editor.canOverwrite ? 'Save over the original (a backup is kept)' : 'Only WAV files can be saved in place'"
+          :text="editor.canOverwrite ? t('editor.save.overwriteHint') : t('editor.save.wavOnly')"
           shortcut="⌘S"
         >
           <Button size="sm" :disabled="!editor.canOverwrite || !editor.state?.dirty" @click="editor.save(false)">
-            <Save /> Save
+            <Save /> {{ t('common.actions.save') }}
           </Button>
         </Hint>
       </div>
     </header>
 
     <div class="h-11 shrink-0 px-3 flex items-center gap-1 border-b border-border overflow-x-auto">
-      <Hint text="Undo" shortcut="⌘Z">
+      <Hint :text="t('editor.toolbar.undo')" shortcut="⌘Z">
         <Button variant="ghost" size="icon-sm" :disabled="!editor.state?.canUndo" @click="editor.undo()">
           <Undo2 />
         </Button>
       </Hint>
-      <Hint text="Redo" shortcut="⇧⌘Z">
+      <Hint :text="t('editor.toolbar.redo')" shortcut="⇧⌘Z">
         <Button variant="ghost" size="icon-sm" :disabled="!editor.state?.canRedo" @click="editor.redo()">
           <Redo2 />
         </Button>
       </Hint>
       <Separator orientation="vertical" class="mx-1 h-5" />
-      <Hint :text="editor.playing ? 'Stop' : editor.selection ? 'Play selection' : 'Play from cursor'" shortcut="Space">
+      <Hint :text="editor.playing ? t('editor.toolbar.stop') : editor.selection ? t('editor.toolbar.playSelection') : t('editor.toolbar.playFromCursor')" :shortcut="t('editor.toolbar.space')">
         <Button variant="ghost" size="icon-sm" @click="editor.togglePlay()">
           <component :is="editor.playing ? Square : Play" />
         </Button>
       </Hint>
-      <Hint text="Loop the selection" shortcut="L">
-        <Toggle v-model="editor.looping" size="sm" aria-label="Loop">
+      <Hint :text="t('editor.toolbar.loopHint')" shortcut="L">
+        <Toggle v-model="editor.looping" size="sm" :aria-label="t('editor.toolbar.loop')">
           <Repeat />
         </Toggle>
       </Hint>
       <Separator orientation="vertical" class="mx-1 h-5" />
-      <Hint text="Keep only the selection">
+      <Hint :text="t('editor.toolbar.cropHint')">
         <Button variant="ghost" size="sm" :disabled="!editor.selection" @click="editor.crop()">
-          <Crop /> Crop
+          <Crop /> {{ t('editor.toolbar.crop') }}
         </Button>
       </Hint>
-      <Hint text="Delete the selection" shortcut="⌫">
+      <Hint :text="t('editor.toolbar.deleteHint')" shortcut="⌫">
         <Button variant="ghost" size="sm" :disabled="!editor.selection" @click="editor.remove()">
-          <Scissors /> Delete
+          <Scissors /> {{ t('editor.toolbar.delete') }}
         </Button>
       </Hint>
-      <Hint text="Silence the selection">
+      <Hint :text="t('editor.toolbar.silenceHint')">
         <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" @click="editor.silence()">
           <VolumeX />
         </Button>
       </Hint>
       <Separator orientation="vertical" class="mx-1 h-5" />
-      <Hint text="Fade in the selection, or from the start to the cursor">
+      <Hint :text="t('editor.toolbar.fadeInHint')">
         <Button variant="ghost" size="sm" @click="editor.fade('in')">
-          Fade in
+          {{ t('editor.toolbar.fadeIn') }}
         </Button>
       </Hint>
-      <Hint text="Fade out the selection, or from the cursor to the end">
+      <Hint :text="t('editor.toolbar.fadeOutHint')">
         <Button variant="ghost" size="sm" @click="editor.fade('out')">
-          Fade out
+          {{ t('editor.toolbar.fadeOut') }}
         </Button>
       </Hint>
       <Select v-model="editor.curve">
-        <SelectTrigger size="sm" class="w-28" aria-label="Fade curve">
-          <SelectValue />
+        <SelectTrigger size="sm" class="w-28" :aria-label="t('editor.toolbar.fadeCurve')">
+          <SelectValue>{{ t(curves.find(c => c.value === editor.curve)?.label ?? 'editor.curves.smooth') }}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem v-for="c in curves" :key="c.value" :value="c.value">
-            {{ c.label }}
+            {{ t(c.label) }}
           </SelectItem>
         </SelectContent>
       </Select>
       <Separator orientation="vertical" class="mx-1 h-5" />
-      <Hint text="Peak to −0.3 dB (selection or whole file)">
+      <Hint :text="t('editor.toolbar.normalizeHint')">
         <Button variant="ghost" size="sm" @click="editor.normalize()">
-          Normalize
+          {{ t('editor.toolbar.normalize') }}
         </Button>
       </Hint>
       <Button variant="ghost" size="sm" class="tabular" @click="editor.gain(-3)">
-        −3 dB
+        −3 {{ t('common.units.dB') }}
       </Button>
       <Button variant="ghost" size="sm" class="tabular" @click="editor.gain(3)">
-        +3 dB
+        +3 {{ t('common.units.dB') }}
       </Button>
-      <Hint text="Reverse (selection or whole file)">
+      <Hint :text="t('editor.toolbar.reverseHint')">
         <Button variant="ghost" size="icon-sm" @click="editor.reverse()">
           <ArrowLeftRight />
         </Button>
       </Hint>
       <div class="ml-auto flex items-center gap-1">
-        <Hint text="Zoom out" shortcut="−">
+        <Hint :text="t('editor.toolbar.zoomOut')" shortcut="−">
           <Button variant="ghost" size="icon-sm" @click="zoom(2)">
             <ZoomOut />
           </Button>
         </Hint>
-        <Hint text="Zoom in (to the selection if any)" shortcut="+">
+        <Hint :text="t('editor.toolbar.zoomIn')" shortcut="+">
           <Button variant="ghost" size="icon-sm" @click="editor.selection ? zoomToSelection() : zoom(0.5, editor.cursor)">
             <ZoomIn />
           </Button>
         </Hint>
-        <Hint text="Show everything" shortcut="0">
+        <Hint :text="t('editor.toolbar.fit')" shortcut="0">
           <Button variant="ghost" size="icon-sm" @click="fit()">
             <Maximize2 />
           </Button>
@@ -440,13 +442,13 @@ const curves: { value: Curve, label: string }[] = [
         ref="canvas"
         tabindex="0"
         class="absolute inset-0 size-full outline-none cursor-text"
-        aria-label="Waveform: drag to select, ⌘-scroll to zoom"
+        :aria-label="t('editor.waveform.label')"
         @mousedown="onMouseDown"
         @wheel="onWheel"
         @keydown="onKeyDown"
       />
       <div v-if="editor.loading" class="absolute inset-0 grid place-items-center text-muted-foreground text-sm">
-        Opening…
+        {{ t('editor.waveform.opening') }}
       </div>
       <div v-else-if="editor.error" class="absolute inset-0 grid place-items-center text-destructive text-sm px-6 text-center">
         {{ editor.error }}
@@ -454,23 +456,23 @@ const curves: { value: Curve, label: string }[] = [
     </div>
 
     <footer class="h-8 shrink-0 px-4 flex items-center gap-4 border-t border-border text-xs text-muted-foreground tabular">
-      <span class="shrink-0">Cursor {{ status.cursor }}</span>
+      <span class="shrink-0">{{ t('editor.status.cursor', { time: status.cursor }) }}</span>
       <button
         v-if="vZoom > 1.01" class="shrink-0 hover:text-foreground"
-        title="Vertical zoom (⌥-scroll). Click to reset."
+        :title="t('editor.status.vZoom')"
         @click="vZoom = 1"
       >
         ↕ ×{{ vZoom.toFixed(1) }}
       </button>
-      <span v-if="status.selection" class="shrink-0">Selection {{ status.selection }}</span>
+      <span v-if="status.selection" class="shrink-0">{{ t('editor.status.selection', { range: status.selection }) }}</span>
       <button
         class="min-w-0 flex-1 truncate text-right hover:text-foreground hover:underline"
-        :title="`${editor.sample?.path}\nClick to show in Finder`"
+        :title="`${editor.sample?.path}\n${t('editor.status.reveal')}`"
         @click="editor.sample && revealItemInDir(editor.sample.path)"
       >
         {{ editor.sample ? shortPath(editor.sample.path) : '' }}
       </button>
-      <span class="shrink-0">{{ status.length }} · {{ (rate / 1000).toLocaleString() }} kHz · {{ editor.state?.channels === 1 ? 'Mono' : 'Stereo' }}</span>
+      <span class="shrink-0">{{ status.length }} · {{ t('common.units.kHz', { n: (rate / 1000).toLocaleString() }) }} · {{ editor.state?.channels === 1 ? t('common.channels.mono') : t('common.channels.stereo') }}</span>
     </footer>
   </div>
 </template>

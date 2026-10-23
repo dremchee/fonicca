@@ -20,6 +20,7 @@ import {
   X,
 } from '@lucide/vue'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   Command,
   CommandEmpty,
@@ -31,13 +32,14 @@ import {
   CommandShortcut,
 } from '@/components/ui/command'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import { CATEGORY_LABELS, folderName, KIND_LABELS } from '@/format'
+import { CATEGORIES, categoryLabel, folderName, kindLabel } from '@/format'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
 
 const open = defineModel<boolean>('open', { required: true })
 
+const { t } = useI18n()
 const library = useLibraryStore()
 const player = usePlayerStore()
 const settings = useSettingsStore()
@@ -80,101 +82,101 @@ function go(scope: Scope) {
       @close-auto-focus="onCloseAutoFocus"
     >
       <DialogTitle class="sr-only">
-        Command palette
+        {{ t('palette.title') }}
       </DialogTitle>
       <DialogDescription class="sr-only">
-        Jump to a folder, collection or tag, filter the list or run an action.
+        {{ t('palette.description') }}
       </DialogDescription>
       <Command>
-        <CommandInput placeholder="Type a command or search…" />
+        <CommandInput :placeholder="t('palette.placeholder')" />
         <CommandList class="max-h-[min(360px,60vh)]">
-          <CommandEmpty>Nothing found.</CommandEmpty>
+          <CommandEmpty>{{ t('palette.empty') }}</CommandEmpty>
 
-          <CommandGroup v-if="focused" heading="Sample">
+          <CommandGroup v-if="focused" :heading="t('palette.groups.sample')">
             <CommandItem value="sample-play" @select="run(() => player.toggle(focused!))">
               <component :is="player.playingId === focused.id ? Square : Play" />
-              {{ player.playingId === focused.id ? 'Stop' : 'Play' }} “{{ focused.name }}”
-              <CommandShortcut>Space</CommandShortcut>
+              {{ t(player.playingId === focused.id ? 'palette.stop' : 'palette.play', { name: focused.name }) }}
+              <CommandShortcut>{{ t('palette.spaceKey') }}</CommandShortcut>
             </CommandItem>
             <CommandItem value="sample-favorite" @select="run(() => library.toggleFavorite())">
               <Star />
-              {{ focused.favorite ? 'Remove from favorites' : 'Add to favorites' }}
+              {{ focused.favorite ? t('palette.removeFavorite') : t('palette.addFavorite') }}
               <CommandShortcut>F</CommandShortcut>
             </CommandItem>
             <CommandItem value="sample-tag" @select="run(library.requestTagInput, true)">
               <Tag />
-              Add tag…
+              {{ t('palette.addTag') }}
               <CommandShortcut>T</CommandShortcut>
             </CommandItem>
             <CommandItem value="sample-similar" @select="run(() => library.findSimilar(focused!))">
               <Sparkles />
-              Find similar sounds
+              {{ t('palette.findSimilar') }}
             </CommandItem>
           </CommandGroup>
 
-          <CommandGroup heading="Go to">
+          <CommandGroup :heading="t('palette.groups.goTo')">
             <CommandItem value="go-all" @select="go({ kind: 'all' })">
-              <Library /> All samples
+              <Library /> {{ t('palette.allSamples') }}
             </CommandItem>
             <CommandItem value="go-favorites" @select="go({ kind: 'favorites' })">
-              <Star /> Favorites
+              <Star /> {{ t('palette.favorites') }}
             </CommandItem>
             <CommandItem v-for="s in library.sources" :key="`s${s.id}`" :value="`go-source-${s.id}`" @select="go({ kind: 'source', id: s.id })">
               <Folder /> {{ folderName(s.path) }}
               <CommandShortcut class="tracking-normal">
-                Folder
+                {{ t('palette.folder') }}
               </CommandShortcut>
             </CommandItem>
             <CommandItem v-for="c in library.collections" :key="`c${c.id}`" :value="`go-collection-${c.id}`" @select="go({ kind: 'collection', id: c.id })">
               <Layers /> {{ c.name }}
               <CommandShortcut class="tracking-normal">
-                Collection
+                {{ t('palette.collection') }}
               </CommandShortcut>
             </CommandItem>
-            <CommandItem v-for="t in library.tags" :key="`t${t.id}`" :value="`go-tag-${t.id}`" @select="go({ kind: 'tag', id: t.id })">
-              <Tag /> {{ t.name }}
+            <CommandItem v-for="tag in library.tags" :key="`t${tag.id}`" :value="`go-tag-${tag.id}`" @select="go({ kind: 'tag', id: tag.id })">
+              <Tag /> {{ tag.name }}
               <CommandShortcut class="tracking-normal">
-                Tag
+                {{ t('palette.tag') }}
               </CommandShortcut>
             </CommandItem>
           </CommandGroup>
 
-          <CommandGroup heading="Filter">
+          <CommandGroup :heading="t('palette.groups.filter')">
             <CommandItem value="filter-kind-all" @select="run(() => (library.kindFilter = null))">
-              <AudioWaveform /> Show all kinds
+              <AudioWaveform /> {{ t('palette.showAllKinds') }}
             </CommandItem>
             <CommandItem v-for="k in kinds" :key="k" :value="`filter-kind-${k}`" @select="run(() => (library.kindFilter = k))">
-              <AudioWaveform /> Show {{ KIND_LABELS[k].toLowerCase() }}s
+              <AudioWaveform /> {{ t('palette.showKind', { kind: kindLabel(k, true).toLowerCase() }) }}
             </CommandItem>
             <CommandItem
-              v-for="(label, id) in CATEGORY_LABELS" :key="id" :value="`filter-category-${id}`"
+              v-for="id in CATEGORIES" :key="id" :value="`filter-category-${id}`"
               @select="run(() => (library.categoryFilter = id))"
             >
-              <ListFilter /> Category: {{ label }}
+              <ListFilter /> {{ t('palette.category', { name: categoryLabel(id) }) }}
             </CommandItem>
             <CommandItem v-if="library.hasAnalysisFilters" value="filter-clear" @select="run(library.clearAnalysisFilters)">
-              <X /> Clear filters
+              <X /> {{ t('palette.clearFilters') }}
             </CommandItem>
           </CommandGroup>
 
           <CommandSeparator />
 
-          <CommandGroup heading="Actions">
+          <CommandGroup :heading="t('palette.groups.actions')">
             <CommandItem value="action-add-folders" @select="run(library.addSources, true)">
-              <FolderPlus /> Add folders…
+              <FolderPlus /> {{ t('palette.addFolders') }}
             </CommandItem>
             <CommandItem v-if="pending > 0" value="action-analysis" @select="run(() => library.setAnalysisPaused(!library.analysis.paused))">
               <component :is="library.analysis.paused ? Play : Pause" />
-              {{ library.analysis.paused ? 'Resume analysis' : 'Pause analysis' }}
+              {{ library.analysis.paused ? t('palette.resumeAnalysis') : t('palette.pauseAnalysis') }}
             </CommandItem>
             <CommandItem value="action-export" @select="run(library.exportUserData, true)">
-              <Download /> Export favorites, tags &amp; collections…
+              <Download /> {{ t('palette.exportData') }}
             </CommandItem>
             <CommandItem value="action-import" @select="run(library.importUserData, true)">
-              <Upload /> Import favorites, tags &amp; collections…
+              <Upload /> {{ t('palette.importData') }}
             </CommandItem>
             <CommandItem value="action-settings" @select="run(() => settings.openDialog(), true)">
-              <Settings /> Settings
+              <Settings /> {{ t('palette.settings') }}
               <CommandShortcut>⌘,</CommandShortcut>
             </CommandItem>
           </CommandGroup>

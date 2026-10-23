@@ -1,0 +1,28 @@
+import type en from '../en/filters'
+
+export default {
+  all: 'Все',
+  anyBpm: 'Любой',
+  anyKey: 'Любая',
+  anyCategory: 'Любая',
+  bpmRange: 'Диапазон BPM',
+  min: 'От',
+  max: 'До',
+  minBpm: 'Минимальный BPM',
+  maxBpm: 'Максимальный BPM',
+  key: 'Тональность',
+  major: 'Мажор',
+  minor: 'Минор',
+  category: 'Категория',
+  clear: 'Сбросить',
+  downloadFailed: 'Не удалось скачать',
+  downloadingModel: 'Загрузка звуковой модели · {percent}%',
+  soundModel: 'Звуковая модель · {size}',
+  soundModelHint: 'Определяет категорию семплов без понятного имени (бочка, бас, пэд…) по звучанию и тональность тональных лупов. Работает офлайн.',
+  analysisHint: 'Громкость, ван-шот/луп, BPM, категории и тональности анализируются в фоне',
+  analyzing: 'Анализ · осталось {n}',
+  analysisPaused: 'Анализ на паузе · осталось {n}',
+  pauseAnalysis: 'Приостановить анализ',
+  resumeAnalysis: 'Продолжить анализ',
+  analyzed: 'Проанализировано',
+} satisfies typeof en

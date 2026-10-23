@@ -6,6 +6,7 @@ import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { onKeyStroke } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
@@ -25,6 +26,7 @@ import { useDuplicatesStore } from '@/stores/duplicates'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 
+const { t } = useI18n()
 const dup = useDuplicatesStore()
 const { groups, loading, falseMatches, rule, preferred, selected, focusedId, verifying, extras, trashable } = storeToRefs(dup)
 const library = useLibraryStore()
@@ -106,29 +108,29 @@ async function reveal(path: string) {
 }
 
 function filesLabel(n: number) {
-  return `${n.toLocaleString()} ${n === 1 ? 'file' : 'files'}`
+  return t('common.count.files', { n: n.toLocaleString() }, n)
 }
 
 function reportSkipped(skipped: string[]) {
   if (skipped.length)
-    toast.warning(`${filesLabel(skipped.length)} left alone`, { description: skipped.slice(0, 3).join('\n') })
+    toast.warning(t('duplicates.skipped', { files: filesLabel(skipped.length) }), { description: skipped.slice(0, 3).join('\n') })
 }
 
 async function trashExtras() {
   const list = trashable.value
   const waiting = extras.value.length - list.length
   const ok = await confirm({
-    title: `Move ${filesLabel(list.length)} (${formatSize(bytesOf(list))}) to the Trash?`,
-    description: `Tags, favorites and collections of each extra copy move to the copy that stays. You can put the files back from the Trash in Finder.${
-      waiting ? ` ${filesLabel(waiting)} still being checked stay for now.` : ''}`,
-    action: 'Move to Trash',
+    title: t('duplicates.trashAll.title', { files: filesLabel(list.length), size: formatSize(bytesOf(list)) }),
+    description: `${t('duplicates.trashAll.description')}${
+      waiting ? ` ${t('duplicates.trashAll.waiting', { files: filesLabel(waiting) })}` : ''}`,
+    action: t('duplicates.moveToTrash'),
     destructive: true,
   })
   if (!ok)
     return
   try {
     const r = await dup.resolve('trash')
-    toast.success(`Moved ${filesLabel(r.removed)} (${formatSize(r.bytes)}) to the Trash`)
+    toast.success(t('duplicates.trashed', { files: filesLabel(r.removed), size: formatSize(r.bytes) }))
     reportSkipped(r.skipped)
   }
   catch (e) {
@@ -140,9 +142,9 @@ async function hideExtras(only?: { group: DuplicateGroup, copy: DuplicateCopy })
   const paths = only ? [only.copy.path] : extras.value.map(c => c.path)
   try {
     const r = await dup.resolve('hide', only)
-    toast(`Hid ${filesLabel(r.removed)} from the library`, {
-      description: 'They stay on disk. Settings → Library lists hidden files.',
-      action: { label: 'Undo', onClick: () => dup.unhide(paths) },
+    toast(t('duplicates.hid', { files: filesLabel(r.removed) }), {
+      description: t('duplicates.hidDescription'),
+      action: { label: t('common.actions.undo'), onClick: () => dup.unhide(paths) },
     })
     reportSkipped(r.skipped)
   }
@@ -153,9 +155,9 @@ async function hideExtras(only?: { group: DuplicateGroup, copy: DuplicateCopy })
 
 async function trashOne(group: DuplicateGroup, copy: DuplicateCopy) {
   const ok = await confirm({
-    title: `Move “${folderName(copy.path)}” to the Trash?`,
-    description: 'Its tags, favorite and collections move to the copy that stays.',
-    action: 'Move to Trash',
+    title: t('duplicates.trashOne.title', { name: folderName(copy.path) }),
+    description: t('duplicates.trashOne.description'),
+    action: t('duplicates.moveToTrash'),
     destructive: true,
   })
   if (!ok)
@@ -172,7 +174,7 @@ async function trashOne(group: DuplicateGroup, copy: DuplicateCopy) {
 async function prefer(folder: string, on = true) {
   await dup.prefer(folder, on)
   if (on)
-    toast(`Copies in “${folderName(folder)}” are kept from now on`)
+    toast(t('duplicates.preferred', { folder: folderName(folder) }))
 }
 
 // One context menu for all rows; the row under the pointer is remembered.
@@ -233,38 +235,42 @@ onKeyStroke(' ', (e) => {
   <div class="flex-1 min-h-0 flex flex-col">
     <header class="h-11 shrink-0 px-4 flex items-center gap-3 border-b border-border" data-tauri-drag-region>
       <h1 class="font-semibold" data-tauri-drag-region>
-        Duplicates
+        {{ t('duplicates.title') }}
       </h1>
       <span v-if="groups.length" class="text-xs text-muted-foreground tabular" data-tauri-drag-region>
-        {{ groups.length.toLocaleString() }} {{ groups.length === 1 ? 'group' : 'groups' }} · {{ totals.copies.toLocaleString() }} extra {{ totals.copies === 1 ? 'copy' : 'copies' }} · {{ formatSize(totals.bytes) }}
+        {{ t('duplicates.summary', {
+          groups: t('common.count.groups', { n: groups.length.toLocaleString() }, groups.length),
+          extras: t('duplicates.extraCopies', { n: totals.copies.toLocaleString() }, totals.copies),
+          size: formatSize(totals.bytes),
+        }) }}
       </span>
       <span v-if="verifying" class="text-xs text-muted-foreground flex items-center gap-1.5">
-        <Spinner class="size-3 text-primary" /> Checking {{ verifying.toLocaleString() }} large {{ verifying === 1 ? 'group' : 'groups' }} byte by byte…
+        <Spinner class="size-3 text-primary" /> {{ t('duplicates.verifying', { n: verifying.toLocaleString() }, verifying) }}
       </span>
       <span v-else-if="falseMatches" class="text-xs text-muted-foreground">
-        · {{ falseMatches }} look-alike {{ falseMatches === 1 ? 'group' : 'groups' }} turned out different
+        {{ t('duplicates.falseMatches', falseMatches) }}
       </span>
     </header>
 
     <div v-if="groups.length" class="shrink-0 px-4 py-2 flex flex-wrap items-center gap-2 border-b border-border">
       <label class="flex items-center gap-2 mr-2">
-        <Checkbox :model-value="allSelected ? true : selected.size ? 'indeterminate' : false" aria-label="Select all groups" @update:model-value="toggleAll" />
-        <span class="text-muted-foreground text-xs tabular">{{ selected.size ? `${selected.size.toLocaleString()} selected` : 'All groups' }}</span>
+        <Checkbox :model-value="allSelected ? true : selected.size ? 'indeterminate' : false" :aria-label="t('duplicates.selectAll')" @update:model-value="toggleAll" />
+        <span class="text-muted-foreground text-xs tabular">{{ selected.size ? t('duplicates.selectedCount', { n: selected.size.toLocaleString() }) : t('duplicates.allGroups') }}</span>
       </label>
-      <span class="text-xs text-muted-foreground">Keep</span>
+      <span class="text-xs text-muted-foreground">{{ t('duplicates.keep') }}</span>
       <Select v-model="rule">
-        <SelectTrigger size="sm" class="w-40">
-          <SelectValue />
+        <SelectTrigger size="sm" class="min-w-40">
+          <SelectValue>{{ t(`duplicates.rules.${rule}`) }}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="shortest">
-            Shortest path
+            {{ t('duplicates.rules.shortest') }}
           </SelectItem>
           <SelectItem value="oldest">
-            Oldest file
+            {{ t('duplicates.rules.oldest') }}
           </SelectItem>
           <SelectItem value="newest">
-            Newest file
+            {{ t('duplicates.rules.newest') }}
           </SelectItem>
         </SelectContent>
       </Select>
@@ -275,16 +281,16 @@ onKeyStroke(' ', (e) => {
         :title="f"
       >
         <Pin class="size-3" /> {{ folderName(f) }}
-        <button class="size-4 grid place-items-center rounded hover:bg-primary/15" aria-label="Stop preferring this folder" @click="prefer(f, false)">
+        <button class="size-4 grid place-items-center rounded hover:bg-primary/15" :aria-label="t('duplicates.unprefer')" @click="prefer(f, false)">
           <X class="size-3" />
         </button>
       </span>
       <div class="ml-auto flex items-center gap-2">
         <Button variant="outline" size="sm" :disabled="!extras.length" @click="hideExtras()">
-          <EyeOff /> Hide {{ extras.length.toLocaleString() }} from library
+          <EyeOff /> {{ t('duplicates.hideExtras', { n: extras.length.toLocaleString() }) }}
         </Button>
         <Button variant="outline" size="sm" class="text-destructive hover:text-destructive" :disabled="!trashable.length" @click="trashExtras">
-          <Trash2 /> Move {{ trashable.length.toLocaleString() }} to Trash
+          <Trash2 /> {{ t('duplicates.trashExtras', { n: trashable.length.toLocaleString() }) }}
         </Button>
       </div>
     </div>
@@ -294,11 +300,11 @@ onKeyStroke(' ', (e) => {
         <div ref="scroller" class="flex-1 overflow-y-auto outline-none" tabindex="-1" @contextmenu="onContextMenu">
           <div v-if="!groups.length" class="h-full grid place-items-center text-muted-foreground">
             <div v-if="loading" class="flex items-center gap-2">
-              <Spinner /> Looking for duplicates…
+              <Spinner /> {{ t('duplicates.loading') }}
             </div>
             <div v-else class="flex flex-col items-center gap-2">
               <CircleCheck class="size-6 text-primary" />
-              No duplicates in the library
+              {{ t('duplicates.empty') }}
             </div>
           </div>
           <div v-else class="relative w-full" :style="{ height: `${virtualizer.getTotalSize()}px` }">
@@ -311,15 +317,15 @@ onKeyStroke(' ', (e) => {
               >
                 <Checkbox
                   :model-value="selected.has(row.g.key)"
-                  :aria-label="`Select ${fileName(row.g)}`"
+                  :aria-label="t('duplicates.selectGroup', { name: fileName(row.g) })"
                   @update:model-value="$event ? selected.add(row.g.key) : selected.delete(row.g.key)"
                 />
                 <span class="font-medium truncate">{{ fileName(row.g) }}</span>
                 <span class="text-xs text-muted-foreground tabular shrink-0">
-                  {{ row.g.copies.length }} copies · {{ formatSize(row.g.size) }} each · {{ formatDuration(row.g.copies[0]!.duration) }}
+                  {{ t('duplicates.groupInfo', { copies: t('common.count.copies', row.g.copies.length), size: formatSize(row.g.size), duration: formatDuration(row.g.copies[0]!.duration) }) }}
                 </span>
                 <span v-if="!row.g.verified" class="text-[11px] text-muted-foreground flex items-center gap-1">
-                  <Spinner class="size-3" /> verifying
+                  <Spinner class="size-3" /> {{ t('duplicates.groupVerifying') }}
                 </span>
               </div>
               <div
@@ -337,16 +343,16 @@ onKeyStroke(' ', (e) => {
                 <button
                   class="keep"
                   :class="{ on: dup.keepOf(row.g).id === row.c.id }"
-                  :aria-label="`Keep ${row.c.path}`"
+                  :aria-label="t('duplicates.keepPath', { path: row.c.path })"
                   @click.stop="dup.setKeep(row.g, row.c.id)"
                 >
-                  {{ dup.keepOf(row.g).id === row.c.id ? 'Keep' : 'Extra' }}
+                  {{ dup.keepOf(row.g).id === row.c.id ? t('duplicates.badge.keep') : t('duplicates.badge.extra') }}
                 </button>
                 <Button
                   variant="ghost"
                   size="icon-xs"
                   class="rounded-full shrink-0"
-                  :aria-label="player.playingId === row.c.id ? 'Stop' : 'Play'"
+                  :aria-label="player.playingId === row.c.id ? t('common.actions.stop') : t('common.actions.play')"
                   @click.stop="focusedId = row.c.id; player.toggle(row.c)"
                 >
                   <component :is="player.playingId === row.c.id ? Square : Play" class="fill-current" />
@@ -358,8 +364,8 @@ onKeyStroke(' ', (e) => {
                   </template>
                 </span>
                 <span class="text-[11px] text-muted-foreground tabular shrink-0">{{ formatDate(row.c.mtime) }}</span>
-                <Hint text="Show in Finder">
-                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground opacity-0 group-hover:opacity-100" aria-label="Show in Finder" @click.stop="reveal(row.c.path)">
+                <Hint :text="t('common.actions.showInFinder')">
+                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground opacity-0 group-hover:opacity-100" :aria-label="t('common.actions.showInFinder')" @click.stop="reveal(row.c.path)">
                     <FolderOpen />
                   </Button>
                 </Hint>
@@ -370,24 +376,24 @@ onKeyStroke(' ', (e) => {
       </ContextMenuTrigger>
       <ContextMenuContent v-if="menuTarget">
         <ContextMenuItem @select="dup.setKeep(menuTarget.g, menuTarget.c.id)">
-          Keep this copy
+          {{ t('duplicates.menu.keepThis') }}
         </ContextMenuItem>
         <ContextMenuItem @select="prefer(packFolder(menuTarget.g, menuTarget.c))">
-          <Pin /> Always keep copies in “{{ folderName(packFolder(menuTarget.g, menuTarget.c)) }}”
+          <Pin /> {{ t('duplicates.menu.alwaysKeep', { folder: folderName(packFolder(menuTarget.g, menuTarget.c)) }) }}
         </ContextMenuItem>
         <ContextMenuSeparator />
         <ContextMenuItem @select="reveal(menuTarget.c.path)">
-          <FolderOpen /> Show in Finder
+          <FolderOpen /> {{ t('common.actions.showInFinder') }}
         </ContextMenuItem>
         <ContextMenuItem @select="hideExtras({ group: menuTarget.g, copy: menuTarget.c })">
-          <EyeOff /> Hide this copy from library
+          <EyeOff /> {{ t('duplicates.menu.hideThis') }}
         </ContextMenuItem>
         <ContextMenuItem
           :disabled="!menuTarget.g.verified"
           class="text-destructive focus:text-destructive"
           @select="trashOne(menuTarget.g, menuTarget.c)"
         >
-          <Trash2 /> Move this copy to Trash
+          <Trash2 /> {{ t('duplicates.menu.trashThis') }}
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>
@@ -414,8 +420,10 @@ onKeyStroke(' ', (e) => {
   opacity: 0.75;
 }
 
+/* Sized by its label: "Keep" and «Оставить» differ a lot in width. */
 .keep {
-  width: 3rem;
+  min-width: 4.5rem;
+  padding: 0 0.375rem;
   height: 1.25rem;
   flex-shrink: 0;
   border-radius: calc(var(--radius) - 4px);

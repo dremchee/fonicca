@@ -1,0 +1,16 @@
+export default {
+  button: 'Sync',
+  hint: 'Preview in the project tempo and key',
+  hintApplied: 'Playing adjusted: {applied}',
+  ariaLabel: 'Project tempo and key',
+  match: 'Match project',
+  description: 'Loops play stretched to the project tempo, samples with a known key transposed to the project key.',
+  tempo: 'Tempo',
+  key: 'Key',
+  projectKey: 'Project key',
+  none: 'None',
+  major: 'Major',
+  minor: 'Minor',
+  appliedTempo: 'tempo ×{n}',
+  appliedSemitones: '{n} st',
+}

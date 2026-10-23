@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { shallowRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,6 +13,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { buttonVariants } from '@/components/ui/button'
 import { pendingConfirm, settleConfirm } from '@/composables/confirm'
+
+const { t } = useI18n()
 
 // Keep the last options around so the text does not vanish during the close animation.
 const shown = shallowRef(pendingConfirm.value)
@@ -38,12 +41,12 @@ function onOpenChange(open: boolean) {
         </AlertDialogDescription>
       </AlertDialogHeader>
       <AlertDialogFooter>
-        <AlertDialogCancel>Cancel</AlertDialogCancel>
+        <AlertDialogCancel>{{ t('common.actions.cancel') }}</AlertDialogCancel>
         <AlertDialogAction
           :class="shown.destructive ? buttonVariants({ variant: 'destructive' }) : undefined"
           @click="settleConfirm(true)"
         >
-          {{ shown.action ?? 'Continue' }}
+          {{ shown.action ?? t('dialogs.continue') }}
         </AlertDialogAction>
       </AlertDialogFooter>
     </AlertDialogContent>

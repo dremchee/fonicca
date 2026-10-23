@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { api } from '@/api'
 import { confirm } from '@/composables/confirm'
+import { t } from '@/i18n'
 import { parseWave } from '@/waveform'
 
 export type Curve = 'linear' | 'smooth' | 'exponential'
@@ -111,18 +112,21 @@ export const useEditorStore = defineStore('editor', () => {
       loading.value = false
     }
 
-    // "Kick • — Edit" while there are unsaved edits.
-    watch(() => [sample.value?.name, state.value?.dirty] as const, ([name, dirty]) => {
-      if (name)
-        win.setTitle(`${name}${dirty ? ' •' : ''} — Edit`)
+    // "Kick • — Edit" while there are unsaved edits; re-titled on a language switch too.
+    watch(() => {
+      const name = sample.value?.name
+      return name ? t(state.value?.dirty ? 'editor.window.titleDirty' : 'editor.window.title', { name }) : null
+    }, (title) => {
+      if (title)
+        win.setTitle(title)
     }, { immediate: true })
 
     await win.onCloseRequested(async (event) => {
       if (state.value?.dirty) {
         const ok = await confirm({
-          title: 'Discard unsaved edits?',
-          description: `Changes to “${sample.value?.name}” will be lost.`,
-          action: 'Discard',
+          title: t('editor.discard.title'),
+          description: t('editor.discard.description', { name: sample.value?.name ?? '' }),
+          action: t('editor.discard.action'),
           destructive: true,
         })
         if (!ok) {
@@ -272,8 +276,8 @@ export const useEditorStore = defineStore('editor', () => {
       const r = await editorApi.save(asNew)
       state.value = r.state
       const name = r.path.split('/').pop()
-      toast.success(asNew ? `Saved as “${name}”` : `Saved “${name}”`, {
-        description: r.backup ? 'The previous version was kept in the backups folder.' : undefined,
+      toast.success(t(asNew ? 'editor.save.savedAs' : 'editor.save.saved', { name: name ?? '' }), {
+        description: r.backup ? t('editor.save.backupKept') : undefined,
       })
     }
     catch (e) {

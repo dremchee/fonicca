@@ -1,15 +1,17 @@
 import type { Settings } from '@/api'
 import { listen } from '@tauri-apps/api/event'
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { api } from '@/api'
+import { setLocale } from '@/i18n'
 
 export type SettingsSection = 'general' | 'library' | 'playback' | 'waveform' | 'analysis' | 'shortcuts' | 'about'
 
 // Mirrors settings.json, which the backend owns; used until it loads.
 const DEFAULTS: Settings = {
   theme: 'system',
+  language: 'en',
   watchFolders: true,
   autoplay: true,
   volume: 1,
@@ -27,6 +29,9 @@ export const useSettingsStore = defineStore('settings', () => {
   const settings = ref<Settings>({ ...DEFAULTS })
   const dialogOpen = ref(false)
   const section = ref<SettingsSection>('general')
+
+  // Every window follows the stored language, including changes made in another window.
+  watch(() => settings.value.language, setLocale, { immediate: true })
 
   async function init() {
     settings.value = await api.getSettings()

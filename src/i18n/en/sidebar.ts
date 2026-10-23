@@ -1,0 +1,42 @@
+export default {
+  addFolders: 'Add folders',
+  settings: 'Settings',
+  allSamples: 'All samples',
+  favorites: 'Favorites',
+  duplicates: 'Duplicates',
+  folders: 'Folders',
+  collections: 'Collections',
+  tags: 'Tags',
+  scanning: 'scanning…',
+  rescan: 'Rescan',
+  removeFromLibrary: 'Remove from library',
+  newCollection: 'New collection',
+  collectionName: 'Collection name',
+  deleteCollection: 'Delete collection',
+  deleteTag: 'Delete tag',
+  empty: {
+    folders: 'Add a folder with samples to start. Files stay where they are — Samplette only indexes them.',
+    collections: 'Right-click samples → Add to collection.',
+    tags: 'Select samples and press T to tag them.',
+  },
+  confirmRemoveSource: {
+    title: 'Remove “{name}” from the library?',
+    description: '{n} sample will disappear from Samplette. Files on disk are not touched. | {n} samples will disappear from Samplette. Files on disk are not touched.',
+  },
+  confirmDeleteCollection: {
+    title: 'Delete collection “{name}”?',
+    description: 'The {n} sample in it stays in the library. | The {n} samples in it stay in the library.',
+  },
+  confirmDeleteTag: {
+    title: 'Delete tag “{name}”?',
+    description: 'It will be removed from {n} sample. | It will be removed from {n} samples.',
+  },
+  tagPicker: {
+    button: 'Tag',
+    placeholder: 'Find or create a tag…',
+    placeholderMany: 'Tag {n} sample… | Tag {n} samples…',
+    empty: 'No tags yet.',
+    create: 'Create “{name}”',
+    assigned: 'On this sample',
+  },
+}

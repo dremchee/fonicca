@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
 import type { AppInfo, Settings, Theme } from '@/api'
+import type { Locale } from '@/i18n'
 import type { SettingsSection } from '@/stores/settings'
 import {
   AudioLines,
@@ -27,6 +28,7 @@ import {
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { api } from '@/api'
 import Hint from '@/components/Hint.vue'
@@ -40,25 +42,27 @@ import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { confirm } from '@/composables/confirm'
+import { LOCALES } from '@/i18n'
 import { folderName, formatSize } from '@/format'
 import { useDuplicatesStore } from '@/stores/duplicates'
 import { useLibraryStore } from '@/stores/library'
 import { useSettingsStore } from '@/stores/settings'
 
+const { t } = useI18n()
 const store = useSettingsStore()
 const { settings, dialogOpen, section } = storeToRefs(store)
 const library = useLibraryStore()
 const { sources, scans, analysis, soundModel, modelDownload } = storeToRefs(library)
 const duplicates = useDuplicatesStore()
 
-const sections: { id: SettingsSection, label: string, icon: Component }[] = [
-  { id: 'general', label: 'General', icon: Settings2 },
-  { id: 'library', label: 'Library', icon: Library },
-  { id: 'playback', label: 'Playback', icon: AudioLines },
-  { id: 'waveform', label: 'Waveform', icon: AudioWaveform },
-  { id: 'analysis', label: 'Analysis', icon: Cpu },
-  { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
-  { id: 'about', label: 'About', icon: Info },
+const sections: { id: SettingsSection, icon: Component }[] = [
+  { id: 'general', icon: Settings2 },
+  { id: 'library', icon: Library },
+  { id: 'playback', icon: AudioLines },
+  { id: 'waveform', icon: AudioWaveform },
+  { id: 'analysis', icon: Cpu },
+  { id: 'shortcuts', icon: Keyboard },
+  { id: 'about', icon: Info },
 ]
 const current = computed(() => sections.find(s => s.id === section.value)!)
 
@@ -79,14 +83,16 @@ async function unhide(paths: string[] | null) {
 }
 
 function samplesLabel(n: number) {
-  return `${n.toLocaleString()} ${n === 1 ? 'sample' : 'samples'}`
+  return t('common.count.samples', { n: n.toLocaleString() }, n)
 }
 
 function scanLabel(id: number) {
   const s = scans.value.get(id)
   if (!s)
     return null
-  return s.total ? `scanning ${s.processed.toLocaleString()}/${s.total.toLocaleString()}` : 'scanning…'
+  return s.total
+    ? t('settings.library.scanningProgress', { processed: s.processed.toLocaleString(), total: s.total.toLocaleString() })
+    : t('settings.library.scanning')
 }
 
 async function removeSource(id: number) {
@@ -94,9 +100,9 @@ async function removeSource(id: number) {
   if (!s)
     return
   const ok = await confirm({
-    title: `Remove “${folderName(s.path)}” from the library?`,
-    description: `${samplesLabel(s.sampleCount)} will disappear from Samplette. Files on disk are not touched.`,
-    action: 'Remove',
+    title: t('settings.library.removeTitle', { name: folderName(s.path) }),
+    description: t('settings.library.removeDesc', { samples: samplesLabel(s.sampleCount) }, s.sampleCount),
+    action: t('common.actions.remove'),
     destructive: true,
   })
   if (ok)
@@ -135,9 +141,9 @@ const downloadRatio = computed(() => {
 
 async function deleteModel() {
   const ok = await confirm({
-    title: 'Delete the sound model?',
-    description: 'Categories already found by sound stay. Samples added later get categories from their names only, until you download the model again.',
-    action: 'Delete',
+    title: t('settings.analysis.deleteTitle'),
+    description: t('settings.analysis.deleteDesc'),
+    action: t('common.actions.delete'),
     destructive: true,
   })
   if (!ok)
@@ -152,48 +158,53 @@ async function deleteModel() {
 }
 
 type WaveKey = 'waveStyle' | 'waveScale' | 'waveChannels' | 'waveColors'
-const waveOptions: { key: WaveKey, title: string, desc: string, choices: { value: Settings[WaveKey], label: string }[] }[] = [
+const waveOptions: { key: WaveKey, titleKey: string, descKey: string, choices: { value: Settings[WaveKey], labelKey: string }[] }[] = [
   {
     key: 'waveStyle',
-    title: 'Style',
-    desc: 'Peaks + RMS shows the average level inside the peaks.',
-    choices: [{ value: 'peaks', label: 'Peaks' }, { value: 'peaksRms', label: 'Peaks + RMS' }, { value: 'bars', label: 'Bars' }],
+    titleKey: 'settings.waveform.style',
+    descKey: 'settings.waveform.styleDesc',
+    choices: [{ value: 'peaks', labelKey: 'settings.waveform.peaks' }, { value: 'peaksRms', labelKey: 'settings.waveform.peaksRms' }, { value: 'bars', labelKey: 'settings.waveform.bars' }],
   },
   {
     key: 'waveScale',
-    title: 'Amplitude scale',
-    desc: 'Decibels make quiet tails and reverb visible. ⌥-scroll in the editor zooms vertically.',
-    choices: [{ value: 'linear', label: 'Linear' }, { value: 'db', label: 'Decibels' }],
+    titleKey: 'settings.waveform.scale',
+    descKey: 'settings.waveform.scaleDesc',
+    choices: [{ value: 'linear', labelKey: 'settings.waveform.linear' }, { value: 'db', labelKey: 'settings.waveform.db' }],
   },
   {
     key: 'waveChannels',
-    title: 'Channels',
-    desc: 'One lane per channel shows stereo width and differences between sides.',
-    choices: [{ value: 'split', label: 'Separate' }, { value: 'mix', label: 'Mixed' }],
+    titleKey: 'settings.waveform.channels',
+    descKey: 'settings.waveform.channelsDesc',
+    choices: [{ value: 'split', labelKey: 'settings.waveform.split' }, { value: 'mix', labelKey: 'settings.waveform.mix' }],
   },
   {
     key: 'waveColors',
-    title: 'Colors',
-    desc: 'By frequency: bass red, mids green, highs blue, so kicks and hats stand apart.',
-    choices: [{ value: 'theme', label: 'Theme' }, { value: 'frequency', label: 'By frequency' }],
+    titleKey: 'settings.waveform.colors',
+    descKey: 'settings.waveform.colorsDesc',
+    choices: [{ value: 'theme', labelKey: 'settings.waveform.theme' }, { value: 'frequency', labelKey: 'settings.waveform.frequency' }],
   },
 ]
 
-const shortcuts: { keys: string[], label: string }[] = [
-  { keys: ['↑', '↓'], label: 'Move focus' },
-  { keys: ['⇧', '↑ ↓'], label: 'Extend selection' },
-  { keys: ['Space'], label: 'Play / stop' },
-  { keys: ['Esc'], label: 'Stop, then leave search' },
-  { keys: ['⌘', 'A'], label: 'Select all' },
-  { keys: ['F'], label: 'Toggle favorite' },
-  { keys: ['T'], label: 'Add tag' },
-  { keys: ['E'], label: 'Edit in a new window (or double-click)' },
-  { keys: ['S'], label: 'Find similar sounds' },
-  { keys: ['⌥', 'scroll'], label: 'Vertical zoom in the editor' },
-  { keys: ['⌘', 'K'], label: 'Command palette' },
-  { keys: ['⌘', 'F'], label: 'Search' },
-  { keys: ['⌘', ','], label: 'Settings' },
+const shortcuts: { keys: string[], labelKey: string }[] = [
+  { keys: ['↑', '↓'], labelKey: 'settings.shortcuts.moveFocus' },
+  { keys: ['⇧', '↑ ↓'], labelKey: 'settings.shortcuts.extendSelection' },
+  { keys: ['space'], labelKey: 'settings.shortcuts.playStop' },
+  { keys: ['Esc'], labelKey: 'settings.shortcuts.escape' },
+  { keys: ['⌘', 'A'], labelKey: 'settings.shortcuts.selectAll' },
+  { keys: ['F'], labelKey: 'settings.shortcuts.favorite' },
+  { keys: ['T'], labelKey: 'settings.shortcuts.tag' },
+  { keys: ['E'], labelKey: 'settings.shortcuts.edit' },
+  { keys: ['S'], labelKey: 'settings.shortcuts.similar' },
+  { keys: ['⌥', 'scroll'], labelKey: 'settings.shortcuts.verticalZoom' },
+  { keys: ['⌘', 'K'], labelKey: 'settings.shortcuts.palette' },
+  { keys: ['⌘', 'F'], labelKey: 'settings.shortcuts.search' },
+  { keys: ['⌘', ','], labelKey: 'settings.shortcuts.settings' },
 ]
+// Named keys are translated; glyphs and letters are shown as is.
+const NAMED_KEYS = new Set(['space', 'scroll'])
+function keyLabel(k: string) {
+  return NAMED_KEYS.has(k) ? t(`settings.shortcuts.keys.${k}`) : k
+}
 </script>
 
 <template>
@@ -208,17 +219,17 @@ const shortcuts: { keys: string[], label: string }[] = [
           @click="section = s.id"
         >
           <component :is="s.icon" class="size-4 shrink-0" />
-          {{ s.label }}
+          {{ t(`settings.nav.${s.id}`) }}
         </button>
       </nav>
 
       <div class="min-w-0 flex flex-col">
         <header class="h-13 shrink-0 px-6 flex items-center border-b border-border">
           <DialogTitle class="text-base font-semibold">
-            {{ current.label }}
+            {{ t(`settings.nav.${current.id}`) }}
           </DialogTitle>
           <DialogDescription class="sr-only">
-            {{ current.label }} settings
+            {{ t('settings.description', { section: t(`settings.nav.${current.id}`) }) }}
           </DialogDescription>
         </header>
 
@@ -229,10 +240,10 @@ const shortcuts: { keys: string[], label: string }[] = [
               <div class="row">
                 <div class="row-text">
                   <div class="row-title">
-                    Appearance
+                    {{ t('settings.general.appearance') }}
                   </div>
                   <div class="row-desc">
-                    System follows the macOS setting.
+                    {{ t('settings.general.appearanceDesc') }}
                   </div>
                 </div>
                 <ToggleGroup
@@ -242,16 +253,33 @@ const shortcuts: { keys: string[], label: string }[] = [
                   size="sm"
                   @update:model-value="$event && store.update({ theme: $event as Theme })"
                 >
-                  <ToggleGroupItem value="system" aria-label="System">
-                    <Monitor /> System
+                  <ToggleGroupItem value="system" :aria-label="t('settings.general.themeSystem')">
+                    <Monitor /> {{ t('settings.general.themeSystem') }}
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="light" aria-label="Light">
-                    <Sun /> Light
+                  <ToggleGroupItem value="light" :aria-label="t('settings.general.themeLight')">
+                    <Sun /> {{ t('settings.general.themeLight') }}
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="dark" aria-label="Dark">
-                    <Moon /> Dark
+                  <ToggleGroupItem value="dark" :aria-label="t('settings.general.themeDark')">
+                    <Moon /> {{ t('settings.general.themeDark') }}
                   </ToggleGroupItem>
                 </ToggleGroup>
+              </div>
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-title">
+                    {{ t('settings.general.language') }}
+                  </div>
+                </div>
+                <Select :model-value="settings.language" @update:model-value="store.update({ language: $event as Locale })">
+                  <SelectTrigger size="sm" class="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="l in LOCALES" :key="l.id" :value="l.id">
+                      {{ l.name }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </section>
           </template>
@@ -261,15 +289,15 @@ const shortcuts: { keys: string[], label: string }[] = [
             <div class="flex flex-col gap-2">
               <div class="flex items-center justify-between">
                 <h3 class="group-title">
-                  Folders
+                  {{ t('settings.library.folders') }}
                 </h3>
                 <Button variant="outline" size="sm" @click="library.addSources()">
-                  <FolderPlus /> Add folders…
+                  <FolderPlus /> {{ t('settings.library.addFolders') }}
                 </Button>
               </div>
               <section class="group-box">
                 <div v-if="!sources.length" class="row text-muted-foreground justify-center">
-                  No folders yet
+                  {{ t('settings.library.noFolders') }}
                 </div>
                 <div v-for="s in sources" :key="s.id" class="row">
                   <span class="i-lucide-folder text-muted-foreground shrink-0" />
@@ -282,18 +310,18 @@ const shortcuts: { keys: string[], label: string }[] = [
                     </div>
                   </div>
                   <div class="flex gap-0.5">
-                    <Hint text="Show in Finder">
-                      <Button variant="ghost" size="icon-sm" class="text-muted-foreground" aria-label="Show in Finder" @click="reveal(s.path)">
+                    <Hint :text="t('common.actions.showInFinder')">
+                      <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('common.actions.showInFinder')" @click="reveal(s.path)">
                         <FolderOpen />
                       </Button>
                     </Hint>
-                    <Hint text="Rescan">
-                      <Button variant="ghost" size="icon-sm" class="text-muted-foreground" aria-label="Rescan" :disabled="scans.has(s.id)" @click="library.rescanSource(s.id)">
+                    <Hint :text="t('settings.library.rescan')">
+                      <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('settings.library.rescan')" :disabled="scans.has(s.id)" @click="library.rescanSource(s.id)">
                         <RefreshCw />
                       </Button>
                     </Hint>
-                    <Hint text="Remove from library">
-                      <Button variant="ghost" size="icon-sm" class="text-muted-foreground hover:text-destructive" aria-label="Remove from library" @click="removeSource(s.id)">
+                    <Hint :text="t('settings.library.removeFromLibrary')">
+                      <Button variant="ghost" size="icon-sm" class="text-muted-foreground hover:text-destructive" :aria-label="t('settings.library.removeFromLibrary')" @click="removeSource(s.id)">
                         <Trash2 />
                       </Button>
                     </Hint>
@@ -305,8 +333,8 @@ const shortcuts: { keys: string[], label: string }[] = [
             <section class="group-box">
               <label class="row">
                 <div class="row-text">
-                  <div class="row-title">Watch folders for changes</div>
-                  <div class="row-desc">New, moved and deleted files show up without a manual rescan.</div>
+                  <div class="row-title">{{ t('settings.library.watch') }}</div>
+                  <div class="row-desc">{{ t('settings.library.watchDesc') }}</div>
                 </div>
                 <Switch :model-value="settings.watchFolders" @update:model-value="store.update({ watchFolders: $event })" />
               </label>
@@ -315,17 +343,17 @@ const shortcuts: { keys: string[], label: string }[] = [
             <div class="flex flex-col gap-2">
               <div class="flex items-center justify-between">
                 <h3 class="group-title">
-                  Hidden files<template v-if="duplicates.hidden.length">
+                  {{ t('settings.library.hidden') }}<template v-if="duplicates.hidden.length">
                     · {{ duplicates.hidden.length.toLocaleString() }}
                   </template>
                 </h3>
                 <Button v-if="duplicates.hidden.length > 1" variant="outline" size="sm" @click="unhide(null)">
-                  Unhide all
+                  {{ t('settings.library.unhideAll') }}
                 </Button>
               </div>
               <section class="group-box max-h-64 overflow-y-auto">
                 <div v-if="!duplicates.hidden.length" class="row text-muted-foreground">
-                  Nothing hidden. Extra copies of duplicates can be hidden instead of trashed.
+                  {{ t('settings.library.nothingHidden') }}
                 </div>
                 <div v-for="h in duplicates.hidden" :key="h.path" class="row py-2">
                   <EyeOff class="size-3.5 text-muted-foreground shrink-0" />
@@ -338,7 +366,7 @@ const shortcuts: { keys: string[], label: string }[] = [
                     </div>
                   </div>
                   <Button variant="ghost" size="xs" @click="unhide([h.path])">
-                    Unhide
+                    {{ t('settings.library.unhide') }}
                   </Button>
                 </div>
               </section>
@@ -346,24 +374,24 @@ const shortcuts: { keys: string[], label: string }[] = [
 
             <div class="flex flex-col gap-2">
               <h3 class="group-title">
-                Your data
+                {{ t('settings.library.yourData') }}
               </h3>
               <section class="group-box">
                 <div class="row">
                   <div class="row-text">
                     <div class="row-title">
-                      Favorites, tags &amp; collections
+                      {{ t('settings.library.userData') }}
                     </div>
                     <div class="row-desc">
-                      A JSON file. Import merges into the current library and finds files by path, then by content.
+                      {{ t('settings.library.userDataDesc') }}
                     </div>
                   </div>
                   <div class="flex gap-2">
                     <Button variant="outline" size="sm" @click="library.exportUserData()">
-                      <Download /> Export…
+                      <Download /> {{ t('settings.library.export') }}
                     </Button>
                     <Button variant="outline" size="sm" @click="library.importUserData()">
-                      <Upload /> Import…
+                      <Upload /> {{ t('settings.library.import') }}
                     </Button>
                   </div>
                 </div>
@@ -376,18 +404,18 @@ const shortcuts: { keys: string[], label: string }[] = [
             <section class="group-box">
               <label class="row">
                 <div class="row-text">
-                  <div class="row-title">Autoplay</div>
-                  <div class="row-desc">Play a sample when you move to it with the arrow keys.</div>
+                  <div class="row-title">{{ t('settings.playback.autoplay') }}</div>
+                  <div class="row-desc">{{ t('settings.playback.autoplayDesc') }}</div>
                 </div>
                 <Switch :model-value="settings.autoplay" @update:model-value="store.update({ autoplay: $event })" />
               </label>
               <div class="row">
                 <div class="row-text">
                   <div class="row-title">
-                    Preview volume
+                    {{ t('settings.playback.volume') }}
                   </div>
                   <div class="row-desc">
-                    Applies to previews only, not to files dragged into a DAW.
+                    {{ t('settings.playback.volumeDesc') }}
                   </div>
                 </div>
                 <div class="w-48 flex items-center gap-3">
@@ -396,7 +424,7 @@ const shortcuts: { keys: string[], label: string }[] = [
                     :model-value="[volumePercent]"
                     :max="100"
                     :step="1"
-                    aria-label="Preview volume"
+                    :aria-label="t('settings.playback.volume')"
                     @update:model-value="volumeDrag = ($event?.[0] ?? 0) / 100"
                     @value-commit="store.update({ volume: ($event[0] ?? 0) / 100 }).then(() => volumeDrag = null)"
                   />
@@ -412,10 +440,10 @@ const shortcuts: { keys: string[], label: string }[] = [
               <div v-for="opt in waveOptions" :key="opt.key" class="row">
                 <div class="row-text">
                   <div class="row-title">
-                    {{ opt.title }}
+                    {{ t(opt.titleKey) }}
                   </div>
                   <div class="row-desc">
-                    {{ opt.desc }}
+                    {{ t(opt.descKey) }}
                   </div>
                 </div>
                 <ToggleGroup
@@ -426,14 +454,14 @@ const shortcuts: { keys: string[], label: string }[] = [
                   @update:model-value="$event && store.update({ [opt.key]: $event })"
                 >
                   <ToggleGroupItem v-for="c in opt.choices" :key="c.value" :value="c.value">
-                    {{ c.label }}
+                    {{ t(c.labelKey) }}
                   </ToggleGroupItem>
                 </ToggleGroup>
               </div>
             </section>
             <section class="group-box p-3 grid gap-2">
               <div class="text-xs text-muted-foreground">
-                Preview
+                {{ t('settings.waveform.preview') }}
               </div>
               <WaveformPreview />
             </section>
@@ -446,37 +474,46 @@ const shortcuts: { keys: string[], label: string }[] = [
                 <div class="row-text">
                   <div class="row-title flex items-center gap-2">
                     <Spinner v-if="!analysis.paused && pending" class="text-primary" />
-                    {{ !pending ? 'Library analyzed' : analysis.paused ? 'Analysis paused' : 'Analyzing in the background' }}
+                    {{ !pending ? t('settings.analysis.done') : analysis.paused ? t('settings.analysis.paused') : t('settings.analysis.running') }}
                   </div>
                   <div class="row-desc tabular">
                     <template v-if="pending">
-                      {{ pending.toLocaleString() }} left ·
+                      {{ t('settings.analysis.left', { n: pending.toLocaleString() }) }}
                     </template>
-                    loudness, one-shot / loop, BPM, key, category
+                    {{ t('settings.analysis.what') }}
                   </div>
                 </div>
                 <Button variant="outline" size="sm" :disabled="!pending" @click="library.setAnalysisPaused(!analysis.paused)">
                   <component :is="analysis.paused ? Play : Pause" />
-                  {{ analysis.paused ? 'Resume' : 'Pause' }}
+                  {{ analysis.paused ? t('settings.analysis.resume') : t('settings.analysis.pause') }}
                 </Button>
               </div>
               <div class="row">
                 <div class="row-text">
                   <div class="row-title">
-                    CPU threads
+                    {{ t('settings.analysis.threads') }}
                   </div>
                   <div class="row-desc">
-                    More threads finish sooner but leave less for your DAW.
+                    {{ t('settings.analysis.threadsDesc') }}
                   </div>
                 </div>
                 <Select v-model="threads">
                   <SelectTrigger size="sm" class="w-40">
-                    <SelectValue />
+                    <SelectValue>
+                      <template v-if="threads === 'auto'">
+                        {{ t('settings.analysis.auto') }}<template v-if="info">
+                          {{ t('settings.analysis.autoThreads', { n: info.defaultThreads, cores: info.cores }) }}
+                        </template>
+                      </template>
+                      <template v-else>
+                        {{ threads }}
+                      </template>
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="auto">
-                      Auto<template v-if="info">
-                        ({{ info.defaultThreads }} of {{ info.cores }})
+                      {{ t('settings.analysis.auto') }}<template v-if="info">
+                        {{ t('settings.analysis.autoThreads', { n: info.defaultThreads, cores: info.cores }) }}
                       </template>
                     </SelectItem>
                     <template v-if="info">
@@ -492,23 +529,23 @@ const shortcuts: { keys: string[], label: string }[] = [
 
             <div v-if="soundModel" class="flex flex-col gap-2">
               <h3 class="group-title">
-                Sound model
+                {{ t('settings.analysis.soundModel') }}
               </h3>
               <section class="group-box">
                 <div class="row">
                   <div class="row-text">
                     <div class="row-title">
-                      CLAP audio encoder
+                      {{ t('settings.analysis.clap') }}
                     </div>
                     <div class="row-desc tabular">
                       <template v-if="modelState === 'installed'">
-                        Installed · {{ formatSize(soundModel.size) }} · categorizes samples whose names give no hint
+                        {{ t('settings.analysis.installed', { size: formatSize(soundModel.size) }) }}
                       </template>
                       <template v-else-if="modelState === 'downloading'">
-                        Downloading · {{ formatSize(modelDownload!.received) }} of {{ formatSize(modelDownload!.total || soundModel.size) }}
+                        {{ t('settings.analysis.downloading', { received: formatSize(modelDownload!.received), total: formatSize(modelDownload!.total || soundModel.size) }) }}
                       </template>
                       <template v-else>
-                        Not installed · {{ formatSize(soundModel.size) }} · needed to categorize samples by sound
+                        {{ t('settings.analysis.notInstalled', { size: formatSize(soundModel.size) }) }}
                       </template>
                     </div>
                     <div v-if="modelState === 'downloading'" class="mt-2 h-1 rounded-full bg-muted overflow-hidden">
@@ -519,19 +556,19 @@ const shortcuts: { keys: string[], label: string }[] = [
                     </div>
                   </div>
                   <div v-if="modelState === 'installed'" class="flex gap-0.5">
-                    <Hint v-if="info" text="Show in Finder">
-                      <Button variant="ghost" size="icon-sm" class="text-muted-foreground" aria-label="Show in Finder" @click="reveal(info.modelsDir)">
+                    <Hint v-if="info" :text="t('common.actions.showInFinder')">
+                      <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('common.actions.showInFinder')" @click="reveal(info.modelsDir)">
                         <FolderOpen />
                       </Button>
                     </Hint>
-                    <Hint text="Delete model">
-                      <Button variant="ghost" size="icon-sm" class="text-muted-foreground hover:text-destructive" aria-label="Delete model" @click="deleteModel">
+                    <Hint :text="t('settings.analysis.deleteModel')">
+                      <Button variant="ghost" size="icon-sm" class="text-muted-foreground hover:text-destructive" :aria-label="t('settings.analysis.deleteModel')" @click="deleteModel">
                         <Trash2 />
                       </Button>
                     </Hint>
                   </div>
                   <Button v-else variant="outline" size="sm" :disabled="modelState === 'downloading'" @click="library.downloadSoundModel()">
-                    <Download /> Download
+                    <Download /> {{ t('settings.analysis.download') }}
                   </Button>
                 </div>
               </section>
@@ -541,13 +578,13 @@ const shortcuts: { keys: string[], label: string }[] = [
           <!-- Shortcuts -->
           <template v-else-if="section === 'shortcuts'">
             <section class="group-box">
-              <div v-for="s in shortcuts" :key="s.label" class="row py-2">
+              <div v-for="s in shortcuts" :key="s.labelKey" class="row py-2">
                 <div class="flex-1">
-                  {{ s.label }}
+                  {{ t(s.labelKey) }}
                 </div>
                 <KbdGroup>
                   <Kbd v-for="k in s.keys" :key="k">
-                    {{ k }}
+                    {{ keyLabel(k) }}
                   </Kbd>
                 </KbdGroup>
               </div>
@@ -565,36 +602,36 @@ const shortcuts: { keys: string[], label: string }[] = [
                   Samplette
                 </div>
                 <div v-if="info" class="text-muted-foreground tabular">
-                  Version {{ info.version }}
+                  {{ t('settings.about.version', { version: info.version }) }}
                 </div>
               </div>
             </div>
 
             <div v-if="info" class="flex flex-col gap-2">
               <h3 class="group-title">
-                Storage
+                {{ t('settings.about.storage') }}
               </h3>
               <section class="group-box">
                 <div
                   v-for="s in [
-                    { label: 'Library database', path: info.dbPath, size: info.dbSize },
-                    { label: 'Models', path: info.modelsDir, size: info.modelsSize },
-                    { label: 'Settings', path: info.settingsPath, size: null },
+                    { labelKey: 'settings.about.database', path: info.dbPath, size: info.dbSize },
+                    { labelKey: 'settings.about.models', path: info.modelsDir, size: info.modelsSize },
+                    { labelKey: 'settings.about.settings', path: info.settingsPath, size: null },
                   ]"
-                  :key="s.label"
+                  :key="s.labelKey"
                   class="row"
                 >
                   <div class="row-text">
                     <div class="row-title">
-                      {{ s.label }}
+                      {{ t(s.labelKey) }}
                       <span v-if="s.size" class="text-muted-foreground font-normal tabular">· {{ formatSize(s.size) }}</span>
                     </div>
                     <div class="row-desc truncate select-text" :title="s.path">
                       {{ s.path }}
                     </div>
                   </div>
-                  <Hint text="Show in Finder">
-                    <Button variant="ghost" size="icon-sm" class="text-muted-foreground" aria-label="Show in Finder" @click="reveal(s.path)">
+                  <Hint :text="t('common.actions.showInFinder')">
+                    <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('common.actions.showInFinder')" @click="reveal(s.path)">
                       <FolderOpen />
                     </Button>
                   </Hint>

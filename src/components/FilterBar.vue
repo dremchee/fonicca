@@ -4,6 +4,7 @@ import type { SampleKind } from '@/api'
 import { Check, ChevronDown, Download, Pause, Play } from '@lucide/vue'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,9 +22,10 @@ import {
 import { Slider } from '@/components/ui/slider'
 import { Spinner } from '@/components/ui/spinner'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { CATEGORY_LABELS, formatSize, KIND_LABELS } from '@/format'
+import { CATEGORIES, categoryLabel, formatSize, kindLabel } from '@/format'
 import { useLibraryStore } from '@/stores/library'
 
+const { t } = useI18n()
 const library = useLibraryStore()
 const { kindFilter, bpmMin, bpmMax, keyFilter, categoryFilter, hasAnalysisFilters, analysis, soundModel, modelDownload } = storeToRefs(library)
 
@@ -90,7 +92,7 @@ const bpmLabel = computed(() => {
     return `≥ ${lo}`
   if (hi != null)
     return `≤ ${hi}`
-  return 'Any'
+  return t('filters.anyBpm')
 })
 
 function parseBpm(e: Event): number | null {
@@ -104,10 +106,10 @@ function parseBpm(e: Event): number | null {
   <div class="min-h-11 shrink-0 px-3 py-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border text-sm">
     <ToggleGroup type="single" variant="outline" size="sm" :model-value="kind" @update:model-value="onKindChange">
       <ToggleGroupItem :value="ANY">
-        All
+        {{ t('filters.all') }}
       </ToggleGroupItem>
       <ToggleGroupItem v-for="k in kinds" :key="k" :value="k">
-        {{ KIND_LABELS[k] }}s
+        {{ kindLabel(k, true) }}
       </ToggleGroupItem>
     </ToggleGroup>
 
@@ -116,7 +118,7 @@ function parseBpm(e: Event): number | null {
       <Popover>
         <PopoverTrigger as-child>
           <Button
-            variant="outline" size="sm" aria-label="BPM range"
+            variant="outline" size="sm" :aria-label="t('filters.bpmRange')"
             class="w-28 justify-between font-normal tabular dark:bg-input/30 dark:hover:bg-input/50"
             :class="bpmMin == null && bpmMax == null ? 'text-muted-foreground' : 'text-foreground'"
           >
@@ -126,27 +128,27 @@ function parseBpm(e: Event): number | null {
         </PopoverTrigger>
         <PopoverContent align="start" class="w-64 flex flex-col gap-4">
           <div class="flex items-center justify-between text-sm">
-            <span class="font-medium">BPM range</span>
+            <span class="font-medium">{{ t('filters.bpmRange') }}</span>
             <Button
               v-if="bpmMin != null || bpmMax != null"
               variant="ghost" size="xs" class="-my-1 text-muted-foreground"
               @click="bpmMin = null; bpmMax = null"
             >
-              Any
+              {{ t('filters.anyBpm') }}
             </Button>
           </div>
           <Slider
             v-model="bpmRange" :min="BPM_FLOOR" :max="BPM_CEIL" :step="1" :min-steps-between-thumbs="0"
-            aria-label="BPM range" @value-commit="commitBpmRange"
+            :aria-label="t('filters.bpmRange')" @value-commit="commitBpmRange"
           />
           <div class="flex items-center gap-2 text-muted-foreground">
             <Input
-              :model-value="bpmMin ?? ''" type="number" min="1" placeholder="Min" aria-label="Minimum BPM"
+              :model-value="bpmMin ?? ''" type="number" min="1" :placeholder="t('filters.min')" :aria-label="t('filters.minBpm')"
               class="num h-8" @change="bpmMin = parseBpm($event)"
             />
             –
             <Input
-              :model-value="bpmMax ?? ''" type="number" min="1" placeholder="Max" aria-label="Maximum BPM"
+              :model-value="bpmMax ?? ''" type="number" min="1" :placeholder="t('filters.max')" :aria-label="t('filters.maxBpm')"
               class="num h-8" @change="bpmMax = parseBpm($event)"
             />
           </div>
@@ -155,25 +157,26 @@ function parseBpm(e: Event): number | null {
     </div>
 
     <div class="flex items-center gap-2 text-muted-foreground">
-      Key
+      {{ t('filters.key') }}
+      <!-- SelectValue keeps the text it was mounted with: spell labels out so they follow a language switch. -->
       <Select v-model="key">
-        <SelectTrigger size="sm" class="w-24 text-foreground" aria-label="Key">
-          <SelectValue />
+        <SelectTrigger size="sm" class="w-24 text-foreground" :aria-label="t('filters.key')">
+          <SelectValue>{{ key === ANY ? t('filters.anyKey') : key }}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem :value="ANY">
-            Any
+            {{ t('filters.anyKey') }}
           </SelectItem>
           <SelectSeparator />
           <SelectGroup>
-            <SelectLabel>Major</SelectLabel>
+            <SelectLabel>{{ t('filters.major') }}</SelectLabel>
             <SelectItem v-for="n in notes" :key="n" :value="n">
               {{ n }}
             </SelectItem>
           </SelectGroup>
           <SelectSeparator />
           <SelectGroup>
-            <SelectLabel>Minor</SelectLabel>
+            <SelectLabel>{{ t('filters.minor') }}</SelectLabel>
             <SelectItem v-for="n in notes" :key="`${n}m`" :value="`${n}m`">
               {{ n }}m
             </SelectItem>
@@ -183,55 +186,55 @@ function parseBpm(e: Event): number | null {
     </div>
 
     <div class="flex items-center gap-2 text-muted-foreground">
-      Category
+      {{ t('filters.category') }}
       <Select v-model="category">
-        <SelectTrigger size="sm" class="w-32 text-foreground" aria-label="Category">
-          <SelectValue />
+        <SelectTrigger size="sm" class="w-32 text-foreground" :aria-label="t('filters.category')">
+          <SelectValue>{{ category === ANY ? t('filters.anyCategory') : categoryLabel(category) }}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem :value="ANY">
-            Any
+            {{ t('filters.anyCategory') }}
           </SelectItem>
           <SelectSeparator />
-          <SelectItem v-for="(label, id) in CATEGORY_LABELS" :key="id" :value="id">
-            {{ label }}
+          <SelectItem v-for="id in CATEGORIES" :key="id" :value="id">
+            {{ categoryLabel(id) }}
           </SelectItem>
         </SelectContent>
       </Select>
     </div>
 
     <Button v-if="hasAnalysisFilters" variant="ghost" size="sm" class="text-muted-foreground" @click="library.clearAnalysisFilters()">
-      Clear
+      {{ t('filters.clear') }}
     </Button>
 
     <div class="ml-auto min-w-0 flex items-center gap-2 text-muted-foreground tabular whitespace-nowrap">
       <template v-if="modelDownload">
         <Hint v-if="modelDownload.error" :text="modelDownload.error">
-          <span class="truncate text-destructive">Download failed</span>
+          <span class="truncate text-destructive">{{ t('filters.downloadFailed') }}</span>
         </Hint>
         <template v-else>
           <Spinner class="text-primary" />
-          Downloading sound model · {{ downloadPercent }}%
+          {{ t('filters.downloadingModel', { percent: downloadPercent }) }}
         </template>
       </template>
       <Hint
         v-else-if="soundModel && !soundModel.installed"
-        text="Classify unnamed samples (kick, bass, pad…) by how they sound and detect keys of tonal loops. Runs offline."
+        :text="t('filters.soundModelHint')"
       >
         <Button variant="outline" size="sm" @click="library.downloadSoundModel()">
-          <Download /> Sound model · {{ formatSize(soundModel.size) }}
+          <Download /> {{ t('filters.soundModel', { size: formatSize(soundModel.size) }) }}
         </Button>
       </Hint>
       <template v-if="pending > 0">
         <Spinner v-if="!analysis.paused" class="text-primary" />
-        <Hint text="Loudness, one-shot/loop, BPM, categories and keys are analyzed in the background">
+        <Hint :text="t('filters.analysisHint')">
           <span class="truncate">
-            {{ analysis.paused ? 'Analysis paused' : 'Analyzing' }} · {{ pending.toLocaleString() }} left
+            {{ t(analysis.paused ? 'filters.analysisPaused' : 'filters.analyzing', { n: pending.toLocaleString() }) }}
           </span>
         </Hint>
-        <Hint :text="analysis.paused ? 'Resume analysis' : 'Pause analysis'">
+        <Hint :text="analysis.paused ? t('filters.resumeAnalysis') : t('filters.pauseAnalysis')">
           <Button
-            variant="ghost" size="icon-sm" :aria-label="analysis.paused ? 'Resume analysis' : 'Pause analysis'"
+            variant="ghost" size="icon-sm" :aria-label="analysis.paused ? t('filters.resumeAnalysis') : t('filters.pauseAnalysis')"
             @click="library.setAnalysisPaused(!analysis.paused)"
           >
             <component :is="analysis.paused ? Play : Pause" />
@@ -239,7 +242,7 @@ function parseBpm(e: Event): number | null {
         </Hint>
       </template>
       <span v-else-if="!modelDownload" class="flex items-center gap-1.5">
-        <Check class="size-4" /> Analyzed
+        <Check class="size-4" /> {{ t('filters.analyzed') }}
       </span>
     </div>
   </div>

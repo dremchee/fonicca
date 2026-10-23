@@ -4,6 +4,7 @@ import { Search } from '@lucide/vue'
 import { onKeyStroke } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, useTemplateRef } from 'vue'
+import { useI18n } from 'vue-i18n'
 import CommandPalette from '@/components/CommandPalette.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DuplicatesView from '@/components/DuplicatesView.vue'
@@ -23,6 +24,7 @@ import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
 
+const { t } = useI18n()
 const library = useLibraryStore()
 const player = usePlayerStore()
 const settings = useSettingsStore()
@@ -148,17 +150,17 @@ onKeyStroke(',', (e) => {
                 ref="searchInput"
                 v-model="query"
                 type="search"
-                placeholder="Search samples"
-                aria-label="Search samples"
+                :placeholder="t('list.search.placeholder')"
+                :aria-label="t('list.search.placeholder')"
               />
               <InputGroupAddon align="inline-end">
                 <Kbd>⌘F</Kbd>
               </InputGroupAddon>
             </InputGroup>
             <span class="text-xs text-muted-foreground tabular" data-tauri-drag-region>
-              <template v-if="selectedIds.size > 1">{{ selectedIds.size.toLocaleString() }} selected · </template>
-              {{ total.toLocaleString() }} {{ total === 1 ? 'sample' : 'samples' }}
-              <template v-if="library.isScanning"> · scanning…</template>
+              <template v-if="selectedIds.size > 1">{{ t('list.search.selected', { n: selectedIds.size.toLocaleString() }) }} · </template>
+              {{ t('common.count.samples', { n: total.toLocaleString() }, total) }}
+              <template v-if="library.isScanning"> · {{ t('list.search.scanning') }}</template>
             </span>
           </header>
           <FilterBar />

@@ -1,8 +1,10 @@
+import { t } from '@/i18n'
+
 export function formatDuration(seconds: number | null | undefined): string {
   if (seconds == null || !Number.isFinite(seconds))
     return '—'
   if (seconds < 10)
-    return `${seconds.toFixed(2)}s`
+    return t('common.units.seconds', { n: seconds.toFixed(2) })
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m}:${String(s).padStart(2, '0')}`
@@ -11,26 +13,26 @@ export function formatDuration(seconds: number | null | undefined): string {
 export function formatRate(hz: number | null | undefined): string {
   if (!hz)
     return '—'
-  return `${(hz / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} kHz`
+  return t('common.units.kHz', { n: (hz / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 }) })
 }
 
 export function formatChannels(n: number | null | undefined): string {
   if (!n)
     return '—'
-  return n === 1 ? 'Mono' : n === 2 ? 'Stereo' : `${n} ch`
+  return n === 1 ? t('common.channels.mono') : n === 2 ? t('common.channels.stereo') : t('common.channels.many', { n })
 }
 
 export function formatSize(bytes: number): string {
   if (bytes < 1024)
-    return `${bytes} B`
-  const units = ['KB', 'MB', 'GB']
+    return t('common.units.bytes', { n: bytes })
+  const units = ['KB', 'MB', 'GB'] as const
   let v = bytes / 1024
   let i = 0
   while (v >= 1024 && i < units.length - 1) {
     v /= 1024
     i++
   }
-  return `${v.toFixed(v < 10 ? 1 : 0)} ${units[i]}`
+  return t(`common.units.${units[i]!}`, { n: v.toFixed(v < 10 ? 1 : 0) })
 }
 
 export function folderName(path: string): string {
@@ -43,43 +45,39 @@ export function formatBpm(bpm: number | null | undefined): string {
   return Number.isInteger(bpm) ? String(bpm) : bpm.toFixed(1)
 }
 
-export function formatDb(db: number | null | undefined, unit = 'dB'): string {
+export function formatDb(db: number | null | undefined, unit: 'dB' | 'LUFS' = 'dB'): string {
   if (db == null || !Number.isFinite(db))
     return '—'
-  return `${db.toFixed(1)} ${unit}`
+  return `${db.toFixed(1)} ${t(`common.units.${unit}`)}`
 }
 
-export const KIND_LABELS = { oneshot: 'One-shot', loop: 'Loop', long: 'Long' } as const
+export const KINDS = ['oneshot', 'loop', 'long'] as const
+export type Kind = typeof KINDS[number]
 
-/** Display names for category ids (same order as `category::CATEGORIES` in Rust). */
-export const CATEGORY_LABELS: Record<string, string> = {
-  kick: 'Kick',
-  snare: 'Snare',
-  clap: 'Clap',
-  hihat: 'Hi-hat',
-  cymbal: 'Cymbal',
-  tom: 'Tom',
-  percussion: 'Percussion',
-  drums: 'Drums',
-  bass: 'Bass',
-  synth: 'Synth',
-  pad: 'Pad',
-  keys: 'Keys',
-  guitar: 'Guitar',
-  strings: 'Strings',
-  brass: 'Brass & winds',
-  vocal: 'Vocal',
-  fx: 'FX',
+/** Category ids in the same order as `category::CATEGORIES` in Rust. */
+export const CATEGORIES = [
+  'kick', 'snare', 'clap', 'hihat', 'cymbal', 'tom', 'percussion', 'drums',
+  'bass', 'synth', 'pad', 'keys', 'guitar', 'strings', 'brass', 'vocal', 'fx',
+] as const
+export type Category = typeof CATEGORIES[number]
+
+export function kindLabel(kind: string, plural = false): string {
+  return (KINDS as readonly string[]).includes(kind) ? t(`common.${plural ? 'kindsPlural' : 'kinds'}.${kind as Kind}`) : kind
+}
+
+/** Display name for a category id; unknown ids show as they are. */
+export function categoryLabel(id: string): string {
+  return (CATEGORIES as readonly string[]).includes(id) ? t(`common.categories.${id as Category}`) : id
 }
 
 export function sourceHint(source: 'name' | 'audio' | null | undefined): string {
-  return source === 'name' ? 'From the file name' : source === 'audio' ? 'Detected from audio' : ''
+  return source === 'name' ? t('common.hints.fromName') : source === 'audio' ? t('common.hints.fromAudio') : ''
 }
 
 export function categoryHint(source: 'name' | 'audio' | null | undefined, confidence: number | null | undefined): string {
   if (source === 'audio' && confidence != null)
-    return `Detected from audio (${Math.round(confidence * 100)}% of similar sounds agree)`
-  return source === 'name' ? 'From the file or folder name' : ''
+    return t('common.hints.categoryFromAudio', { percent: Math.round(confidence * 100) })
+  return source === 'name' ? t('common.hints.categoryFromName') : ''
 }
 
 /**

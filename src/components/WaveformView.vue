@@ -5,6 +5,7 @@ import { Pencil, Play, Square, Star, X } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { useResizeObserver } from '@vueuse/core'
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
 import Hint from '@/components/Hint.vue'
 import ProjectSync from '@/components/ProjectSync.vue'
@@ -13,7 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { CATEGORY_LABELS, categoryHint, formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, KIND_LABELS, shortPath, sourceHint } from '@/format'
+import { categoryHint, categoryLabel, formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, kindLabel, shortPath, sourceHint } from '@/format'
 import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
@@ -22,6 +23,7 @@ import { drawWave, parseWave } from '@/waveform'
 
 const props = defineProps<{ sample: Sample | undefined }>()
 
+const { t } = useI18n()
 const library = useLibraryStore()
 const player = usePlayerStore()
 const settings = useSettingsStore()
@@ -145,7 +147,7 @@ function onDragStart(e: DragEvent) {
   <!-- Hidden until a sample is selected, so the list gets the whole height. -->
   <section v-if="sample" class="h-full bg-card flex flex-col">
     <div class="h-12 px-3 flex items-center gap-3">
-      <Hint :text="player.playingId === sample.id ? 'Stop' : 'Play'" shortcut="Space">
+      <Hint :text="player.playingId === sample.id ? t('common.actions.stop') : t('common.actions.play')" :shortcut="t('player.space')">
         <Button size="icon-sm" class="rounded-full shrink-0" @click="player.toggle(sample)">
           <component :is="player.playingId === sample.id ? Square : Play" class="fill-current" />
         </Button>
@@ -153,31 +155,31 @@ function onDragStart(e: DragEvent) {
       <div
         class="min-w-24 max-w-[45%] cursor-grab"
         draggable="true"
-        title="Drag into your DAW"
+        :title="t('player.dragToDaw')"
         @dragstart="onDragStart"
       >
         <div class="truncate font-medium">
           {{ sample.name }}<span class="text-muted-foreground">.{{ sample.ext }}</span>
         </div>
       </div>
-      <Hint :text="sample.favorite ? 'Remove from favorites' : 'Add to favorites'" shortcut="F">
+      <Hint :text="sample.favorite ? t('list.favorite.remove') : t('list.favorite.add')" shortcut="F">
         <Button variant="ghost" size="icon-sm" class="-ml-2 shrink-0" @click="library.toggleFavorite()">
           <Star :class="sample.favorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground'" />
         </Button>
       </Hint>
-      <Hint text="Edit" shortcut="E">
-        <Button variant="ghost" size="icon-sm" class="-ml-2 shrink-0 text-muted-foreground" aria-label="Edit" @click="openEditor(sample)">
+      <Hint :text="t('player.edit')" shortcut="E">
+        <Button variant="ghost" size="icon-sm" class="-ml-2 shrink-0 text-muted-foreground" :aria-label="t('player.edit')" @click="openEditor(sample)">
           <Pencil />
         </Button>
       </Hint>
       <!-- One badge row: tags that do not fit wrap onto the hidden second line. -->
       <div v-if="sample.tags.length" class="min-w-0 h-6 flex flex-wrap items-center gap-1 overflow-hidden">
-        <Badge v-for="t in sample.tags" :key="t.id" variant="secondary" class="h-6 pr-1">
-          {{ t.name }}
+        <Badge v-for="tag in sample.tags" :key="tag.id" variant="secondary" class="h-6 pr-1">
+          {{ tag.name }}
           <button
             class="rounded-full opacity-60 hover:opacity-100 focus-visible:opacity-100 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-            :aria-label="`Remove tag ${t.name}`"
-            @click="library.removeTag(t.id)"
+            :aria-label="t('player.removeTag', { name: tag.name })"
+            @click="library.removeTag(tag.id)"
           >
             <X class="size-3" />
           </button>
@@ -192,14 +194,14 @@ function onDragStart(e: DragEvent) {
           @update:model-value="player.autoplay = $event === true"
         />
         <Label for="autoplay" class="text-muted-foreground font-normal">
-          Autoplay
+          {{ t('player.autoplay') }}
         </Label>
       </div>
     </div>
     <div ref="box" class="relative flex-1 mx-3 rounded-md bg-background overflow-hidden">
       <canvas ref="canvas" class="absolute inset-0 size-full cursor-pointer" @mousedown="onSeek" />
       <div v-if="loading" class="absolute inset-0 grid place-items-center text-muted-foreground text-xs">
-        Reading waveform…
+        {{ t('player.readingWaveform') }}
       </div>
       <div v-else-if="error" class="absolute inset-0 grid place-items-center text-destructive text-xs px-4 text-center">
         {{ error }}
@@ -209,21 +211,21 @@ function onDragStart(e: DragEvent) {
          and drop out whole, least important (the last ones) first. -->
     <div class="h-7 shrink-0 px-3 flex items-start gap-3 text-[11px] leading-7 text-muted-foreground tabular">
       <div class="min-w-0 flex-1 h-7 flex flex-wrap items-center gap-x-3 overflow-hidden">
-        <span v-if="sample.category" :title="categoryHint(sample.categorySource, sample.categoryConfidence)">{{ CATEGORY_LABELS[sample.category] ?? sample.category }}</span>
-        <span v-if="sample.kind">{{ KIND_LABELS[sample.kind] }}</span>
-        <span v-if="sample.bpm != null" :title="sourceHint(sample.bpmSource)">{{ formatBpm(sample.bpm) }} BPM</span>
+        <span v-if="sample.category" :title="categoryHint(sample.categorySource, sample.categoryConfidence)">{{ categoryLabel(sample.category) }}</span>
+        <span v-if="sample.kind">{{ kindLabel(sample.kind) }}</span>
+        <span v-if="sample.bpm != null" :title="sourceHint(sample.bpmSource)">{{ t('common.units.bpm', { n: formatBpm(sample.bpm) }) }}</span>
         <span v-if="sample.key" :title="sourceHint(sample.keySource)">{{ sample.key }}</span>
-        <span v-if="sample.peakDb != null" title="Sample peak">{{ formatDb(sample.peakDb) }}</span>
-        <span v-if="sample.lufs != null" title="Integrated loudness">{{ formatDb(sample.lufs, 'LUFS') }}</span>
+        <span v-if="sample.peakDb != null" :title="t('player.samplePeak')">{{ formatDb(sample.peakDb) }}</span>
+        <span v-if="sample.lufs != null" :title="t('player.integratedLoudness')">{{ formatDb(sample.lufs, 'LUFS') }}</span>
         <span>{{ formatDuration(sample.duration) }}</span>
         <span>{{ formatRate(sample.sampleRate) }}</span>
-        <span v-if="sample.bitDepth">{{ sample.bitDepth }}-bit</span>
+        <span v-if="sample.bitDepth">{{ t('common.units.bit', { n: sample.bitDepth }) }}</span>
         <span>{{ formatChannels(sample.channels) }}</span>
         <span>{{ formatSize(sample.size) }}</span>
       </div>
       <button
         class="min-w-0 max-w-[50%] truncate hover:text-foreground hover:underline"
-        :title="`${sample.path}\nClick to show in Finder`"
+        :title="`${sample.path}\n${t('player.clickToReveal')}`"
         @click="revealItemInDir(sample.path)"
       >
         {{ shortPath(sample.path) }}

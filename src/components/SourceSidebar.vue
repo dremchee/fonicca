@@ -4,6 +4,7 @@ import { FolderOpen, FolderPlus, Pencil, Plus, RefreshCw, Settings, Trash2, X } 
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
@@ -20,6 +21,7 @@ import { useDuplicatesStore } from '@/stores/duplicates'
 import { useLibraryStore } from '@/stores/library'
 import { useSettingsStore } from '@/stores/settings'
 
+const { t } = useI18n()
 const library = useLibraryStore()
 const settings = useSettingsStore()
 const duplicates = useDuplicatesStore()
@@ -47,7 +49,7 @@ function progressLabel(id: number) {
   const s = scans.value.get(id)
   if (!s)
     return null
-  return s.total ? `${s.processed}/${s.total}` : 'scanning…'
+  return s.total ? `${s.processed}/${s.total}` : t('sidebar.scanning')
 }
 
 async function startRename(kind: Editable, id: number, name: string) {
@@ -116,15 +118,15 @@ function onCreateKeydown(e: KeyboardEvent) {
 // Right-click on a folder, collection or tag row opens one shared menu for it.
 const menuTarget = ref<{ kind: 'source' | Editable, id: number } | null>(null)
 const menuSource = computed(() => {
-  const t = menuTarget.value
-  return t?.kind === 'source' ? sources.value.find(s => s.id === t.id) : undefined
+  const m = menuTarget.value
+  return m?.kind === 'source' ? sources.value.find(s => s.id === m.id) : undefined
 })
 const menuItem = computed(() => {
-  const t = menuTarget.value
-  if (t?.kind === 'tag')
-    return tags.value.find(x => x.id === t.id)
-  if (t?.kind === 'collection')
-    return collections.value.find(x => x.id === t.id)
+  const m = menuTarget.value
+  if (m?.kind === 'tag')
+    return tags.value.find(x => x.id === m.id)
+  if (m?.kind === 'collection')
+    return collections.value.find(x => x.id === m.id)
   return undefined
 })
 
@@ -151,28 +153,24 @@ function onCloseAutoFocus(e: Event) {
 }
 
 function renameFromMenu() {
-  const t = menuTarget.value
+  const m = menuTarget.value
   const item = menuItem.value
-  if (t && t.kind !== 'source' && item)
-    afterClose = () => startRename(t.kind as Editable, t.id, item.name)
+  if (m && m.kind !== 'source' && item)
+    afterClose = () => startRename(m.kind as Editable, m.id, item.name)
 }
 
 function deleteFromMenu() {
-  const t = menuTarget.value
-  if (t?.kind === 'tag')
-    afterClose = () => confirmDeleteTag(t.id)
-  else if (t?.kind === 'collection')
-    afterClose = () => confirmDeleteCollection(t.id)
+  const m = menuTarget.value
+  if (m?.kind === 'tag')
+    afterClose = () => confirmDeleteTag(m.id)
+  else if (m?.kind === 'collection')
+    afterClose = () => confirmDeleteCollection(m.id)
 }
 
 function removeSourceFromMenu() {
-  const t = menuTarget.value
-  if (t?.kind === 'source')
-    afterClose = () => confirmRemoveSource(t.id)
-}
-
-function samplesLabel(n: number) {
-  return `${n.toLocaleString()} ${n === 1 ? 'sample' : 'samples'}`
+  const m = menuTarget.value
+  if (m?.kind === 'source')
+    afterClose = () => confirmRemoveSource(m.id)
 }
 
 async function confirmRemoveSource(id: number) {
@@ -180,9 +178,9 @@ async function confirmRemoveSource(id: number) {
   if (!s)
     return
   const ok = await confirm({
-    title: `Remove “${folderName(s.path)}” from the library?`,
-    description: `${samplesLabel(s.sampleCount)} will disappear from Samplette. Files on disk are not touched.`,
-    action: 'Remove',
+    title: t('sidebar.confirmRemoveSource.title', { name: folderName(s.path) }),
+    description: t('sidebar.confirmRemoveSource.description', { n: s.sampleCount.toLocaleString() }, s.sampleCount),
+    action: t('common.actions.remove'),
     destructive: true,
   })
   if (ok)
@@ -194,9 +192,9 @@ async function confirmDeleteCollection(id: number) {
   if (!c)
     return
   const ok = await confirm({
-    title: `Delete collection “${c.name}”?`,
-    description: `The ${samplesLabel(c.sampleCount)} in it stay in the library.`,
-    action: 'Delete',
+    title: t('sidebar.confirmDeleteCollection.title', { name: c.name }),
+    description: t('sidebar.confirmDeleteCollection.description', { n: c.sampleCount.toLocaleString() }, c.sampleCount),
+    action: t('common.actions.delete'),
     destructive: true,
   })
   if (ok)
@@ -204,13 +202,13 @@ async function confirmDeleteCollection(id: number) {
 }
 
 async function confirmDeleteTag(id: number) {
-  const t = tags.value.find(x => x.id === id)
-  if (!t)
+  const tag = tags.value.find(x => x.id === id)
+  if (!tag)
     return
   const ok = await confirm({
-    title: `Delete tag “${t.name}”?`,
-    description: `It will be removed from ${samplesLabel(t.sampleCount)}.`,
-    action: 'Delete',
+    title: t('sidebar.confirmDeleteTag.title', { name: tag.name }),
+    description: t('sidebar.confirmDeleteTag.description', { n: tag.sampleCount.toLocaleString() }, tag.sampleCount),
+    action: t('common.actions.delete'),
     destructive: true,
   })
   if (ok)
@@ -222,13 +220,13 @@ async function confirmDeleteTag(id: number) {
   <aside class="h-full flex flex-col bg-card">
     <!-- Left part of this bar sits under the macOS traffic lights (overlay title bar). -->
     <div class="h-11 px-3 flex items-center justify-end gap-0.5" data-tauri-drag-region>
-      <Hint text="Add folders">
-        <Button variant="ghost" size="icon-sm" class="text-muted-foreground" aria-label="Add folders" @click="library.addSources()">
+      <Hint :text="t('sidebar.addFolders')">
+        <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('sidebar.addFolders')" @click="library.addSources()">
           <FolderPlus />
         </Button>
       </Hint>
-      <Hint text="Settings" shortcut="⌘,">
-        <Button variant="ghost" size="icon-sm" class="text-muted-foreground" aria-label="Settings" @click="settings.openDialog()">
+      <Hint :text="t('sidebar.settings')" shortcut="⌘,">
+        <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('sidebar.settings')" @click="settings.openDialog()">
           <Settings />
         </Button>
       </Hint>
@@ -239,11 +237,11 @@ async function confirmDeleteTag(id: number) {
         <nav class="flex-1 overflow-y-auto px-2 pb-2 flex flex-col gap-px" @contextmenu="onContextMenu">
           <button class="row" :class="{ active: isActive({ kind: 'all' }) }" @click="scope = { kind: 'all' }">
             <span class="i-lucide-library shrink-0" />
-            <span class="flex-1 truncate">All samples</span>
+            <span class="flex-1 truncate">{{ t('sidebar.allSamples') }}</span>
           </button>
           <button class="row" :class="{ active: isActive({ kind: 'favorites' }) }" @click="scope = { kind: 'favorites' }">
             <span class="i-lucide-star shrink-0" />
-            <span class="flex-1 truncate">Favorites</span>
+            <span class="flex-1 truncate">{{ t('sidebar.favorites') }}</span>
           </button>
           <!-- Shows up only while there is something to clean. -->
           <button
@@ -253,12 +251,12 @@ async function confirmDeleteTag(id: number) {
             @click="scope = { kind: 'duplicates' }"
           >
             <span class="i-lucide-copy shrink-0" />
-            <span class="flex-1 truncate">Duplicates</span>
+            <span class="flex-1 truncate">{{ t('sidebar.duplicates') }}</span>
             <span class="text-[11px] text-muted-foreground tabular">{{ duplicates.count.toLocaleString() }}</span>
           </button>
 
           <h3 class="section">
-            Folders
+            {{ t('sidebar.folders') }}
           </h3>
           <div
             v-for="s in sources" :key="s.id"
@@ -274,13 +272,13 @@ async function confirmDeleteTag(id: number) {
             <template v-else>
               <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ s.sampleCount.toLocaleString() }}</span>
               <span class="hidden group-hover:flex gap-0.5">
-                <Hint text="Rescan">
-                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground" aria-label="Rescan" @click.stop="library.rescanSource(s.id)">
+                <Hint :text="t('sidebar.rescan')">
+                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('sidebar.rescan')" @click.stop="library.rescanSource(s.id)">
                     <RefreshCw />
                   </Button>
                 </Hint>
-                <Hint text="Remove from library">
-                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" aria-label="Remove from library" @click.stop="confirmRemoveSource(s.id)">
+                <Hint :text="t('sidebar.removeFromLibrary')">
+                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" :aria-label="t('sidebar.removeFromLibrary')" @click.stop="confirmRemoveSource(s.id)">
                     <X />
                   </Button>
                 </Hint>
@@ -288,13 +286,13 @@ async function confirmDeleteTag(id: number) {
             </template>
           </div>
           <p v-if="!sources.length" class="px-2 py-2 text-muted-foreground text-xs leading-relaxed">
-            Add a folder with samples to start. Files stay where they are — Samplette only indexes them.
+            {{ t('sidebar.empty.folders') }}
           </p>
 
           <h3 class="section flex items-center justify-between">
-            Collections
-            <Hint text="New collection">
-              <Button variant="ghost" size="icon-xs" class="text-muted-foreground -my-1" aria-label="New collection" @click="startCreateCollection">
+            {{ t('sidebar.collections') }}
+            <Hint :text="t('sidebar.newCollection')">
+              <Button variant="ghost" size="icon-xs" class="text-muted-foreground -my-1" :aria-label="t('sidebar.newCollection')" @click="startCreateCollection">
                 <Plus />
               </Button>
             </Hint>
@@ -320,13 +318,13 @@ async function confirmDeleteTag(id: number) {
               <span class="flex-1 truncate">{{ c.name }}</span>
               <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ c.sampleCount.toLocaleString() }}</span>
               <span class="hidden group-hover:flex gap-0.5">
-                <Hint text="Rename">
-                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground" aria-label="Rename" @click.stop="startRename('collection', c.id, c.name)">
+                <Hint :text="t('common.actions.rename')">
+                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('common.actions.rename')" @click.stop="startRename('collection', c.id, c.name)">
                     <Pencil />
                   </Button>
                 </Hint>
-                <Hint text="Delete collection">
-                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" aria-label="Delete collection" @click.stop="confirmDeleteCollection(c.id)">
+                <Hint :text="t('sidebar.deleteCollection')">
+                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" :aria-label="t('sidebar.deleteCollection')" @click.stop="confirmDeleteCollection(c.id)">
                     <X />
                   </Button>
                 </Hint>
@@ -338,29 +336,29 @@ async function confirmDeleteTag(id: number) {
             <input
               ref="newCollectionInput"
               v-model="newCollection"
-              placeholder="Collection name"
+              :placeholder="t('sidebar.collectionName')"
               class="flex-1 min-w-0 h-5 px-1 -mx-1 rounded bg-background outline-none border border-primary placeholder:text-muted-foreground"
               @keydown="onCreateKeydown"
               @blur="commitCreateCollection"
             >
           </div>
           <p v-else-if="!collections.length" class="px-2 py-2 text-muted-foreground text-xs leading-relaxed">
-            Right-click samples → Add to collection.
+            {{ t('sidebar.empty.collections') }}
           </p>
 
           <h3 class="section">
-            Tags
+            {{ t('sidebar.tags') }}
           </h3>
           <div
-            v-for="t in tags" :key="t.id"
-            class="row group" :class="{ active: isActive({ kind: 'tag', id: t.id }) }"
-            :data-menu="`tag:${t.id}`"
-            @click="scope = { kind: 'tag', id: t.id }"
-            @dblclick="startRename('tag', t.id, t.name)"
+            v-for="tag in tags" :key="tag.id"
+            class="row group" :class="{ active: isActive({ kind: 'tag', id: tag.id }) }"
+            :data-menu="`tag:${tag.id}`"
+            @click="scope = { kind: 'tag', id: tag.id }"
+            @dblclick="startRename('tag', tag.id, tag.name)"
           >
             <span class="i-lucide-tag shrink-0" />
             <input
-              v-if="isEditing('tag', t.id)"
+              v-if="isEditing('tag', tag.id)"
               ref="editInput"
               v-model="editName"
               class="flex-1 min-w-0 h-5 px-1 -mx-1 rounded bg-background outline-none border border-primary"
@@ -369,16 +367,16 @@ async function confirmDeleteTag(id: number) {
               @blur="commitRename"
             >
             <template v-else>
-              <span class="flex-1 truncate">{{ t.name }}</span>
-              <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ t.sampleCount.toLocaleString() }}</span>
+              <span class="flex-1 truncate">{{ tag.name }}</span>
+              <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ tag.sampleCount.toLocaleString() }}</span>
               <span class="hidden group-hover:flex gap-0.5">
-                <Hint text="Rename">
-                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground" aria-label="Rename" @click.stop="startRename('tag', t.id, t.name)">
+                <Hint :text="t('common.actions.rename')">
+                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('common.actions.rename')" @click.stop="startRename('tag', tag.id, tag.name)">
                     <Pencil />
                   </Button>
                 </Hint>
-                <Hint text="Delete tag">
-                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" aria-label="Delete tag" @click.stop="confirmDeleteTag(t.id)">
+                <Hint :text="t('sidebar.deleteTag')">
+                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" :aria-label="t('sidebar.deleteTag')" @click.stop="confirmDeleteTag(tag.id)">
                     <X />
                   </Button>
                 </Hint>
@@ -386,7 +384,7 @@ async function confirmDeleteTag(id: number) {
             </template>
           </div>
           <p v-if="!tags.length" class="px-2 py-2 text-muted-foreground text-xs leading-relaxed">
-            Select samples and press T to tag them.
+            {{ t('sidebar.empty.tags') }}
           </p>
         </nav>
       </ContextMenuTrigger>
@@ -394,27 +392,27 @@ async function confirmDeleteTag(id: number) {
         <template v-if="menuSource">
           <ContextMenuItem @select="library.rescanSource(menuSource.id)">
             <RefreshCw />
-            Rescan
+            {{ t('sidebar.rescan') }}
           </ContextMenuItem>
           <ContextMenuItem @select="revealItemInDir(menuSource.path)">
             <FolderOpen />
-            Show in Finder
+            {{ t('common.actions.showInFinder') }}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem variant="destructive" @select="removeSourceFromMenu">
             <X />
-            Remove from library
+            {{ t('sidebar.removeFromLibrary') }}
           </ContextMenuItem>
         </template>
         <template v-else-if="menuItem">
           <ContextMenuItem @select="renameFromMenu">
             <Pencil />
-            Rename
+            {{ t('common.actions.rename') }}
           </ContextMenuItem>
           <ContextMenuSeparator />
           <ContextMenuItem variant="destructive" @select="deleteFromMenu">
             <Trash2 />
-            Delete {{ menuTarget?.kind === 'tag' ? 'tag' : 'collection' }}
+            {{ menuTarget?.kind === 'tag' ? t('sidebar.deleteTag') : t('sidebar.deleteCollection') }}
           </ContextMenuItem>
         </template>
       </ContextMenuContent>

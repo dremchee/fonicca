@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Metronome } from '@lucide/vue'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,6 +21,7 @@ import { Switch } from '@/components/ui/switch'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
 
+const { t } = useI18n()
 const settings = useSettingsStore()
 const player = usePlayerStore()
 
@@ -45,7 +47,7 @@ function setBpm(e: Event) {
 const label = computed(() => {
   const s = settings.settings
   const parts = [s.projectBpm ? `${s.projectBpm}` : '', s.projectKey ?? ''].filter(Boolean)
-  return parts.length ? parts.join(' · ') : 'Sync'
+  return parts.length ? parts.join(' · ') : t('sync.button')
 })
 
 /** What happened to the sample playing now, e.g. "×0.94 · +2 st". */
@@ -55,62 +57,62 @@ const applied = computed(() => {
     return ''
   const parts = []
   if (Math.abs(a.stretch - 1) > 0.001)
-    parts.push(`tempo ×${(1 / a.stretch).toFixed(2)}`)
+    parts.push(t('sync.appliedTempo', { n: (1 / a.stretch).toFixed(2) }))
   if (a.semitones)
-    parts.push(`${a.semitones > 0 ? '+' : ''}${a.semitones} st`)
+    parts.push(t('sync.appliedSemitones', { n: `${a.semitones > 0 ? '+' : ''}${a.semitones}` }))
   return parts.join(' · ')
 })
 </script>
 
 <template>
   <Popover>
-    <Hint :text="applied ? `Playing adjusted: ${applied}` : 'Preview in the project tempo and key'">
+    <Hint :text="applied ? t('sync.hintApplied', { applied }) : t('sync.hint')">
       <PopoverTrigger as-child>
         <Button
           variant="ghost" size="sm"
           :class="enabled ? 'text-primary' : 'text-muted-foreground'"
-          aria-label="Project tempo and key"
+          :aria-label="t('sync.ariaLabel')"
         >
           <Metronome />
-          {{ enabled ? label : 'Sync' }}
+          {{ enabled ? label : t('sync.button') }}
         </Button>
       </PopoverTrigger>
     </Hint>
     <PopoverContent class="w-64 grid gap-3" align="end">
       <div class="flex items-center justify-between gap-2">
-        <Label for="project-sync">Match project</Label>
+        <Label for="project-sync">{{ t('sync.match') }}</Label>
         <Switch id="project-sync" :model-value="enabled" @update:model-value="enabled = $event" />
       </div>
       <p class="text-xs text-muted-foreground leading-relaxed">
-        Loops play stretched to the project tempo, samples with a known key transposed to the project key.
+        {{ t('sync.description') }}
       </p>
       <div class="flex items-center justify-between gap-2">
-        <Label for="project-bpm" class="font-normal">Tempo</Label>
+        <Label for="project-bpm" class="font-normal">{{ t('sync.tempo') }}</Label>
         <Input
           id="project-bpm" type="number" min="20" max="400" placeholder="BPM"
           class="h-8 w-24 num" :model-value="settings.settings.projectBpm ?? ''" @change="setBpm"
         />
       </div>
       <div class="flex items-center justify-between gap-2">
-        <Label class="font-normal">Key</Label>
+        <Label class="font-normal">{{ t('sync.key') }}</Label>
         <Select v-model="key">
-          <SelectTrigger size="sm" class="w-24" aria-label="Project key">
-            <SelectValue />
+          <SelectTrigger size="sm" class="w-24" :aria-label="t('sync.projectKey')">
+            <SelectValue>{{ key === NONE ? t('sync.none') : key }}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem :value="NONE">
-              None
+              {{ t('sync.none') }}
             </SelectItem>
             <SelectSeparator />
             <SelectGroup>
-              <SelectLabel>Major</SelectLabel>
+              <SelectLabel>{{ t('sync.major') }}</SelectLabel>
               <SelectItem v-for="n in notes" :key="n" :value="n">
                 {{ n }}
               </SelectItem>
             </SelectGroup>
             <SelectSeparator />
             <SelectGroup>
-              <SelectLabel>Minor</SelectLabel>
+              <SelectLabel>{{ t('sync.minor') }}</SelectLabel>
               <SelectItem v-for="n in notes" :key="`${n}m`" :value="`${n}m`">
                 {{ n }}m
               </SelectItem>

@@ -1,0 +1,44 @@
+import type en from '../en/sidebar'
+
+export default {
+  addFolders: 'Добавить папки',
+  settings: 'Настройки',
+  allSamples: 'Все семплы',
+  favorites: 'Избранное',
+  duplicates: 'Дубликаты',
+  folders: 'Папки',
+  collections: 'Коллекции',
+  tags: 'Теги',
+  scanning: 'сканирование…',
+  rescan: 'Пересканировать',
+  removeFromLibrary: 'Убрать из библиотеки',
+  newCollection: 'Новая коллекция',
+  collectionName: 'Название коллекции',
+  deleteCollection: 'Удалить коллекцию',
+  deleteTag: 'Удалить тег',
+  empty: {
+    folders: 'Добавьте папку с семплами, чтобы начать. Файлы остаются на своих местах — Samplette только индексирует их.',
+    collections: 'Правый клик по семплам → Добавить в коллекцию.',
+    tags: 'Выделите семплы и нажмите T, чтобы добавить тег.',
+  },
+  confirmRemoveSource: {
+    title: 'Убрать «{name}» из библиотеки?',
+    description: '{n} семпл исчезнет из Samplette. Файлы на диске останутся нетронутыми. | {n} семпла исчезнут из Samplette. Файлы на диске останутся нетронутыми. | {n} семплов исчезнут из Samplette. Файлы на диске останутся нетронутыми.',
+  },
+  confirmDeleteCollection: {
+    title: 'Удалить коллекцию «{name}»?',
+    description: '{n} семпл из неё останется в библиотеке. | {n} семпла из неё останутся в библиотеке. | {n} семплов из неё останутся в библиотеке.',
+  },
+  confirmDeleteTag: {
+    title: 'Удалить тег «{name}»?',
+    description: 'Тег будет снят с {n} семпла. | Тег будет снят с {n} семплов. | Тег будет снят с {n} семплов.',
+  },
+  tagPicker: {
+    button: 'Тег',
+    placeholder: 'Найти или создать тег…',
+    placeholderMany: 'Тег для {n} семпла… | Тег для {n} семплов… | Тег для {n} семплов…',
+    empty: 'Тегов пока нет.',
+    create: 'Создать «{name}»',
+    assigned: 'У этого семпла',
+  },
+} satisfies typeof en

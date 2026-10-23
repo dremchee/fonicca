@@ -16,6 +16,14 @@ pub enum Theme {
     Dark,
 }
 
+/// Interface language.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Language {
+    En,
+    Ru,
+}
+
 /// How waveforms are drawn.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -58,6 +66,7 @@ pub enum WaveColors {
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     pub theme: Theme,
+    pub language: Language,
     pub watch_folders: bool,
     /// Play a sample when the focus moves to it with the arrow keys.
     pub autoplay: bool,
@@ -80,6 +89,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             theme: Theme::System,
+            language: Language::En,
             watch_folders: true,
             autoplay: true,
             volume: 1.0,

@@ -3,6 +3,7 @@ import type { Sample } from '@/api'
 import { AudioLines, CircleMinus, FolderOpen, Layers, Pencil, Play, Square, Star, Tag } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import {
   ContextMenuContent,
   ContextMenuGroup,
@@ -21,12 +22,17 @@ import { usePlayerStore } from '@/stores/player'
 const props = defineProps<{ sample: Sample }>()
 const emit = defineEmits<{ close: [] }>()
 
+const { t } = useI18n()
 const library = useLibraryStore()
 const player = usePlayerStore()
 const newName = ref('')
 
 const count = computed(() => (library.selectedIds.has(props.sample.id) ? library.selectedIds.size : 1))
-const countLabel = computed(() => (count.value > 1 ? ` ${count.value} samples` : ''))
+const favoriteLabel = computed(() => {
+  if (count.value > 1)
+    return t(props.sample.favorite ? 'list.favorite.removeMany' : 'list.favorite.addMany', { samples: t('common.count.samples', count.value) })
+  return props.sample.favorite ? t('list.favorite.remove') : t('list.favorite.add')
+})
 const currentCollection = computed(() => {
   const s = library.scope
   return s.kind === 'collection' ? library.collections.find(c => c.id === s.id) : undefined
@@ -63,39 +69,39 @@ async function submitNew() {
   <ContextMenuContent class="w-56" @close-auto-focus="onCloseAutoFocus">
     <ContextMenuItem @select="player.toggle(sample)">
       <component :is="player.playingId === sample.id ? Square : Play" />
-      {{ player.playingId === sample.id ? 'Stop' : 'Play' }}
-      <ContextMenuShortcut>Space</ContextMenuShortcut>
+      {{ player.playingId === sample.id ? t('common.actions.stop') : t('common.actions.play') }}
+      <ContextMenuShortcut>{{ t('list.menu.space') }}</ContextMenuShortcut>
     </ContextMenuItem>
     <ContextMenuItem @select="openEditor(sample)">
       <Pencil />
-      Edit…
+      {{ t('list.menu.edit') }}
       <ContextMenuShortcut>E</ContextMenuShortcut>
     </ContextMenuItem>
     <ContextMenuItem
       :disabled="!library.soundModel?.installed"
-      :title="library.soundModel?.installed ? undefined : 'Needs the sound model (filter bar → Sound model)'"
+      :title="library.soundModel?.installed ? undefined : t('list.menu.needsSoundModel')"
       @select="library.findSimilar(sample)"
     >
       <AudioLines />
-      Find similar
+      {{ t('list.menu.findSimilar') }}
       <ContextMenuShortcut>S</ContextMenuShortcut>
     </ContextMenuItem>
     <ContextMenuSeparator />
     <ContextMenuGroup>
       <ContextMenuItem @select="library.toggleFavorite(sample)">
         <Star />
-        {{ sample.favorite ? 'Remove from favorites' : 'Add to favorites' }}{{ countLabel }}
+        {{ favoriteLabel }}
         <ContextMenuShortcut>F</ContextMenuShortcut>
       </ContextMenuItem>
       <ContextMenuItem @select="runAfterClose(library.requestTagInput)">
         <Tag />
-        Add tag…
+        {{ t('list.menu.addTag') }}
         <ContextMenuShortcut>T</ContextMenuShortcut>
       </ContextMenuItem>
       <ContextMenuSub>
         <ContextMenuSubTrigger class="gap-2">
           <Layers class="text-muted-foreground" />
-          Add to collection
+          {{ t('list.menu.addToCollection') }}
         </ContextMenuSubTrigger>
         <ContextMenuSubContent class="w-52 max-h-72 overflow-y-auto">
           <ContextMenuItem v-for="c in library.collections" :key="c.id" @select="library.addToCollection(c.id)">
@@ -104,7 +110,7 @@ async function submitNew() {
           <ContextMenuSeparator v-if="library.collections.length" />
           <Input
             v-model="newName"
-            placeholder="New collection…"
+            :placeholder="t('list.menu.newCollection')"
             class="h-8"
             @keydown.stop
             @keydown.enter="submitNew"
@@ -113,13 +119,13 @@ async function submitNew() {
       </ContextMenuSub>
       <ContextMenuItem v-if="currentCollection" @select="library.removeFromCollection(currentCollection.id)">
         <CircleMinus />
-        <span class="truncate">Remove from “{{ currentCollection.name }}”</span>
+        <span class="truncate">{{ t('list.menu.removeFromCollection', { name: currentCollection.name }) }}</span>
       </ContextMenuItem>
     </ContextMenuGroup>
     <ContextMenuSeparator />
     <ContextMenuItem @select="revealItemInDir(sample.path)">
       <FolderOpen />
-      Show in Finder
+      {{ t('common.actions.showInFinder') }}
     </ContextMenuItem>
   </ContextMenuContent>
 </template>

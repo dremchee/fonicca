@@ -5,8 +5,14 @@ import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, reactive, ref, shallowReactive, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { ANALYSIS_PROGRESS_EVENT, api, MODEL_DOWNLOAD_EVENT, SCAN_PROGRESS_EVENT, startFileDrag } from '@/api'
+import { t } from '@/i18n'
 
 const PAGE_SIZE = 200
+
+/** "1,234 samples" in the current language. */
+function countSamples(n: number) {
+  return t('common.count.samples', { n: n.toLocaleString() }, n)
+}
 
 /** What the sidebar has selected; combined with the search query into a filter. */
 export type Scope
@@ -359,7 +365,7 @@ export const useLibraryStore = defineStore('library', () => {
     await api.createCollection(name, withSelection ? targetIds() : [])
     await loadCollections()
     if (withSelection)
-      toast.success(`Added to “${name.trim()}”`)
+      toast.success(t('list.toasts.addedTo', { name: name.trim() }))
   }
 
   async function addToCollection(id: number) {
@@ -369,7 +375,9 @@ export const useLibraryStore = defineStore('library', () => {
     await api.addToCollection(ids, id)
     await loadCollections()
     const name = collections.value.find(c => c.id === id)?.name
-    toast.success(`${ids.length === 1 ? 'Sample' : `${ids.length} samples`} added to “${name}”`)
+    toast.success(ids.length === 1
+      ? t('list.toasts.sampleAddedTo', { name })
+      : t('list.toasts.samplesAddedTo', { n: ids.length.toLocaleString(), name }, ids.length))
   }
 
   async function removeFromCollection(id: number) {
@@ -399,7 +407,7 @@ export const useLibraryStore = defineStore('library', () => {
   async function exportUserData() {
     const date = new Date().toISOString().slice(0, 10)
     const path = await save({
-      title: 'Export favorites, tags and collections',
+      title: t('list.dialogs.exportTitle'),
       defaultPath: `samplette-${date}.json`,
       filters: [{ name: 'JSON', extensions: ['json'] }],
     })
@@ -407,7 +415,7 @@ export const useLibraryStore = defineStore('library', () => {
       return
     try {
       const n = await api.exportUserData(path)
-      toast.success(`Exported ${n.toLocaleString()} samples`)
+      toast.success(t('list.toasts.exported', { samples: countSamples(n) }))
     }
     catch (e) {
       toast.error(String(e))
@@ -416,7 +424,7 @@ export const useLibraryStore = defineStore('library', () => {
 
   async function importUserData() {
     const path = await open({
-      title: 'Import favorites, tags and collections',
+      title: t('list.dialogs.importTitle'),
       filters: [{ name: 'JSON', extensions: ['json'] }],
     })
     if (typeof path !== 'string')
@@ -424,8 +432,8 @@ export const useLibraryStore = defineStore('library', () => {
     try {
       const r = await api.importUserData(path)
       toast.success(r.unmatched
-        ? `Imported ${r.matched.toLocaleString()} samples, ${r.unmatched.toLocaleString()} not found in the library`
-        : `Imported ${r.matched.toLocaleString()} samples`)
+        ? t('list.toasts.importedPartly', { samples: countSamples(r.matched), missing: r.unmatched.toLocaleString() })
+        : t('list.toasts.imported', { samples: countSamples(r.matched) }))
       await Promise.all([loadTags(), loadCollections(), refresh({ keepSelection: true })])
     }
     catch (e) {
@@ -440,7 +448,7 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   async function addSources() {
-    const picked = await open({ directory: true, multiple: true, title: 'Add sample folders' })
+    const picked = await open({ directory: true, multiple: true, title: t('list.dialogs.addFoldersTitle') })
     const paths = Array.isArray(picked) ? picked : picked ? [picked] : []
     for (const path of paths) {
       const id = await api.addSource(path)

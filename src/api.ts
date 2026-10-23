@@ -1,3 +1,4 @@
+import type { Locale } from '@/i18n'
 import { Channel, invoke } from '@tauri-apps/api/core'
 
 export interface Source {
@@ -64,6 +65,8 @@ export type Theme = 'system' | 'light' | 'dark'
 
 export interface Settings {
   theme: Theme
+  /** Interface language. */
+  language: Locale
   watchFolders: boolean
   /** Play a sample when the focus moves to it with the arrow keys. */
   autoplay: boolean
