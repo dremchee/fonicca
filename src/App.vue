@@ -3,7 +3,8 @@ import type { ComponentPublicInstance } from 'vue'
 import { Search } from '@lucide/vue'
 import { onKeyStroke } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, useTemplateRef } from 'vue'
+import { computed, onMounted, ref, useTemplateRef } from 'vue'
+import CommandPalette from '@/components/CommandPalette.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import FilterBar from '@/components/FilterBar.vue'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
@@ -22,6 +23,7 @@ import { useSettingsStore } from '@/stores/settings'
 const library = useLibraryStore()
 const player = usePlayerStore()
 const settings = useSettingsStore()
+const paletteOpen = ref(false)
 const { query, total, focused, selectedIds } = storeToRefs(library)
 const searchInput = useTemplateRef<ComponentPublicInstance>('searchInput')
 // InputGroupInput renders a bare <input> as its root.
@@ -95,6 +97,13 @@ onKeyStroke(['f', 'а'], (e) => {
     search.value?.select()
   }
 })
+// Works from anywhere, the search field included.
+onKeyStroke(['k', 'л'], (e) => {
+  if (e.metaKey || e.ctrlKey) {
+    e.preventDefault()
+    paletteOpen.value = !paletteOpen.value
+  }
+})
 onKeyStroke(',', (e) => {
   if (e.metaKey || e.ctrlKey) {
     e.preventDefault()
@@ -151,6 +160,7 @@ onKeyStroke(',', (e) => {
       </ResizablePanel>
     </ResizablePanelGroup>
     <SettingsDialog />
+    <CommandPalette v-model:open="paletteOpen" />
     <ConfirmDialog />
     <Toaster theme="system" position="bottom-right" />
   </TooltipProvider>

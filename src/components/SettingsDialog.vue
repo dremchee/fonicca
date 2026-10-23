@@ -144,6 +144,7 @@ const shortcuts: { keys: string[], label: string }[] = [
   { keys: ['⌘', 'A'], label: 'Select all' },
   { keys: ['F'], label: 'Toggle favorite' },
   { keys: ['T'], label: 'Add tag' },
+  { keys: ['⌘', 'K'], label: 'Command palette' },
   { keys: ['⌘', 'F'], label: 'Search' },
   { keys: ['⌘', ','], label: 'Settings' },
 ]
