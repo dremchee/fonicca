@@ -1,10 +1,11 @@
 import type { Settings } from '@/api'
+import { listen } from '@tauri-apps/api/event'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref } from 'vue'
 import { toast } from 'vue-sonner'
 import { api } from '@/api'
 
-export type SettingsSection = 'general' | 'library' | 'playback' | 'analysis' | 'shortcuts' | 'about'
+export type SettingsSection = 'general' | 'library' | 'playback' | 'waveform' | 'analysis' | 'shortcuts' | 'about'
 
 // Mirrors settings.json, which the backend owns; used until it loads.
 const DEFAULTS: Settings = {
@@ -16,6 +17,10 @@ const DEFAULTS: Settings = {
   syncEnabled: false,
   projectBpm: null,
   projectKey: null,
+  waveStyle: 'peaksRms',
+  waveChannels: 'split',
+  waveScale: 'linear',
+  waveColors: 'theme',
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -25,6 +30,10 @@ export const useSettingsStore = defineStore('settings', () => {
 
   async function init() {
     settings.value = await api.getSettings()
+    // Changes made in another window (e.g. the main one while an editor is open).
+    await listen<Settings>('settings-changed', ({ payload }) => {
+      settings.value = payload
+    })
   }
 
   /** Applies right away; the backend stores the full object and clamps values. */

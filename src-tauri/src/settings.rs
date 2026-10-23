@@ -16,6 +16,43 @@ pub enum Theme {
     Dark,
 }
 
+/// How waveforms are drawn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum WaveStyle {
+    /// Filled min/max.
+    Peaks,
+    /// Min/max with the RMS level inside in a darker tone.
+    PeaksRms,
+    /// Rounded bars, mirrored around the centre.
+    Bars,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum WaveChannels {
+    /// One lane with the channels mixed.
+    Mix,
+    /// One lane per channel.
+    Split,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum WaveScale {
+    Linear,
+    /// Logarithmic amplitude: quiet tails become visible.
+    Db,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum WaveColors {
+    Theme,
+    /// Low/mid/high energy as red/green/blue.
+    Frequency,
+}
+
 /// Missing or unknown fields fall back to defaults, so older and newer files both load.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -33,6 +70,10 @@ pub struct Settings {
     pub project_bpm: Option<f64>,
     /// Key name like "Am" or "F#".
     pub project_key: Option<String>,
+    pub wave_style: WaveStyle,
+    pub wave_channels: WaveChannels,
+    pub wave_scale: WaveScale,
+    pub wave_colors: WaveColors,
 }
 
 impl Default for Settings {
@@ -46,6 +87,10 @@ impl Default for Settings {
             sync_enabled: false,
             project_bpm: None,
             project_key: None,
+            wave_style: WaveStyle::PeaksRms,
+            wave_channels: WaveChannels::Split,
+            wave_scale: WaveScale::Linear,
+            wave_colors: WaveColors::Theme,
         }
     }
 }

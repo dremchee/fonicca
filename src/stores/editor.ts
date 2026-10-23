@@ -1,11 +1,12 @@
 import type { Sample } from '@/api'
 import { invoke } from '@tauri-apps/api/core'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { api } from '@/api'
 import { confirm } from '@/composables/confirm'
-import { usePlayerStore } from '@/stores/player'
+import { parseWave } from '@/waveform'
 
 export type Curve = 'linear' | 'smooth' | 'exponential'
 
@@ -26,22 +27,53 @@ export interface EditorState {
   dirty: boolean
 }
 
+/**
+ * Waveform of the visible range. With `samples` each lane has one value per
+ * frame; otherwise per column `min, max, rms, low, mid, high` (stride 6).
+ */
+export interface Wave {
+  samples: boolean
+  lanes: number
+  count: number
+  stride: number
+  values: Float32Array
+}
+
+/** What an editor window shows about its file. */
+export interface EditedFile {
+  id: number
+  name: string
+  ext: string
+  path: string
+}
+
 const editorApi = {
-  open: (id: number) => invoke<EditorState>('editor_open', { id }),
-  close: () => invoke<void>('editor_close'),
+  openWindow: (id: number) => invoke<void>('open_editor_window', { id }),
+  open: (id: number) => invoke<{ state: EditorState, name: string, ext: string, path: string }>('editor_open', { id }),
   apply: (op: EditOp) => invoke<EditorState>('editor_apply', { op }),
   undo: () => invoke<EditorState>('editor_undo'),
   redo: () => invoke<EditorState>('editor_redo'),
-  peaks: (start: number, end: number, columns: number) => invoke<number[]>('editor_peaks', { start, end, columns }),
+  wave: async (start: number, end: number, columns: number, split: boolean, bands: boolean): Promise<Wave> => {
+    return parseWave(await invoke<ArrayBuffer>('editor_wave', { start, end, columns, split, bands }))
+  },
   play: (start: number, end: number, looping: boolean) => invoke<void>('editor_play', { start, end, looping }),
   save: (asNew: boolean) =>
     invoke<{ path: string, backup: string | null, state: EditorState }>('editor_save', { asNew }),
 }
 
-export const useEditorStore = defineStore('editor', () => {
-  const player = usePlayerStore()
+/** Opens a sample in its own editor window (from the library window). */
+export async function openEditor(sample: Sample) {
+  try {
+    await editorApi.openWindow(sample.id)
+  }
+  catch (e) {
+    toast.error(String(e))
+  }
+}
 
-  const sample = ref<Sample | null>(null)
+/** State of the editor window this page runs in. */
+export const useEditorStore = defineStore('editor', () => {
+  const sample = ref<EditedFile | null>(null)
   const state = ref<EditorState | null>(null)
   const open = computed(() => sample.value !== null)
   const loading = ref(false)
@@ -59,43 +91,47 @@ export const useEditorStore = defineStore('editor', () => {
 
   const canOverwrite = computed(() => sample.value?.ext === 'wav')
 
-  async function openSample(s: Sample) {
-    if (open.value && !(await closeEditor()))
-      return
-    await player.stop()
+  const error = ref<string | null>(null)
+
+  /** Loads the window's file and wires up the title and close confirmation. */
+  async function init(id: number) {
+    const win = getCurrentWindow()
     loading.value = true
     try {
-      state.value = await editorApi.open(s.id)
-      sample.value = s
-      cursor.value = 0
-      selection.value = null
+      await api.stop()
+      const r = await editorApi.open(id)
+      state.value = r.state
+      sample.value = { id, name: r.name, ext: r.ext, path: r.path }
       revision.value++
     }
     catch (e) {
-      toast.error(String(e))
+      error.value = String(e)
     }
     finally {
       loading.value = false
     }
-  }
 
-  /** Asks before discarding unsaved edits. Returns false if the user keeps editing. */
-  async function closeEditor(): Promise<boolean> {
-    if (state.value?.dirty) {
-      const ok = await confirm({
-        title: 'Discard unsaved edits?',
-        description: `Changes to “${sample.value?.name}” will be lost.`,
-        action: 'Discard',
-        destructive: true,
-      })
-      if (!ok)
-        return false
-    }
-    stopPlayback()
-    await editorApi.close()
-    sample.value = null
-    state.value = null
-    return true
+    // "Kick • — Edit" while there are unsaved edits.
+    watch(() => [sample.value?.name, state.value?.dirty] as const, ([name, dirty]) => {
+      if (name)
+        win.setTitle(`${name}${dirty ? ' •' : ''} — Edit`)
+    }, { immediate: true })
+
+    await win.onCloseRequested(async (event) => {
+      if (state.value?.dirty) {
+        const ok = await confirm({
+          title: 'Discard unsaved edits?',
+          description: `Changes to “${sample.value?.name}” will be lost.`,
+          action: 'Discard',
+          destructive: true,
+        })
+        if (!ok) {
+          event.preventDefault()
+          return
+        }
+      }
+      stopPlayback()
+    })
   }
 
   function after(next: EditorState) {
@@ -250,6 +286,7 @@ export const useEditorStore = defineStore('editor', () => {
     state,
     open,
     loading,
+    error,
     revision,
     cursor,
     selection,
@@ -258,9 +295,8 @@ export const useEditorStore = defineStore('editor', () => {
     playhead,
     curve,
     canOverwrite,
-    openSample,
-    closeEditor,
-    peaks: editorApi.peaks,
+    init,
+    wave: editorApi.wave,
     undo,
     redo,
     crop,

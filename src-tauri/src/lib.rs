@@ -11,6 +11,7 @@ mod editor_commands;
 mod error;
 mod library;
 mod models;
+mod overview;
 mod player;
 mod scan;
 mod settings;
@@ -32,8 +33,10 @@ pub struct AppState {
     pub db_path: std::path::PathBuf,
     pub settings: settings::SettingsStore,
     pub similar: Mutex<similar::Similar>,
-    /// The file open in the editor, if any.
-    pub editor: Mutex<Option<editor::Session>>,
+    /// Waveform overviews of recently previewed samples.
+    pub overviews: overview::Cache,
+    /// Files open in editor windows, by window label.
+    pub editor: Mutex<std::collections::HashMap<String, editor::Session>>,
     pub model_downloading: std::sync::atomic::AtomicBool,
     pub duplicates_verifying: std::sync::atomic::AtomicBool,
     pub watcher: watch::LibraryWatcher,
@@ -99,7 +102,8 @@ pub fn run() {
                 db_path,
                 settings,
                 similar: Default::default(),
-                editor: Mutex::new(None),
+                overviews: Default::default(),
+                editor: Default::default(),
                 model_downloading: Default::default(),
                 duplicates_verifying: Default::default(),
                 watcher,
@@ -108,13 +112,20 @@ pub fn run() {
             commands::apply_settings(app.handle(), &state, None, &state.settings.get())?;
             Ok(())
         })
+        .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::Destroyed)
+                && window.label().starts_with(editor_commands::WINDOW_PREFIX)
+            {
+                editor_commands::release(window.app_handle(), window.label());
+            }
+        })
         .invoke_handler(tauri::generate_handler![
+            editor_commands::open_editor_window,
             editor_commands::editor_open,
-            editor_commands::editor_close,
             editor_commands::editor_apply,
             editor_commands::editor_undo,
             editor_commands::editor_redo,
-            editor_commands::editor_peaks,
+            editor_commands::editor_wave,
             editor_commands::editor_play,
             editor_commands::editor_save,
             commands::list_sources,
@@ -139,7 +150,7 @@ pub fn run() {
             commands::remove_from_collection,
             commands::export_user_data,
             commands::import_user_data,
-            commands::get_peaks,
+            commands::sample_wave,
             commands::prioritize_analysis,
             commands::set_analysis_paused,
             commands::analysis_status,

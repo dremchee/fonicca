@@ -81,3 +81,19 @@ export function categoryHint(source: 'name' | 'audio' | null | undefined, confid
     return `Detected from audio (${Math.round(confidence * 100)}% of similar sounds agree)`
   return source === 'name' ? 'From the file or folder name' : ''
 }
+
+/**
+ * Breadcrumb-style short path: home becomes "~" and the middle folders "…",
+ * keeping the first two folders, the file's folder and the file:
+ * "/Users/me/Projects/Sound/Beat/Kit/007.wav" → "~/Projects/…/Kit/007.wav".
+ */
+export function shortPath(path: string, keepStart = 2, keepEnd = 2): string {
+  const home = path.match(/^\/Users\/[^/]+/)?.[0]
+  const rest = home ? path.slice(home.length) : path
+  const parts = rest.split('/').filter(Boolean)
+  const prefix = home ? '~/' : '/'
+  if (parts.length <= keepStart + keepEnd + 1)
+    return prefix + parts.join('/')
+  return `${prefix}${[...parts.slice(0, keepStart), '…', ...parts.slice(-keepEnd)].join('/')}`
+}
+

@@ -15,8 +15,6 @@ pub const AUDIO_EXTENSIONS: &[&str] = &[
     "wav", "wave", "aif", "aiff", "aifc", "flac", "mp3", "ogg", "oga", "m4a", "mp4", "caf",
 ];
 
-/// Number of min/max pairs stored per sample for waveform drawing.
-pub const PEAK_BUCKETS: usize = 1024;
 
 #[derive(Debug, Default, Clone)]
 pub struct AudioInfo {
@@ -219,11 +217,9 @@ pub fn decode(path: &Path, max_seconds: f64) -> Result<Pcm> {
     Ok(pcm)
 }
 
-/// Decodes the whole file and returns `PEAK_BUCKETS` interleaved (min, max) pairs
-/// of the mono downmix, scaled to i8.
-pub fn compute_peaks(path: &Path) -> Result<Vec<i8>> {
-    const BLOCK: usize = 256;
-
+/// Decodes the whole file in chunks, calling `f(interleaved, channels, sample_rate)`
+/// for each, without keeping the audio in memory.
+pub fn stream(path: &Path, mut f: impl FnMut(&[f32], usize, u32)) -> Result<()> {
     let mut format = open_format(path)?;
     let track = format
         .tracks()
@@ -233,19 +229,11 @@ pub fn compute_peaks(path: &Path) -> Result<Vec<i8>> {
     let track_id = track.id;
     let mut decoder =
         symphonia::default::get_codecs().make(&track.codec_params, &DecoderOptions::default())?;
-
-    // Min/max per fixed block of frames; reduced to PEAK_BUCKETS at the end,
-    // so the total length does not need to be known up front.
-    let mut blocks: Vec<(f32, f32)> = Vec::new();
-    let (mut lo, mut hi, mut filled) = (f32::MAX, f32::MIN, 0usize);
     let mut buf: Option<SampleBuffer<f32>> = None;
-
     loop {
         let packet = match format.next_packet() {
             Ok(p) => p,
-            Err(SymphoniaError::IoError(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => {
-                break;
-            }
+            Err(SymphoniaError::IoError(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
             Err(SymphoniaError::ResetRequired) => break,
             Err(e) => return Err(e.into()),
         };
@@ -264,51 +252,20 @@ pub fn compute_peaks(path: &Path) -> Result<Vec<i8>> {
             *sb = SampleBuffer::new(decoded.capacity() as u64, spec);
         }
         sb.copy_interleaved_ref(decoded);
-
-        for frame in sb.samples().chunks(channels) {
-            let v = frame.iter().sum::<f32>() / channels as f32;
-            lo = lo.min(v);
-            hi = hi.max(v);
-            filled += 1;
-            if filled == BLOCK {
-                blocks.push((lo, hi));
-                (lo, hi, filled) = (f32::MAX, f32::MIN, 0);
-            }
-        }
+        f(sb.samples(), channels, spec.rate);
     }
-    if filled > 0 {
-        blocks.push((lo, hi));
-    }
-
-    let mut peaks = Vec::with_capacity(PEAK_BUCKETS * 2);
-    if blocks.is_empty() {
-        peaks.resize(PEAK_BUCKETS * 2, 0);
-        return Ok(peaks);
-    }
-    for b in 0..PEAK_BUCKETS {
-        let start = b * blocks.len() / PEAK_BUCKETS;
-        let end = ((b + 1) * blocks.len() / PEAK_BUCKETS).max(start + 1).min(blocks.len());
-        let (mut mn, mut mx) = (0f32, 0f32);
-        for &(l, h) in &blocks[start.min(blocks.len() - 1)..end] {
-            mn = mn.min(l);
-            mx = mx.max(h);
-        }
-        peaks.push((mn.clamp(-1.0, 1.0) * 127.0) as i8);
-        peaks.push((mx.clamp(-1.0, 1.0) * 127.0) as i8);
-    }
-    Ok(peaks)
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
-    /// `PEAKS_FILE=/path/to/file cargo test -- --ignored --nocapture peaks_timing`
+    /// `PEAKS_FILE=/path/to/file cargo test -- --ignored --nocapture overview_timing`
     #[test]
     #[ignore]
-    fn peaks_timing() {
+    fn overview_timing() {
         let path = std::env::var("PEAKS_FILE").expect("set PEAKS_FILE");
         let t = std::time::Instant::now();
-        let peaks = super::compute_peaks(std::path::Path::new(&path)).unwrap();
-        let nonzero = peaks.iter().filter(|&&p| p != 0).count();
-        println!("{} values, {} non-zero, {:?}", peaks.len(), nonzero, t.elapsed());
+        let o = crate::overview::Overview::compute(std::path::Path::new(&path), None).unwrap();
+        println!("{} bytes for 2000 columns in {:?}", o.render(2000, true).len(), t.elapsed());
     }
 }

@@ -4,7 +4,6 @@ import { Search } from '@lucide/vue'
 import { onKeyStroke } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, useTemplateRef } from 'vue'
-import EditorDialog from '@/components/EditorDialog.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DuplicatesView from '@/components/DuplicatesView.vue'
@@ -19,6 +18,7 @@ import SettingsDialog from '@/components/SettingsDialog.vue'
 import SourceSidebar from '@/components/SourceSidebar.vue'
 import WaveformView from '@/components/WaveformView.vue'
 import { useDuplicatesStore } from '@/stores/duplicates'
+import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
@@ -90,6 +90,12 @@ onKeyStroke(['t', 'е'], (e) => {
     return
   e.preventDefault()
   library.requestTagInput()
+})
+onKeyStroke(['e', 'у'], (e) => {
+  if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey || !library.focused)
+    return
+  e.preventDefault()
+  openEditor(library.focused)
 })
 onKeyStroke('Escape', (e) => {
   if (e.target instanceof Element && e.target.closest('[role="menu"], [role="dialog"], [role="alertdialog"]'))
@@ -172,7 +178,6 @@ onKeyStroke(',', (e) => {
       </ResizablePanel>
     </ResizablePanelGroup>
     <SettingsDialog />
-    <EditorDialog />
     <CommandPalette v-model:open="paletteOpen" />
     <ConfirmDialog />
     <Toaster theme="system" position="bottom-right" />

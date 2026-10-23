@@ -76,7 +76,13 @@ export interface Settings {
   projectBpm: number | null
   /** Key name like "Am" or "F#". */
   projectKey: string | null
+  waveStyle: WaveStyle
+  waveChannels: 'mix' | 'split'
+  waveScale: 'linear' | 'db'
+  waveColors: 'theme' | 'frequency'
 }
+
+export type WaveStyle = 'peaks' | 'peaksRms' | 'bars'
 
 /** How playback changed a sample to fit the project. */
 export interface Adjust {
@@ -203,7 +209,8 @@ export const api = {
     invoke<void>('remove_from_collection', { ids, collectionId }),
   exportUserData: (path: string) => invoke<number>('export_user_data', { path }),
   importUserData: (path: string) => invoke<ImportReport>('import_user_data', { path }),
-  getPeaks: (id: number) => invoke<number[]>('get_peaks', { id }),
+  /** Whole-file waveform (min, max, RMS, bands per column), raw bytes for `parseWave`. */
+  sampleWave: (id: number, columns: number, split: boolean) => invoke<ArrayBuffer>('sample_wave', { id, columns, split }),
   prioritizeAnalysis: (ids: number[]) => invoke<void>('prioritize_analysis', { ids }),
   setAnalysisPaused: (paused: boolean) => invoke<void>('set_analysis_paused', { paused }),
   analysisStatus: () => invoke<AnalysisProgress>('analysis_status'),

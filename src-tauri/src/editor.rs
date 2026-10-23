@@ -209,28 +209,72 @@ impl Session {
     }
 }
 
-/// Min/max of the mono mix in `columns` equal parts of `[start, end)`, scaled to i8.
-pub fn peaks(pcm: &Pcm, start: usize, end: usize, columns: usize) -> Vec<i8> {
+/// Waveform data for drawing, packed little-endian:
+/// `u32 mode, u32 lanes, u32 count, u32 stride`, then `f32` values lane by lane.
+/// - mode 0 (columns): per column `min, max, rms, low, mid, high` (band RMS, 0 without bands);
+/// - mode 1 (samples, when there are fewer frames than columns): one value per frame.
+///
+/// Lanes are the channels (`split`) or one mixed lane.
+pub fn wave(pcm: &Pcm, start: usize, end: usize, columns: usize, split: bool, bands: bool) -> Vec<u8> {
     let ch = pcm.channels.max(1);
     let frames = pcm.frames();
-    let (start, end) = (start.min(frames), end.min(frames));
-    let mut out = Vec::with_capacity(columns * 2);
-    if end <= start || columns == 0 {
-        out.resize(columns * 2, 0);
-        return out;
-    }
+    let (start, end) = (start.min(frames), end.min(frames).max(start.min(frames)));
+    let lanes = if split { ch } else { 1 };
     let span = end - start;
-    for c in 0..columns {
-        let a = start + c * span / columns;
-        let b = (start + (c + 1) * span / columns).max(a + 1).min(end);
-        let (mut lo, mut hi) = (0.0f32, 0.0f32);
-        for f in a..b {
-            let v = pcm.samples[f * ch..(f + 1) * ch].iter().sum::<f32>() / ch as f32;
-            lo = lo.min(v);
-            hi = hi.max(v);
+    let sample_mode = span <= columns;
+    let (count, stride) = if sample_mode { (span, 1) } else { (columns, 6) };
+
+    let mut out = Vec::with_capacity(16 + lanes * count * stride * 4);
+    for v in [sample_mode as u32, lanes as u32, count as u32, stride as u32] {
+        out.extend_from_slice(&v.to_le_bytes());
+    }
+    let value = |f: usize, lane: usize| -> f32 {
+        let frame = &pcm.samples[f * ch..(f + 1) * ch];
+        if split { frame[lane] } else { frame.iter().sum::<f32>() / ch as f32 }
+    };
+
+    for lane in 0..lanes {
+        if sample_mode {
+            for f in start..end {
+                out.extend_from_slice(&value(f, lane).to_le_bytes());
+            }
+            continue;
         }
-        out.push((lo.clamp(-1.0, 1.0) * 127.0) as i8);
-        out.push((hi.clamp(-1.0, 1.0) * 127.0) as i8);
+        // Three bands from two one-pole low-passes (250 Hz and 4 kHz), warmed up
+        // on a little audio before the range so the first columns are settled.
+        let coef = |hz: f32| 1.0 - (-std::f32::consts::TAU * hz / pcm.sample_rate as f32).exp();
+        let (a1, a2) = (coef(250.0), coef(4000.0));
+        let (mut lp1, mut lp2) = (0.0f32, 0.0f32);
+        if bands {
+            for f in start.saturating_sub(2048)..start {
+                let x = value(f, lane);
+                lp1 += a1 * (x - lp1);
+                lp2 += a2 * (x - lp2);
+            }
+        }
+        for c in 0..columns {
+            let a = start + c * span / columns;
+            let b = (start + (c + 1) * span / columns).max(a + 1).min(end);
+            let (mut lo, mut hi, mut sq) = (f32::MAX, f32::MIN, 0.0f32);
+            let (mut e_low, mut e_mid, mut e_high) = (0.0f32, 0.0f32, 0.0f32);
+            for f in a..b {
+                let x = value(f, lane);
+                lo = lo.min(x);
+                hi = hi.max(x);
+                sq += x * x;
+                if bands {
+                    lp1 += a1 * (x - lp1);
+                    lp2 += a2 * (x - lp2);
+                    e_low += lp1 * lp1;
+                    e_mid += (lp2 - lp1) * (lp2 - lp1);
+                    e_high += (x - lp2) * (x - lp2);
+                }
+            }
+            let n = (b - a) as f32;
+            for v in [lo, hi, (sq / n).sqrt(), (e_low / n).sqrt(), (e_mid / n).sqrt(), (e_high / n).sqrt()] {
+                out.extend_from_slice(&v.to_le_bytes());
+            }
+        }
     }
     out
 }
@@ -376,10 +420,42 @@ mod tests {
         assert_eq!(edited_path(&src).file_name().unwrap(), "Kick (edit 2).wav");
     }
 
+    fn unpack(bytes: &[u8]) -> (u32, u32, u32, u32, Vec<f32>) {
+        let u = |i: usize| u32::from_le_bytes(bytes[i * 4..i * 4 + 4].try_into().unwrap());
+        let values = bytes[16..].chunks_exact(4).map(|b| f32::from_le_bytes(b.try_into().unwrap())).collect();
+        (u(0), u(1), u(2), u(3), values)
+    }
+
     #[test]
-    fn peaks_cover_the_visible_range() {
-        let p = Pcm { samples: vec![0.0, 1.0, -1.0, 0.5], channels: 1, sample_rate: 1000 };
-        assert_eq!(peaks(&p, 0, 4, 2), vec![0, 127, -127, 63]);
-        assert_eq!(peaks(&p, 2, 4, 1), vec![-127, 63]);
+    fn wave_packs_columns_lanes_and_bands() {
+        // Stereo: left a 100 Hz sine, right a 10 kHz sine, 1 s at 44.1 kHz.
+        let sr = 44100;
+        let samples = (0..sr)
+            .flat_map(|i| {
+                let t = i as f32 / sr as f32;
+                [(t * 100.0 * std::f32::consts::TAU).sin() * 0.5, (t * 10000.0 * std::f32::consts::TAU).sin() * 0.5]
+            })
+            .collect();
+        let p = Pcm { samples, channels: 2, sample_rate: sr as u32 };
+        let (mode, lanes, count, stride, v) = unpack(&wave(&p, 0, sr, 10, true, true));
+        assert_eq!((mode, lanes, count, stride), (0, 2, 10, 6));
+        assert_eq!(v.len(), 2 * 10 * 6);
+        // Column 5 of each lane: peak ~0.5, RMS ~0.35, energy in the expected band.
+        let left = &v[5 * 6..6 * 6];
+        let right = &v[(10 + 5) * 6..(10 + 6) * 6];
+        assert!((left[1] - 0.5).abs() < 0.01 && (left[2] - 0.354).abs() < 0.01);
+        assert!(left[3] > left[4] && left[3] > left[5], "low band dominates: {left:?}");
+        assert!(right[5] > right[3] && right[5] > right[4], "high band dominates: {right:?}");
+        // Mixed into one lane.
+        let (_, lanes, ..) = unpack(&wave(&p, 0, sr, 10, false, false));
+        assert_eq!(lanes, 1);
+    }
+
+    #[test]
+    fn wave_switches_to_samples_when_zoomed_in() {
+        let p = Pcm { samples: vec![0.1, -0.1, 0.2, -0.2, 0.3, -0.3], channels: 2, sample_rate: 1000 };
+        let (mode, lanes, count, stride, v) = unpack(&wave(&p, 0, 3, 100, true, false));
+        assert_eq!((mode, lanes, count, stride), (1, 2, 3, 1));
+        assert_eq!(v, vec![0.1, 0.2, 0.3, -0.1, -0.2, -0.3]);
     }
 }

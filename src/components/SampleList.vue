@@ -11,6 +11,7 @@ import SampleContextMenu from '@/components/SampleContextMenu.vue'
 import { Button } from '@/components/ui/button'
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
+import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 
@@ -122,10 +123,11 @@ function onClick(index: number) {
   collapseOnClick = -1
 }
 
+// Double-click opens the sample in its editor window.
 function onDoubleClick(index: number) {
   const s = library.sampleAt(index)
   if (s)
-    player.toggle(s)
+    openEditor(s)
 }
 
 const menuOpen = ref(false)

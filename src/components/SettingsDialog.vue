@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import type { AppInfo, Theme } from '@/api'
+import type { AppInfo, Settings, Theme } from '@/api'
 import type { SettingsSection } from '@/stores/settings'
 import {
   AudioLines,
+  AudioWaveform,
   Cpu,
   Download,
   EyeOff,
@@ -29,6 +30,7 @@ import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { api } from '@/api'
 import Hint from '@/components/Hint.vue'
+import WaveformPreview from '@/components/WaveformPreview.vue'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
@@ -53,6 +55,7 @@ const sections: { id: SettingsSection, label: string, icon: Component }[] = [
   { id: 'general', label: 'General', icon: Settings2 },
   { id: 'library', label: 'Library', icon: Library },
   { id: 'playback', label: 'Playback', icon: AudioLines },
+  { id: 'waveform', label: 'Waveform', icon: AudioWaveform },
   { id: 'analysis', label: 'Analysis', icon: Cpu },
   { id: 'shortcuts', label: 'Shortcuts', icon: Keyboard },
   { id: 'about', label: 'About', icon: Info },
@@ -148,6 +151,34 @@ async function deleteModel() {
   }
 }
 
+type WaveKey = 'waveStyle' | 'waveScale' | 'waveChannels' | 'waveColors'
+const waveOptions: { key: WaveKey, title: string, desc: string, choices: { value: Settings[WaveKey], label: string }[] }[] = [
+  {
+    key: 'waveStyle',
+    title: 'Style',
+    desc: 'Peaks + RMS shows the average level inside the peaks.',
+    choices: [{ value: 'peaks', label: 'Peaks' }, { value: 'peaksRms', label: 'Peaks + RMS' }, { value: 'bars', label: 'Bars' }],
+  },
+  {
+    key: 'waveScale',
+    title: 'Amplitude scale',
+    desc: 'Decibels make quiet tails and reverb visible. ⌥-scroll in the editor zooms vertically.',
+    choices: [{ value: 'linear', label: 'Linear' }, { value: 'db', label: 'Decibels' }],
+  },
+  {
+    key: 'waveChannels',
+    title: 'Channels',
+    desc: 'One lane per channel shows stereo width and differences between sides.',
+    choices: [{ value: 'split', label: 'Separate' }, { value: 'mix', label: 'Mixed' }],
+  },
+  {
+    key: 'waveColors',
+    title: 'Colors',
+    desc: 'By frequency: bass red, mids green, highs blue, so kicks and hats stand apart.',
+    choices: [{ value: 'theme', label: 'Theme' }, { value: 'frequency', label: 'By frequency' }],
+  },
+]
+
 const shortcuts: { keys: string[], label: string }[] = [
   { keys: ['↑', '↓'], label: 'Move focus' },
   { keys: ['⇧', '↑ ↓'], label: 'Extend selection' },
@@ -156,6 +187,9 @@ const shortcuts: { keys: string[], label: string }[] = [
   { keys: ['⌘', 'A'], label: 'Select all' },
   { keys: ['F'], label: 'Toggle favorite' },
   { keys: ['T'], label: 'Add tag' },
+  { keys: ['E'], label: 'Edit in a new window (or double-click)' },
+  { keys: ['S'], label: 'Find similar sounds' },
+  { keys: ['⌥', 'scroll'], label: 'Vertical zoom in the editor' },
   { keys: ['⌘', 'K'], label: 'Command palette' },
   { keys: ['⌘', 'F'], label: 'Search' },
   { keys: ['⌘', ','], label: 'Settings' },
@@ -369,6 +403,39 @@ const shortcuts: { keys: string[], label: string }[] = [
                   <span class="w-9 text-right tabular text-muted-foreground">{{ volumePercent }}%</span>
                 </div>
               </div>
+            </section>
+          </template>
+
+          <!-- Waveform -->
+          <template v-else-if="section === 'waveform'">
+            <section class="group-box">
+              <div v-for="opt in waveOptions" :key="opt.key" class="row">
+                <div class="row-text">
+                  <div class="row-title">
+                    {{ opt.title }}
+                  </div>
+                  <div class="row-desc">
+                    {{ opt.desc }}
+                  </div>
+                </div>
+                <ToggleGroup
+                  :model-value="settings[opt.key]"
+                  type="single"
+                  variant="outline"
+                  size="sm"
+                  @update:model-value="$event && store.update({ [opt.key]: $event })"
+                >
+                  <ToggleGroupItem v-for="c in opt.choices" :key="c.value" :value="c.value">
+                    {{ c.label }}
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+            </section>
+            <section class="group-box p-3 grid gap-2">
+              <div class="text-xs text-muted-foreground">
+                Preview
+              </div>
+              <WaveformPreview />
             </section>
           </template>
 

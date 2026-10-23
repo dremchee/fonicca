@@ -473,19 +473,6 @@ mod tests {
     }
 
     #[test]
-    fn peaks_follow_the_signal() {
-        let (_dir, root, _db_path, _id) = setup();
-        let path = root.join("sine.wav");
-        write_sine(&path, 44100, 2, 16, 1.0);
-        let peaks = audio::compute_peaks(&path).unwrap();
-        assert_eq!(peaks.len(), audio::PEAK_BUCKETS * 2);
-        // Sine at half amplitude: every bucket spans roughly -64..64.
-        for pair in peaks.chunks(2) {
-            assert!(pair[0] < -55 && pair[1] > 55, "{pair:?}");
-        }
-    }
-
-    #[test]
     fn falls_back_to_riff_header_for_unsupported_codecs() {
         let (_dir, root, _db, _id) = setup();
         // IMA ADPCM-style header with an unknown codec tag: 2 ch, 44.1 kHz, fact = 44100 frames.
@@ -523,7 +510,7 @@ mod tests {
         let info = audio::probe(p).unwrap();
         assert!(info.duration.unwrap() > 0.0);
         assert!(info.sample_rate.is_some());
-        assert_eq!(audio::compute_peaks(p).unwrap().len(), audio::PEAK_BUCKETS * 2);
+        assert!(crate::overview::Overview::compute(p, None).is_ok());
     }
 
     /// `cargo test --release -- --ignored --nocapture scan_speed`

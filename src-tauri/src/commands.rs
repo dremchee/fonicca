@@ -2,11 +2,10 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use rusqlite::{params, OptionalExtension};
+use rusqlite::params;
 use serde::Serialize;
 use tauri::State;
 
-use crate::audio;
 use crate::duplicates;
 use crate::error::{Error, Result};
 use crate::library::{self, Collection, Filter, ImportReport, Sample, Tag, TagRef};
@@ -201,36 +200,33 @@ pub fn import_user_data(state: State<'_, AppState>, path: String) -> Result<Impo
     library::import_user_data(&mut state.db.lock().unwrap(), &data)
 }
 
-fn sample_path(state: &AppState, id: i64) -> Result<PathBuf> {
-    let conn = state.db.lock().unwrap();
-    let path: String = conn
-        .query_row("SELECT path FROM samples WHERE id = ?1", [id], |r| r.get(0))
-        .optional()?
-        .ok_or_else(|| Error::Other(format!("sample {id} not found")))?;
-    Ok(PathBuf::from(path))
-}
-
-/// Returns cached waveform peaks, decoding the file on first request.
 #[tauri::command]
-pub async fn get_peaks(state: State<'_, AppState>, id: i64) -> Result<Vec<i8>> {
-    let cached: Option<Vec<u8>> = state
-        .db
-        .lock()
-        .unwrap()
-        .query_row("SELECT peaks FROM samples WHERE id = ?1", [id], |r| r.get(0))
-        .optional()?
-        .flatten();
-    if let Some(bytes) = cached {
-        return Ok(bytes.into_iter().map(|b| b as i8).collect());
-    }
-
-    let path = sample_path(&state, id)?;
-    let peaks = tauri::async_runtime::spawn_blocking(move || audio::compute_peaks(&path))
-        .await
-        .map_err(|e| Error::Other(e.to_string()))??;
-    let bytes: Vec<u8> = peaks.iter().map(|&p| p as u8).collect();
-    state.db.lock().unwrap().execute("UPDATE samples SET peaks = ?1 WHERE id = ?2", params![bytes, id])?;
-    Ok(peaks)
+pub async fn sample_wave(
+    state: State<'_, AppState>,
+    id: i64,
+    columns: usize,
+    split: bool,
+) -> Result<tauri::ipc::Response> {
+    let (path, size, mtime, frames): (String, i64, i64, Option<f64>) = state.db.lock().unwrap().query_row(
+        "SELECT path, size, mtime, duration * sample_rate FROM samples WHERE id = ?1",
+        [id],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+    )?;
+    let key = (id, size, mtime);
+    let overview = match state.overviews.get(key) {
+        Some(o) => o,
+        None => {
+            let o = tauri::async_runtime::spawn_blocking(move || {
+                crate::overview::Overview::compute(std::path::Path::new(&path), frames.map(|f| f as usize))
+            })
+            .await
+            .map_err(|e| Error::Other(e.to_string()))??;
+            let o = Arc::new(o);
+            state.overviews.put(key, Arc::clone(&o));
+            o
+        }
+    };
+    Ok(tauri::ipc::Response::new(overview.render(columns.clamp(1, 8192), split)))
 }
 
 #[tauri::command]
@@ -335,12 +331,17 @@ pub fn get_settings(state: State<'_, AppState>) -> Settings {
     state.settings.get()
 }
 
+/// Sent to every window with the new settings after they change.
+pub const SETTINGS_EVENT: &str = "settings-changed";
+
 /// Saves the full settings object and applies what changed. Returns what was stored
 /// (out-of-range values clamped).
 #[tauri::command]
 pub fn update_settings(app: tauri::AppHandle, state: State<'_, AppState>, settings: Settings) -> Result<Settings> {
     let (prev, next) = state.settings.replace(settings)?;
     apply_settings(&app, &state, Some(&prev), &next)?;
+    // Editor windows keep their own copy of the settings.
+    let _ = tauri::Emitter::emit(&app, SETTINGS_EVENT, &next);
     Ok(next)
 }
 

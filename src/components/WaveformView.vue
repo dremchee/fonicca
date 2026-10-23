@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { Sample } from '@/api'
+import type { Wave } from '@/stores/editor'
 import { Pencil, Play, Square, Star, X } from '@lucide/vue'
+import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { useResizeObserver } from '@vueuse/core'
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { api } from '@/api'
@@ -11,16 +13,18 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { CATEGORY_LABELS, categoryHint, formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, KIND_LABELS, sourceHint } from '@/format'
-import { useEditorStore } from '@/stores/editor'
+import { CATEGORY_LABELS, categoryHint, formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, KIND_LABELS, shortPath, sourceHint } from '@/format'
+import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
+import { useSettingsStore } from '@/stores/settings'
+import { drawWave, parseWave } from '@/waveform'
 
 const props = defineProps<{ sample: Sample | undefined }>()
 
 const library = useLibraryStore()
-const editor = useEditorStore()
 const player = usePlayerStore()
+const settings = useSettingsStore()
 const selectionSize = computed(() => {
   const n = library.selectedIds.size
   return props.sample && (n > 1 || (n === 1 && !library.selectedIds.has(props.sample.id))) ? n : 1
@@ -28,7 +32,8 @@ const selectionSize = computed(() => {
 
 const canvas = ref<HTMLCanvasElement | null>(null)
 const box = ref<HTMLElement | null>(null)
-const peaks = shallowRef<Int8Array | null>(null)
+const width = ref(0)
+const wave = shallowRef<Wave | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
@@ -39,18 +44,27 @@ const progress = computed(() => {
   return Math.min(1, player.position / s.duration)
 })
 
+useResizeObserver(box, (entries) => {
+  width.value = Math.floor(entries[0].contentRect.width)
+})
+
+// Re-read when the sample, the width or the channel layout changes; the backend
+// keeps an overview of recent samples, so only the first read decodes the file.
 let requestId = 0
-watch(() => props.sample?.id, async (id) => {
+watch([() => props.sample?.id, width, () => settings.settings.waveChannels], async ([id], [prevId]) => {
   const req = ++requestId
-  peaks.value = null
-  error.value = null
-  if (id == null)
+  if (id !== prevId) {
+    wave.value = null
+    error.value = null
+  }
+  if (id == null || width.value === 0)
     return
-  loading.value = true
+  loading.value = wave.value === null
   try {
-    const data = await api.getPeaks(id)
+    const columns = Math.min(8192, Math.round(width.value * (window.devicePixelRatio || 1)))
+    const data = parseWave(await api.sampleWave(id, columns, settings.settings.waveChannels === 'split'))
     if (req === requestId)
-      peaks.value = Int8Array.from(data)
+      wave.value = data
   }
   catch (e) {
     if (req === requestId)
@@ -74,38 +88,42 @@ function draw() {
   const ctx = el.getContext('2d')!
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.clearRect(0, 0, w, h)
-
-  const data = peaks.value
+  const data = wave.value
   if (!data)
     return
-  const style = getComputedStyle(el)
-  const base = style.getPropertyValue('--wave').trim()
-  const played = style.getPropertyValue('--wave-played').trim()
-  const buckets = data.length / 2
-  const mid = h / 2
-  const playedX = progress.value * w
 
-  // One vertical bar per device pixel column, aggregating the buckets under it.
-  const columns = Math.floor(w)
-  for (let x = 0; x < columns; x++) {
-    const from = Math.floor((x / columns) * buckets)
-    const to = Math.max(from + 1, Math.floor(((x + 1) / columns) * buckets))
-    let lo = 0
-    let hi = 0
-    for (let b = from; b < to && b < buckets; b++) {
-      lo = Math.min(lo, data[b * 2])
-      hi = Math.max(hi, data[b * 2 + 1])
-    }
-    const top = mid - (hi / 127) * mid * 0.95
-    const bottom = mid - (lo / 127) * mid * 0.95
-    ctx.fillStyle = x < playedX ? played : base
-    ctx.fillRect(x, top, 1, Math.max(1, bottom - top))
+  const style = getComputedStyle(el)
+  const color = (name: string) => style.getPropertyValue(name).trim()
+  const { waveStyle, waveScale, waveColors } = settings.settings
+  const look = { style: waveStyle, scale: waveScale, colors: waveColors, zoom: 1, color: color('--wave'), lineColor: color('--border') }
+  const area = { top: 0, width: w, height: h, dpr }
+  drawWave(ctx, data, area, look)
+
+  // The part already played: in the accent colour, or (frequency colours) the
+  // rest dimmed so the colours stay readable.
+  const playedX = progress.value * w
+  if (playedX <= 0)
+    return
+  ctx.save()
+  ctx.beginPath()
+  if (waveColors === 'frequency') {
+    ctx.rect(playedX, 0, w - playedX, h)
+    ctx.clip()
+    ctx.globalAlpha = 0.5
+    ctx.fillStyle = color('--background')
+    ctx.fillRect(playedX, 0, w - playedX, h)
   }
+  else {
+    ctx.rect(0, 0, playedX, h)
+    ctx.clip()
+    ctx.clearRect(0, 0, playedX, h)
+    drawWave(ctx, data, area, { ...look, color: color('--wave-played') })
+  }
+  ctx.restore()
 }
 
-watch([peaks, progress], draw)
+watch([wave, progress, () => settings.settings, width], draw, { deep: true })
 onMounted(draw)
-useResizeObserver(box, draw)
 
 function onSeek(e: MouseEvent) {
   const s = props.sample
@@ -141,9 +159,6 @@ function onDragStart(e: DragEvent) {
         <div class="truncate font-medium">
           {{ sample.name }}<span class="text-muted-foreground">.{{ sample.ext }}</span>
         </div>
-        <div class="truncate text-[11px] text-muted-foreground">
-          {{ sample.path }}
-        </div>
       </div>
       <Hint :text="sample.favorite ? 'Remove from favorites' : 'Add to favorites'" shortcut="F">
         <Button variant="ghost" size="icon-sm" class="-ml-2 shrink-0" @click="library.toggleFavorite()">
@@ -151,7 +166,7 @@ function onDragStart(e: DragEvent) {
         </Button>
       </Hint>
       <Hint text="Edit" shortcut="E">
-        <Button variant="ghost" size="icon-sm" class="-ml-2 shrink-0 text-muted-foreground" aria-label="Edit" @click="editor.openSample(sample)">
+        <Button variant="ghost" size="icon-sm" class="-ml-2 shrink-0 text-muted-foreground" aria-label="Edit" @click="openEditor(sample)">
           <Pencil />
         </Button>
       </Hint>
@@ -192,18 +207,27 @@ function onDragStart(e: DragEvent) {
     </div>
     <!-- Status bar. One line tall: fields that do not fit wrap onto the hidden second line
          and drop out whole, least important (the last ones) first. -->
-    <div class="h-7 shrink-0 px-3 flex flex-wrap items-center gap-x-3 overflow-hidden text-[11px] leading-7 text-muted-foreground tabular">
-      <span v-if="sample.category" :title="categoryHint(sample.categorySource, sample.categoryConfidence)">{{ CATEGORY_LABELS[sample.category] ?? sample.category }}</span>
-      <span v-if="sample.kind">{{ KIND_LABELS[sample.kind] }}</span>
-      <span v-if="sample.bpm != null" :title="sourceHint(sample.bpmSource)">{{ formatBpm(sample.bpm) }} BPM</span>
-      <span v-if="sample.key" :title="sourceHint(sample.keySource)">{{ sample.key }}</span>
-      <span v-if="sample.peakDb != null" title="Sample peak">{{ formatDb(sample.peakDb) }}</span>
-      <span v-if="sample.lufs != null" title="Integrated loudness">{{ formatDb(sample.lufs, 'LUFS') }}</span>
-      <span>{{ formatDuration(sample.duration) }}</span>
-      <span>{{ formatRate(sample.sampleRate) }}</span>
-      <span v-if="sample.bitDepth">{{ sample.bitDepth }}-bit</span>
-      <span>{{ formatChannels(sample.channels) }}</span>
-      <span>{{ formatSize(sample.size) }}</span>
+    <div class="h-7 shrink-0 px-3 flex items-start gap-3 text-[11px] leading-7 text-muted-foreground tabular">
+      <div class="min-w-0 flex-1 h-7 flex flex-wrap items-center gap-x-3 overflow-hidden">
+        <span v-if="sample.category" :title="categoryHint(sample.categorySource, sample.categoryConfidence)">{{ CATEGORY_LABELS[sample.category] ?? sample.category }}</span>
+        <span v-if="sample.kind">{{ KIND_LABELS[sample.kind] }}</span>
+        <span v-if="sample.bpm != null" :title="sourceHint(sample.bpmSource)">{{ formatBpm(sample.bpm) }} BPM</span>
+        <span v-if="sample.key" :title="sourceHint(sample.keySource)">{{ sample.key }}</span>
+        <span v-if="sample.peakDb != null" title="Sample peak">{{ formatDb(sample.peakDb) }}</span>
+        <span v-if="sample.lufs != null" title="Integrated loudness">{{ formatDb(sample.lufs, 'LUFS') }}</span>
+        <span>{{ formatDuration(sample.duration) }}</span>
+        <span>{{ formatRate(sample.sampleRate) }}</span>
+        <span v-if="sample.bitDepth">{{ sample.bitDepth }}-bit</span>
+        <span>{{ formatChannels(sample.channels) }}</span>
+        <span>{{ formatSize(sample.size) }}</span>
+      </div>
+      <button
+        class="min-w-0 max-w-[50%] truncate hover:text-foreground hover:underline"
+        :title="`${sample.path}\nClick to show in Finder`"
+        @click="revealItemInDir(sample.path)"
+      >
+        {{ shortPath(sample.path) }}
+      </button>
     </div>
     <div v-if="player.error" class="px-3 pb-2 text-destructive text-xs truncate">
       {{ player.error }}

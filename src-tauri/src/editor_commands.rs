@@ -1,73 +1,119 @@
-//! Tauri commands for the single-file editor. One file is open at a time.
+//! Tauri commands for the editor. Each file opens in its own window
+//! ("editor-<sample id>"); sessions are keyed by window label.
 
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
-use tauri::State;
+use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder, Window};
 
 use crate::editor::{self, Op, Session, State as EditorState};
 use crate::error::{Error, Result};
 use crate::AppState;
 
-fn with_session<T>(state: &AppState, f: impl FnOnce(&mut Session) -> Result<T>) -> Result<T> {
-    let mut guard = state.editor.lock().unwrap();
-    let session = guard.as_mut().ok_or_else(|| Error::Other("no file is open in the editor".into()))?;
+pub const WINDOW_PREFIX: &str = "editor-";
+
+fn with_session<T>(state: &AppState, window: &Window, f: impl FnOnce(&mut Session) -> Result<T>) -> Result<T> {
+    let mut sessions = state.editor.lock().unwrap();
+    let session =
+        sessions.get_mut(window.label()).ok_or_else(|| Error::Other("no file is open in this window".into()))?;
     f(session)
 }
 
+/// Opens (or brings to front) the editor window for a sample.
 #[tauri::command]
-pub async fn editor_open(state: State<'_, AppState>, id: i64) -> Result<EditorState> {
-    let (path, bit_depth): (String, Option<u32>) = state.db.lock().unwrap().query_row(
-        "SELECT path, bit_depth FROM samples WHERE id = ?1",
+pub fn open_editor_window(app: AppHandle, state: State<'_, AppState>, id: i64) -> Result<()> {
+    let label = format!("{WINDOW_PREFIX}{id}");
+    if let Some(window) = app.get_webview_window(&label) {
+        let _ = window.unminimize();
+        window.set_focus()?;
+        return Ok(());
+    }
+    let name: String = state.db.lock().unwrap().query_row("SELECT name FROM samples WHERE id = ?1", [id], |r| r.get(0))?;
+    let builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(format!("index.html?editor={id}").into()))
+        .title(format!("{name} — Edit"))
+        .inner_size(1100.0, 560.0)
+        .min_inner_size(640.0, 360.0);
+    // Same look as the main window: traffic lights over the app's own header.
+    #[cfg(target_os = "macos")]
+    let builder = builder.title_bar_style(tauri::TitleBarStyle::Overlay).hidden_title(true);
+    builder.build()?;
+    Ok(())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Opened {
+    state: EditorState,
+    name: String,
+    ext: String,
+    path: String,
+}
+
+/// Loads the sample into this window's session.
+#[tauri::command]
+pub async fn editor_open(state: State<'_, AppState>, window: Window, id: i64) -> Result<Opened> {
+    let (path, name, ext, bit_depth): (String, String, String, Option<u32>) = state.db.lock().unwrap().query_row(
+        "SELECT path, name, ext, bit_depth FROM samples WHERE id = ?1",
         [id],
-        |r| Ok((r.get(0)?, r.get(1)?)),
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
     )?;
     let session = Session::open(id, Path::new(&path), bit_depth)?;
     let s = session.state();
-    *state.editor.lock().unwrap() = Some(session);
-    Ok(s)
+    state.editor.lock().unwrap().insert(window.label().to_string(), session);
+    Ok(Opened { state: s, name, ext, path })
+}
+
+/// Frees a window's session (also done when the window is destroyed).
+pub fn release(app: &AppHandle, label: &str) {
+    if let Some(state) = app.try_state::<AppState>() {
+        state.editor.lock().unwrap().remove(label);
+    }
 }
 
 #[tauri::command]
-pub fn editor_close(state: State<'_, AppState>) {
-    state.player.stop();
-    state.editor.lock().unwrap().take();
-}
-
-#[tauri::command]
-pub fn editor_apply(state: State<'_, AppState>, op: Op) -> Result<EditorState> {
-    with_session(&state, |s| {
+pub fn editor_apply(state: State<'_, AppState>, window: Window, op: Op) -> Result<EditorState> {
+    with_session(&state, &window, |s| {
         s.apply(op);
         Ok(s.state())
     })
 }
 
 #[tauri::command]
-pub fn editor_undo(state: State<'_, AppState>) -> Result<EditorState> {
-    with_session(&state, |s| {
+pub fn editor_undo(state: State<'_, AppState>, window: Window) -> Result<EditorState> {
+    with_session(&state, &window, |s| {
         s.undo();
         Ok(s.state())
     })
 }
 
 #[tauri::command]
-pub fn editor_redo(state: State<'_, AppState>) -> Result<EditorState> {
-    with_session(&state, |s| {
+pub fn editor_redo(state: State<'_, AppState>, window: Window) -> Result<EditorState> {
+    with_session(&state, &window, |s| {
         s.redo();
         Ok(s.state())
     })
 }
 
-/// Waveform of `[start, end)` in `columns` min/max pairs (for zoomed views).
+/// Waveform data for `[start, end)` (see `editor::wave`), as raw bytes.
 #[tauri::command]
-pub fn editor_peaks(state: State<'_, AppState>, start: usize, end: usize, columns: usize) -> Result<Vec<i8>> {
-    with_session(&state, |s| Ok(editor::peaks(s.audio(), start, end, columns.min(8192))))
+pub fn editor_wave(
+    state: State<'_, AppState>,
+    window: Window,
+    start: usize,
+    end: usize,
+    columns: usize,
+    split: bool,
+    bands: bool,
+) -> Result<tauri::ipc::Response> {
+    with_session(&state, &window, |s| {
+        Ok(tauri::ipc::Response::new(editor::wave(s.audio(), start, end, columns.clamp(1, 8192), split, bands)))
+    })
 }
 
 #[tauri::command]
-pub fn editor_play(state: State<'_, AppState>, start: usize, end: usize, looping: bool) -> Result<()> {
-    with_session(&state, |s| state.player.play_buffer(s.audio(), start, end, looping))
+pub fn editor_play(state: State<'_, AppState>, window: Window, start: usize, end: usize, looping: bool) -> Result<()> {
+    with_session(&state, &window, |s| state.player.play_buffer(s.audio(), start, end, looping))
 }
 
 #[derive(Serialize)]
@@ -83,9 +129,9 @@ pub struct Saved {
 /// original after copying it to the backups folder. Non-WAV originals are
 /// always saved as a new file, since writing WAV would change their format.
 #[tauri::command]
-pub fn editor_save(state: State<'_, AppState>, as_new: bool) -> Result<Saved> {
+pub fn editor_save(state: State<'_, AppState>, window: Window, as_new: bool) -> Result<Saved> {
     let backups = state.db_path.parent().map(|d| d.join("backups")).unwrap_or_else(|| PathBuf::from("backups"));
-    let saved = with_session(&state, |s| {
+    let saved = with_session(&state, &window, |s| {
         let is_wav = s.path.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("wav"));
         let (target, backup) = if as_new || !is_wav {
             (editor::edited_path(&s.path), None)

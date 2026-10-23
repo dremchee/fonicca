@@ -14,7 +14,7 @@ import {
   ContextMenuSubTrigger,
 } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
-import { useEditorStore } from '@/stores/editor'
+import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 
@@ -22,7 +22,6 @@ const props = defineProps<{ sample: Sample }>()
 const emit = defineEmits<{ close: [] }>()
 
 const library = useLibraryStore()
-const editor = useEditorStore()
 const player = usePlayerStore()
 const newName = ref('')
 
@@ -67,7 +66,7 @@ async function submitNew() {
       {{ player.playingId === sample.id ? 'Stop' : 'Play' }}
       <ContextMenuShortcut>Space</ContextMenuShortcut>
     </ContextMenuItem>
-    <ContextMenuItem @select="runAfterClose(() => editor.openSample(sample))">
+    <ContextMenuItem @select="openEditor(sample)">
       <Pencil />
       Edit…
       <ContextMenuShortcut>E</ContextMenuShortcut>
