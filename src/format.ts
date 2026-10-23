@@ -1,10 +1,35 @@
-import { t } from '@/i18n'
+import { i18n, t } from '@/i18n'
+
+const numberFormats = new Map<string, Intl.NumberFormat>()
+
+/**
+ * A number in the app's language rather than the system's: "32,187" and "1.5"
+ * in English, "32 187" and "1,5" in Russian. `fixed` digits after the point,
+ * or at most `max`. Reading the locale makes templates re-render on a switch.
+ */
+export function formatNumber(n: number, { fixed, max }: { fixed?: number, max?: number } = {}): string {
+  const locale = i18n.global.locale.value
+  const key = `${locale}:${fixed}:${max}`
+  let format = numberFormats.get(key)
+  if (!format) {
+    format = new Intl.NumberFormat(locale, fixed != null
+      ? { minimumFractionDigits: fixed, maximumFractionDigits: fixed }
+      : { maximumFractionDigits: max ?? 3 })
+    numberFormats.set(key, format)
+  }
+  return format.format(n)
+}
+
+/** A calendar date in the app's language, from Unix seconds. */
+export function formatDate(seconds: number): string {
+  return new Date(seconds * 1000).toLocaleDateString(i18n.global.locale.value, { dateStyle: 'medium' })
+}
 
 export function formatDuration(seconds: number | null | undefined): string {
   if (seconds == null || !Number.isFinite(seconds))
     return '—'
   if (seconds < 10)
-    return t('common.units.seconds', { n: seconds.toFixed(2) })
+    return t('common.units.seconds', { n: formatNumber(seconds, { fixed: 2 }) })
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
   return `${m}:${String(s).padStart(2, '0')}`
@@ -13,7 +38,7 @@ export function formatDuration(seconds: number | null | undefined): string {
 export function formatRate(hz: number | null | undefined): string {
   if (!hz)
     return '—'
-  return t('common.units.kHz', { n: (hz / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 }) })
+  return t('common.units.kHz', { n: formatNumber(hz / 1000, { max: 1 }) })
 }
 
 export function formatChannels(n: number | null | undefined): string {
@@ -32,7 +57,7 @@ export function formatSize(bytes: number): string {
     v /= 1024
     i++
   }
-  return t(`common.units.${units[i]!}`, { n: v.toFixed(v < 10 ? 1 : 0) })
+  return t(`common.units.${units[i]!}`, { n: formatNumber(v, { fixed: v < 10 ? 1 : 0 }) })
 }
 
 export function folderName(path: string): string {
@@ -42,13 +67,13 @@ export function folderName(path: string): string {
 export function formatBpm(bpm: number | null | undefined): string {
   if (bpm == null)
     return '—'
-  return Number.isInteger(bpm) ? String(bpm) : bpm.toFixed(1)
+  return formatNumber(bpm, { fixed: Number.isInteger(bpm) ? 0 : 1 })
 }
 
 export function formatDb(db: number | null | undefined, unit: 'dB' | 'LUFS' = 'dB'): string {
   if (db == null || !Number.isFinite(db))
     return '—'
-  return `${db.toFixed(1)} ${t(`common.units.${unit}`)}`
+  return `${formatNumber(db, { fixed: 1 })} ${t(`common.units.${unit}`)}`
 }
 
 export const KINDS = ['oneshot', 'loop', 'long'] as const

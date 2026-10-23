@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { formatNumber } from '@/format'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -57,7 +58,7 @@ const applied = computed(() => {
     return ''
   const parts = []
   if (Math.abs(a.stretch - 1) > 0.001)
-    parts.push(t('sync.appliedTempo', { n: (1 / a.stretch).toFixed(2) }))
+    parts.push(t('sync.appliedTempo', { n: formatNumber(1 / a.stretch, { fixed: 2 }) }))
   if (a.semitones)
     parts.push(t('sync.appliedSemitones', { n: `${a.semitones > 0 ? '+' : ''}${a.semitones}` }))
   return parts.join(' · ')

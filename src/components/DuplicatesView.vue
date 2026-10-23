@@ -21,7 +21,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { confirm } from '@/composables/confirm'
-import { folderName, formatDuration, formatSize } from '@/format'
+import { folderName, formatDate, formatDuration, formatNumber, formatSize } from '@/format'
 import { useDuplicatesStore } from '@/stores/duplicates'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
@@ -94,10 +94,6 @@ function fileName(g: DuplicateGroup) {
   return folderName(dup.keepOf(g).path)
 }
 
-function formatDate(mtime: number) {
-  return new Date(mtime * 1000).toLocaleDateString()
-}
-
 async function reveal(path: string) {
   try {
     await revealItemInDir(path)
@@ -108,7 +104,7 @@ async function reveal(path: string) {
 }
 
 function filesLabel(n: number) {
-  return t('common.count.files', { n: n.toLocaleString() }, n)
+  return t('common.count.files', { n: formatNumber(n) }, n)
 }
 
 function reportSkipped(skipped: string[]) {
@@ -239,13 +235,13 @@ onKeyStroke(' ', (e) => {
       </h1>
       <span v-if="groups.length" class="text-xs text-muted-foreground tabular" data-tauri-drag-region>
         {{ t('duplicates.summary', {
-          groups: t('common.count.groups', { n: groups.length.toLocaleString() }, groups.length),
-          extras: t('duplicates.extraCopies', { n: totals.copies.toLocaleString() }, totals.copies),
+          groups: t('common.count.groups', { n: formatNumber(groups.length) }, groups.length),
+          extras: t('duplicates.extraCopies', { n: formatNumber(totals.copies) }, totals.copies),
           size: formatSize(totals.bytes),
         }) }}
       </span>
       <span v-if="verifying" class="text-xs text-muted-foreground flex items-center gap-1.5">
-        <Spinner class="size-3 text-primary" /> {{ t('duplicates.verifying', { n: verifying.toLocaleString() }, verifying) }}
+        <Spinner class="size-3 text-primary" /> {{ t('duplicates.verifying', { n: formatNumber(verifying) }, verifying) }}
       </span>
       <span v-else-if="falseMatches" class="text-xs text-muted-foreground">
         {{ t('duplicates.falseMatches', falseMatches) }}
@@ -255,7 +251,7 @@ onKeyStroke(' ', (e) => {
     <div v-if="groups.length" class="shrink-0 px-4 py-2 flex flex-wrap items-center gap-2 border-b border-border">
       <label class="flex items-center gap-2 mr-2">
         <Checkbox :model-value="allSelected ? true : selected.size ? 'indeterminate' : false" :aria-label="t('duplicates.selectAll')" @update:model-value="toggleAll" />
-        <span class="text-muted-foreground text-xs tabular">{{ selected.size ? t('duplicates.selectedCount', { n: selected.size.toLocaleString() }) : t('duplicates.allGroups') }}</span>
+        <span class="text-muted-foreground text-xs tabular">{{ selected.size ? t('duplicates.selectedCount', { n: formatNumber(selected.size) }) : t('duplicates.allGroups') }}</span>
       </label>
       <span class="text-xs text-muted-foreground">{{ t('duplicates.keep') }}</span>
       <Select v-model="rule">
@@ -287,10 +283,10 @@ onKeyStroke(' ', (e) => {
       </span>
       <div class="ml-auto flex items-center gap-2">
         <Button variant="outline" size="sm" :disabled="!extras.length" @click="hideExtras()">
-          <EyeOff /> {{ t('duplicates.hideExtras', { n: extras.length.toLocaleString() }) }}
+          <EyeOff /> {{ t('duplicates.hideExtras', { n: formatNumber(extras.length) }) }}
         </Button>
         <Button variant="outline" size="sm" class="text-destructive hover:text-destructive" :disabled="!trashable.length" @click="trashExtras">
-          <Trash2 /> {{ t('duplicates.trashExtras', { n: trashable.length.toLocaleString() }) }}
+          <Trash2 /> {{ t('duplicates.trashExtras', { n: formatNumber(trashable.length) }) }}
         </Button>
       </div>
     </div>

@@ -43,7 +43,7 @@ import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { confirm } from '@/composables/confirm'
 import { LOCALES } from '@/i18n'
-import { folderName, formatSize } from '@/format'
+import { folderName, formatNumber, formatSize } from '@/format'
 import { useDuplicatesStore } from '@/stores/duplicates'
 import { useLibraryStore } from '@/stores/library'
 import { useSettingsStore } from '@/stores/settings'
@@ -83,7 +83,7 @@ async function unhide(paths: string[] | null) {
 }
 
 function samplesLabel(n: number) {
-  return t('common.count.samples', { n: n.toLocaleString() }, n)
+  return t('common.count.samples', { n: formatNumber(n) }, n)
 }
 
 function scanLabel(id: number) {
@@ -91,7 +91,7 @@ function scanLabel(id: number) {
   if (!s)
     return null
   return s.total
-    ? t('settings.library.scanningProgress', { processed: s.processed.toLocaleString(), total: s.total.toLocaleString() })
+    ? t('settings.library.scanningProgress', { processed: formatNumber(s.processed), total: formatNumber(s.total) })
     : t('settings.library.scanning')
 }
 
@@ -344,7 +344,7 @@ function keyLabel(k: string) {
               <div class="flex items-center justify-between">
                 <h3 class="group-title">
                   {{ t('settings.library.hidden') }}<template v-if="duplicates.hidden.length">
-                    · {{ duplicates.hidden.length.toLocaleString() }}
+                    · {{ formatNumber(duplicates.hidden.length) }}
                   </template>
                 </h3>
                 <Button v-if="duplicates.hidden.length > 1" variant="outline" size="sm" @click="unhide(null)">
@@ -478,7 +478,7 @@ function keyLabel(k: string) {
                   </div>
                   <div class="row-desc tabular">
                     <template v-if="pending">
-                      {{ t('settings.analysis.left', { n: pending.toLocaleString() }) }}
+                      {{ t('settings.analysis.left', { n: formatNumber(pending) }) }}
                     </template>
                     {{ t('settings.analysis.what') }}
                   </div>

@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
-import { shortPath } from '@/format'
+import { formatNumber, formatRate, shortPath } from '@/format'
 import { drawWave } from '@/waveform'
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
@@ -462,7 +462,7 @@ const curves: { value: Curve, label: string }[] = [
         :title="t('editor.status.vZoom')"
         @click="vZoom = 1"
       >
-        ↕ ×{{ vZoom.toFixed(1) }}
+        ↕ ×{{ formatNumber(vZoom, { fixed: 1 }) }}
       </button>
       <span v-if="status.selection" class="shrink-0">{{ t('editor.status.selection', { range: status.selection }) }}</span>
       <button
@@ -472,7 +472,7 @@ const curves: { value: Curve, label: string }[] = [
       >
         {{ editor.sample ? shortPath(editor.sample.path) : '' }}
       </button>
-      <span class="shrink-0">{{ status.length }} · {{ t('common.units.kHz', { n: (rate / 1000).toLocaleString() }) }} · {{ editor.state?.channels === 1 ? t('common.channels.mono') : t('common.channels.stereo') }}</span>
+      <span class="shrink-0">{{ status.length }} · {{ formatRate(rate) }} · {{ editor.state?.channels === 1 ? t('common.channels.mono') : t('common.channels.stereo') }}</span>
     </footer>
   </div>
 </template>

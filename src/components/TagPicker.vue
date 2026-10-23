@@ -14,6 +14,7 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { formatNumber } from '@/format'
 import { useLibraryStore } from '@/stores/library'
 
 // "+ Tag" button with a searchable list of known tags and a way to create a new one.
@@ -57,7 +58,7 @@ async function add(name: string) {
     <PopoverContent align="start" class="w-56 p-0">
       <Command>
         <CommandInput
-          :placeholder="count > 1 ? t('sidebar.tagPicker.placeholderMany', { n: count.toLocaleString() }, count) : t('sidebar.tagPicker.placeholder')"
+          :placeholder="count > 1 ? t('sidebar.tagPicker.placeholderMany', { n: formatNumber(count) }, count) : t('sidebar.tagPicker.placeholder')"
           @input="query = ($event.target as HTMLInputElement).value"
         />
         <CommandList>
@@ -67,7 +68,7 @@ async function add(name: string) {
           <CommandGroup v-if="available.length">
             <CommandItem v-for="tag in available" :key="tag.id" :value="tag.name" @select="add(tag.name)">
               {{ tag.name }}
-              <span class="ml-auto text-xs text-muted-foreground tabular">{{ tag.sampleCount.toLocaleString() }}</span>
+              <span class="ml-auto text-xs text-muted-foreground tabular">{{ formatNumber(tag.sampleCount) }}</span>
             </CommandItem>
           </CommandGroup>
           <!-- A plain Listbox item: it must show for any query, and CommandItem filters itself

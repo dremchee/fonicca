@@ -3,7 +3,7 @@ import type { ComponentPublicInstance } from 'vue'
 import { Search } from '@lucide/vue'
 import { onKeyStroke } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref, useTemplateRef } from 'vue'
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import CommandPalette from '@/components/CommandPalette.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -18,13 +18,15 @@ import SampleList from '@/components/SampleList.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import SourceSidebar from '@/components/SourceSidebar.vue'
 import WaveformView from '@/components/WaveformView.vue'
+import { formatNumber } from '@/format'
+import { installAppMenu } from '@/menu'
 import { useDuplicatesStore } from '@/stores/duplicates'
 import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const library = useLibraryStore()
 const player = usePlayerStore()
 const settings = useSettingsStore()
@@ -36,6 +38,9 @@ const searchInput = useTemplateRef<ComponentPublicInstance>('searchInput')
 const search = computed(() => searchInput.value?.$el as HTMLInputElement | undefined)
 
 onMounted(() => Promise.all([settings.init(), library.init(), duplicates.init()]))
+
+// The native menu is rebuilt whenever the language changes.
+watch(locale, () => installAppMenu(() => settings.openDialog()).catch(console.error), { immediate: true })
 
 // DuplicatesView replaces the list and handles its own arrows and Space.
 const inDuplicates = computed(() => library.scope.kind === 'duplicates')
@@ -158,8 +163,8 @@ onKeyStroke(',', (e) => {
               </InputGroupAddon>
             </InputGroup>
             <span class="text-xs text-muted-foreground tabular" data-tauri-drag-region>
-              <template v-if="selectedIds.size > 1">{{ t('list.search.selected', { n: selectedIds.size.toLocaleString() }) }} · </template>
-              {{ t('common.count.samples', { n: total.toLocaleString() }, total) }}
+              <template v-if="selectedIds.size > 1">{{ t('list.search.selected', { n: formatNumber(selectedIds.size) }) }} · </template>
+              {{ t('common.count.samples', { n: formatNumber(total) }, total) }}
               <template v-if="library.isScanning"> · {{ t('list.search.scanning') }}</template>
             </span>
           </header>

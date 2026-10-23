@@ -5,13 +5,14 @@ import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, reactive, ref, shallowReactive, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { ANALYSIS_PROGRESS_EVENT, api, MODEL_DOWNLOAD_EVENT, SCAN_PROGRESS_EVENT, startFileDrag } from '@/api'
+import { formatNumber } from '@/format'
 import { t } from '@/i18n'
 
 const PAGE_SIZE = 200
 
 /** "1,234 samples" in the current language. */
 function countSamples(n: number) {
-  return t('common.count.samples', { n: n.toLocaleString() }, n)
+  return t('common.count.samples', { n: formatNumber(n) }, n)
 }
 
 /** What the sidebar has selected; combined with the search query into a filter. */
@@ -377,7 +378,7 @@ export const useLibraryStore = defineStore('library', () => {
     const name = collections.value.find(c => c.id === id)?.name
     toast.success(ids.length === 1
       ? t('list.toasts.sampleAddedTo', { name })
-      : t('list.toasts.samplesAddedTo', { n: ids.length.toLocaleString(), name }, ids.length))
+      : t('list.toasts.samplesAddedTo', { n: formatNumber(ids.length), name }, ids.length))
   }
 
   async function removeFromCollection(id: number) {
@@ -432,7 +433,7 @@ export const useLibraryStore = defineStore('library', () => {
     try {
       const r = await api.importUserData(path)
       toast.success(r.unmatched
-        ? t('list.toasts.importedPartly', { samples: countSamples(r.matched), missing: r.unmatched.toLocaleString() })
+        ? t('list.toasts.importedPartly', { samples: countSamples(r.matched), missing: formatNumber(r.unmatched) })
         : t('list.toasts.imported', { samples: countSamples(r.matched) }))
       await Promise.all([loadTags(), loadCollections(), refresh({ keepSelection: true })])
     }

@@ -22,7 +22,7 @@ import {
 import { Slider } from '@/components/ui/slider'
 import { Spinner } from '@/components/ui/spinner'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { CATEGORIES, categoryLabel, formatSize, kindLabel } from '@/format'
+import { CATEGORIES, categoryLabel, formatNumber, formatSize, kindLabel } from '@/format'
 import { useLibraryStore } from '@/stores/library'
 
 const { t } = useI18n()
@@ -229,7 +229,7 @@ function parseBpm(e: Event): number | null {
         <Spinner v-if="!analysis.paused" class="text-primary" />
         <Hint :text="t('filters.analysisHint')">
           <span class="truncate">
-            {{ t(analysis.paused ? 'filters.analysisPaused' : 'filters.analyzing', { n: pending.toLocaleString() }) }}
+            {{ t(analysis.paused ? 'filters.analysisPaused' : 'filters.analyzing', { n: formatNumber(pending) }) }}
           </span>
         </Hint>
         <Hint :text="analysis.paused ? t('filters.resumeAnalysis') : t('filters.pauseAnalysis')">

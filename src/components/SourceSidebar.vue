@@ -16,7 +16,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { confirm } from '@/composables/confirm'
-import { folderName } from '@/format'
+import { folderName, formatNumber } from '@/format'
 import { useDuplicatesStore } from '@/stores/duplicates'
 import { useLibraryStore } from '@/stores/library'
 import { useSettingsStore } from '@/stores/settings'
@@ -179,7 +179,7 @@ async function confirmRemoveSource(id: number) {
     return
   const ok = await confirm({
     title: t('sidebar.confirmRemoveSource.title', { name: folderName(s.path) }),
-    description: t('sidebar.confirmRemoveSource.description', { n: s.sampleCount.toLocaleString() }, s.sampleCount),
+    description: t('sidebar.confirmRemoveSource.description', { n: formatNumber(s.sampleCount) }, s.sampleCount),
     action: t('common.actions.remove'),
     destructive: true,
   })
@@ -193,7 +193,7 @@ async function confirmDeleteCollection(id: number) {
     return
   const ok = await confirm({
     title: t('sidebar.confirmDeleteCollection.title', { name: c.name }),
-    description: t('sidebar.confirmDeleteCollection.description', { n: c.sampleCount.toLocaleString() }, c.sampleCount),
+    description: t('sidebar.confirmDeleteCollection.description', { n: formatNumber(c.sampleCount) }, c.sampleCount),
     action: t('common.actions.delete'),
     destructive: true,
   })
@@ -207,7 +207,7 @@ async function confirmDeleteTag(id: number) {
     return
   const ok = await confirm({
     title: t('sidebar.confirmDeleteTag.title', { name: tag.name }),
-    description: t('sidebar.confirmDeleteTag.description', { n: tag.sampleCount.toLocaleString() }, tag.sampleCount),
+    description: t('sidebar.confirmDeleteTag.description', { n: formatNumber(tag.sampleCount) }, tag.sampleCount),
     action: t('common.actions.delete'),
     destructive: true,
   })
@@ -252,7 +252,7 @@ async function confirmDeleteTag(id: number) {
           >
             <span class="i-lucide-copy shrink-0" />
             <span class="flex-1 truncate">{{ t('sidebar.duplicates') }}</span>
-            <span class="text-[11px] text-muted-foreground tabular">{{ duplicates.count.toLocaleString() }}</span>
+            <span class="text-[11px] text-muted-foreground tabular">{{ formatNumber(duplicates.count) }}</span>
           </button>
 
           <h3 class="section">
@@ -270,7 +270,7 @@ async function confirmDeleteTag(id: number) {
             </Hint>
             <span v-if="progressLabel(s.id)" class="text-[11px] text-primary tabular">{{ progressLabel(s.id) }}</span>
             <template v-else>
-              <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ s.sampleCount.toLocaleString() }}</span>
+              <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ formatNumber(s.sampleCount) }}</span>
               <span class="hidden group-hover:flex gap-0.5">
                 <Hint :text="t('sidebar.rescan')">
                   <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('sidebar.rescan')" @click.stop="library.rescanSource(s.id)">
@@ -316,7 +316,7 @@ async function confirmDeleteTag(id: number) {
             >
             <template v-else>
               <span class="flex-1 truncate">{{ c.name }}</span>
-              <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ c.sampleCount.toLocaleString() }}</span>
+              <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ formatNumber(c.sampleCount) }}</span>
               <span class="hidden group-hover:flex gap-0.5">
                 <Hint :text="t('common.actions.rename')">
                   <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('common.actions.rename')" @click.stop="startRename('collection', c.id, c.name)">
@@ -368,7 +368,7 @@ async function confirmDeleteTag(id: number) {
             >
             <template v-else>
               <span class="flex-1 truncate">{{ tag.name }}</span>
-              <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ tag.sampleCount.toLocaleString() }}</span>
+              <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ formatNumber(tag.sampleCount) }}</span>
               <span class="hidden group-hover:flex gap-0.5">
                 <Hint :text="t('common.actions.rename')">
                   <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('common.actions.rename')" @click.stop="startRename('tag', tag.id, tag.name)">

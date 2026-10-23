@@ -4,6 +4,7 @@ import settings from './settings'
 import sidebar from './sidebar'
 import filters from './filters'
 import list from './list'
+import menu from './menu'
 import player from './player'
 import duplicates from './duplicates'
 import editor from './editor'
@@ -17,6 +18,7 @@ export default {
   sidebar,
   filters,
   list,
+  menu,
   player,
   duplicates,
   editor,
