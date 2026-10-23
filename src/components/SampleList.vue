@@ -4,7 +4,7 @@ import { useVirtualizer } from '@tanstack/vue-virtual'
 import { useEventListener } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
-import { formatBpm, formatDuration, formatRate, KIND_LABELS, sourceHint } from '@/format'
+import { CATEGORY_LABELS, categoryHint, formatBpm, formatDuration, KIND_LABELS, sourceHint } from '@/format'
 import SampleContextMenu from '@/components/SampleContextMenu.vue'
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { useLibraryStore } from '@/stores/library'
@@ -112,11 +112,12 @@ function onDragStart(e: DragEvent, sample: Sample) {
       <span />
       <span>Name</span>
       <span>Tags</span>
+      <span>Category</span>
       <span>Kind</span>
       <span class="text-right">BPM</span>
       <span>Key</span>
       <span class="text-right">Length</span>
-      <span class="text-right">Rate</span>
+
       <span>Type</span>
     </div>
 
@@ -166,6 +167,10 @@ function onDragStart(e: DragEvent, sample: Sample) {
                 <span class="flex gap-1 overflow-hidden">
                   <span v-for="t in s.tags" :key="t.id" class="chip">{{ t.name }}</span>
                 </span>
+                <span
+                  class="truncate text-[11px]" :class="s.categorySource === 'audio' ? 'text-muted-foreground' : ''"
+                  :title="categoryHint(s.categorySource, s.categoryConfidence)"
+                >{{ s.category ? CATEGORY_LABELS[s.category] ?? s.category : '' }}</span>
                 <span class="text-muted-foreground text-[11px]">
                   <template v-if="s.kind">{{ KIND_LABELS[s.kind] }}</template>
                   <span v-else-if="!s.analyzed" class="opacity-50">…</span>
@@ -175,7 +180,6 @@ function onDragStart(e: DragEvent, sample: Sample) {
                 </span>
                 <span :class="s.keySource === 'audio' ? 'text-muted-foreground' : ''" :title="sourceHint(s.keySource)">{{ s.key ?? '' }}</span>
                 <span class="text-right text-muted-foreground">{{ formatDuration(s.duration) }}</span>
-                <span class="text-right text-muted-foreground">{{ formatRate(s.sampleRate) }}</span>
                 <span class="text-muted-foreground uppercase text-[11px]">{{ s.ext }}</span>
               </div>
               <div
@@ -199,7 +203,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
 <style scoped>
 .header,
 .row {
-  grid-template-columns: 16px 18px minmax(0, 2fr) minmax(0, 1fr) 60px 44px 36px 56px 64px 40px;
+  grid-template-columns: 16px 18px minmax(0, 2fr) minmax(0, 1fr) 76px 60px 44px 36px 56px 40px;
   column-gap: 12px;
 }
 .row:hover {

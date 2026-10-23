@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AcceptableValue } from 'reka-ui'
 import type { SampleKind } from '@/api'
-import { Check, Pause, Play } from '@lucide/vue'
+import { Check, Download, Pause, Play } from '@lucide/vue'
 import { storeToRefs } from 'pinia'
 import { computed } from 'vue'
 import { Button } from '@/components/ui/button'
@@ -18,11 +18,11 @@ import {
 } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { KIND_LABELS } from '@/format'
+import { CATEGORY_LABELS, formatSize, KIND_LABELS } from '@/format'
 import { useLibraryStore } from '@/stores/library'
 
 const library = useLibraryStore()
-const { kindFilter, bpmMin, bpmMax, keyFilter, hasAnalysisFilters, analysis } = storeToRefs(library)
+const { kindFilter, bpmMin, bpmMax, keyFilter, categoryFilter, hasAnalysisFilters, analysis, soundModel, modelDownload } = storeToRefs(library)
 
 const kinds: SampleKind[] = ['oneshot', 'loop', 'long']
 const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -44,6 +44,17 @@ function onKindChange(v: AcceptableValue | AcceptableValue[]) {
 const key = computed<string>({
   get: () => keyFilter.value ?? ANY,
   set: v => (keyFilter.value = v === ANY ? null : v),
+})
+
+const category = computed<string>({
+  get: () => categoryFilter.value ?? ANY,
+  set: v => (categoryFilter.value = v === ANY ? null : v),
+})
+
+const pending = computed(() => analysis.value.pending + analysis.value.pendingEmbeddings)
+const downloadPercent = computed(() => {
+  const d = modelDownload.value
+  return d && d.total ? Math.round((d.received / d.total) * 100) : 0
 })
 
 function parseBpm(e: Event): number | null {
@@ -105,15 +116,50 @@ function parseBpm(e: Event): number | null {
       </Select>
     </div>
 
+    <div class="flex items-center gap-2 text-muted-foreground">
+      Category
+      <Select v-model="category">
+        <SelectTrigger size="sm" class="w-32 text-foreground" aria-label="Category">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem :value="ANY">
+            Any
+          </SelectItem>
+          <SelectSeparator />
+          <SelectItem v-for="(label, id) in CATEGORY_LABELS" :key="id" :value="id">
+            {{ label }}
+          </SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
     <Button v-if="hasAnalysisFilters" variant="ghost" size="sm" class="text-muted-foreground" @click="library.clearAnalysisFilters()">
       Clear
     </Button>
 
     <div class="ml-auto min-w-0 flex items-center gap-2 text-muted-foreground tabular whitespace-nowrap">
-      <template v-if="analysis.pending > 0">
+      <template v-if="modelDownload">
+        <span v-if="modelDownload.error" class="truncate text-destructive" :title="modelDownload.error">
+          Download failed
+        </span>
+        <template v-else>
+          <Spinner class="text-primary" />
+          Downloading sound model · {{ downloadPercent }}%
+        </template>
+      </template>
+      <Button
+        v-else-if="soundModel && !soundModel.installed"
+        variant="outline" size="sm"
+        title="Classify unnamed samples (kick, bass, pad…) by how they sound and detect keys of tonal loops. Runs offline."
+        @click="library.downloadSoundModel()"
+      >
+        <Download /> Sound model · {{ formatSize(soundModel.size) }}
+      </Button>
+      <template v-if="pending > 0">
         <Spinner v-if="!analysis.paused" class="text-primary" />
-        <span class="truncate" title="BPM, key, loudness and one-shot/loop detection run in the background">
-          {{ analysis.paused ? 'Analysis paused' : 'Analyzing' }} · {{ analysis.pending.toLocaleString() }} left
+        <span class="truncate" title="Loudness, one-shot/loop, BPM, categories and keys are analyzed in the background">
+          {{ analysis.paused ? 'Analysis paused' : 'Analyzing' }} · {{ pending.toLocaleString() }} left
         </span>
         <Button
           variant="ghost" size="icon-sm"
@@ -123,7 +169,7 @@ function parseBpm(e: Event): number | null {
           <component :is="analysis.paused ? Play : Pause" />
         </Button>
       </template>
-      <span v-else class="flex items-center gap-1.5">
+      <span v-else-if="!modelDownload" class="flex items-center gap-1.5">
         <Check class="size-4" /> Analyzed
       </span>
     </div>

@@ -51,6 +51,33 @@ export function formatDb(db: number | null | undefined, unit = 'dB'): string {
 
 export const KIND_LABELS = { oneshot: 'One-shot', loop: 'Loop', long: 'Long' } as const
 
+/** Display names for category ids (same order as `category::CATEGORIES` in Rust). */
+export const CATEGORY_LABELS: Record<string, string> = {
+  kick: 'Kick',
+  snare: 'Snare',
+  clap: 'Clap',
+  hihat: 'Hi-hat',
+  cymbal: 'Cymbal',
+  tom: 'Tom',
+  percussion: 'Percussion',
+  drums: 'Drums',
+  bass: 'Bass',
+  synth: 'Synth',
+  pad: 'Pad',
+  keys: 'Keys',
+  guitar: 'Guitar',
+  strings: 'Strings',
+  brass: 'Brass & winds',
+  vocal: 'Vocal',
+  fx: 'FX',
+}
+
 export function sourceHint(source: 'name' | 'audio' | null | undefined): string {
   return source === 'name' ? 'From the file name' : source === 'audio' ? 'Detected from audio' : ''
+}
+
+export function categoryHint(source: 'name' | 'audio' | null | undefined, confidence: number | null | undefined): string {
+  if (source === 'audio' && confidence != null)
+    return `Detected from audio (${Math.round(confidence * 100)}% of similar sounds agree)`
+  return source === 'name' ? 'From the file or folder name' : ''
 }

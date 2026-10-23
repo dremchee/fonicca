@@ -27,6 +27,9 @@ export interface Sample {
   peakDb: number | null
   lufs: number | null
   analyzed: boolean
+  category: string | null
+  categorySource: ValueSource | null
+  categoryConfidence: number | null
 }
 
 export type SampleKind = 'oneshot' | 'loop' | 'long'
@@ -35,8 +38,24 @@ export type ValueSource = 'name' | 'audio'
 
 export interface AnalysisProgress {
   pending: number
+  pendingEmbeddings: number
+  modelReady: boolean
   paused: boolean
   updated: number[]
+}
+
+export interface SoundModelStatus {
+  installed: boolean
+  ready: boolean
+  downloading: boolean
+  size: number
+}
+
+export interface DownloadProgress {
+  received: number
+  total: number
+  done: boolean
+  error: string | null
 }
 
 export interface TagRef {
@@ -79,10 +98,12 @@ export interface SampleFilter {
   bpmMin?: number | null
   bpmMax?: number | null
   key?: string | null
+  category?: string | null
 }
 
 export const SCAN_PROGRESS_EVENT = 'scan-progress'
 export const ANALYSIS_PROGRESS_EVENT = 'analysis-progress'
+export const MODEL_DOWNLOAD_EVENT = 'model-download'
 
 export const api = {
   listSources: () => invoke<Source[]>('list_sources'),
@@ -113,6 +134,8 @@ export const api = {
   prioritizeAnalysis: (ids: number[]) => invoke<void>('prioritize_analysis', { ids }),
   setAnalysisPaused: (paused: boolean) => invoke<void>('set_analysis_paused', { paused }),
   analysisStatus: () => invoke<AnalysisProgress>('analysis_status'),
+  soundModelStatus: () => invoke<SoundModelStatus>('sound_model_status'),
+  downloadSoundModel: () => invoke<void>('download_sound_model'),
   play: (id: number, start = 0) => invoke<void>('play', { id, start }),
   stop: () => invoke<void>('stop'),
   seek: (position: number) => invoke<void>('seek', { position }),

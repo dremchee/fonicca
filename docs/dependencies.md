@@ -22,10 +22,12 @@
 |---|---|---|---|---|
 | symphonia | 0.6 | MPL-2.0 | ⚠️ | Декодирование WAV/AIFF/FLAC/MP3/OGG. MPL — пофайловый copyleft: без модификаций исходников можно свободно; правки в самой symphonia надо публиковать |
 | hound | 3.5 | Apache-2.0 | ✅ | Запись WAV |
-| rubato | 5.0 | MIT / Apache-2.0 | ✅ | Ресемплинг |
+| rubato | 5.0 | MIT / Apache-2.0 | ✅ | Ресемплинг (до 48 кГц для CLAP) |
 | cpal | 0.18 | Apache-2.0 | ✅ | Аудиовывод низкого уровня |
 | rodio | 0.23 | MIT / Apache-2.0 | ✅ | Плеер поверх cpal (проще для превью) |
-| rustfft / realfft | 6.4 / 3.5 | MIT / Apache-2.0 | ✅ | FFT (waveform, спектрограмма, анализ) |
+| rustfft / realfft | 6.4 / 3.5 | MIT / Apache-2.0 | ✅ | FFT (мел-спектрограмма для CLAP) |
+| stratum-dsp | 1.0 | MIT / Apache-2.0 | ✅ | BPM и тональность (без feature `ml`) |
+| ureq / sha2 | 3.5 / 0.11 | MIT / Apache-2.0 | ✅ | Загрузка модели и проверка контрольной суммы |
 | ebur128 | 0.1 | MIT | ✅ | Громкость LUFS, нормализация |
 | lofty | 0.25 | MIT / Apache-2.0 | ✅ | Чтение/запись тегов в файлы (ID3, Vorbis, RIFF INFO…) |
 
@@ -54,7 +56,7 @@
 
 | Пакет | Лицензия | Статус | Комментарий |
 |---|---|---|---|
-| ort 2.0 (ONNX Runtime) | MIT / Apache-2.0 | ✅ | **Выбор.** На macOS — CoreML execution provider (ускорение на Apple Silicon) |
+| ort 2.0.0-rc.12 (ONNX Runtime) | MIT / Apache-2.0 | ✅ | **Используется** для CLAP. rc.13+ требуют Rust 1.92 |
 | candle | MIT / Apache-2.0 | ✅ | Альтернатива на чистом Rust (Metal) |
 | tract-onnx | MIT / Apache-2.0 | ✅ | Лёгкий ONNX без нативных библиотек, но медленнее для больших моделей |
 
@@ -68,7 +70,7 @@
 
 ## Модели
 
-### CLAP (поиск похожих, поиск текстом, автокатегории)
+### CLAP (автокатегории, поиск похожих)
 
 | Модель | Лицензия | Статус | Комментарий |
 |---|---|---|---|
@@ -117,6 +119,6 @@
 - Убрать aubio и Essentia → stratum-dsp (+ beat-this).
 - chromaprint → rusty-chromaprint.
 - Time-stretch: signalsmith-stretch подтверждён.
-- CLAP: laion/larger_clap_music, Apache-2.0.
+- CLAP: только аудио-энкодер laion/clap-htsat-unfused (ONNX int8 от Xenova, 34 МБ), Apache-2.0; текстовый энкодер не нужен.
 - Стемы: Spleeter по умолчанию, Demucs не использовать.
 - Waveform: wavesurfer.js (BSD), не peaks.js.

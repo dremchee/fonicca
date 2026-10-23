@@ -276,6 +276,18 @@ fn loudness(pcm: &audio::Pcm) -> (Option<f64>, Option<f64>) {
     (peak_db, lufs)
 }
 
+/// Key of a tonal sound (bass, keys, pads …). Only called once the category says
+/// the sound is tonal: the detector names a key for anything, drums included.
+pub fn key_from_audio(mono: &[f32], sample_rate: u32) -> Option<String> {
+    if (mono.len() as f64) < 2.0 * sample_rate as f64 {
+        return None;
+    }
+    let window = detection_window(mono, sample_rate);
+    stratum_dsp::analyze_audio(window, sample_rate, stratum_dsp::AnalysisConfig::default())
+        .ok()
+        .map(|r| r.key.name())
+}
+
 pub fn analyze(path: &Path, name: &str) -> Result<Analysis> {
     let pcm = audio::decode(path, MAX_SECONDS)?;
     let mono = pcm.mono();

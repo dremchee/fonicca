@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, KIND_LABELS, sourceHint } from '@/format'
+import { CATEGORY_LABELS, categoryHint, formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, KIND_LABELS, sourceHint } from '@/format'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 
@@ -173,6 +173,7 @@ function onDragStart(e: DragEvent) {
           </div>
         </div>
         <div class="flex gap-3 text-[11px] text-muted-foreground tabular shrink-0">
+          <span v-if="sample.category" :title="categoryHint(sample.categorySource, sample.categoryConfidence)">{{ CATEGORY_LABELS[sample.category] ?? sample.category }}</span>
           <span v-if="sample.kind">{{ KIND_LABELS[sample.kind] }}</span>
           <span v-if="sample.bpm != null" :title="sourceHint(sample.bpmSource)">{{ formatBpm(sample.bpm) }} BPM</span>
           <span v-if="sample.key" :title="sourceHint(sample.keySource)">{{ sample.key }}</span>

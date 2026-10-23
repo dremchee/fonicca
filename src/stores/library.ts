@@ -1,9 +1,9 @@
-import type { AnalysisProgress, Collection, Sample, SampleFilter, SampleKind, ScanProgress, Source, Tag } from '@/api'
+import type { AnalysisProgress, Collection, DownloadProgress, Sample, SampleFilter, SampleKind, ScanProgress, SoundModelStatus, Source, Tag } from '@/api'
 import { listen } from '@tauri-apps/api/event'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, reactive, ref, shallowReactive, watch } from 'vue'
-import { ANALYSIS_PROGRESS_EVENT, api, SCAN_PROGRESS_EVENT, startFileDrag } from '@/api'
+import { ANALYSIS_PROGRESS_EVENT, api, MODEL_DOWNLOAD_EVENT, SCAN_PROGRESS_EVENT, startFileDrag } from '@/api'
 
 const PAGE_SIZE = 200
 
@@ -28,7 +28,10 @@ export const useLibraryStore = defineStore('library', () => {
   const bpmMin = ref<number | null>(null)
   const bpmMax = ref<number | null>(null)
   const keyFilter = ref<string | null>(null)
-  const analysis = ref<{ pending: number, paused: boolean }>({ pending: 0, paused: false })
+  const categoryFilter = ref<string | null>(null)
+  const analysis = ref({ pending: 0, pendingEmbeddings: 0, modelReady: false, paused: false })
+  const soundModel = ref<SoundModelStatus | null>(null)
+  const modelDownload = ref<DownloadProgress | null>(null)
   const total = ref(0)
   const scans = reactive(new Map<number, ScanProgress>())
 
@@ -58,6 +61,7 @@ export const useLibraryStore = defineStore('library', () => {
       bpmMin: bpmMin.value,
       bpmMax: bpmMax.value,
       key: keyFilter.value,
+      category: categoryFilter.value,
     }
   })
   const focused = computed(() => sampleAt(focusIndex.value))
@@ -115,13 +119,15 @@ export const useLibraryStore = defineStore('library', () => {
   watch(filter, () => refresh())
 
   const hasAnalysisFilters = computed(() =>
-    kindFilter.value !== null || bpmMin.value !== null || bpmMax.value !== null || keyFilter.value !== null)
+    kindFilter.value !== null || bpmMin.value !== null || bpmMax.value !== null || keyFilter.value !== null
+    || categoryFilter.value !== null)
 
   function clearAnalysisFilters() {
     kindFilter.value = null
     bpmMin.value = null
     bpmMax.value = null
     keyFilter.value = null
+    categoryFilter.value = null
   }
 
   /** Re-fetches loaded pages in place (no flashing) after background updates. */
@@ -151,6 +157,15 @@ export const useLibraryStore = defineStore('library', () => {
     const ids = samples.filter((s): s is Sample => !!s && !s.analyzed).map(s => s.id)
     if (ids.length && !analysis.value.paused)
       api.prioritizeAnalysis(ids)
+  }
+
+  async function loadSoundModel() {
+    soundModel.value = await api.soundModelStatus()
+  }
+
+  async function downloadSoundModel() {
+    modelDownload.value = { received: 0, total: soundModel.value?.size ?? 0, done: false, error: null }
+    await api.downloadSoundModel()
   }
 
   async function setAnalysisPaused(paused: boolean) {
@@ -422,13 +437,20 @@ export const useLibraryStore = defineStore('library', () => {
 
   async function init() {
     await listen<AnalysisProgress>(ANALYSIS_PROGRESS_EVENT, ({ payload }) => {
-      analysis.value = { pending: payload.pending, paused: payload.paused }
-      if (payload.updated.length)
+      const { updated, ...status } = payload
+      analysis.value = status
+      if (updated.length)
         scheduleReload()
     })
-    api.analysisStatus().then((s) => {
-      analysis.value = { pending: s.pending, paused: s.paused }
+    await listen<DownloadProgress>(MODEL_DOWNLOAD_EVENT, async ({ payload }) => {
+      modelDownload.value = payload.done && !payload.error ? null : payload
+      if (payload.done)
+        await loadSoundModel()
     })
+    api.analysisStatus().then(({ updated: _, ...status }) => {
+      analysis.value = status
+    })
+    loadSoundModel()
     await listen<ScanProgress>(SCAN_PROGRESS_EVENT, async ({ payload }) => {
       if (!payload.done) {
         scans.set(payload.sourceId, payload)
@@ -455,9 +477,13 @@ export const useLibraryStore = defineStore('library', () => {
     bpmMin,
     bpmMax,
     keyFilter,
+    categoryFilter,
     hasAnalysisFilters,
     clearAnalysisFilters,
     analysis,
+    soundModel,
+    modelDownload,
+    downloadSoundModel,
     prioritizeAnalysis,
     setAnalysisPaused,
     total,

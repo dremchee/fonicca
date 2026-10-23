@@ -200,6 +200,18 @@ pub const MIGRATIONS: &[&str] = &[r#"
     CREATE INDEX samples_kind ON samples(kind);
     CREATE INDEX samples_bpm ON samples(bpm);
     CREATE INDEX samples_key ON samples(musical_key);
+"#, r#"
+    -- Instrument category: from file/folder names, or from the CLAP embedding.
+    ALTER TABLE samples ADD COLUMN category TEXT;
+    ALTER TABLE samples ADD COLUMN category_source TEXT;
+    ALTER TABLE samples ADD COLUMN category_confidence REAL;
+    -- Version of the name rules applied; NULL until categorized by name.
+    ALTER TABLE samples ADD COLUMN category_version INTEGER;
+    ALTER TABLE samples ADD COLUMN embedding BLOB;
+    ALTER TABLE samples ADD COLUMN embedding_version INTEGER;
+    CREATE INDEX samples_category ON samples(category);
+    CREATE INDEX samples_category_version ON samples(category_version);
+    CREATE INDEX samples_embedding_version ON samples(embedding_version);
 "#];
 
 /// How long user data of removed files is kept for possible reattachment.

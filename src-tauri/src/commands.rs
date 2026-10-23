@@ -228,12 +228,53 @@ pub fn set_analysis_paused(state: State<'_, AppState>, paused: bool) {
 
 #[tauri::command]
 pub fn analysis_status(state: State<'_, AppState>) -> Result<crate::analyzer::Progress> {
-    let pending = state.db.lock().unwrap().query_row(
-        "SELECT COUNT(*) FROM samples WHERE analysis_version IS NULL OR analysis_version < ?1",
-        [crate::analysis::ANALYSIS_VERSION],
-        |r| r.get(0),
-    )?;
-    Ok(crate::analyzer::Progress { pending, paused: state.analyzer.is_paused(), updated: Vec::new() })
+    let conn = state.db.lock().unwrap();
+    Ok(state.analyzer.progress(&conn, Vec::new()))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SoundModelStatus {
+    installed: bool,
+    ready: bool,
+    downloading: bool,
+    size: u64,
+}
+
+#[tauri::command]
+pub fn sound_model_status(state: State<'_, AppState>) -> SoundModelStatus {
+    SoundModelStatus {
+        installed: crate::models::is_installed(&state.models_dir),
+        ready: state.analyzer.model_ready(),
+        downloading: state.model_downloading.load(std::sync::atomic::Ordering::SeqCst),
+        size: crate::clap::MODEL_SIZE,
+    }
+}
+
+/// Downloads the sound model in the background; progress and completion are
+/// reported through `model-download` events.
+#[tauri::command]
+pub fn download_sound_model(app: tauri::AppHandle, state: State<'_, AppState>) {
+    use std::sync::atomic::Ordering;
+    use tauri::{Emitter, Manager};
+    if state.model_downloading.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    std::thread::spawn(move || {
+        let state = app.state::<AppState>();
+        let emit = |p: crate::models::DownloadProgress| {
+            let _ = app.emit(crate::models::DOWNLOAD_EVENT, p);
+        };
+        let result = crate::models::download(&state.models_dir, &emit)
+            .and_then(|path| state.analyzer.load_model(&path));
+        state.model_downloading.store(false, Ordering::SeqCst);
+        emit(crate::models::DownloadProgress {
+            received: 0,
+            total: 0,
+            done: true,
+            error: result.err().map(|e| e.to_string()),
+        });
+    });
 }
 
 #[tauri::command]

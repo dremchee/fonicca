@@ -1,10 +1,13 @@
 mod analysis;
 mod analyzer;
 mod audio;
+mod category;
+mod clap;
 mod commands;
 mod db;
 mod error;
 mod library;
+mod models;
 mod player;
 mod scan;
 mod watch;
@@ -19,6 +22,8 @@ pub struct AppState {
     pub player: player::Player,
     pub scanner: Arc<watch::Scanner>,
     pub analyzer: Arc<analyzer::Analyzer>,
+    pub models_dir: std::path::PathBuf,
+    pub model_downloading: std::sync::atomic::AtomicBool,
     pub watcher: watch::LibraryWatcher,
 }
 
@@ -44,6 +49,16 @@ pub fn run() {
             let analyzer = analyzer::Analyzer::start(db_path.clone(), move |p| {
                 let _ = handle.emit(analyzer::PROGRESS_EVENT, p);
             });
+            let models_dir = dir.join("models");
+            if models::is_installed(&models_dir) {
+                let analyzer = Arc::clone(&analyzer);
+                let path = models::model_path(&models_dir);
+                std::thread::spawn(move || {
+                    if let Err(e) = analyzer.load_model(&path) {
+                        eprintln!("{e}");
+                    }
+                });
+            }
             let handle = app.handle().clone();
             let scan_analyzer = Arc::clone(&analyzer);
             let scanner = watch::Scanner::new(db_path, move |p| {
@@ -65,6 +80,8 @@ pub fn run() {
                 player: player::Player::new(),
                 scanner,
                 analyzer,
+                models_dir,
+                model_downloading: Default::default(),
                 watcher,
             });
             Ok(())
@@ -96,6 +113,8 @@ pub fn run() {
             commands::prioritize_analysis,
             commands::set_analysis_paused,
             commands::analysis_status,
+            commands::sound_model_status,
+            commands::download_sound_model,
             commands::play,
             commands::stop,
             commands::seek,

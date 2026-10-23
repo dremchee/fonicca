@@ -20,6 +20,8 @@ pub struct Filter {
     pub bpm_max: Option<f64>,
     /// Exact key name, e.g. "Am" or "F#".
     pub key: Option<String>,
+    /// Category id, e.g. "kick" (see `category::CATEGORIES`).
+    pub category: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -51,6 +53,9 @@ pub struct Sample {
     pub peak_db: Option<f64>,
     pub lufs: Option<f64>,
     pub analyzed: bool,
+    pub category: Option<String>,
+    pub category_source: Option<String>,
+    pub category_confidence: Option<f64>,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -108,6 +113,10 @@ fn where_clause(f: &Filter) -> (String, Vec<Box<dyn ToSql>>) {
         clauses.push("s.bpm <= ?");
         args.push(Box::new(max));
     }
+    if let Some(category) = &f.category {
+        clauses.push("s.category = ?");
+        args.push(Box::new(category.clone()));
+    }
     if let Some(key) = &f.key {
         clauses.push("s.musical_key = ?");
         args.push(Box::new(key.clone()));
@@ -150,7 +159,8 @@ pub fn list(conn: &Connection, f: &Filter, offset: i64, limit: i64) -> Result<Ve
                  FROM sample_tags st JOIN tags t ON t.id = st.tag_id
                  WHERE st.sample_id = s.id),
                 s.kind, s.bpm, s.bpm_source, s.musical_key, s.key_source, s.peak_db, s.lufs,
-                s.analysis_version IS NOT NULL
+                s.analysis_version IS NOT NULL,
+                s.category, s.category_source, s.category_confidence
          FROM samples s {filter} {ORDER} LIMIT ? OFFSET ?"
     ))?;
     let rows = stmt
@@ -177,6 +187,9 @@ pub fn list(conn: &Connection, f: &Filter, offset: i64, limit: i64) -> Result<Ve
                 peak_db: r.get(17)?,
                 lufs: r.get(18)?,
                 analyzed: r.get(19)?,
+                category: r.get(20)?,
+                category_source: r.get(21)?,
+                category_confidence: r.get(22)?,
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
