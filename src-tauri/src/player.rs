@@ -19,9 +19,28 @@ pub struct Player {
     mixer: Option<Mixer>,
     current: Mutex<Option<RodioPlayer>>,
     volume: Mutex<f32>,
-    /// Seconds of the original file per second of playback (≠ 1 when stretched),
-    /// so positions and seeks stay in the file's own time.
-    time_scale: Mutex<f64>,
+    /// Maps playback time to time in the file, so positions and seeks stay in
+    /// the file's (or edit buffer's) own time.
+    timing: Mutex<Timing>,
+}
+
+#[derive(Clone, Copy)]
+struct Timing {
+    /// Seconds of the source per second of playback (≠ 1 when stretched).
+    scale: f64,
+    /// Source time where playback started from (for buffer regions).
+    offset: f64,
+    /// Length of a looping region; positions wrap within it.
+    loop_len: Option<f64>,
+}
+
+impl Timing {
+    const PLAIN: Timing = Timing { scale: 1.0, offset: 0.0, loop_len: None };
+
+    fn source_time(&self, played: f64) -> f64 {
+        let t = played * self.scale;
+        self.offset + self.loop_len.filter(|l| *l > 0.0).map_or(t, |l| t % l)
+    }
 }
 
 impl Player {
@@ -48,7 +67,7 @@ impl Player {
             mixer: rx.recv().ok().flatten(),
             current: Mutex::new(None),
             volume: Mutex::new(1.0),
-            time_scale: Mutex::new(1.0),
+            timing: Mutex::new(Timing::PLAIN),
         }
     }
 
@@ -69,7 +88,7 @@ impl Player {
                 if start > 0.0 {
                     let _ = player.try_seek(Duration::from_secs_f64(start / scale));
                 }
-                *self.time_scale.lock().unwrap() = scale;
+                *self.timing.lock().unwrap() = Timing { scale, ..Timing::PLAIN };
                 *self.current.lock().unwrap() = Some(player);
                 return Ok(adjust);
             }
@@ -93,9 +112,39 @@ impl Player {
             let _ = player.try_seek(Duration::from_secs_f64(start));
         }
         // Replacing the previous player drops it, which stops its sound.
-        *self.time_scale.lock().unwrap() = 1.0;
+        *self.timing.lock().unwrap() = Timing::PLAIN;
         *self.current.lock().unwrap() = Some(player);
         Ok(Adjust::NONE)
+    }
+
+    /// Plays frames `[start, end)` of an in-memory buffer (the editor), optionally
+    /// looping. Positions are reported in seconds of the buffer.
+    pub fn play_buffer(&self, pcm: &crate::audio::Pcm, start: usize, end: usize, looping: bool) -> Result<()> {
+        use rodio::Source;
+        let mixer = self.mixer.as_ref().ok_or_else(|| Error::Audio("no output device".into()))?;
+        let ch = pcm.channels.max(1);
+        let (start, end) = (start.min(pcm.frames()), end.min(pcm.frames()));
+        if end <= start {
+            return Ok(());
+        }
+        let channels = std::num::NonZero::new(ch as u16).ok_or_else(|| Error::Audio("no channels".into()))?;
+        let rate = std::num::NonZero::new(pcm.sample_rate).ok_or_else(|| Error::Audio("no sample rate".into()))?;
+        let buffer = rodio::buffer::SamplesBuffer::new(channels, rate, pcm.samples[start * ch..end * ch].to_vec());
+        let player = RodioPlayer::connect_new(mixer);
+        player.set_volume(*self.volume.lock().unwrap());
+        if looping {
+            player.append(buffer.repeat_infinite());
+        } else {
+            player.append(buffer);
+        }
+        let sr = pcm.sample_rate as f64;
+        *self.timing.lock().unwrap() = Timing {
+            scale: 1.0,
+            offset: start as f64 / sr,
+            loop_len: looping.then(|| (end - start) as f64 / sr),
+        };
+        *self.current.lock().unwrap() = Some(player);
+        Ok(())
     }
 
     /// Preview volume, 0..=1; also applies to the sound playing now.
@@ -112,18 +161,19 @@ impl Player {
 
     pub fn seek(&self, pos: f64) -> Result<()> {
         if let Some(p) = self.current.lock().unwrap().as_ref() {
-            let scale = *self.time_scale.lock().unwrap();
-            p.try_seek(Duration::from_secs_f64(pos / scale)).map_err(|e| Error::Audio(e.to_string()))?;
+            let t = *self.timing.lock().unwrap();
+            let played = ((pos - t.offset) / t.scale).max(0.0);
+            p.try_seek(Duration::from_secs_f64(played)).map_err(|e| Error::Audio(e.to_string()))?;
         }
         Ok(())
     }
 
     /// Current position in seconds of the file, or `None` when nothing is playing.
     pub fn position(&self) -> Option<f64> {
-        let scale = *self.time_scale.lock().unwrap();
+        let timing = *self.timing.lock().unwrap();
         let mut guard = self.current.lock().unwrap();
         match guard.as_ref() {
-            Some(p) if !p.empty() => Some(p.get_pos().as_secs_f64() * scale),
+            Some(p) if !p.empty() => Some(timing.source_time(p.get_pos().as_secs_f64())),
             Some(_) => {
                 guard.take();
                 None

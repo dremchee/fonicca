@@ -4,6 +4,7 @@ import { Search } from '@lucide/vue'
 import { onKeyStroke } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, useTemplateRef } from 'vue'
+import EditorDialog from '@/components/EditorDialog.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import FilterBar from '@/components/FilterBar.vue'
@@ -160,6 +161,7 @@ onKeyStroke(',', (e) => {
       </ResizablePanel>
     </ResizablePanelGroup>
     <SettingsDialog />
+    <EditorDialog />
     <CommandPalette v-model:open="paletteOpen" />
     <ConfirmDialog />
     <Toaster theme="system" position="bottom-right" />

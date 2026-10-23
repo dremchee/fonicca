@@ -5,6 +5,8 @@ mod category;
 mod clap;
 mod commands;
 mod db;
+mod editor;
+mod editor_commands;
 mod error;
 mod library;
 mod models;
@@ -29,6 +31,8 @@ pub struct AppState {
     pub db_path: std::path::PathBuf,
     pub settings: settings::SettingsStore,
     pub similar: Mutex<similar::Similar>,
+    /// The file open in the editor, if any.
+    pub editor: Mutex<Option<editor::Session>>,
     pub model_downloading: std::sync::atomic::AtomicBool,
     pub watcher: watch::LibraryWatcher,
 }
@@ -93,6 +97,7 @@ pub fn run() {
                 db_path,
                 settings,
                 similar: Default::default(),
+                editor: Mutex::new(None),
                 model_downloading: Default::default(),
                 watcher,
             });
@@ -101,6 +106,14 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            editor_commands::editor_open,
+            editor_commands::editor_close,
+            editor_commands::editor_apply,
+            editor_commands::editor_undo,
+            editor_commands::editor_redo,
+            editor_commands::editor_peaks,
+            editor_commands::editor_play,
+            editor_commands::editor_save,
             commands::list_sources,
             commands::add_source,
             commands::remove_source,

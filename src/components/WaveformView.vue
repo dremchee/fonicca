@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Sample } from '@/api'
-import { Play, Square, Star, X } from '@lucide/vue'
+import { Pencil, Play, Square, Star, X } from '@lucide/vue'
 import { useResizeObserver } from '@vueuse/core'
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { api } from '@/api'
@@ -12,12 +12,14 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { CATEGORY_LABELS, categoryHint, formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, KIND_LABELS, sourceHint } from '@/format'
+import { useEditorStore } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 
 const props = defineProps<{ sample: Sample | undefined }>()
 
 const library = useLibraryStore()
+const editor = useEditorStore()
 const player = usePlayerStore()
 const selectionSize = computed(() => {
   const n = library.selectedIds.size
@@ -146,6 +148,11 @@ function onDragStart(e: DragEvent) {
       <Hint :text="sample.favorite ? 'Remove from favorites' : 'Add to favorites'" shortcut="F">
         <Button variant="ghost" size="icon-sm" class="-ml-2 shrink-0" @click="library.toggleFavorite()">
           <Star :class="sample.favorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground'" />
+        </Button>
+      </Hint>
+      <Hint text="Edit" shortcut="E">
+        <Button variant="ghost" size="icon-sm" class="-ml-2 shrink-0 text-muted-foreground" aria-label="Edit" @click="editor.openSample(sample)">
+          <Pencil />
         </Button>
       </Hint>
       <!-- One badge row: tags that do not fit wrap onto the hidden second line. -->

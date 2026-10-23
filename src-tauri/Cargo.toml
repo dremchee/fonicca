@@ -40,6 +40,7 @@ rubato = "5.0.1"
 realfft = "3.5.0"
 ureq = "3.5.0"
 sha2 = "0.11.1"
+hound = "3.5.1"
 signalsmith-stretch = "0.1.3"
 
 
@@ -52,7 +53,6 @@ panic = "abort"
 strip = true
 
 [dev-dependencies]
-hound = "3.5.1"
 tempfile = "3.27.0"
 
 # Audio decoding is ~70x slower unoptimized; optimize dependencies even in dev builds,

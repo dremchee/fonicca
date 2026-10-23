@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Sample } from '@/api'
-import { AudioLines, CircleMinus, FolderOpen, Layers, Play, Square, Star, Tag } from '@lucide/vue'
+import { AudioLines, CircleMinus, FolderOpen, Layers, Pencil, Play, Square, Star, Tag } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { computed, ref } from 'vue'
 import {
@@ -14,6 +14,7 @@ import {
   ContextMenuSubTrigger,
 } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
+import { useEditorStore } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 
@@ -21,6 +22,7 @@ const props = defineProps<{ sample: Sample }>()
 const emit = defineEmits<{ close: [] }>()
 
 const library = useLibraryStore()
+const editor = useEditorStore()
 const player = usePlayerStore()
 const newName = ref('')
 
@@ -64,6 +66,11 @@ async function submitNew() {
       <component :is="player.playingId === sample.id ? Square : Play" />
       {{ player.playingId === sample.id ? 'Stop' : 'Play' }}
       <ContextMenuShortcut>Space</ContextMenuShortcut>
+    </ContextMenuItem>
+    <ContextMenuItem @select="runAfterClose(() => editor.openSample(sample))">
+      <Pencil />
+      Edit…
+      <ContextMenuShortcut>E</ContextMenuShortcut>
     </ContextMenuItem>
     <ContextMenuItem
       :disabled="!library.soundModel?.installed"
