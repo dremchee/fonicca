@@ -217,7 +217,7 @@ async function confirmDeleteTag(id: number) {
 </script>
 
 <template>
-  <aside class="w-60 shrink-0 flex flex-col border-r border-border bg-card">
+  <aside class="h-full flex flex-col bg-card">
     <!-- Left part of this bar sits under the macOS traffic lights (overlay title bar). -->
     <div class="h-11 px-3 flex items-center justify-end gap-0.5" data-tauri-drag-region>
       <Hint text="Add folders">
