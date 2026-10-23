@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import type { AcceptableValue } from 'reka-ui'
 import type { SampleKind } from '@/api'
-import { Check, Download, Pause, Play } from '@lucide/vue'
+import { Check, ChevronDown, Download, Pause, Play } from '@lucide/vue'
 import { storeToRefs } from 'pinia'
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -16,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Slider } from '@/components/ui/slider'
 import { Spinner } from '@/components/ui/spinner'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { CATEGORY_LABELS, formatSize, KIND_LABELS } from '@/format'
@@ -57,6 +59,39 @@ const downloadPercent = computed(() => {
   return d && d.total ? Math.round((d.received / d.total) * 100) : 0
 })
 
+// BPM range: the slider covers the usual tempos; an end at its limit means "no bound".
+const BPM_FLOOR = 40
+const BPM_CEIL = 220
+const bpmRange = ref<number[]>([])
+
+function syncBpmRange() {
+  bpmRange.value = [
+    Math.max(BPM_FLOOR, Math.min(bpmMin.value ?? BPM_FLOOR, BPM_CEIL)),
+    Math.max(BPM_FLOOR, Math.min(bpmMax.value ?? BPM_CEIL, BPM_CEIL)),
+  ]
+}
+watch([bpmMin, bpmMax], syncBpmRange, { immediate: true })
+
+// Applied on release, not on every step, so dragging does not re-query the library.
+function commitBpmRange(v: number[] | undefined) {
+  if (!v)
+    return
+  bpmMin.value = v[0] <= BPM_FLOOR ? null : v[0]
+  bpmMax.value = v[1] >= BPM_CEIL ? null : v[1]
+}
+
+const bpmLabel = computed(() => {
+  const lo = bpmMin.value
+  const hi = bpmMax.value
+  if (lo != null && hi != null)
+    return lo === hi ? `${lo}` : `${lo}–${hi}`
+  if (lo != null)
+    return `≥ ${lo}`
+  if (hi != null)
+    return `≤ ${hi}`
+  return 'Any'
+})
+
 function parseBpm(e: Event): number | null {
   const v = Number.parseFloat((e.target as HTMLInputElement).value)
   return Number.isFinite(v) && v > 0 ? v : null
@@ -77,15 +112,45 @@ function parseBpm(e: Event): number | null {
 
     <div class="flex items-center gap-2 text-muted-foreground">
       BPM
-      <Input
-        :model-value="bpmMin ?? ''" type="number" min="1" placeholder="min" aria-label="Minimum BPM"
-        class="num h-8 w-18" @change="bpmMin = parseBpm($event)"
-      />
-      –
-      <Input
-        :model-value="bpmMax ?? ''" type="number" min="1" placeholder="max" aria-label="Maximum BPM"
-        class="num h-8 w-18" @change="bpmMax = parseBpm($event)"
-      />
+      <Popover>
+        <PopoverTrigger as-child>
+          <Button
+            variant="outline" size="sm" aria-label="BPM range"
+            class="w-28 justify-between font-normal tabular dark:bg-input/30 dark:hover:bg-input/50"
+            :class="bpmMin == null && bpmMax == null ? 'text-muted-foreground' : 'text-foreground'"
+          >
+            {{ bpmLabel }}
+            <ChevronDown class="opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" class="w-64 flex flex-col gap-4">
+          <div class="flex items-center justify-between text-sm">
+            <span class="font-medium">BPM range</span>
+            <Button
+              v-if="bpmMin != null || bpmMax != null"
+              variant="ghost" size="xs" class="-my-1 text-muted-foreground"
+              @click="bpmMin = null; bpmMax = null"
+            >
+              Any
+            </Button>
+          </div>
+          <Slider
+            v-model="bpmRange" :min="BPM_FLOOR" :max="BPM_CEIL" :step="1" :min-steps-between-thumbs="0"
+            aria-label="BPM range" @value-commit="commitBpmRange"
+          />
+          <div class="flex items-center gap-2 text-muted-foreground">
+            <Input
+              :model-value="bpmMin ?? ''" type="number" min="1" placeholder="Min" aria-label="Minimum BPM"
+              class="num h-8" @change="bpmMin = parseBpm($event)"
+            />
+            –
+            <Input
+              :model-value="bpmMax ?? ''" type="number" min="1" placeholder="Max" aria-label="Maximum BPM"
+              class="num h-8" @change="bpmMax = parseBpm($event)"
+            />
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
 
     <div class="flex items-center gap-2 text-muted-foreground">

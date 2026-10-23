@@ -149,99 +149,95 @@ function onDragStart(e: DragEvent) {
 </script>
 
 <template>
-  <section class="h-52 shrink-0 border-t border-border bg-card flex flex-col">
-    <template v-if="sample">
-      <div class="h-10 px-3 flex items-center gap-3">
-        <Button
-          size="icon-sm" class="rounded-full"
-          :title="player.playingId === sample.id ? 'Stop (Space)' : 'Play (Space)'"
-          @click="player.toggle(sample)"
-        >
-          <component :is="player.playingId === sample.id ? Square : Play" class="fill-current" />
-        </Button>
-        <div
-          class="min-w-36 flex-1 cursor-grab"
-          draggable="true"
-          title="Drag into your DAW"
-          @dragstart="onDragStart"
-        >
-          <div class="truncate font-medium">
-            {{ sample.name }}<span class="text-muted-foreground">.{{ sample.ext }}</span>
-          </div>
-          <div class="truncate text-[11px] text-muted-foreground">
-            {{ sample.path }}
-          </div>
+  <!-- Hidden until a sample is selected, so the list gets the whole height. -->
+  <section v-if="sample" class="h-60 shrink-0 border-t border-border bg-card flex flex-col">
+    <div class="h-10 px-3 flex items-center gap-3">
+      <Button
+        size="icon-sm" class="rounded-full"
+        :title="player.playingId === sample.id ? 'Stop (Space)' : 'Play (Space)'"
+        @click="player.toggle(sample)"
+      >
+        <component :is="player.playingId === sample.id ? Square : Play" class="fill-current" />
+      </Button>
+      <div
+        class="min-w-0 flex-1 cursor-grab"
+        draggable="true"
+        title="Drag into your DAW"
+        @dragstart="onDragStart"
+      >
+        <div class="truncate font-medium">
+          {{ sample.name }}<span class="text-muted-foreground">.{{ sample.ext }}</span>
         </div>
-        <!-- One line tall: fields that do not fit wrap onto the hidden second line and drop out
-             whole, least important (the last ones) first. -->
-        <div class="min-w-0 h-4 flex flex-wrap justify-end gap-x-3 overflow-hidden text-[11px] leading-4 text-muted-foreground tabular">
-          <span v-if="sample.category" :title="categoryHint(sample.categorySource, sample.categoryConfidence)">{{ CATEGORY_LABELS[sample.category] ?? sample.category }}</span>
-          <span v-if="sample.kind">{{ KIND_LABELS[sample.kind] }}</span>
-          <span v-if="sample.bpm != null" :title="sourceHint(sample.bpmSource)">{{ formatBpm(sample.bpm) }} BPM</span>
-          <span v-if="sample.key" :title="sourceHint(sample.keySource)">{{ sample.key }}</span>
-          <span v-if="sample.peakDb != null" title="Sample peak">{{ formatDb(sample.peakDb) }}</span>
-          <span v-if="sample.lufs != null" title="Integrated loudness">{{ formatDb(sample.lufs, 'LUFS') }}</span>
-          <span>{{ formatDuration(sample.duration) }}</span>
-          <span>{{ formatRate(sample.sampleRate) }}</span>
-          <span v-if="sample.bitDepth">{{ sample.bitDepth }}-bit</span>
-          <span>{{ formatChannels(sample.channels) }}</span>
-          <span>{{ formatSize(sample.size) }}</span>
-        </div>
-        <div class="flex items-center gap-2 shrink-0">
-          <Checkbox
-            id="autoplay"
-            :model-value="player.autoplay"
-            @update:model-value="player.autoplay = $event === true"
-          />
-          <Label for="autoplay" class="text-muted-foreground font-normal">
-            Autoplay
-          </Label>
+        <div class="truncate text-[11px] text-muted-foreground">
+          {{ sample.path }}
         </div>
       </div>
-      <div class="h-10 px-3 flex items-center gap-2 min-w-0">
-        <Button
-          variant="ghost" size="icon-sm"
-          :title="sample.favorite ? 'Remove from favorites (F)' : 'Add to favorites (F)'"
-          @click="library.toggleFavorite()"
-        >
-          <Star :class="sample.favorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground'" />
-        </Button>
-        <div class="flex gap-1 overflow-x-auto min-w-0">
-          <Badge v-for="t in sample.tags" :key="t.id" variant="secondary" class="pr-1">
-            {{ t.name }}
-            <button
-              class="rounded-full opacity-60 hover:opacity-100 focus-visible:opacity-100 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-              :aria-label="`Remove tag ${t.name}`"
-              @click="library.removeTag(t.id)"
-            >
-              <X class="size-3" />
-            </button>
-          </Badge>
-        </div>
-        <Input
-          ref="tagField"
-          v-model="newTag"
-          list="known-tags"
-          :placeholder="selectionSize > 1 ? `Tag ${selectionSize} samples… (T)` : 'Add tag… (T)'"
-          class="w-48 shrink-0 h-8"
-          @keydown="onTagKeydown"
+      <div class="flex items-center gap-2 shrink-0">
+        <Checkbox
+          id="autoplay"
+          :model-value="player.autoplay"
+          @update:model-value="player.autoplay = $event === true"
         />
-        <datalist id="known-tags">
-          <option v-for="t in library.tags" :key="t.id" :value="t.name" />
-        </datalist>
+        <Label for="autoplay" class="text-muted-foreground font-normal">
+          Autoplay
+        </Label>
       </div>
-      <div ref="box" class="relative flex-1 mx-3 mb-3 rounded-md bg-background overflow-hidden">
-        <canvas ref="canvas" class="absolute inset-0 size-full cursor-pointer" @mousedown="onSeek" />
-        <div v-if="loading" class="absolute inset-0 grid place-items-center text-muted-foreground text-xs">
-          Reading waveform…
-        </div>
-        <div v-else-if="error" class="absolute inset-0 grid place-items-center text-destructive text-xs px-4 text-center">
-          {{ error }}
-        </div>
+    </div>
+    <div class="h-10 px-3 flex items-center gap-2 min-w-0">
+      <Button
+        variant="ghost" size="icon-sm"
+        :title="sample.favorite ? 'Remove from favorites (F)' : 'Add to favorites (F)'"
+        @click="library.toggleFavorite()"
+      >
+        <Star :class="sample.favorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground'" />
+      </Button>
+      <div class="flex gap-1 overflow-x-auto min-w-0">
+        <Badge v-for="t in sample.tags" :key="t.id" variant="secondary" class="pr-1">
+          {{ t.name }}
+          <button
+            class="rounded-full opacity-60 hover:opacity-100 focus-visible:opacity-100 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            :aria-label="`Remove tag ${t.name}`"
+            @click="library.removeTag(t.id)"
+          >
+            <X class="size-3" />
+          </button>
+        </Badge>
       </div>
-    </template>
-    <div v-else class="flex-1 grid place-items-center text-muted-foreground text-xs">
-      Select a sample to preview it · ↑ ↓ to browse · Space to play
+      <Input
+        ref="tagField"
+        v-model="newTag"
+        list="known-tags"
+        :placeholder="selectionSize > 1 ? `Tag ${selectionSize} samples… (T)` : 'Add tag… (T)'"
+        class="w-48 shrink-0 h-8"
+        @keydown="onTagKeydown"
+      />
+      <datalist id="known-tags">
+        <option v-for="t in library.tags" :key="t.id" :value="t.name" />
+      </datalist>
+    </div>
+    <div ref="box" class="relative flex-1 mx-3 rounded-md bg-background overflow-hidden">
+      <canvas ref="canvas" class="absolute inset-0 size-full cursor-pointer" @mousedown="onSeek" />
+      <div v-if="loading" class="absolute inset-0 grid place-items-center text-muted-foreground text-xs">
+        Reading waveform…
+      </div>
+      <div v-else-if="error" class="absolute inset-0 grid place-items-center text-destructive text-xs px-4 text-center">
+        {{ error }}
+      </div>
+    </div>
+    <!-- Status bar. One line tall: fields that do not fit wrap onto the hidden second line
+         and drop out whole, least important (the last ones) first. -->
+    <div class="h-7 shrink-0 px-3 flex flex-wrap items-center gap-x-3 overflow-hidden text-[11px] leading-7 text-muted-foreground tabular">
+      <span v-if="sample.category" :title="categoryHint(sample.categorySource, sample.categoryConfidence)">{{ CATEGORY_LABELS[sample.category] ?? sample.category }}</span>
+      <span v-if="sample.kind">{{ KIND_LABELS[sample.kind] }}</span>
+      <span v-if="sample.bpm != null" :title="sourceHint(sample.bpmSource)">{{ formatBpm(sample.bpm) }} BPM</span>
+      <span v-if="sample.key" :title="sourceHint(sample.keySource)">{{ sample.key }}</span>
+      <span v-if="sample.peakDb != null" title="Sample peak">{{ formatDb(sample.peakDb) }}</span>
+      <span v-if="sample.lufs != null" title="Integrated loudness">{{ formatDb(sample.lufs, 'LUFS') }}</span>
+      <span>{{ formatDuration(sample.duration) }}</span>
+      <span>{{ formatRate(sample.sampleRate) }}</span>
+      <span v-if="sample.bitDepth">{{ sample.bitDepth }}-bit</span>
+      <span>{{ formatChannels(sample.channels) }}</span>
+      <span>{{ formatSize(sample.size) }}</span>
     </div>
     <div v-if="player.error" class="px-3 pb-2 text-destructive text-xs truncate">
       {{ player.error }}
