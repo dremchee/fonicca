@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import type { Sample } from '@/api'
 import { useVirtualizer } from '@tanstack/vue-virtual'
+import { useEventListener } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { formatBpm, formatDuration, formatRate, KIND_LABELS, sourceHint } from '@/format'
 import SampleContextMenu from '@/components/SampleContextMenu.vue'
+import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 
@@ -75,12 +77,24 @@ function onDoubleClick(index: number) {
     player.toggle(s)
 }
 
-const menu = ref<{ sample: Sample, x: number, y: number } | null>(null)
+const menuOpen = ref(false)
+const menuSample = ref<Sample | null>(null)
 
-async function onContextMenu(e: MouseEvent, index: number, sample: Sample) {
+useEventListener(window, 'blur', () => (menuOpen.value = false))
+
+// One menu for the whole list: find the row under the cursor and skip
+// the menu entirely on empty space and placeholder rows.
+function onContextMenu(e: MouseEvent) {
+  const row = (e.target as HTMLElement).closest<HTMLElement>('[data-index]')
+  const index = row ? Number(row.dataset.index) : -1
+  const sample = index >= 0 ? library.sampleAt(index) : undefined
+  if (!sample) {
+    e.preventDefault()
+    return
+  }
+  menuSample.value = sample
   if (!selectedIds.value.has(sample.id))
-    await library.clickRow(index)
-  menu.value = { sample, x: e.clientX, y: e.clientY }
+    library.clickRow(index)
 }
 
 function onDragStart(e: DragEvent, sample: Sample) {
@@ -93,7 +107,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
 
 <template>
   <div class="flex-1 min-h-0 flex flex-col">
-    <div class="header grid items-center px-3 h-7 border-b border-line text-[11px] uppercase tracking-wide text-muted">
+    <div class="header grid items-center px-3 h-7 border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
       <span />
       <span />
       <span>Name</span>
@@ -106,75 +120,79 @@ function onDragStart(e: DragEvent, sample: Sample) {
       <span>Type</span>
     </div>
 
-    <div ref="scroller" class="flex-1 overflow-y-auto" tabindex="-1">
-      <div v-if="total === 0" class="h-full grid place-items-center text-muted">
-        <div class="text-center">
-          <span class="i-lucide-audio-waveform text-3xl opacity-50" />
-          <p class="mt-2">
-            {{ library.query ? 'Nothing matches your search' : 'No samples yet' }}
-          </p>
-        </div>
-      </div>
+    <ContextMenu v-model:open="menuOpen">
+      <ContextMenuTrigger as-child>
+        <div ref="scroller" class="flex-1 overflow-y-auto outline-none" tabindex="-1" @contextmenu="onContextMenu">
+          <div v-if="total === 0" class="h-full grid place-items-center text-muted-foreground">
+            <div class="text-center">
+              <span class="i-lucide-audio-waveform text-3xl opacity-50" />
+              <p class="mt-2">
+                {{ library.query ? 'Nothing matches your search' : 'No samples yet' }}
+              </p>
+            </div>
+          </div>
 
-      <div v-else class="relative w-full" :style="{ height: `${virtualizer.getTotalSize()}px` }">
-        <template v-for="{ item, sample: s } in rows" :key="item.index">
-          <div
-            v-if="s"
-            class="row grid items-center px-3 absolute inset-x-0 tabular"
-            :class="{
-              selected: selectedIds.has(s.id),
-              focused: item.index === focusIndex,
-              playing: s.id === player.playingId,
-            }"
-            :style="{ height: `${item.size}px`, transform: `translateY(${item.start}px)` }"
-            draggable="true"
-            :title="s.path"
-            @mousedown="onMouseDown($event, item.index, s)"
-            @click="onClick(item.index)"
-            @contextmenu.prevent="onContextMenu($event, item.index, s)"
-            @dblclick="onDoubleClick(item.index)"
-            @dragstart="onDragStart($event, s)"
-          >
-            <span class="grid place-items-center">
-              <span v-if="s.id === player.playingId" class="i-lucide-volume-2 text-accent text-xs" />
-            </span>
-            <button
-              class="star grid place-items-center" :class="{ on: s.favorite }"
-              :title="s.favorite ? 'Remove from favorites (F)' : 'Add to favorites (F)'"
-              @mousedown.stop
-              @click.stop="library.toggleFavorite(s)"
-            >
-              <span :class="s.favorite ? 'i-lucide-star text-amber-400' : 'i-lucide-star'" class="text-xs" />
-            </button>
-            <span class="truncate">{{ s.name }}</span>
-            <span class="flex gap-1 overflow-hidden">
-              <span v-for="t in s.tags" :key="t.id" class="chip">{{ t.name }}</span>
-            </span>
-            <span class="text-muted text-[11px]">
-              <template v-if="s.kind">{{ KIND_LABELS[s.kind] }}</template>
-              <span v-else-if="!s.analyzed" class="opacity-50">…</span>
-            </span>
-            <span class="text-right" :class="s.bpmSource === 'audio' ? 'text-muted' : ''" :title="sourceHint(s.bpmSource)">
-              {{ s.bpm != null ? formatBpm(s.bpm) : '' }}
-            </span>
-            <span :class="s.keySource === 'audio' ? 'text-muted' : ''" :title="sourceHint(s.keySource)">{{ s.key ?? '' }}</span>
-            <span class="text-right text-muted">{{ formatDuration(s.duration) }}</span>
-            <span class="text-right text-muted">{{ formatRate(s.sampleRate) }}</span>
-            <span class="text-muted uppercase text-[11px]">{{ s.ext }}</span>
+          <div v-else class="relative w-full" :style="{ height: `${virtualizer.getTotalSize()}px` }">
+            <template v-for="{ item, sample: s } in rows" :key="item.index">
+              <div
+                v-if="s"
+                class="row grid items-center px-3 absolute inset-x-0 tabular"
+                :class="{
+                  selected: selectedIds.has(s.id),
+                  focused: item.index === focusIndex,
+                  playing: s.id === player.playingId,
+                }"
+                :style="{ height: `${item.size}px`, transform: `translateY(${item.start}px)` }"
+                :data-index="item.index"
+                draggable="true"
+                :title="s.path"
+                @mousedown="onMouseDown($event, item.index, s)"
+                @click="onClick(item.index)"
+                @dblclick="onDoubleClick(item.index)"
+                @dragstart="onDragStart($event, s)"
+              >
+                <span class="grid place-items-center">
+                  <span v-if="s.id === player.playingId" class="i-lucide-volume-2 text-primary text-xs" />
+                </span>
+                <button
+                  class="star grid place-items-center" :class="{ on: s.favorite }"
+                  :title="s.favorite ? 'Remove from favorites (F)' : 'Add to favorites (F)'"
+                  @mousedown.stop
+                  @click.stop="library.toggleFavorite(s)"
+                >
+                  <span :class="s.favorite ? 'i-lucide-star text-amber-400' : 'i-lucide-star'" class="text-xs" />
+                </button>
+                <span class="truncate">{{ s.name }}</span>
+                <span class="flex gap-1 overflow-hidden">
+                  <span v-for="t in s.tags" :key="t.id" class="chip">{{ t.name }}</span>
+                </span>
+                <span class="text-muted-foreground text-[11px]">
+                  <template v-if="s.kind">{{ KIND_LABELS[s.kind] }}</template>
+                  <span v-else-if="!s.analyzed" class="opacity-50">…</span>
+                </span>
+                <span class="text-right" :class="s.bpmSource === 'audio' ? 'text-muted-foreground' : ''" :title="sourceHint(s.bpmSource)">
+                  {{ s.bpm != null ? formatBpm(s.bpm) : '' }}
+                </span>
+                <span :class="s.keySource === 'audio' ? 'text-muted-foreground' : ''" :title="sourceHint(s.keySource)">{{ s.key ?? '' }}</span>
+                <span class="text-right text-muted-foreground">{{ formatDuration(s.duration) }}</span>
+                <span class="text-right text-muted-foreground">{{ formatRate(s.sampleRate) }}</span>
+                <span class="text-muted-foreground uppercase text-[11px]">{{ s.ext }}</span>
+              </div>
+              <div
+                v-else
+                class="row grid items-center px-3 absolute inset-x-0"
+                :style="{ height: `${item.size}px`, transform: `translateY(${item.start}px)` }"
+              >
+                <span />
+                <span />
+                <span class="h-2.5 w-40 rounded bg-muted" />
+              </div>
+            </template>
           </div>
-          <div
-            v-else
-            class="row grid items-center px-3 absolute inset-x-0"
-            :style="{ height: `${item.size}px`, transform: `translateY(${item.start}px)` }"
-          >
-            <span />
-            <span />
-            <span class="h-2.5 w-40 rounded bg-raised" />
-          </div>
-        </template>
-      </div>
-    </div>
-    <SampleContextMenu v-if="menu" v-bind="menu" @close="menu = null" />
+        </div>
+      </ContextMenuTrigger>
+      <SampleContextMenu v-if="menuSample" :sample="menuSample" @close="menuOpen = false" />
+    </ContextMenu>
   </div>
 </template>
 
@@ -185,16 +203,16 @@ function onDragStart(e: DragEvent, sample: Sample) {
   column-gap: 12px;
 }
 .row:hover {
-  background: var(--raised);
+  background: var(--accent);
 }
 .row.selected {
-  background: var(--accent-soft);
+  background: var(--primary-soft);
 }
 .row.focused {
-  box-shadow: inset 2px 0 0 var(--accent);
+  box-shadow: inset 2px 0 0 var(--primary);
 }
 .star {
-  color: var(--muted);
+  color: var(--muted-foreground);
   opacity: 0;
 }
 .star.on,
@@ -205,15 +223,15 @@ function onDragStart(e: DragEvent, sample: Sample) {
   flex-shrink: 0;
   padding: 0 6px;
   border-radius: 4px;
-  background: var(--raised);
-  color: var(--muted);
+  background: var(--accent);
+  color: var(--muted-foreground);
   font-size: 11px;
   line-height: 18px;
 }
 .row.selected .chip {
-  background: var(--panel);
+  background: var(--card);
 }
 .row.playing {
-  color: var(--accent);
+  color: var(--primary);
 }
 </style>

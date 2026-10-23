@@ -1,8 +1,15 @@
 <script setup lang="ts">
+import type { ComponentPublicInstance } from 'vue'
 import type { Sample } from '@/api'
+import { Play, Square, Star, X } from '@lucide/vue'
 import { useResizeObserver } from '@vueuse/core'
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { api } from '@/api'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, KIND_LABELS, sourceHint } from '@/format'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
@@ -11,7 +18,9 @@ const props = defineProps<{ sample: Sample | undefined }>()
 
 const library = useLibraryStore()
 const player = usePlayerStore()
-const tagInput = ref<HTMLInputElement | null>(null)
+const tagInputRef = useTemplateRef<ComponentPublicInstance>('tagField')
+// Input renders a bare <input> as its root.
+const tagInput = computed(() => tagInputRef.value?.$el as HTMLInputElement | undefined)
 const newTag = ref('')
 
 const selectionSize = computed(() => {
@@ -140,16 +149,16 @@ function onDragStart(e: DragEvent) {
 </script>
 
 <template>
-  <section class="h-52 shrink-0 border-t border-line bg-panel flex flex-col">
+  <section class="h-52 shrink-0 border-t border-border bg-card flex flex-col">
     <template v-if="sample">
       <div class="h-10 px-3 flex items-center gap-3">
-        <button
-          class="size-7 rounded-full grid place-items-center bg-accent text-white shrink-0"
+        <Button
+          size="icon-sm" class="rounded-full"
           :title="player.playingId === sample.id ? 'Stop (Space)' : 'Play (Space)'"
           @click="player.toggle(sample)"
         >
-          <span :class="player.playingId === sample.id ? 'i-lucide-square' : 'i-lucide-play'" class="text-xs" />
-        </button>
+          <component :is="player.playingId === sample.id ? Square : Play" class="fill-current" />
+        </Button>
         <div
           class="min-w-0 flex-1 cursor-grab"
           draggable="true"
@@ -157,13 +166,13 @@ function onDragStart(e: DragEvent) {
           @dragstart="onDragStart"
         >
           <div class="truncate font-medium">
-            {{ sample.name }}<span class="text-muted">.{{ sample.ext }}</span>
+            {{ sample.name }}<span class="text-muted-foreground">.{{ sample.ext }}</span>
           </div>
-          <div class="truncate text-[11px] text-muted">
+          <div class="truncate text-[11px] text-muted-foreground">
             {{ sample.path }}
           </div>
         </div>
-        <div class="flex gap-3 text-[11px] text-muted tabular shrink-0">
+        <div class="flex gap-3 text-[11px] text-muted-foreground tabular shrink-0">
           <span v-if="sample.kind">{{ KIND_LABELS[sample.kind] }}</span>
           <span v-if="sample.bpm != null" :title="sourceHint(sample.bpmSource)">{{ formatBpm(sample.bpm) }} BPM</span>
           <span v-if="sample.key" :title="sourceHint(sample.keySource)">{{ sample.key }}</span>
@@ -175,69 +184,64 @@ function onDragStart(e: DragEvent) {
           <span>{{ formatChannels(sample.channels) }}</span>
           <span>{{ formatSize(sample.size) }}</span>
         </div>
-        <label class="flex items-center gap-1.5 text-[11px] text-muted shrink-0">
-          <input v-model="player.autoplay" type="checkbox" class="accent-[var(--accent)]">
-          Autoplay
-        </label>
+        <div class="flex items-center gap-2 shrink-0">
+          <Checkbox
+            id="autoplay"
+            :model-value="player.autoplay"
+            @update:model-value="player.autoplay = $event === true"
+          />
+          <Label for="autoplay" class="text-muted-foreground font-normal">
+            Autoplay
+          </Label>
+        </div>
       </div>
-      <div class="h-8 px-3 flex items-center gap-1.5 min-w-0">
-        <button
-          class="size-6 shrink-0 rounded grid place-items-center hover:bg-raised"
+      <div class="h-10 px-3 flex items-center gap-2 min-w-0">
+        <Button
+          variant="ghost" size="icon-sm"
           :title="sample.favorite ? 'Remove from favorites (F)' : 'Add to favorites (F)'"
           @click="library.toggleFavorite()"
         >
-          <span :class="sample.favorite ? 'i-lucide-star text-amber-400' : 'i-lucide-star text-muted'" class="text-sm" />
-        </button>
+          <Star :class="sample.favorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground'" />
+        </Button>
         <div class="flex gap-1 overflow-x-auto min-w-0">
-          <span v-for="t in sample.tags" :key="t.id" class="tag">
+          <Badge v-for="t in sample.tags" :key="t.id" variant="secondary" class="pr-1">
             {{ t.name }}
-            <button class="opacity-60 hover:opacity-100" title="Remove tag" @click="library.removeTag(t.id)">
-              <span class="i-lucide-x text-[10px]" />
+            <button
+              class="rounded-full opacity-60 hover:opacity-100 focus-visible:opacity-100 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              :aria-label="`Remove tag ${t.name}`"
+              @click="library.removeTag(t.id)"
+            >
+              <X class="size-3" />
             </button>
-          </span>
+          </Badge>
         </div>
-        <input
-          ref="tagInput"
+        <Input
+          ref="tagField"
           v-model="newTag"
           list="known-tags"
           :placeholder="selectionSize > 1 ? `Tag ${selectionSize} samples… (T)` : 'Add tag… (T)'"
-          class="w-44 shrink-0 h-6 px-2 rounded bg-raised border border-transparent outline-none focus:border-accent placeholder:text-muted text-xs"
+          class="w-48 shrink-0 h-8"
           @keydown="onTagKeydown"
-        >
+        />
         <datalist id="known-tags">
           <option v-for="t in library.tags" :key="t.id" :value="t.name" />
         </datalist>
       </div>
-      <div ref="box" class="relative flex-1 mx-3 mb-3 rounded-md bg-bg overflow-hidden">
+      <div ref="box" class="relative flex-1 mx-3 mb-3 rounded-md bg-background overflow-hidden">
         <canvas ref="canvas" class="absolute inset-0 size-full cursor-pointer" @mousedown="onSeek" />
-        <div v-if="loading" class="absolute inset-0 grid place-items-center text-muted text-xs">
+        <div v-if="loading" class="absolute inset-0 grid place-items-center text-muted-foreground text-xs">
           Reading waveform…
         </div>
-        <div v-else-if="error" class="absolute inset-0 grid place-items-center text-danger text-xs px-4 text-center">
+        <div v-else-if="error" class="absolute inset-0 grid place-items-center text-destructive text-xs px-4 text-center">
           {{ error }}
         </div>
       </div>
     </template>
-    <div v-else class="flex-1 grid place-items-center text-muted text-xs">
+    <div v-else class="flex-1 grid place-items-center text-muted-foreground text-xs">
       Select a sample to preview it · ↑ ↓ to browse · Space to play
     </div>
-    <div v-if="player.error" class="px-3 pb-2 text-danger text-xs truncate">
+    <div v-if="player.error" class="px-3 pb-2 text-destructive text-xs truncate">
       {{ player.error }}
     </div>
   </section>
 </template>
-
-<style scoped>
-.tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-  padding: 0 4px 0 8px;
-  border-radius: 4px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 11px;
-  line-height: 20px;
-}
-</style>

@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import type { ComponentPublicInstance } from 'vue'
+import { Search } from '@lucide/vue'
 import { onKeyStroke } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, useTemplateRef } from 'vue'
 import FilterBar from '@/components/FilterBar.vue'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
+import { Kbd } from '@/components/ui/kbd'
 import SampleList from '@/components/SampleList.vue'
 import SourceSidebar from '@/components/SourceSidebar.vue'
 import WaveformView from '@/components/WaveformView.vue'
@@ -12,11 +16,16 @@ import { usePlayerStore } from '@/stores/player'
 const library = useLibraryStore()
 const player = usePlayerStore()
 const { query, total, focused, selectedIds } = storeToRefs(library)
-const search = ref<HTMLInputElement | null>(null)
+const searchInput = useTemplateRef<ComponentPublicInstance>('searchInput')
+// InputGroupInput renders a bare <input> as its root.
+const search = computed(() => searchInput.value?.$el as HTMLInputElement | undefined)
 
 onMounted(() => library.init())
 
+// Typing in a field or navigating an open menu: global shortcuts stay out of the way.
 function isTyping(e: KeyboardEvent) {
+  if (e.target instanceof Element && e.target.closest('[role="menu"]'))
+    return true
   return e.target instanceof HTMLInputElement && e.target.type !== 'checkbox'
 }
 
@@ -64,7 +73,9 @@ onKeyStroke(['t', 'е'], (e) => {
   e.preventDefault()
   library.requestTagInput()
 })
-onKeyStroke('Escape', () => {
+onKeyStroke('Escape', (e) => {
+  if (e.target instanceof Element && e.target.closest('[role="menu"]'))
+    return
   if (player.playingId !== null)
     player.stop()
   else
@@ -83,18 +94,23 @@ onKeyStroke(['f', 'а'], (e) => {
   <div class="h-full flex">
     <SourceSidebar />
     <main class="flex-1 min-w-0 flex flex-col">
-      <header class="h-11 shrink-0 px-3 flex items-center gap-3 border-b border-line" data-tauri-drag-region>
-        <div class="relative flex-1 max-w-md">
-          <span class="i-lucide-search absolute left-2.5 top-1/2 -translate-y-1/2 text-muted text-sm" />
-          <input
-            ref="search"
+      <header class="h-11 shrink-0 px-3 flex items-center gap-3 border-b border-border" data-tauri-drag-region>
+        <InputGroup class="flex-1 max-w-md">
+          <InputGroupAddon>
+            <Search />
+          </InputGroupAddon>
+          <InputGroupInput
+            ref="searchInput"
             v-model="query"
             type="search"
-            placeholder="Search samples (⌘F)"
-            class="w-full h-7 pl-8 pr-2 rounded-md bg-raised border border-transparent outline-none focus:border-accent placeholder:text-muted"
-          >
-        </div>
-        <span class="text-xs text-muted tabular" data-tauri-drag-region>
+            placeholder="Search samples"
+            aria-label="Search samples"
+          />
+          <InputGroupAddon align="inline-end">
+            <Kbd>⌘F</Kbd>
+          </InputGroupAddon>
+        </InputGroup>
+        <span class="text-xs text-muted-foreground tabular" data-tauri-drag-region>
           <template v-if="selectedIds.size > 1">{{ selectedIds.size.toLocaleString() }} selected · </template>
           {{ total.toLocaleString() }} {{ total === 1 ? 'sample' : 'samples' }}
           <template v-if="library.isScanning"> · scanning…</template>

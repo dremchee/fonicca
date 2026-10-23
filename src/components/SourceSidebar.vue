@@ -1,8 +1,23 @@
 <script setup lang="ts">
 import type { Scope } from '@/stores/library'
-import { onClickOutside } from '@vueuse/core'
+import { Download, Ellipsis, FolderOpen, FolderPlus, Pencil, RefreshCw, Trash2, Upload, X } from '@lucide/vue'
+import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { storeToRefs } from 'pinia'
-import { nextTick, ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
+import { Button } from '@/components/ui/button'
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { folderName } from '@/format'
 import { useLibraryStore } from '@/stores/library'
 
@@ -18,10 +33,6 @@ const renameError = ref<string | null>(null)
 const creatingCollection = ref(false)
 const newCollection = ref('')
 const newCollectionInput = ref<HTMLInputElement | null>(null)
-const menuOpen = ref(false)
-const menuEl = ref<HTMLElement | null>(null)
-
-onClickOutside(menuEl, () => (menuOpen.value = false))
 
 function isActive(s: Scope) {
   const cur = scope.value
@@ -104,174 +115,250 @@ function onCreateKeydown(e: KeyboardEvent) {
   e.stopPropagation()
 }
 
-function runMenu(action: () => unknown) {
-  menuOpen.value = false
-  action()
+// Right-click on a folder, collection or tag row opens one shared menu for it.
+const menuTarget = ref<{ kind: 'source' | Editable, id: number } | null>(null)
+const menuSource = computed(() => {
+  const t = menuTarget.value
+  return t?.kind === 'source' ? sources.value.find(s => s.id === t.id) : undefined
+})
+const menuItem = computed(() => {
+  const t = menuTarget.value
+  if (t?.kind === 'tag')
+    return tags.value.find(x => x.id === t.id)
+  if (t?.kind === 'collection')
+    return collections.value.find(x => x.id === t.id)
+  return undefined
+})
+
+function onContextMenu(e: MouseEvent) {
+  const row = (e.target as HTMLElement).closest<HTMLElement>('[data-menu]')
+  const [kind, id] = row?.dataset.menu?.split(':') ?? []
+  if (!kind || editing.value) {
+    e.preventDefault()
+    return
+  }
+  menuTarget.value = { kind: kind as 'source' | Editable, id: Number(id) }
+}
+
+// Renaming focuses an input, so it waits until the menu has given focus back.
+let afterClose: (() => unknown) | null = null
+
+function onCloseAutoFocus(e: Event) {
+  if (!afterClose)
+    return
+  e.preventDefault()
+  // The focus trap is released in a timeout of its own; run after it.
+  setTimeout(afterClose, 0)
+  afterClose = null
+}
+
+function renameFromMenu() {
+  const t = menuTarget.value
+  const item = menuItem.value
+  if (t && t.kind !== 'source' && item)
+    afterClose = () => startRename(t.kind as Editable, t.id, item.name)
+}
+
+function deleteFromMenu() {
+  const t = menuTarget.value
+  if (t?.kind === 'tag')
+    library.deleteTag(t.id)
+  else if (t?.kind === 'collection')
+    library.deleteCollection(t.id)
 }
 </script>
 
 <template>
-  <aside class="w-60 shrink-0 flex flex-col border-r border-line bg-panel">
+  <aside class="w-60 shrink-0 flex flex-col border-r border-border bg-card">
     <!-- Left part of this bar sits under the macOS traffic lights (overlay title bar). -->
     <div class="h-11 px-3 flex items-center justify-end gap-0.5" data-tauri-drag-region>
-      <button
-        class="size-7 rounded-md grid place-items-center text-muted hover:bg-raised hover:text-fg"
-        title="Add folders"
-        @click="library.addSources()"
-      >
-        <span class="i-lucide-folder-plus" />
-      </button>
-      <div ref="menuEl" class="relative">
-        <button
-          class="size-7 rounded-md grid place-items-center text-muted hover:bg-raised hover:text-fg"
-          title="More"
-          @click="menuOpen = !menuOpen"
-        >
-          <span class="i-lucide-ellipsis" />
-        </button>
-        <div v-if="menuOpen" class="dropdown">
-          <button class="dropdown-item" @click="runMenu(library.exportUserData)">
-            <span class="i-lucide-download" />
+      <Button variant="ghost" size="icon-sm" class="text-muted-foreground" title="Add folders" @click="library.addSources()">
+        <FolderPlus />
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger as-child>
+          <Button variant="ghost" size="icon-sm" class="text-muted-foreground data-[state=open]:bg-accent" title="More">
+            <Ellipsis />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem @select="library.exportUserData()">
+            <Download />
             Export favorites, tags &amp; collections…
-          </button>
-          <button class="dropdown-item" @click="runMenu(library.importUserData)">
-            <span class="i-lucide-upload" />
+          </DropdownMenuItem>
+          <DropdownMenuItem @select="library.importUserData()">
+            <Upload />
             Import…
-          </button>
-        </div>
-      </div>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </div>
 
-    <nav class="flex-1 overflow-y-auto px-2 pb-2 flex flex-col gap-px">
-      <button class="row" :class="{ active: isActive({ kind: 'all' }) }" @click="scope = { kind: 'all' }">
-        <span class="i-lucide-library shrink-0" />
-        <span class="flex-1 truncate">All samples</span>
-      </button>
-      <button class="row" :class="{ active: isActive({ kind: 'favorites' }) }" @click="scope = { kind: 'favorites' }">
-        <span class="i-lucide-star shrink-0" />
-        <span class="flex-1 truncate">Favorites</span>
-      </button>
+    <ContextMenu>
+      <ContextMenuTrigger as-child>
+        <nav class="flex-1 overflow-y-auto px-2 pb-2 flex flex-col gap-px" @contextmenu="onContextMenu">
+          <button class="row" :class="{ active: isActive({ kind: 'all' }) }" @click="scope = { kind: 'all' }">
+            <span class="i-lucide-library shrink-0" />
+            <span class="flex-1 truncate">All samples</span>
+          </button>
+          <button class="row" :class="{ active: isActive({ kind: 'favorites' }) }" @click="scope = { kind: 'favorites' }">
+            <span class="i-lucide-star shrink-0" />
+            <span class="flex-1 truncate">Favorites</span>
+          </button>
 
-      <h3 class="section">
-        Folders
-      </h3>
-      <div
-        v-for="s in sources" :key="s.id"
-        class="row group" :class="{ active: isActive({ kind: 'source', id: s.id }) }"
-        :title="s.path"
-        @click="scope = { kind: 'source', id: s.id }"
-      >
-        <span class="i-lucide-folder shrink-0" />
-        <span class="flex-1 truncate">{{ folderName(s.path) }}</span>
-        <span v-if="progressLabel(s.id)" class="text-[11px] text-accent tabular">{{ progressLabel(s.id) }}</span>
-        <template v-else>
-          <span class="text-[11px] text-muted tabular group-hover:hidden">{{ s.sampleCount.toLocaleString() }}</span>
-          <span class="hidden group-hover:flex gap-0.5">
-            <button class="icon-btn" title="Rescan" @click.stop="library.rescanSource(s.id)">
-              <span class="i-lucide-refresh-cw text-xs" />
-            </button>
-            <button class="icon-btn hover:!text-danger" title="Remove from library" @click.stop="library.removeSource(s.id)">
-              <span class="i-lucide-x text-xs" />
-            </button>
-          </span>
-        </template>
-      </div>
-      <p v-if="!sources.length" class="px-2 py-2 text-muted text-xs leading-relaxed">
-        Add a folder with samples to start. Files stay where they are — Samplette only indexes them.
-      </p>
+          <h3 class="section">
+            Folders
+          </h3>
+          <div
+            v-for="s in sources" :key="s.id"
+            class="row group" :class="{ active: isActive({ kind: 'source', id: s.id }) }"
+            :title="s.path"
+            :data-menu="`source:${s.id}`"
+            @click="scope = { kind: 'source', id: s.id }"
+          >
+            <span class="i-lucide-folder shrink-0" />
+            <span class="flex-1 truncate">{{ folderName(s.path) }}</span>
+            <span v-if="progressLabel(s.id)" class="text-[11px] text-primary tabular">{{ progressLabel(s.id) }}</span>
+            <template v-else>
+              <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ s.sampleCount.toLocaleString() }}</span>
+              <span class="hidden group-hover:flex gap-0.5">
+                <button class="icon-btn" title="Rescan" @click.stop="library.rescanSource(s.id)">
+                  <span class="i-lucide-refresh-cw text-xs" />
+                </button>
+                <button class="icon-btn hover:!text-destructive" title="Remove from library" @click.stop="library.removeSource(s.id)">
+                  <span class="i-lucide-x text-xs" />
+                </button>
+              </span>
+            </template>
+          </div>
+          <p v-if="!sources.length" class="px-2 py-2 text-muted-foreground text-xs leading-relaxed">
+            Add a folder with samples to start. Files stay where they are — Samplette only indexes them.
+          </p>
 
-      <h3 class="section flex items-center justify-between">
-        Collections
-        <button class="icon-btn -my-1" title="New collection" @click="startCreateCollection">
-          <span class="i-lucide-plus text-xs" />
-        </button>
-      </h3>
-      <div
-        v-for="c in collections" :key="c.id"
-        class="row group" :class="{ active: isActive({ kind: 'collection', id: c.id }) }"
-        @click="scope = { kind: 'collection', id: c.id }"
-        @dblclick="startRename('collection', c.id, c.name)"
-      >
-        <span class="i-lucide-layers shrink-0" />
-        <input
-          v-if="isEditing('collection', c.id)"
-          ref="editInput"
-          v-model="editName"
-          class="flex-1 min-w-0 h-5 px-1 -mx-1 rounded bg-bg outline-none border border-accent"
-          @click.stop
-          @keydown="onRenameKeydown"
-          @blur="commitRename"
-        >
-        <template v-else>
-          <span class="flex-1 truncate">{{ c.name }}</span>
-          <span class="text-[11px] text-muted tabular group-hover:hidden">{{ c.sampleCount.toLocaleString() }}</span>
-          <span class="hidden group-hover:flex gap-0.5">
-            <button class="icon-btn" title="Rename" @click.stop="startRename('collection', c.id, c.name)">
-              <span class="i-lucide-pencil text-xs" />
+          <h3 class="section flex items-center justify-between">
+            Collections
+            <button class="icon-btn -my-1" title="New collection" @click="startCreateCollection">
+              <span class="i-lucide-plus text-xs" />
             </button>
-            <button class="icon-btn hover:!text-danger" title="Delete collection" @click.stop="library.deleteCollection(c.id)">
-              <span class="i-lucide-x text-xs" />
-            </button>
-          </span>
-        </template>
-      </div>
-      <div v-if="creatingCollection" class="row">
-        <span class="i-lucide-layers shrink-0" />
-        <input
-          ref="newCollectionInput"
-          v-model="newCollection"
-          placeholder="Collection name"
-          class="flex-1 min-w-0 h-5 px-1 -mx-1 rounded bg-bg outline-none border border-accent placeholder:text-muted"
-          @keydown="onCreateKeydown"
-          @blur="commitCreateCollection"
-        >
-      </div>
-      <p v-else-if="!collections.length" class="px-2 py-2 text-muted text-xs leading-relaxed">
-        Right-click samples → Add to collection.
-      </p>
+          </h3>
+          <div
+            v-for="c in collections" :key="c.id"
+            class="row group" :class="{ active: isActive({ kind: 'collection', id: c.id }) }"
+            :data-menu="`collection:${c.id}`"
+            @click="scope = { kind: 'collection', id: c.id }"
+            @dblclick="startRename('collection', c.id, c.name)"
+          >
+            <span class="i-lucide-layers shrink-0" />
+            <input
+              v-if="isEditing('collection', c.id)"
+              ref="editInput"
+              v-model="editName"
+              class="flex-1 min-w-0 h-5 px-1 -mx-1 rounded bg-background outline-none border border-primary"
+              @click.stop
+              @keydown="onRenameKeydown"
+              @blur="commitRename"
+            >
+            <template v-else>
+              <span class="flex-1 truncate">{{ c.name }}</span>
+              <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ c.sampleCount.toLocaleString() }}</span>
+              <span class="hidden group-hover:flex gap-0.5">
+                <button class="icon-btn" title="Rename" @click.stop="startRename('collection', c.id, c.name)">
+                  <span class="i-lucide-pencil text-xs" />
+                </button>
+                <button class="icon-btn hover:!text-destructive" title="Delete collection" @click.stop="library.deleteCollection(c.id)">
+                  <span class="i-lucide-x text-xs" />
+                </button>
+              </span>
+            </template>
+          </div>
+          <div v-if="creatingCollection" class="row">
+            <span class="i-lucide-layers shrink-0" />
+            <input
+              ref="newCollectionInput"
+              v-model="newCollection"
+              placeholder="Collection name"
+              class="flex-1 min-w-0 h-5 px-1 -mx-1 rounded bg-background outline-none border border-primary placeholder:text-muted-foreground"
+              @keydown="onCreateKeydown"
+              @blur="commitCreateCollection"
+            >
+          </div>
+          <p v-else-if="!collections.length" class="px-2 py-2 text-muted-foreground text-xs leading-relaxed">
+            Right-click samples → Add to collection.
+          </p>
 
-      <h3 class="section">
-        Tags
-      </h3>
-      <div
-        v-for="t in tags" :key="t.id"
-        class="row group" :class="{ active: isActive({ kind: 'tag', id: t.id }) }"
-        @click="scope = { kind: 'tag', id: t.id }"
-        @dblclick="startRename('tag', t.id, t.name)"
-      >
-        <span class="i-lucide-tag shrink-0" />
-        <input
-          v-if="isEditing('tag', t.id)"
-          ref="editInput"
-          v-model="editName"
-          class="flex-1 min-w-0 h-5 px-1 -mx-1 rounded bg-bg outline-none border border-accent"
-          @click.stop
-          @keydown="onRenameKeydown"
-          @blur="commitRename"
-        >
-        <template v-else>
-          <span class="flex-1 truncate">{{ t.name }}</span>
-          <span class="text-[11px] text-muted tabular group-hover:hidden">{{ t.sampleCount.toLocaleString() }}</span>
-          <span class="hidden group-hover:flex gap-0.5">
-            <button class="icon-btn" title="Rename" @click.stop="startRename('tag', t.id, t.name)">
-              <span class="i-lucide-pencil text-xs" />
-            </button>
-            <button class="icon-btn hover:!text-danger" title="Delete tag" @click.stop="library.deleteTag(t.id)">
-              <span class="i-lucide-x text-xs" />
-            </button>
-          </span>
+          <h3 class="section">
+            Tags
+          </h3>
+          <div
+            v-for="t in tags" :key="t.id"
+            class="row group" :class="{ active: isActive({ kind: 'tag', id: t.id }) }"
+            :data-menu="`tag:${t.id}`"
+            @click="scope = { kind: 'tag', id: t.id }"
+            @dblclick="startRename('tag', t.id, t.name)"
+          >
+            <span class="i-lucide-tag shrink-0" />
+            <input
+              v-if="isEditing('tag', t.id)"
+              ref="editInput"
+              v-model="editName"
+              class="flex-1 min-w-0 h-5 px-1 -mx-1 rounded bg-background outline-none border border-primary"
+              @click.stop
+              @keydown="onRenameKeydown"
+              @blur="commitRename"
+            >
+            <template v-else>
+              <span class="flex-1 truncate">{{ t.name }}</span>
+              <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ t.sampleCount.toLocaleString() }}</span>
+              <span class="hidden group-hover:flex gap-0.5">
+                <button class="icon-btn" title="Rename" @click.stop="startRename('tag', t.id, t.name)">
+                  <span class="i-lucide-pencil text-xs" />
+                </button>
+                <button class="icon-btn hover:!text-destructive" title="Delete tag" @click.stop="library.deleteTag(t.id)">
+                  <span class="i-lucide-x text-xs" />
+                </button>
+              </span>
+            </template>
+          </div>
+          <p v-if="!tags.length" class="px-2 py-2 text-muted-foreground text-xs leading-relaxed">
+            Select samples and press T to tag them.
+          </p>
+        </nav>
+      </ContextMenuTrigger>
+      <ContextMenuContent class="w-52" @close-auto-focus="onCloseAutoFocus">
+        <template v-if="menuSource">
+          <ContextMenuItem @select="library.rescanSource(menuSource.id)">
+            <RefreshCw />
+            Rescan
+          </ContextMenuItem>
+          <ContextMenuItem @select="revealItemInDir(menuSource.path)">
+            <FolderOpen />
+            Show in Finder
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem variant="destructive" @select="library.removeSource(menuSource.id)">
+            <X />
+            Remove from library
+          </ContextMenuItem>
         </template>
-      </div>
-      <p v-if="!tags.length" class="px-2 py-2 text-muted text-xs leading-relaxed">
-        Select samples and press T to tag them.
-      </p>
-    </nav>
-    <p v-if="renameError" class="px-4 py-2 text-danger text-xs border-t border-line">
+        <template v-else-if="menuItem">
+          <ContextMenuItem @select="renameFromMenu">
+            <Pencil />
+            Rename
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+          <ContextMenuItem variant="destructive" @select="deleteFromMenu">
+            <Trash2 />
+            Delete {{ menuTarget?.kind === 'tag' ? 'tag' : 'collection' }}
+          </ContextMenuItem>
+        </template>
+      </ContextMenuContent>
+    </ContextMenu>
+    <p v-if="renameError" class="px-4 py-2 text-destructive text-xs border-t border-border">
       {{ renameError }}
     </p>
     <p
-      v-if="notice" class="px-4 py-2 text-xs border-t border-line"
-      :class="notice.error ? 'text-danger' : 'text-muted'"
+      v-if="notice" class="px-4 py-2 text-xs border-t border-border"
+      :class="notice.error ? 'text-destructive' : 'text-muted-foreground'"
     >
       {{ notice.text }}
     </p>
@@ -285,7 +372,7 @@ function runMenu(action: () => unknown) {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 .row {
   display: flex;
@@ -294,41 +381,15 @@ function runMenu(action: () => unknown) {
   height: 28px;
   padding: 0 8px;
   border-radius: 6px;
-  color: var(--fg);
+  color: var(--foreground);
   text-align: left;
 }
 .row:hover {
-  background: var(--raised);
+  background: var(--accent);
 }
 .row.active {
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-.dropdown {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 4px);
-  z-index: 40;
-  width: 260px;
-  padding: 4px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--panel);
-  box-shadow: 0 8px 28px rgb(0 0 0 / 0.25);
-}
-.dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  height: 28px;
-  padding: 0 8px;
-  border-radius: 5px;
-  text-align: left;
-}
-.dropdown-item:hover {
-  background: var(--accent);
-  color: white;
+  background: var(--primary-soft);
+  color: var(--primary);
 }
 .icon-btn {
   width: 20px;
@@ -336,10 +397,10 @@ function runMenu(action: () => unknown) {
   display: grid;
   place-items: center;
   border-radius: 4px;
-  color: var(--muted);
+  color: var(--muted-foreground);
 }
 .icon-btn:hover {
-  color: var(--fg);
-  background: var(--line);
+  color: var(--foreground);
+  background: var(--border);
 }
 </style>

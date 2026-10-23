@@ -1,34 +1,47 @@
 :root {
-  --bg: #f6f6f8;
-  --panel: #ffffff;
-  --raised: #ececf1;
-  --line: #e1e1e8;
-  --fg: #1c1c22;
-  --muted: #6e6e7a;
-  --accent: #6d4aff;
-  --accent-soft: rgb(109 74 255 / 0.12);
-  --danger: #d92d4a;
+  --background: #f6f6f8;
+  --foreground: #1c1c22;
+  --card: #ffffff;
+  --card-foreground: var(--foreground);
+  --popover: #ffffff;
+  --popover-foreground: var(--foreground);
+  --primary: #6d4aff;
+  --primary-foreground: #ffffff;
+  --primary-soft: rgb(109 74 255 / 0.12);
+  --secondary: #ececf1;
+  --secondary-foreground: var(--foreground);
+  --muted: #ececf1;
+  --muted-foreground: #6e6e7a;
+  --accent: #ececf1;
+  --accent-foreground: var(--foreground);
+  --destructive: #d92d4a;
+  --border: #e1e1e8;
+  --input: #e1e1e8;
+  --ring: var(--primary);
+  --radius: 0.5rem;
   --wave: #8b8b99;
-  --wave-played: var(--accent);
+  --wave-played: var(--primary);
 
   color-scheme: light dark;
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  font-size: 13px;
-  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #141418;
-    --panel: #1b1b21;
-    --raised: #26262e;
-    --line: #2c2c35;
-    --fg: #e8e8ee;
-    --muted: #8d8d9a;
-    --accent: #8b6dff;
-    --accent-soft: rgb(139 109 255 / 0.18);
-    --danger: #ff5c77;
+    --background: #141418;
+    --foreground: #e8e8ee;
+    --card: #1b1b21;
+    --popover: #1b1b21;
+    --primary: #8b6dff;
+    --primary-soft: rgb(139 109 255 / 0.18);
+    --secondary: #26262e;
+    --muted: #26262e;
+    --muted-foreground: #8d8d9a;
+    --accent: #26262e;
+    --destructive: #ff5c77;
+    --border: #2c2c35;
+    --input: #2c2c35;
     --wave: #5c5c6a;
   }
 }
@@ -39,9 +52,18 @@ body,
   height: 100%;
 }
 
+*,
+::before,
+::after {
+  border-color: var(--border);
+}
+
+/* rem stays at 16px so shadcn-vue sizes match upstream; only body text is denser. */
 body {
-  background: var(--bg);
-  color: var(--fg);
+  font-size: 13px;
+  line-height: 1.4;
+  background: var(--background);
+  color: var(--foreground);
   overflow: hidden;
   user-select: none;
   cursor: default;
