@@ -7,6 +7,7 @@
 
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
 use std::time::Duration;
 
@@ -51,27 +52,35 @@ pub struct Analyzer {
     on_progress: Box<dyn Fn(Progress) + Send + Sync>,
     state: Mutex<State>,
     signal: Condvar,
-    pool: rayon::ThreadPool,
-    threads: usize,
+    /// Replaced whole when the thread count changes; a running batch keeps the old one.
+    pool: Mutex<Arc<rayon::ThreadPool>>,
+    threads: AtomicUsize,
     model: Mutex<Option<Arc<clap::Model>>>,
+    model_path: Mutex<Option<PathBuf>>,
+}
+
+fn build_pool(threads: usize) -> Arc<rayon::ThreadPool> {
+    Arc::new(
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(threads)
+            .thread_name(|i| format!("analysis-{i}"))
+            .build()
+            .expect("analysis thread pool"),
+    )
 }
 
 impl Analyzer {
     pub fn start(db_path: PathBuf, on_progress: impl Fn(Progress) + Send + Sync + 'static) -> Arc<Self> {
-        // Leave half the cores for the UI, playback and scanning.
-        let threads = (std::thread::available_parallelism().map_or(2, |n| n.get()) / 2).max(1);
+        let threads = crate::settings::default_threads();
         let this = Arc::new(Self {
             db_path,
             on_progress: Box::new(on_progress),
             state: Mutex::new(State { wake: true, ..Default::default() }),
             signal: Condvar::new(),
-            pool: rayon::ThreadPoolBuilder::new()
-                .num_threads(threads)
-                .thread_name(|i| format!("analysis-{i}"))
-                .build()
-                .expect("analysis thread pool"),
-            threads,
+            pool: Mutex::new(build_pool(threads)),
+            threads: AtomicUsize::new(threads),
             model: Mutex::new(None),
+            model_path: Mutex::new(None),
         });
         let worker = Arc::clone(&this);
         std::thread::Builder::new()
@@ -112,10 +121,39 @@ impl Analyzer {
 
     /// Loads the CLAP model and starts computing embeddings.
     pub fn load_model(&self, path: &Path) -> Result<()> {
-        let model = clap::Model::load(path, self.threads)?;
+        let model = clap::Model::load(path, self.threads.load(Ordering::SeqCst))?;
         *self.model.lock().unwrap() = Some(model);
+        *self.model_path.lock().unwrap() = Some(path.to_path_buf());
         self.wake();
         Ok(())
+    }
+
+    /// Drops the model (before its file is deleted). Stored embeddings stay.
+    pub fn unload_model(&self) {
+        self.model.lock().unwrap().take();
+        self.model_path.lock().unwrap().take();
+        if let Ok(conn) = db::open(&self.db_path) {
+            self.report(&conn, Vec::new());
+        }
+    }
+
+    /// Changes how many threads decode and run the model. The model is loaded with a
+    /// fixed thread count too, so a loaded one is reloaded.
+    pub fn set_threads(&self, threads: usize) -> Result<()> {
+        let threads = threads.max(1);
+        if self.threads.swap(threads, Ordering::SeqCst) == threads {
+            return Ok(());
+        }
+        *self.pool.lock().unwrap() = build_pool(threads);
+        let path = self.model_path.lock().unwrap().clone();
+        if let Some(path) = path {
+            self.load_model(&path)?;
+        }
+        Ok(())
+    }
+
+    fn pool(&self) -> Arc<rayon::ThreadPool> {
+        Arc::clone(&self.pool.lock().unwrap())
     }
 
     /// Computes and stores one sample's embedding right away (e.g. "find similar"
@@ -206,7 +244,7 @@ impl Analyzer {
 
         let batch = next_batch(conn, priority)?;
         if !batch.is_empty() {
-            let results: Vec<(i64, Option<Analysis>)> = self.pool.install(|| {
+            let results: Vec<(i64, Option<Analysis>)> = self.pool().install(|| {
                 batch
                     .par_iter()
                     .map(|(id, path, name)| (*id, analysis::analyze(Path::new(path), name).ok()))
@@ -226,7 +264,7 @@ impl Analyzer {
         if classifier.as_ref().is_none_or(|c| c.labelled_count() * 21 / 20 < labelled as usize) {
             *classifier = Some(Classifier::new(labelled_embeddings(conn)?));
         }
-        let decoded: Vec<(EmbeddingJob, Option<(Vec<f32>, Option<String>)>)> = self.pool.install(|| {
+        let decoded: Vec<(EmbeddingJob, Option<(Vec<f32>, Option<String>)>)> = self.pool().install(|| {
             batch
                 .into_par_iter()
                 .map(|job| {

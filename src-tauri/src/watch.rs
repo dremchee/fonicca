@@ -65,6 +65,9 @@ const MAX_DELAY: Duration = Duration::from_secs(5);
 pub struct LibraryWatcher {
     watcher: Mutex<Option<RecommendedWatcher>>,
     roots: Arc<Mutex<HashMap<i64, PathBuf>>>,
+    /// Off: roots are still tracked, but nothing is watched until it is turned back on.
+    enabled: Mutex<bool>,
+    scanner: Arc<Scanner>,
 }
 
 impl LibraryWatcher {
@@ -80,28 +83,55 @@ impl LibraryWatcher {
         };
 
         let event_roots = Arc::clone(&roots);
+        let event_scanner = Arc::clone(&scanner);
         std::thread::Builder::new()
             .name("library-watcher".into())
-            .spawn(move || debounce_loop(rx, &event_roots, &scanner))
+            .spawn(move || debounce_loop(rx, &event_roots, &event_scanner))
             .expect("spawn watcher thread");
 
-        Self { watcher: Mutex::new(watcher), roots }
+        Self { watcher: Mutex::new(watcher), roots, enabled: Mutex::new(true), scanner }
     }
 
     pub fn watch(&self, source_id: i64, path: &Path) -> Result<()> {
-        if let Some(w) = self.watcher.lock().unwrap().as_mut() {
-            w.watch(path, RecursiveMode::Recursive).map_err(|e| Error::Other(e.to_string()))?;
-        }
         // Events carry resolved paths (e.g. /private/var for /var), so match on those.
         let root = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+        if *self.enabled.lock().unwrap() {
+            if let Some(w) = self.watcher.lock().unwrap().as_mut() {
+                w.watch(&root, RecursiveMode::Recursive).map_err(|e| Error::Other(e.to_string()))?;
+            }
+        }
         self.roots.lock().unwrap().insert(source_id, root);
         Ok(())
     }
 
-    pub fn unwatch(&self, source_id: i64, path: &Path) {
-        self.roots.lock().unwrap().remove(&source_id);
+    pub fn unwatch(&self, source_id: i64) {
+        let root = self.roots.lock().unwrap().remove(&source_id);
+        if let (Some(root), Some(w)) = (root, self.watcher.lock().unwrap().as_mut()) {
+            let _ = w.unwatch(&root);
+        }
+    }
+
+    /// Turns watching of every source on or off. Turning it on rescans all sources
+    /// to pick up what changed in between.
+    pub fn set_enabled(&self, on: bool) {
+        let mut enabled = self.enabled.lock().unwrap();
+        if *enabled == on {
+            return;
+        }
+        *enabled = on;
+        let roots = self.roots.lock().unwrap().clone();
         if let Some(w) = self.watcher.lock().unwrap().as_mut() {
-            let _ = w.unwatch(path);
+            for root in roots.values() {
+                let result = if on { w.watch(root, RecursiveMode::Recursive) } else { w.unwatch(root) };
+                if let Err(e) = result {
+                    eprintln!("cannot {} {}: {e}", if on { "watch" } else { "unwatch" }, root.display());
+                }
+            }
+        }
+        if on {
+            for &id in roots.keys() {
+                self.scanner.request(id);
+            }
         }
     }
 }

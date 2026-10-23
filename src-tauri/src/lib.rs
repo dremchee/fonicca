@@ -10,6 +10,7 @@ mod library;
 mod models;
 mod player;
 mod scan;
+mod settings;
 mod similar;
 mod watch;
 
@@ -24,6 +25,8 @@ pub struct AppState {
     pub scanner: Arc<watch::Scanner>,
     pub analyzer: Arc<analyzer::Analyzer>,
     pub models_dir: std::path::PathBuf,
+    pub db_path: std::path::PathBuf,
+    pub settings: settings::SettingsStore,
     pub similar: Mutex<similar::Similar>,
     pub model_downloading: std::sync::atomic::AtomicBool,
     pub watcher: watch::LibraryWatcher,
@@ -63,13 +66,16 @@ pub fn run() {
             }
             let handle = app.handle().clone();
             let scan_analyzer = Arc::clone(&analyzer);
-            let scanner = watch::Scanner::new(db_path, move |p| {
+            let scanner = watch::Scanner::new(db_path.clone(), move |p| {
                 if p.done && p.changes > 0 {
                     scan_analyzer.wake();
                 }
                 let _ = handle.emit(scan::PROGRESS_EVENT, p);
             });
             let watcher = watch::LibraryWatcher::new(Arc::clone(&scanner));
+            let settings = settings::SettingsStore::load(dir.join("settings.json"));
+            // Before the sources are registered, so a disabled watcher never starts watching.
+            watcher.set_enabled(settings.get().watch_folders);
             for (id, path) in &sources {
                 if let Err(e) = watcher.watch(*id, std::path::Path::new(path)) {
                     eprintln!("cannot watch {path}: {e}");
@@ -83,10 +89,14 @@ pub fn run() {
                 scanner,
                 analyzer,
                 models_dir,
+                db_path,
+                settings,
                 similar: Default::default(),
                 model_downloading: Default::default(),
                 watcher,
             });
+            let state = app.state::<AppState>();
+            commands::apply_settings(app.handle(), &state, None, &state.settings.get())?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -122,6 +132,10 @@ pub fn run() {
             commands::stop,
             commands::seek,
             commands::playback_position,
+            commands::get_settings,
+            commands::update_settings,
+            commands::app_info,
+            commands::delete_sound_model,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

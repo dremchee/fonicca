@@ -193,6 +193,11 @@ export const useLibraryStore = defineStore('library', () => {
     await api.downloadSoundModel()
   }
 
+  async function deleteSoundModel() {
+    await api.deleteSoundModel()
+    await loadSoundModel()
+  }
+
   async function setAnalysisPaused(paused: boolean) {
     analysis.value = { ...analysis.value, paused }
     await api.setAnalysisPaused(paused)
@@ -504,6 +509,7 @@ export const useLibraryStore = defineStore('library', () => {
     downloadSoundModel,
     prioritizeAnalysis,
     setAnalysisPaused,
+    deleteSoundModel,
     total,
     scans,
     isScanning,

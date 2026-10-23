@@ -9,6 +9,7 @@ use tauri::State;
 use crate::audio;
 use crate::error::{Error, Result};
 use crate::library::{self, Collection, Filter, ImportReport, Sample, Tag, TagRef};
+use crate::settings::{self, Settings, Theme};
 use crate::similar::Ranking;
 use crate::AppState;
 
@@ -58,17 +59,8 @@ pub fn add_source(state: State<'_, AppState>, path: String) -> Result<i64> {
 
 #[tauri::command]
 pub fn remove_source(state: State<'_, AppState>, id: i64) -> Result<()> {
-    let path: Option<String> = {
-        let conn = state.db.lock().unwrap();
-        let path = conn
-            .query_row("SELECT path FROM sources WHERE id = ?1", [id], |r| r.get(0))
-            .optional()?;
-        conn.execute("DELETE FROM sources WHERE id = ?1", [id])?;
-        path
-    };
-    if let Some(path) = path {
-        state.watcher.unwatch(id, std::path::Path::new(&path));
-    }
+    state.db.lock().unwrap().execute("DELETE FROM sources WHERE id = ?1", [id])?;
+    state.watcher.unwatch(id);
     Ok(())
 }
 
@@ -320,4 +312,92 @@ pub fn seek(state: State<'_, AppState>, position: f64) -> Result<()> {
 #[tauri::command]
 pub fn playback_position(state: State<'_, AppState>) -> Option<f64> {
     state.player.position()
+}
+
+#[tauri::command]
+pub fn get_settings(state: State<'_, AppState>) -> Settings {
+    state.settings.get()
+}
+
+/// Saves the full settings object and applies what changed. Returns what was stored
+/// (out-of-range values clamped).
+#[tauri::command]
+pub fn update_settings(app: tauri::AppHandle, state: State<'_, AppState>, settings: Settings) -> Result<Settings> {
+    let (prev, next) = state.settings.replace(settings)?;
+    apply_settings(&app, &state, Some(&prev), &next)?;
+    Ok(next)
+}
+
+/// Pushes settings into the running app; `prev: None` applies everything (startup).
+pub fn apply_settings(app: &tauri::AppHandle, state: &AppState, prev: Option<&Settings>, next: &Settings) -> Result<()> {
+    if prev.is_none_or(|p| p.theme != next.theme) {
+        // The webview's prefers-color-scheme follows the window appearance.
+        app.set_theme(match next.theme {
+            Theme::System => None,
+            Theme::Light => Some(tauri::Theme::Light),
+            Theme::Dark => Some(tauri::Theme::Dark),
+        });
+    }
+    if prev.is_none_or(|p| p.watch_folders != next.watch_folders) {
+        state.watcher.set_enabled(next.watch_folders);
+    }
+    if prev.is_none_or(|p| p.volume != next.volume) {
+        state.player.set_volume(next.volume);
+    }
+    if prev.is_none_or(|p| p.analysis_threads != next.analysis_threads) {
+        state.analyzer.set_threads(next.analysis_threads.unwrap_or_else(settings::default_threads))?;
+    }
+    Ok(())
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppInfo {
+    version: String,
+    cores: usize,
+    default_threads: usize,
+    db_path: String,
+    db_size: u64,
+    models_dir: String,
+    models_size: u64,
+    settings_path: String,
+}
+
+/// Size of a file or of every file directly in a folder; 0 when missing.
+fn disk_size(path: &std::path::Path) -> u64 {
+    match std::fs::read_dir(path) {
+        Ok(entries) => entries.flatten().filter_map(|e| e.metadata().ok()).filter(|m| m.is_file()).map(|m| m.len()).sum(),
+        Err(_) => std::fs::metadata(path).map_or(0, |m| m.len()),
+    }
+}
+
+#[tauri::command]
+pub fn app_info(app: tauri::AppHandle, state: State<'_, AppState>) -> AppInfo {
+    let db_path = &state.db_path;
+    // WAL mode: recent writes live in the -wal file until a checkpoint.
+    let wal = db_path.with_extension("db-wal");
+    AppInfo {
+        version: app.package_info().version.to_string(),
+        cores: settings::cores(),
+        default_threads: settings::default_threads(),
+        db_path: db_path.to_string_lossy().into_owned(),
+        db_size: disk_size(db_path) + disk_size(&wal),
+        models_dir: state.models_dir.to_string_lossy().into_owned(),
+        models_size: disk_size(&state.models_dir),
+        settings_path: state.settings.path().to_string_lossy().into_owned(),
+    }
+}
+
+/// Unloads and deletes the sound model. Embeddings and categories found with it stay.
+#[tauri::command]
+pub fn delete_sound_model(state: State<'_, AppState>) -> Result<()> {
+    if state.model_downloading.load(std::sync::atomic::Ordering::SeqCst) {
+        return Err(Error::Other("the sound model is downloading".into()));
+    }
+    state.analyzer.unload_model();
+    let path = crate::models::model_path(&state.models_dir);
+    match std::fs::remove_file(&path) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.into()),
+        _ => Ok(()),
+    }
 }

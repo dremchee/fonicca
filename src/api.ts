@@ -60,6 +60,30 @@ export interface DownloadProgress {
   error: string | null
 }
 
+export type Theme = 'system' | 'light' | 'dark'
+
+export interface Settings {
+  theme: Theme
+  watchFolders: boolean
+  /** Play a sample when the focus moves to it with the arrow keys. */
+  autoplay: boolean
+  /** Preview volume, 0..1. */
+  volume: number
+  /** Analysis threads; null picks half the cores. */
+  analysisThreads: number | null
+}
+
+export interface AppInfo {
+  version: string
+  cores: number
+  defaultThreads: number
+  dbPath: string
+  dbSize: number
+  modelsDir: string
+  modelsSize: number
+  settingsPath: string
+}
+
 export interface TagRef {
   id: number
   name: string
@@ -140,6 +164,10 @@ export const api = {
   analysisStatus: () => invoke<AnalysisProgress>('analysis_status'),
   soundModelStatus: () => invoke<SoundModelStatus>('sound_model_status'),
   downloadSoundModel: () => invoke<void>('download_sound_model'),
+  deleteSoundModel: () => invoke<void>('delete_sound_model'),
+  getSettings: () => invoke<Settings>('get_settings'),
+  updateSettings: (settings: Settings) => invoke<Settings>('update_settings', { settings }),
+  appInfo: () => invoke<AppInfo>('app_info'),
   play: (id: number, start = 0) => invoke<void>('play', { id, start }),
   stop: () => invoke<void>('stop'),
   seek: (position: number) => invoke<void>('seek', { position }),

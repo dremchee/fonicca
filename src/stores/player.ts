@@ -1,12 +1,18 @@
 import type { Sample } from '@/api'
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { api } from '@/api'
+import { useSettingsStore } from '@/stores/settings'
 
 export const usePlayerStore = defineStore('player', () => {
   const playingId = ref<number | null>(null)
   const position = ref(0)
-  const autoplay = ref(true)
+  const settings = useSettingsStore()
+  // Stored with the other settings so it survives a restart.
+  const autoplay = computed({
+    get: () => settings.settings.autoplay,
+    set: (autoplay: boolean) => settings.update({ autoplay }),
+  })
   const error = ref<string | null>(null)
   let frame = 0
 

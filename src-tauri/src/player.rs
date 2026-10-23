@@ -14,6 +14,7 @@ use crate::error::{Error, Result};
 pub struct Player {
     mixer: Option<Mixer>,
     current: Mutex<Option<RodioPlayer>>,
+    volume: Mutex<f32>,
 }
 
 impl Player {
@@ -36,7 +37,7 @@ impl Player {
                 }
             })
             .expect("spawn audio thread");
-        Self { mixer: rx.recv().ok().flatten(), current: Mutex::new(None) }
+        Self { mixer: rx.recv().ok().flatten(), current: Mutex::new(None), volume: Mutex::new(1.0) }
     }
 
     pub fn play(&self, path: &Path, start: f64) -> Result<()> {
@@ -53,6 +54,7 @@ impl Player {
         let source = builder.build().map_err(|e| Error::Audio(e.to_string()))?;
 
         let player = RodioPlayer::connect_new(mixer);
+        player.set_volume(*self.volume.lock().unwrap());
         player.append(source);
         if start > 0.0 {
             let _ = player.try_seek(Duration::from_secs_f64(start));
@@ -60,6 +62,14 @@ impl Player {
         // Replacing the previous player drops it, which stops its sound.
         *self.current.lock().unwrap() = Some(player);
         Ok(())
+    }
+
+    /// Preview volume, 0..=1; also applies to the sound playing now.
+    pub fn set_volume(&self, volume: f32) {
+        *self.volume.lock().unwrap() = volume;
+        if let Some(p) = self.current.lock().unwrap().as_ref() {
+            p.set_volume(volume);
+        }
     }
 
     pub fn stop(&self) {
