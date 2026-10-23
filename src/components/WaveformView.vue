@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import type { ComponentPublicInstance } from 'vue'
 import type { Sample } from '@/api'
 import { Play, Square, Star, X } from '@lucide/vue'
 import { useResizeObserver } from '@vueuse/core'
-import { computed, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { api } from '@/api'
+import Hint from '@/components/Hint.vue'
+import TagPicker from '@/components/TagPicker.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CATEGORY_LABELS, categoryHint, formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, KIND_LABELS, sourceHint } from '@/format'
 import { useLibraryStore } from '@/stores/library'
@@ -18,39 +18,11 @@ const props = defineProps<{ sample: Sample | undefined }>()
 
 const library = useLibraryStore()
 const player = usePlayerStore()
-const tagInputRef = useTemplateRef<ComponentPublicInstance>('tagField')
-// Input renders a bare <input> as its root.
-const tagInput = computed(() => tagInputRef.value?.$el as HTMLInputElement | undefined)
-const newTag = ref('')
-
 const selectionSize = computed(() => {
   const n = library.selectedIds.size
   return props.sample && (n > 1 || (n === 1 && !library.selectedIds.has(props.sample.id))) ? n : 1
 })
 
-watch(() => library.tagInputRequest, () => {
-  tagInput.value?.focus()
-})
-
-async function submitTag() {
-  const name = newTag.value.trim()
-  if (!name)
-    return
-  newTag.value = ''
-  await library.addTag(name)
-}
-
-function onTagKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter') {
-    e.preventDefault()
-    submitTag()
-  }
-  else if (e.key === 'Escape') {
-    e.stopPropagation()
-    newTag.value = ''
-    tagInput.value?.blur()
-  }
-}
 const canvas = ref<HTMLCanvasElement | null>(null)
 const box = ref<HTMLElement | null>(null)
 const peaks = shallowRef<Int8Array | null>(null)
@@ -150,17 +122,15 @@ function onDragStart(e: DragEvent) {
 
 <template>
   <!-- Hidden until a sample is selected, so the list gets the whole height. -->
-  <section v-if="sample" class="h-60 shrink-0 border-t border-border bg-card flex flex-col">
-    <div class="h-10 px-3 flex items-center gap-3">
-      <Button
-        size="icon-sm" class="rounded-full"
-        :title="player.playingId === sample.id ? 'Stop (Space)' : 'Play (Space)'"
-        @click="player.toggle(sample)"
-      >
-        <component :is="player.playingId === sample.id ? Square : Play" class="fill-current" />
-      </Button>
+  <section v-if="sample" class="h-56 shrink-0 border-t border-border bg-card flex flex-col">
+    <div class="h-12 px-3 flex items-center gap-3">
+      <Hint :text="player.playingId === sample.id ? 'Stop' : 'Play'" shortcut="Space">
+        <Button size="icon-sm" class="rounded-full shrink-0" @click="player.toggle(sample)">
+          <component :is="player.playingId === sample.id ? Square : Play" class="fill-current" />
+        </Button>
+      </Hint>
       <div
-        class="min-w-0 flex-1 cursor-grab"
+        class="min-w-24 max-w-[45%] cursor-grab"
         draggable="true"
         title="Drag into your DAW"
         @dragstart="onDragStart"
@@ -172,27 +142,14 @@ function onDragStart(e: DragEvent) {
           {{ sample.path }}
         </div>
       </div>
-      <div class="flex items-center gap-2 shrink-0">
-        <Checkbox
-          id="autoplay"
-          :model-value="player.autoplay"
-          @update:model-value="player.autoplay = $event === true"
-        />
-        <Label for="autoplay" class="text-muted-foreground font-normal">
-          Autoplay
-        </Label>
-      </div>
-    </div>
-    <div class="h-10 px-3 flex items-center gap-2 min-w-0">
-      <Button
-        variant="ghost" size="icon-sm"
-        :title="sample.favorite ? 'Remove from favorites (F)' : 'Add to favorites (F)'"
-        @click="library.toggleFavorite()"
-      >
-        <Star :class="sample.favorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground'" />
-      </Button>
-      <div class="flex gap-1 overflow-x-auto min-w-0">
-        <Badge v-for="t in sample.tags" :key="t.id" variant="secondary" class="pr-1">
+      <Hint :text="sample.favorite ? 'Remove from favorites' : 'Add to favorites'" shortcut="F">
+        <Button variant="ghost" size="icon-sm" class="-ml-2 shrink-0" @click="library.toggleFavorite()">
+          <Star :class="sample.favorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground'" />
+        </Button>
+      </Hint>
+      <!-- One badge row: tags that do not fit wrap onto the hidden second line. -->
+      <div v-if="sample.tags.length" class="min-w-0 h-6 flex flex-wrap items-center gap-1 overflow-hidden">
+        <Badge v-for="t in sample.tags" :key="t.id" variant="secondary" class="h-6 pr-1">
           {{ t.name }}
           <button
             class="rounded-full opacity-60 hover:opacity-100 focus-visible:opacity-100 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
@@ -203,17 +160,17 @@ function onDragStart(e: DragEvent) {
           </button>
         </Badge>
       </div>
-      <Input
-        ref="tagField"
-        v-model="newTag"
-        list="known-tags"
-        :placeholder="selectionSize > 1 ? `Tag ${selectionSize} samples… (T)` : 'Add tag… (T)'"
-        class="w-48 shrink-0 h-8"
-        @keydown="onTagKeydown"
-      />
-      <datalist id="known-tags">
-        <option v-for="t in library.tags" :key="t.id" :value="t.name" />
-      </datalist>
+      <TagPicker :assigned="sample.tags" :count="selectionSize" />
+      <div class="ml-auto flex items-center gap-2 shrink-0">
+        <Checkbox
+          id="autoplay"
+          :model-value="player.autoplay"
+          @update:model-value="player.autoplay = $event === true"
+        />
+        <Label for="autoplay" class="text-muted-foreground font-normal">
+          Autoplay
+        </Label>
+      </div>
     </div>
     <div ref="box" class="relative flex-1 mx-3 rounded-md bg-background overflow-hidden">
       <canvas ref="canvas" class="absolute inset-0 size-full cursor-pointer" @mousedown="onSeek" />

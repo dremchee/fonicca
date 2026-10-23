@@ -25,9 +25,9 @@ const search = computed(() => searchInput.value?.$el as HTMLInputElement | undef
 
 onMounted(() => library.init())
 
-// Typing in a field or navigating an open menu: global shortcuts stay out of the way.
+// Typing in a field or working in an open menu, popover or dialog: global shortcuts stay out of the way.
 function isTyping(e: KeyboardEvent) {
-  if (e.target instanceof Element && e.target.closest('[role="menu"], [role="alertdialog"]'))
+  if (e.target instanceof Element && e.target.closest('[role="menu"], [role="dialog"], [role="alertdialog"]'))
     return true
   return e.target instanceof HTMLInputElement && e.target.type !== 'checkbox'
 }
@@ -77,7 +77,7 @@ onKeyStroke(['t', 'е'], (e) => {
   library.requestTagInput()
 })
 onKeyStroke('Escape', (e) => {
-  if (e.target instanceof Element && e.target.closest('[role="menu"], [role="alertdialog"]'))
+  if (e.target instanceof Element && e.target.closest('[role="menu"], [role="dialog"], [role="alertdialog"]'))
     return
   if (player.playingId !== null)
     player.stop()
