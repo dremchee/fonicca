@@ -164,7 +164,7 @@ const shortcuts: { keys: string[], label: string }[] = [
 
 <template>
   <Dialog v-model:open="dialogOpen">
-    <DialogContent class="p-0 gap-0 sm:max-w-3xl h-[min(560px,calc(100vh-4rem))] grid grid-cols-[176px_1fr] overflow-hidden">
+    <DialogContent class="p-0 gap-0 sm:max-w-5xl h-[min(720px,calc(100vh-4rem))] grid grid-cols-[200px_1fr] overflow-hidden">
       <nav class="bg-muted/40 border-r border-border p-2 pt-4 flex flex-col gap-px">
         <button
           v-for="s in sections"
