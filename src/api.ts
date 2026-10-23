@@ -96,6 +96,38 @@ export interface AppInfo {
   settingsPath: string
 }
 
+export interface DuplicateCopy extends Sample {
+  /** Modification time, Unix seconds. */
+  mtime: number
+}
+
+export interface DuplicateGroup {
+  key: string
+  size: number
+  /** False while large copies wait for their full-content hash; such groups can be hidden but not trashed. */
+  verified: boolean
+  copies: DuplicateCopy[]
+}
+
+export interface DuplicateResolution {
+  keep: number
+  extras: number[]
+}
+
+export type DuplicateAction = 'trash' | 'hide'
+
+export interface ResolveReport {
+  removed: number
+  bytes: number
+  skipped: string[]
+}
+
+export interface HiddenFile {
+  path: string
+  sourceId: number
+  hiddenAt: number
+}
+
 export interface TagRef {
   id: number
   name: string
@@ -144,6 +176,7 @@ export interface SampleFilter {
 export const SCAN_PROGRESS_EVENT = 'scan-progress'
 export const ANALYSIS_PROGRESS_EVENT = 'analysis-progress'
 export const MODEL_DOWNLOAD_EVENT = 'model-download'
+export const DUPLICATES_VERIFIED_EVENT = 'duplicates-verified'
 
 export const api = {
   listSources: () => invoke<Source[]>('list_sources'),
@@ -180,6 +213,16 @@ export const api = {
   getSettings: () => invoke<Settings>('get_settings'),
   updateSettings: (settings: Settings) => invoke<Settings>('update_settings', { settings }),
   appInfo: () => invoke<AppInfo>('app_info'),
+  duplicateCount: () => invoke<number>('duplicate_count'),
+  duplicateGroups: () => invoke<DuplicateGroup[]>('duplicate_groups'),
+  verifyDuplicates: () => invoke<void>('verify_duplicates'),
+  resolveDuplicates: (resolutions: DuplicateResolution[], action: DuplicateAction) =>
+    invoke<ResolveReport>('resolve_duplicates', { resolutions, action }),
+  listHidden: () => invoke<HiddenFile[]>('list_hidden'),
+  /** All hidden files with `null`. */
+  unhideSamples: (paths: string[] | null) => invoke<void>('unhide_samples', { paths }),
+  preferredFolders: () => invoke<string[]>('preferred_folders'),
+  setPreferredFolder: (path: string, preferred: boolean) => invoke<void>('set_preferred_folder', { path, preferred }),
   play: (id: number, start = 0, sync: { bpm: number | null, key: string | null } | null = null) =>
     invoke<Adjust>('play', { id, start, sync }),
   stop: () => invoke<void>('stop'),

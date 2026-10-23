@@ -7,6 +7,7 @@ use serde::Serialize;
 use tauri::State;
 
 use crate::audio;
+use crate::duplicates;
 use crate::error::{Error, Result};
 use crate::library::{self, Collection, Filter, ImportReport, Sample, Tag, TagRef};
 use crate::settings::{self, Settings, Theme};
@@ -415,4 +416,85 @@ pub fn delete_sound_model(state: State<'_, AppState>) -> Result<()> {
         Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.into()),
         _ => Ok(()),
     }
+}
+
+#[tauri::command]
+pub fn duplicate_count(state: State<'_, AppState>) -> Result<i64> {
+    duplicates::count(&state.db.lock().unwrap())
+}
+
+/// On its own connection: a few thousand rows, and the list stays responsive meanwhile.
+#[tauri::command]
+pub async fn duplicate_groups(state: State<'_, AppState>) -> Result<Vec<duplicates::Group>> {
+    let db_path = state.db_path.clone();
+    tauri::async_runtime::spawn_blocking(move || duplicates::groups(&crate::db::open(&db_path)?))
+        .await
+        .map_err(|e| Error::Other(e.to_string()))?
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct VerifyDone {
+    hashed: usize,
+    error: Option<String>,
+}
+
+/// Hashes large duplicate candidates in the background; reports through `duplicates-verified`.
+#[tauri::command]
+pub fn verify_duplicates(app: tauri::AppHandle, state: State<'_, AppState>) {
+    use std::sync::atomic::Ordering;
+    use tauri::{Emitter, Manager};
+    if state.duplicates_verifying.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let db_path = state.db_path.clone();
+    std::thread::spawn(move || {
+        let result = duplicates::verify(&db_path);
+        app.state::<AppState>().duplicates_verifying.store(false, Ordering::SeqCst);
+        let (hashed, error) = match result {
+            Ok(n) => (n, None),
+            Err(e) => (0, Some(e.to_string())),
+        };
+        let _ = app.emit(duplicates::VERIFY_EVENT, VerifyDone { hashed, error });
+    });
+}
+
+/// Moving thousands of files to the Trash takes a while: own connection, off the main thread.
+#[tauri::command]
+pub async fn resolve_duplicates(
+    state: State<'_, AppState>,
+    resolutions: Vec<duplicates::Resolution>,
+    action: duplicates::Action,
+) -> Result<duplicates::ResolveReport> {
+    let db_path = state.db_path.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        duplicates::resolve(&mut crate::db::open(&db_path)?, &resolutions, action)
+    })
+    .await
+    .map_err(|e| Error::Other(e.to_string()))?
+}
+
+#[tauri::command]
+pub fn list_hidden(state: State<'_, AppState>) -> Result<Vec<duplicates::Hidden>> {
+    duplicates::list_hidden(&state.db.lock().unwrap())
+}
+
+/// Unhides the paths (all with `None`) and rescans their sources to bring the files back.
+#[tauri::command]
+pub fn unhide_samples(state: State<'_, AppState>, paths: Option<Vec<String>>) -> Result<()> {
+    let sources = duplicates::unhide(&state.db.lock().unwrap(), paths.as_deref())?;
+    for id in sources {
+        state.scanner.request(id);
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn preferred_folders(state: State<'_, AppState>) -> Result<Vec<String>> {
+    duplicates::preferred_folders(&state.db.lock().unwrap())
+}
+
+#[tauri::command]
+pub fn set_preferred_folder(state: State<'_, AppState>, path: String, preferred: bool) -> Result<()> {
+    duplicates::set_preferred_folder(&state.db.lock().unwrap(), &path, preferred)
 }

@@ -16,11 +16,13 @@ import {
 } from '@/components/ui/context-menu'
 import { confirm } from '@/composables/confirm'
 import { folderName } from '@/format'
+import { useDuplicatesStore } from '@/stores/duplicates'
 import { useLibraryStore } from '@/stores/library'
 import { useSettingsStore } from '@/stores/settings'
 
 const library = useLibraryStore()
 const settings = useSettingsStore()
+const duplicates = useDuplicatesStore()
 const { sources, tags, collections, scope, scans } = storeToRefs(library)
 
 type Editable = 'tag' | 'collection'
@@ -242,6 +244,17 @@ async function confirmDeleteTag(id: number) {
           <button class="row" :class="{ active: isActive({ kind: 'favorites' }) }" @click="scope = { kind: 'favorites' }">
             <span class="i-lucide-star shrink-0" />
             <span class="flex-1 truncate">Favorites</span>
+          </button>
+          <!-- Shows up only while there is something to clean. -->
+          <button
+            v-if="duplicates.count || isActive({ kind: 'duplicates' })"
+            class="row"
+            :class="{ active: isActive({ kind: 'duplicates' }) }"
+            @click="scope = { kind: 'duplicates' }"
+          >
+            <span class="i-lucide-copy shrink-0" />
+            <span class="flex-1 truncate">Duplicates</span>
+            <span class="text-[11px] text-muted-foreground tabular">{{ duplicates.count.toLocaleString() }}</span>
           </button>
 
           <h3 class="section">

@@ -6,6 +6,7 @@ import {
   AudioLines,
   Cpu,
   Download,
+  EyeOff,
   FolderOpen,
   FolderPlus,
   Info,
@@ -38,6 +39,7 @@ import { Switch } from '@/components/ui/switch'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { confirm } from '@/composables/confirm'
 import { folderName, formatSize } from '@/format'
+import { useDuplicatesStore } from '@/stores/duplicates'
 import { useLibraryStore } from '@/stores/library'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -45,6 +47,7 @@ const store = useSettingsStore()
 const { settings, dialogOpen, section } = storeToRefs(store)
 const library = useLibraryStore()
 const { sources, scans, analysis, soundModel, modelDownload } = storeToRefs(library)
+const duplicates = useDuplicatesStore()
 
 const sections: { id: SettingsSection, label: string, icon: Component }[] = [
   { id: 'general', label: 'General', icon: Settings2 },
@@ -60,8 +63,17 @@ const current = computed(() => sections.find(s => s.id === section.value)!)
 const info = ref<AppInfo | null>(null)
 watch(dialogOpen, async (open) => {
   if (open)
-    info.value = await api.appInfo()
+    [info.value] = await Promise.all([api.appInfo(), duplicates.loadHidden()])
 })
+
+async function unhide(paths: string[] | null) {
+  try {
+    await duplicates.unhide(paths)
+  }
+  catch (e) {
+    toast.error(String(e))
+  }
+}
 
 function samplesLabel(n: number) {
   return `${n.toLocaleString()} ${n === 1 ? 'sample' : 'samples'}`
@@ -265,6 +277,38 @@ const shortcuts: { keys: string[], label: string }[] = [
                 <Switch :model-value="settings.watchFolders" @update:model-value="store.update({ watchFolders: $event })" />
               </label>
             </section>
+
+            <div class="flex flex-col gap-2">
+              <div class="flex items-center justify-between">
+                <h3 class="group-title">
+                  Hidden files<template v-if="duplicates.hidden.length">
+                    · {{ duplicates.hidden.length.toLocaleString() }}
+                  </template>
+                </h3>
+                <Button v-if="duplicates.hidden.length > 1" variant="outline" size="sm" @click="unhide(null)">
+                  Unhide all
+                </Button>
+              </div>
+              <section class="group-box max-h-64 overflow-y-auto">
+                <div v-if="!duplicates.hidden.length" class="row text-muted-foreground">
+                  Nothing hidden. Extra copies of duplicates can be hidden instead of trashed.
+                </div>
+                <div v-for="h in duplicates.hidden" :key="h.path" class="row py-2">
+                  <EyeOff class="size-3.5 text-muted-foreground shrink-0" />
+                  <div class="row-text">
+                    <div class="truncate">
+                      {{ folderName(h.path) }}
+                    </div>
+                    <div class="row-desc truncate select-text" :title="h.path">
+                      {{ h.path }}
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="xs" @click="unhide([h.path])">
+                    Unhide
+                  </Button>
+                </div>
+              </section>
+            </div>
 
             <div class="flex flex-col gap-2">
               <h3 class="group-title">

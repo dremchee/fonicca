@@ -7,6 +7,7 @@ import { computed, onMounted, ref, useTemplateRef } from 'vue'
 import EditorDialog from '@/components/EditorDialog.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import DuplicatesView from '@/components/DuplicatesView.vue'
 import FilterBar from '@/components/FilterBar.vue'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Kbd } from '@/components/ui/kbd'
@@ -17,6 +18,7 @@ import SampleList from '@/components/SampleList.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import SourceSidebar from '@/components/SourceSidebar.vue'
 import WaveformView from '@/components/WaveformView.vue'
+import { useDuplicatesStore } from '@/stores/duplicates'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
@@ -24,16 +26,22 @@ import { useSettingsStore } from '@/stores/settings'
 const library = useLibraryStore()
 const player = usePlayerStore()
 const settings = useSettingsStore()
+const duplicates = useDuplicatesStore()
 const paletteOpen = ref(false)
 const { query, total, focused, selectedIds } = storeToRefs(library)
 const searchInput = useTemplateRef<ComponentPublicInstance>('searchInput')
 // InputGroupInput renders a bare <input> as its root.
 const search = computed(() => searchInput.value?.$el as HTMLInputElement | undefined)
 
-onMounted(() => Promise.all([settings.init(), library.init()]))
+onMounted(() => Promise.all([settings.init(), library.init(), duplicates.init()]))
+
+// DuplicatesView replaces the list and handles its own arrows and Space.
+const inDuplicates = computed(() => library.scope.kind === 'duplicates')
 
 // Typing in a field or working in an open menu, popover or dialog: global shortcuts stay out of the way.
 function isTyping(e: KeyboardEvent) {
+  if (inDuplicates.value)
+    return true
   if (e.target instanceof Element && e.target.closest('[role="menu"], [role="dialog"], [role="alertdialog"]'))
     return true
   return e.target instanceof HTMLInputElement && e.target.type !== 'checkbox'
@@ -123,41 +131,44 @@ onKeyStroke(',', (e) => {
       <ResizableHandle />
       <!-- The list needs ~520px for its columns; the sidebar gives way before it does. -->
       <ResizablePanel id="main" :order="2" as="main" size-unit="px" :min-size="520" class="min-w-0 flex flex-col">
-        <header class="h-11 shrink-0 px-3 flex items-center gap-3 border-b border-border" data-tauri-drag-region>
-          <InputGroup class="flex-1 max-w-md">
-            <InputGroupAddon>
-              <Search />
-            </InputGroupAddon>
-            <InputGroupInput
-              ref="searchInput"
-              v-model="query"
-              type="search"
-              placeholder="Search samples"
-              aria-label="Search samples"
-            />
-            <InputGroupAddon align="inline-end">
-              <Kbd>⌘F</Kbd>
-            </InputGroupAddon>
-          </InputGroup>
-          <span class="text-xs text-muted-foreground tabular" data-tauri-drag-region>
-            <template v-if="selectedIds.size > 1">{{ selectedIds.size.toLocaleString() }} selected · </template>
-            {{ total.toLocaleString() }} {{ total === 1 ? 'sample' : 'samples' }}
-            <template v-if="library.isScanning"> · scanning…</template>
-          </span>
-        </header>
-        <FilterBar />
-        <ResizablePanelGroup direction="vertical" auto-save-id="samplette-layout-rows" class="min-h-0 flex-1">
-          <ResizablePanel id="list" :order="1" :min-size="20" class="flex flex-col">
-            <SampleList />
-          </ResizablePanel>
-          <!-- The player only exists once a sample is selected. -->
-          <template v-if="focused">
-            <ResizableHandle />
-            <ResizablePanel id="player" :order="2" size-unit="px" :default-size="196" :min-size="150" :max-size="480">
-              <WaveformView :sample="focused" />
+        <DuplicatesView v-if="inDuplicates" />
+        <template v-else>
+          <header class="h-11 shrink-0 px-3 flex items-center gap-3 border-b border-border" data-tauri-drag-region>
+            <InputGroup class="flex-1 max-w-md">
+              <InputGroupAddon>
+                <Search />
+              </InputGroupAddon>
+              <InputGroupInput
+                ref="searchInput"
+                v-model="query"
+                type="search"
+                placeholder="Search samples"
+                aria-label="Search samples"
+              />
+              <InputGroupAddon align="inline-end">
+                <Kbd>⌘F</Kbd>
+              </InputGroupAddon>
+            </InputGroup>
+            <span class="text-xs text-muted-foreground tabular" data-tauri-drag-region>
+              <template v-if="selectedIds.size > 1">{{ selectedIds.size.toLocaleString() }} selected · </template>
+              {{ total.toLocaleString() }} {{ total === 1 ? 'sample' : 'samples' }}
+              <template v-if="library.isScanning"> · scanning…</template>
+            </span>
+          </header>
+          <FilterBar />
+          <ResizablePanelGroup direction="vertical" auto-save-id="samplette-layout-rows" class="min-h-0 flex-1">
+            <ResizablePanel id="list" :order="1" :min-size="20" class="flex flex-col">
+              <SampleList />
             </ResizablePanel>
-          </template>
-        </ResizablePanelGroup>
+            <!-- The player only exists once a sample is selected. -->
+            <template v-if="focused">
+              <ResizableHandle />
+              <ResizablePanel id="player" :order="2" size-unit="px" :default-size="196" :min-size="150" :max-size="480">
+                <WaveformView :sample="focused" />
+              </ResizablePanel>
+            </template>
+          </ResizablePanelGroup>
+        </template>
       </ResizablePanel>
     </ResizablePanelGroup>
     <SettingsDialog />

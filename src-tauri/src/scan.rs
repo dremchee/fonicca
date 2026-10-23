@@ -74,6 +74,9 @@ fn run(db_path: &Path, source_id: i64, on_progress: &(impl Fn(ScanProgress) + Sy
         }
     }
 
+    // Hidden files (e.g. extra copies of duplicates) never enter the library.
+    let hidden = crate::duplicates::hidden_paths(&conn, source_id)?;
+
     let mut seen: HashSet<i64> = HashSet::new();
     let mut changed: Vec<Candidate> = Vec::new();
     for entry in WalkDir::new(&root).follow_links(false).into_iter().filter_map(|e| e.ok()) {
@@ -92,6 +95,9 @@ fn run(db_path: &Path, source_id: i64, on_progress: &(impl Fn(ScanProgress) + Sy
             .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
             .map_or(0, |d| d.as_secs() as i64);
         let path = entry.path().to_string_lossy().into_owned();
+        if hidden.contains(&path) {
+            continue;
+        }
         match known.get(&path) {
             Some(&(id, s, m)) if s == size && m == mtime => {
                 seen.insert(id);
@@ -153,6 +159,8 @@ fn run(db_path: &Path, source_id: i64, on_progress: &(impl Fn(ScanProgress) + Sy
                                         THEN analysis_version END,
                 embedding_version = CASE WHEN size = excluded.size AND mtime = excluded.mtime
                                          THEN embedding_version END,
+                content_hash = CASE WHEN size = excluded.size AND mtime = excluded.mtime
+                                    THEN content_hash END,
                 size = excluded.size, mtime = excluded.mtime",
         )?;
         for s in &scanned {
@@ -238,6 +246,25 @@ mod tests {
             .unwrap()
             .collect::<rusqlite::Result<_>>()
             .unwrap()
+    }
+
+    #[test]
+    fn hidden_files_stay_out_until_unhidden() {
+        let (_dir, root, db_path, id) = setup();
+        write_sine(&root.join("drums/kick.wav"), 44100, 1, 16, 0.2);
+        write_sine(&root.join("drums/snare.wav"), 44100, 1, 16, 0.3);
+        let hidden = root.join("drums/snare.wav").to_string_lossy().into_owned();
+        db::open(&db_path)
+            .unwrap()
+            .execute("INSERT INTO hidden (path, source_id, hidden_at) VALUES (?1, ?2, 0)", params![hidden, id])
+            .unwrap();
+
+        scan(&db_path, id);
+        assert_eq!(rows(&db_path).iter().map(|r| r.0.as_str()).collect::<Vec<_>>(), ["kick"]);
+
+        crate::duplicates::unhide(&db::open(&db_path).unwrap(), Some(&[hidden])).unwrap();
+        scan(&db_path, id);
+        assert_eq!(rows(&db_path).len(), 2);
     }
 
     #[test]

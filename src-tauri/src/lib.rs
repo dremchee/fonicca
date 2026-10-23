@@ -5,6 +5,7 @@ mod category;
 mod clap;
 mod commands;
 mod db;
+mod duplicates;
 mod editor;
 mod editor_commands;
 mod error;
@@ -34,6 +35,7 @@ pub struct AppState {
     /// The file open in the editor, if any.
     pub editor: Mutex<Option<editor::Session>>,
     pub model_downloading: std::sync::atomic::AtomicBool,
+    pub duplicates_verifying: std::sync::atomic::AtomicBool,
     pub watcher: watch::LibraryWatcher,
 }
 
@@ -99,6 +101,7 @@ pub fn run() {
                 similar: Default::default(),
                 editor: Mutex::new(None),
                 model_downloading: Default::default(),
+                duplicates_verifying: Default::default(),
                 watcher,
             });
             let state = app.state::<AppState>();
@@ -150,6 +153,14 @@ pub fn run() {
             commands::update_settings,
             commands::app_info,
             commands::delete_sound_model,
+            commands::duplicate_count,
+            commands::duplicate_groups,
+            commands::verify_duplicates,
+            commands::resolve_duplicates,
+            commands::list_hidden,
+            commands::unhide_samples,
+            commands::preferred_folders,
+            commands::set_preferred_folder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

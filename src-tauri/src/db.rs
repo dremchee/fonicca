@@ -212,6 +212,23 @@ pub const MIGRATIONS: &[&str] = &[r#"
     CREATE INDEX samples_category ON samples(category);
     CREATE INDEX samples_category_version ON samples(category_version);
     CREATE INDEX samples_embedding_version ON samples(embedding_version);
+"#, r#"
+    -- Full-content hash (xxh3-128) confirming a duplicate that the head/tail fingerprint
+    -- suggests; NULL until checked and reset when the file changes.
+    ALTER TABLE samples ADD COLUMN content_hash BLOB;
+
+    -- Files every scan skips until they are unhidden. Their tags wait in `detached`.
+    CREATE TABLE hidden (
+        path      TEXT PRIMARY KEY,
+        source_id INTEGER NOT NULL REFERENCES sources(id) ON DELETE CASCADE,
+        hidden_at INTEGER NOT NULL
+    );
+
+    -- Folders whose copies are kept when resolving duplicates; the newest wins.
+    CREATE TABLE preferred_folders (
+        path     TEXT PRIMARY KEY,
+        added_at INTEGER NOT NULL
+    );
 "#];
 
 /// How long user data of removed files is kept for possible reattachment.

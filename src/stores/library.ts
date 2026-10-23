@@ -17,6 +17,8 @@ export type Scope
     | { kind: 'collection', id: number }
     /** Samples that sound like `id`, most similar first. */
     | { kind: 'similar', id: number, name: string }
+    /** Groups of identical files; shown by DuplicatesView instead of the list. */
+    | { kind: 'duplicates' }
 
 export const useLibraryStore = defineStore('library', () => {
   const sources = ref<Source[]>([])
@@ -543,6 +545,9 @@ export const useLibraryStore = defineStore('library', () => {
     addSources,
     removeSource,
     rescanSource,
+    loadSources,
+    loadTags,
+    loadCollections,
     init,
   }
 })
