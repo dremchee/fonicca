@@ -3,6 +3,7 @@ import { listen } from '@tauri-apps/api/event'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, reactive, ref, shallowReactive, watch } from 'vue'
+import { toast } from 'vue-sonner'
 import { ANALYSIS_PROGRESS_EVENT, api, MODEL_DOWNLOAD_EVENT, SCAN_PROGRESS_EVENT, startFileDrag } from '@/api'
 
 const PAGE_SIZE = 200
@@ -19,9 +20,6 @@ export const useLibraryStore = defineStore('library', () => {
   const sources = ref<Source[]>([])
   const tags = ref<Tag[]>([])
   const collections = ref<Collection[]>([])
-  /** Short status message shown at the bottom of the sidebar. */
-  const notice = ref<{ text: string, error?: boolean } | null>(null)
-  let noticeTimer: ReturnType<typeof setTimeout> | undefined
   const scope = ref<Scope>({ kind: 'all' })
   const query = ref('')
   const kindFilter = ref<SampleKind | null>(null)
@@ -327,7 +325,7 @@ export const useLibraryStore = defineStore('library', () => {
     await api.createCollection(name, withSelection ? targetIds() : [])
     await loadCollections()
     if (withSelection)
-      showNotice(`Added to “${name.trim()}”`)
+      toast.success(`Added to “${name.trim()}”`)
   }
 
   async function addToCollection(id: number) {
@@ -337,7 +335,7 @@ export const useLibraryStore = defineStore('library', () => {
     await api.addToCollection(ids, id)
     await loadCollections()
     const name = collections.value.find(c => c.id === id)?.name
-    showNotice(`${ids.length === 1 ? 'Sample' : `${ids.length} samples`} added to “${name}”`)
+    toast.success(`${ids.length === 1 ? 'Sample' : `${ids.length} samples`} added to “${name}”`)
   }
 
   async function removeFromCollection(id: number) {
@@ -364,12 +362,6 @@ export const useLibraryStore = defineStore('library', () => {
 
   // --- Export / import -----------------------------------------------------
 
-  function showNotice(text: string, error = false) {
-    clearTimeout(noticeTimer)
-    notice.value = { text, error }
-    noticeTimer = setTimeout(() => (notice.value = null), error ? 8000 : 4000)
-  }
-
   async function exportUserData() {
     const date = new Date().toISOString().slice(0, 10)
     const path = await save({
@@ -381,10 +373,10 @@ export const useLibraryStore = defineStore('library', () => {
       return
     try {
       const n = await api.exportUserData(path)
-      showNotice(`Exported ${n.toLocaleString()} samples`)
+      toast.success(`Exported ${n.toLocaleString()} samples`)
     }
     catch (e) {
-      showNotice(String(e), true)
+      toast.error(String(e))
     }
   }
 
@@ -397,13 +389,13 @@ export const useLibraryStore = defineStore('library', () => {
       return
     try {
       const r = await api.importUserData(path)
-      showNotice(r.unmatched
+      toast.success(r.unmatched
         ? `Imported ${r.matched.toLocaleString()} samples, ${r.unmatched.toLocaleString()} not found in the library`
         : `Imported ${r.matched.toLocaleString()} samples`)
       await Promise.all([loadTags(), loadCollections(), refresh({ keepSelection: true })])
     }
     catch (e) {
-      showNotice(String(e), true)
+      toast.error(String(e))
     }
   }
 
@@ -470,7 +462,6 @@ export const useLibraryStore = defineStore('library', () => {
     sources,
     tags,
     collections,
-    notice,
     scope,
     query,
     kindFilter,

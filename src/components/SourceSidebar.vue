@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { Scope } from '@/stores/library'
-import { Download, Ellipsis, FolderOpen, FolderPlus, Pencil, RefreshCw, Trash2, Upload, X } from '@lucide/vue'
+import { Download, Ellipsis, FolderOpen, FolderPlus, Pencil, Plus, RefreshCw, Trash2, Upload, X } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, ref } from 'vue'
+import { toast } from 'vue-sonner'
+import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
 import {
   ContextMenu,
@@ -18,18 +20,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { confirm } from '@/composables/confirm'
 import { folderName } from '@/format'
 import { useLibraryStore } from '@/stores/library'
 
 const library = useLibraryStore()
-const { sources, tags, collections, scope, scans, notice } = storeToRefs(library)
+const { sources, tags, collections, scope, scans } = storeToRefs(library)
 
 type Editable = 'tag' | 'collection'
 
 const editing = ref<{ kind: Editable, id: number } | null>(null)
 const editName = ref('')
 const editInput = ref<HTMLInputElement[]>([])
-const renameError = ref<string | null>(null)
 const creatingCollection = ref(false)
 const newCollection = ref('')
 const newCollectionInput = ref<HTMLInputElement | null>(null)
@@ -53,7 +55,6 @@ function progressLabel(id: number) {
 async function startRename(kind: Editable, id: number, name: string) {
   editing.value = { kind, id }
   editName.value = name
-  renameError.value = null
   await nextTick()
   editInput.value[0]?.select()
 }
@@ -74,7 +75,7 @@ async function commitRename() {
       await library.renameCollection(target.id, name)
   }
   catch (e) {
-    renameError.value = String(e)
+    toast.error(String(e))
   }
 }
 
@@ -89,7 +90,6 @@ function onRenameKeydown(e: KeyboardEvent) {
 async function startCreateCollection() {
   creatingCollection.value = true
   newCollection.value = ''
-  renameError.value = null
   await nextTick()
   newCollectionInput.value?.focus()
 }
@@ -103,7 +103,7 @@ async function commitCreateCollection() {
     await library.createCollection(name)
   }
   catch (e) {
-    renameError.value = String(e)
+    toast.error(String(e))
   }
 }
 
@@ -162,9 +162,61 @@ function renameFromMenu() {
 function deleteFromMenu() {
   const t = menuTarget.value
   if (t?.kind === 'tag')
-    library.deleteTag(t.id)
+    afterClose = () => confirmDeleteTag(t.id)
   else if (t?.kind === 'collection')
-    library.deleteCollection(t.id)
+    afterClose = () => confirmDeleteCollection(t.id)
+}
+
+function removeSourceFromMenu() {
+  const t = menuTarget.value
+  if (t?.kind === 'source')
+    afterClose = () => confirmRemoveSource(t.id)
+}
+
+function samplesLabel(n: number) {
+  return `${n.toLocaleString()} ${n === 1 ? 'sample' : 'samples'}`
+}
+
+async function confirmRemoveSource(id: number) {
+  const s = sources.value.find(x => x.id === id)
+  if (!s)
+    return
+  const ok = await confirm({
+    title: `Remove “${folderName(s.path)}” from the library?`,
+    description: `${samplesLabel(s.sampleCount)} will disappear from Samplette. Files on disk are not touched.`,
+    action: 'Remove',
+    destructive: true,
+  })
+  if (ok)
+    await library.removeSource(id)
+}
+
+async function confirmDeleteCollection(id: number) {
+  const c = collections.value.find(x => x.id === id)
+  if (!c)
+    return
+  const ok = await confirm({
+    title: `Delete collection “${c.name}”?`,
+    description: `The ${samplesLabel(c.sampleCount)} in it stay in the library.`,
+    action: 'Delete',
+    destructive: true,
+  })
+  if (ok)
+    await library.deleteCollection(id)
+}
+
+async function confirmDeleteTag(id: number) {
+  const t = tags.value.find(x => x.id === id)
+  if (!t)
+    return
+  const ok = await confirm({
+    title: `Delete tag “${t.name}”?`,
+    description: `It will be removed from ${samplesLabel(t.sampleCount)}.`,
+    action: 'Delete',
+    destructive: true,
+  })
+  if (ok)
+    await library.deleteTag(id)
 }
 </script>
 
@@ -172,15 +224,19 @@ function deleteFromMenu() {
   <aside class="w-60 shrink-0 flex flex-col border-r border-border bg-card">
     <!-- Left part of this bar sits under the macOS traffic lights (overlay title bar). -->
     <div class="h-11 px-3 flex items-center justify-end gap-0.5" data-tauri-drag-region>
-      <Button variant="ghost" size="icon-sm" class="text-muted-foreground" title="Add folders" @click="library.addSources()">
-        <FolderPlus />
-      </Button>
+      <Hint text="Add folders">
+        <Button variant="ghost" size="icon-sm" class="text-muted-foreground" aria-label="Add folders" @click="library.addSources()">
+          <FolderPlus />
+        </Button>
+      </Hint>
       <DropdownMenu>
-        <DropdownMenuTrigger as-child>
-          <Button variant="ghost" size="icon-sm" class="text-muted-foreground data-[state=open]:bg-accent" title="More">
-            <Ellipsis />
-          </Button>
-        </DropdownMenuTrigger>
+        <Hint text="More">
+          <DropdownMenuTrigger as-child>
+            <Button variant="ghost" size="icon-sm" class="text-muted-foreground data-[state=open]:bg-accent" aria-label="More">
+              <Ellipsis />
+            </Button>
+          </DropdownMenuTrigger>
+        </Hint>
         <DropdownMenuContent align="end">
           <DropdownMenuItem @select="library.exportUserData()">
             <Download />
@@ -212,22 +268,27 @@ function deleteFromMenu() {
           <div
             v-for="s in sources" :key="s.id"
             class="row group" :class="{ active: isActive({ kind: 'source', id: s.id }) }"
-            :title="s.path"
             :data-menu="`source:${s.id}`"
             @click="scope = { kind: 'source', id: s.id }"
           >
             <span class="i-lucide-folder shrink-0" />
-            <span class="flex-1 truncate">{{ folderName(s.path) }}</span>
+            <Hint :text="s.path" side="right">
+              <span class="flex-1 truncate">{{ folderName(s.path) }}</span>
+            </Hint>
             <span v-if="progressLabel(s.id)" class="text-[11px] text-primary tabular">{{ progressLabel(s.id) }}</span>
             <template v-else>
               <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ s.sampleCount.toLocaleString() }}</span>
               <span class="hidden group-hover:flex gap-0.5">
-                <button class="icon-btn" title="Rescan" @click.stop="library.rescanSource(s.id)">
-                  <span class="i-lucide-refresh-cw text-xs" />
-                </button>
-                <button class="icon-btn hover:!text-destructive" title="Remove from library" @click.stop="library.removeSource(s.id)">
-                  <span class="i-lucide-x text-xs" />
-                </button>
+                <Hint text="Rescan">
+                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground" aria-label="Rescan" @click.stop="library.rescanSource(s.id)">
+                    <RefreshCw />
+                  </Button>
+                </Hint>
+                <Hint text="Remove from library">
+                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" aria-label="Remove from library" @click.stop="confirmRemoveSource(s.id)">
+                    <X />
+                  </Button>
+                </Hint>
               </span>
             </template>
           </div>
@@ -237,9 +298,11 @@ function deleteFromMenu() {
 
           <h3 class="section flex items-center justify-between">
             Collections
-            <button class="icon-btn -my-1" title="New collection" @click="startCreateCollection">
-              <span class="i-lucide-plus text-xs" />
-            </button>
+            <Hint text="New collection">
+              <Button variant="ghost" size="icon-xs" class="text-muted-foreground -my-1" aria-label="New collection" @click="startCreateCollection">
+                <Plus />
+              </Button>
+            </Hint>
           </h3>
           <div
             v-for="c in collections" :key="c.id"
@@ -262,12 +325,16 @@ function deleteFromMenu() {
               <span class="flex-1 truncate">{{ c.name }}</span>
               <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ c.sampleCount.toLocaleString() }}</span>
               <span class="hidden group-hover:flex gap-0.5">
-                <button class="icon-btn" title="Rename" @click.stop="startRename('collection', c.id, c.name)">
-                  <span class="i-lucide-pencil text-xs" />
-                </button>
-                <button class="icon-btn hover:!text-destructive" title="Delete collection" @click.stop="library.deleteCollection(c.id)">
-                  <span class="i-lucide-x text-xs" />
-                </button>
+                <Hint text="Rename">
+                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground" aria-label="Rename" @click.stop="startRename('collection', c.id, c.name)">
+                    <Pencil />
+                  </Button>
+                </Hint>
+                <Hint text="Delete collection">
+                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" aria-label="Delete collection" @click.stop="confirmDeleteCollection(c.id)">
+                    <X />
+                  </Button>
+                </Hint>
               </span>
             </template>
           </div>
@@ -310,12 +377,16 @@ function deleteFromMenu() {
               <span class="flex-1 truncate">{{ t.name }}</span>
               <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ t.sampleCount.toLocaleString() }}</span>
               <span class="hidden group-hover:flex gap-0.5">
-                <button class="icon-btn" title="Rename" @click.stop="startRename('tag', t.id, t.name)">
-                  <span class="i-lucide-pencil text-xs" />
-                </button>
-                <button class="icon-btn hover:!text-destructive" title="Delete tag" @click.stop="library.deleteTag(t.id)">
-                  <span class="i-lucide-x text-xs" />
-                </button>
+                <Hint text="Rename">
+                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground" aria-label="Rename" @click.stop="startRename('tag', t.id, t.name)">
+                    <Pencil />
+                  </Button>
+                </Hint>
+                <Hint text="Delete tag">
+                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" aria-label="Delete tag" @click.stop="confirmDeleteTag(t.id)">
+                    <X />
+                  </Button>
+                </Hint>
               </span>
             </template>
           </div>
@@ -335,7 +406,7 @@ function deleteFromMenu() {
             Show in Finder
           </ContextMenuItem>
           <ContextMenuSeparator />
-          <ContextMenuItem variant="destructive" @select="library.removeSource(menuSource.id)">
+          <ContextMenuItem variant="destructive" @select="removeSourceFromMenu">
             <X />
             Remove from library
           </ContextMenuItem>
@@ -353,15 +424,6 @@ function deleteFromMenu() {
         </template>
       </ContextMenuContent>
     </ContextMenu>
-    <p v-if="renameError" class="px-4 py-2 text-destructive text-xs border-t border-border">
-      {{ renameError }}
-    </p>
-    <p
-      v-if="notice" class="px-4 py-2 text-xs border-t border-border"
-      :class="notice.error ? 'text-destructive' : 'text-muted-foreground'"
-    >
-      {{ notice.text }}
-    </p>
   </aside>
 </template>
 
@@ -390,17 +452,5 @@ function deleteFromMenu() {
 .row.active {
   background: var(--primary-soft);
   color: var(--primary);
-}
-.icon-btn {
-  width: 20px;
-  height: 20px;
-  display: grid;
-  place-items: center;
-  border-radius: 4px;
-  color: var(--muted-foreground);
-}
-.icon-btn:hover {
-  color: var(--foreground);
-  background: var(--border);
 }
 </style>

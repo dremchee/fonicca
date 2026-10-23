@@ -24,6 +24,8 @@
 
   color-scheme: light dark;
   font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Desktop density: every rem-based size (shadcn-vue included) is 12.5% smaller than on the web. */
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -58,7 +60,7 @@ body,
   border-color: var(--border);
 }
 
-/* rem stays at 16px so shadcn-vue sizes match upstream; only body text is denser. */
+/* Body text is denser still; controls take their size from rem. */
 body {
   font-size: 13px;
   line-height: 1.4;

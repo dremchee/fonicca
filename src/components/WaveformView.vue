@@ -160,7 +160,7 @@ function onDragStart(e: DragEvent) {
           <component :is="player.playingId === sample.id ? Square : Play" class="fill-current" />
         </Button>
         <div
-          class="min-w-0 flex-1 cursor-grab"
+          class="min-w-36 flex-1 cursor-grab"
           draggable="true"
           title="Drag into your DAW"
           @dragstart="onDragStart"
@@ -172,7 +172,9 @@ function onDragStart(e: DragEvent) {
             {{ sample.path }}
           </div>
         </div>
-        <div class="flex gap-3 text-[11px] text-muted-foreground tabular shrink-0">
+        <!-- One line tall: fields that do not fit wrap onto the hidden second line and drop out
+             whole, least important (the last ones) first. -->
+        <div class="min-w-0 h-4 flex flex-wrap justify-end gap-x-3 overflow-hidden text-[11px] leading-4 text-muted-foreground tabular">
           <span v-if="sample.category" :title="categoryHint(sample.categorySource, sample.categoryConfidence)">{{ CATEGORY_LABELS[sample.category] ?? sample.category }}</span>
           <span v-if="sample.kind">{{ KIND_LABELS[sample.kind] }}</span>
           <span v-if="sample.bpm != null" :title="sourceHint(sample.bpmSource)">{{ formatBpm(sample.bpm) }} BPM</span>
