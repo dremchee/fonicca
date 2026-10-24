@@ -97,6 +97,8 @@ export default {
     total: '{size} на диске',
     loading: 'Проверяем скачанные модели…',
     installed: 'Установлена · {size} на диске',
+    comparisonReady: 'Скачана для сравнения · {size} на диске',
+    location: 'Расположение: {path}',
     missing: 'Не установлена · загрузка {size}',
     incomplete: 'Загрузка не завершена · {size} на диске · требуется {total}',
     downloading: 'Загрузка · {size} из {total}',
@@ -105,6 +107,7 @@ export default {
     spleeter: { name: 'Spleeter · 4 стема', description: 'Вокал, ударные, бас и остальное · ONNX FP16' },
     scnetLarge: { name: 'SCNet-large · 4 стема', description: 'Детальное разделение на стемы · ONNX · веса INT8' },
     scnetXlIhf: { name: 'SCNet XL IHF · 4 стема', description: 'Детальное разделение на стемы · ONNX FP32' },
+    apollo: { name: 'Apollo · восстановление', description: 'Только для сравнения на слух; при разделении стемов в приложении не используется.' },
   },
   shortcuts: {
     keys: {

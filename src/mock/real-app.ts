@@ -56,6 +56,7 @@ export function install() {
         stemModelStorage('spleeter'),
         stemModelStorage('scnetLarge'),
         stemModelStorage('scnetXlIhf'),
+        { id: 'apollo', path: '/m/apollo-v1', installed: true, downloading: false, size: 66541845, downloadSize: 66541845 },
       ]
       case 'delete_sound_model': clapInstalled = false; clapBytes = 0; return null
       case 'download_sound_model': {
@@ -73,7 +74,7 @@ export function install() {
       }
       case 'get_settings': return settings
       case 'update_settings': settings = args.settings; return settings
-      case 'app_info': return { version: '0.1.0', cores: 10, defaultThreads: 5, dbPath: '/db', dbSize: 1, modelsDir: '/m', modelsSize: clapBytes + stemModelStorage('spleeter').size + stemModelStorage('scnetLarge').size + stemModelStorage('scnetXlIhf').size, settingsPath: '/s' }
+      case 'app_info': return { version: '0.1.0', cores: 10, defaultThreads: 5, dbPath: '/db', dbSize: 1, modelsDir: '/m', modelsSize: clapBytes + stemModelStorage('spleeter').size + stemModelStorage('scnetLarge').size + stemModelStorage('scnetXlIhf').size + 66541845, settingsPath: '/s' }
       case 'duplicate_count': return groups.length
       case 'duplicate_groups': return structuredClone(groups)
       case 'verify_duplicates':

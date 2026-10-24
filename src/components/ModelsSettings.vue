@@ -49,7 +49,7 @@ function status(model: ModelStorage) {
   if (model.downloading)
     return t('settings.models.downloading', { size: formatSize(model.size), total: formatSize(model.downloadSize) })
   if (model.installed)
-    return t('settings.models.installed', { size: formatSize(model.size) })
+    return t(model.id === 'apollo' ? 'settings.models.comparisonReady' : 'settings.models.installed', { size: formatSize(model.size) })
   if (model.size > 0)
     return t('settings.models.incomplete', { size: formatSize(model.size), total: formatSize(model.downloadSize) })
   return t('settings.models.missing', { size: formatSize(model.downloadSize) })
@@ -100,11 +100,12 @@ async function remove() {
           <div class="font-medium">{{ t(`settings.models.${model.id}.name`) }}</div>
           <div class="mt-0.5 text-xs text-muted-foreground">{{ t(`settings.models.${model.id}.description`) }}</div>
           <div class="mt-1 text-xs text-muted-foreground tabular" role="status">{{ status(model) }}</div>
+          <p v-if="model.size > 0" class="mt-1 break-all select-text text-xs text-muted-foreground" :title="model.path">{{ t('settings.models.location', { path: model.path }) }}</p>
           <div v-if="model.downloading" class="mt-2 h-1 rounded-full bg-muted overflow-hidden" role="progressbar" :aria-label="t(`settings.models.${model.id}.name`)" :aria-valuenow="Math.min(100, Math.round(model.size / model.downloadSize * 100))" aria-valuemin="0" aria-valuemax="100">
             <div class="h-full bg-primary transition-[width]" :style="{ width: `${Math.min(100, model.size / model.downloadSize * 100)}%` }" />
           </div>
           <p v-if="model.id === 'clap' && modelDownload?.error" role="alert" class="mt-1 text-xs text-destructive">{{ modelDownload.error }}</p>
-          <p v-if="model.id !== 'clap' && !model.installed && !model.downloading" class="mt-1 text-xs text-muted-foreground">{{ t('settings.models.onSeparation') }}</p>
+          <p v-if="model.id !== 'clap' && model.id !== 'apollo' && !model.installed && !model.downloading" class="mt-1 text-xs text-muted-foreground">{{ t('settings.models.onSeparation') }}</p>
         </div>
         <div class="flex gap-0.5">
           <Hint v-if="model.installed || (model.id !== 'clap' && model.size > 0)" :text="t('common.actions.showInFinder')">

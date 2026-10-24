@@ -82,7 +82,7 @@ export interface SoundModelStatus {
 export type StemModel = 'spleeter' | 'scnetLarge' | 'scnetXlIhf'
 
 export interface ModelStorage {
-  id: 'clap' | StemModel
+  id: 'clap' | 'apollo' | StemModel
   path: string
   installed: boolean
   downloading: boolean

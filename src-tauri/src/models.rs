@@ -77,6 +77,22 @@ pub fn storage(root: &Path, clap_downloading: bool, downloading: impl Fn(crate::
             download_size: crate::stems::models::total(model),
         }
     }));
+    // Apollo is currently used only by the listening experiment. Show its
+    // downloaded weights without advertising it as an available separator.
+    let apollo_dir = root.join("apollo-v1");
+    let apollo_size = disk_size(&apollo_dir);
+    if apollo_size > 0 {
+        const APOLLO_SIZE: u64 = 66_541_845;
+        entries.push(Storage {
+            id: "apollo",
+            path: apollo_dir.to_string_lossy().into_owned(),
+            installed: std::fs::metadata(apollo_dir.join("pytorch_model.bin"))
+                .is_ok_and(|m| m.len() == APOLLO_SIZE),
+            downloading: false,
+            size: apollo_size,
+            download_size: APOLLO_SIZE,
+        });
+    }
     entries
 }
 
@@ -162,6 +178,28 @@ mod tests {
         let models = storage(root.path(), false, |_| false);
         assert_eq!(models.len(), 4);
         assert!(models.iter().all(|m| !m.installed && m.size == 0 && m.download_size > 0));
+    }
+
+    #[test]
+    fn downloaded_apollo_is_visible_as_a_comparison_model() {
+        let root = tempfile::tempdir().unwrap();
+        let dir = root.path().join("apollo-v1");
+        std::fs::create_dir(&dir).unwrap();
+        let weights = dir.join("pytorch_model.bin");
+        std::fs::write(&weights, [0; 7]).unwrap();
+        let inventory = storage(root.path(), false, |_| false);
+        let model = inventory.iter().find(|m| m.id == "apollo").expect("downloaded Apollo should be listed");
+        assert!(!model.installed);
+        assert_eq!(model.size, 7);
+        assert_eq!(model.path, dir.to_string_lossy());
+        File::create(&weights).unwrap().set_len(66_541_845).unwrap();
+        let inventory = storage(root.path(), false, |_| false);
+        let model = inventory.iter().find(|m| m.id == "apollo").unwrap();
+        assert!(model.installed);
+        assert_eq!(model.download_size, 66_541_845);
+        assert!(!model.downloading);
+        std::fs::remove_file(weights).unwrap();
+        assert!(!storage(root.path(), false, |_| false).iter().any(|m| m.id == "apollo"));
     }
 
     #[cfg(unix)]
