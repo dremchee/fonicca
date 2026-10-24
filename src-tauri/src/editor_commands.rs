@@ -111,7 +111,7 @@ pub fn editor_wave(
     bands: bool,
 ) -> Result<tauri::ipc::Response> {
     with_session(&state, &window, |s| {
-        Ok(tauri::ipc::Response::new(s.wave(start, end, columns.clamp(1, 8192), split, bands)))
+        Ok(tauri::ipc::Response::new(s.wave(start, end, columns.clamp(1, 16384), split, bands)))
     })
 }
 

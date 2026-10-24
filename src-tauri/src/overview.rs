@@ -133,7 +133,7 @@ impl Overview {
     pub fn render(&self, columns: usize, split: bool) -> Vec<u8> {
         let lanes: Vec<usize> = if split && self.channels > 1 { (1..=self.channels).collect() } else { vec![0] };
         let columns = columns.max(1);
-        let mut out = Vec::with_capacity(16 + lanes.len() * columns * 24);
+        let mut out = Vec::with_capacity(16 + lanes.len() * columns * 12);
         for v in [0u32, lanes.len() as u32, columns as u32, 6] {
             out.extend_from_slice(&v.to_le_bytes());
         }
@@ -157,7 +157,7 @@ impl Overview {
                 }
                 let n = sums[4].max(1.0);
                 for v in [lo, hi, (sums[0] / n).sqrt(), (sums[1] / n).sqrt(), (sums[2] / n).sqrt(), (sums[3] / n).sqrt()] {
-                    out.extend_from_slice(&v.to_le_bytes());
+                    crate::editor::push_level(&mut out, v);
                 }
             }
         }
@@ -277,7 +277,7 @@ mod tests {
 
     fn unpack(bytes: &[u8]) -> (u32, u32, u32, Vec<f32>) {
         let u = |i: usize| u32::from_le_bytes(bytes[i * 4..i * 4 + 4].try_into().unwrap());
-        let values = bytes[16..].chunks_exact(4).map(|b| f32::from_le_bytes(b.try_into().unwrap())).collect();
+        let values = bytes[16..].chunks_exact(2).map(|b| i16::from_le_bytes(b.try_into().unwrap()) as f32 / i16::MAX as f32).collect();
         (u(1), u(2), u(3), values)
     }
 

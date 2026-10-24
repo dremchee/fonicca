@@ -21,13 +21,14 @@ function state(): EditorState {
   return { sampleId: 1, frames: FRAMES, sampleRate: RATE, channels: 2, canUndo: false, canRedo: false, dirty: loop !== null, loop }
 }
 
-// Same packing as the backend: u32 mode, lanes, count, stride, then lane-major columns.
+// Same packing as the backend: u32 mode, lanes, count, stride, then lane-major columns
+// of i16 fractions of full scale.
 function wave(start: number, end: number, columns: number, split: boolean) {
   const lanes = split ? 2 : 1
   const stride = 6
-  const buf = new ArrayBuffer(16 + lanes * columns * stride * 4)
+  const buf = new ArrayBuffer(16 + lanes * columns * stride * 2)
   new Uint32Array(buf, 0, 4).set([0, lanes, columns, stride])
-  const values = new Float32Array(buf, 16)
+  const values = new Int16Array(buf, 16)
   for (let lane = 0; lane < lanes; lane++) {
     for (let c = 0; c < columns; c++) {
       const a = start + ((end - start) * c) / columns
@@ -36,7 +37,7 @@ function wave(start: number, end: number, columns: number, split: boolean) {
       for (let s = 0; s < 4; s++)
         peak = Math.max(peak, level(a + ((b - a) * s) / 4))
       const i = (lane * columns + c) * stride
-      values.set([-peak, peak, peak * 0.6, peak * 0.8, 0.3, 0.2], i)
+      values.set([-peak, peak, peak * 0.6, peak * 0.8, 0.3, 0.2].map(v => Math.round(v * 32767)), i)
     }
   }
   return buf

@@ -130,25 +130,65 @@ useResizeObserver(box, (entries) => {
 
 // --- Peaks and drawing ------------------------------------------------------
 
-let request = 0
-watch(
-  [() => editor.revision, viewStart, viewEnd, width, () => settings.settings.waveChannels, () => settings.settings.waveColors],
-  async () => {
-    if (!editor.open || width.value === 0)
-      return
-    const req = ++request
-    const columns = Math.min(8192, Math.round(width.value * (window.devicePixelRatio || 1)))
-    const data = await editor.wave(
-      Math.floor(viewStart.value),
-      Math.ceil(viewEnd.value),
-      columns,
-      settings.settings.waveChannels === 'split',
-      settings.settings.waveColors === 'frequency',
-    )
-    if (req === request)
+// The wave is read for a range half again as wide as the view, so short pans draw
+// from what is there. A new read is needed only when the view leaves that range, the
+// zoom changes the resolution, or the audio or the options change. One read is in
+// flight at a time; the view it lags behind meanwhile is drawn stretched.
+const OVERSCAN = 1.5
+/** Frames and options `wave` was read for. */
+let waveRange = { start: 0, end: 0, key: '' }
+let reading = false
+let readAgain = false
+
+function waveKey() {
+  const s = settings.settings
+  return `${editor.revision}|${s.waveChannels}|${s.waveColors}`
+}
+
+/** Whether `wave` can draw the current view at about one column per pixel. */
+function waveFits() {
+  const data = wave.value
+  const r = waveRange
+  if (!data || r.key !== waveKey() || r.start > viewStart.value || r.end < viewEnd.value)
+    return false
+  const px = width.value * (window.devicePixelRatio || 1)
+  const span = viewEnd.value - viewStart.value
+  if (data.samples)
+    return span <= px
+  const ratio = ((r.end - r.start) / data.count) / (span / px)
+  return ratio > 0.9 && ratio < 1.1
+}
+
+async function readWave() {
+  if (reading) {
+    readAgain = true
+    return
+  }
+  reading = true
+  try {
+    do {
+      readAgain = false
+      if (!editor.open || width.value === 0 || waveFits())
+        continue
+      const n = editor.state?.frames ?? 0
+      const span = viewEnd.value - viewStart.value
+      const wide = Math.min(n, span * OVERSCAN)
+      const start = Math.floor(Math.max(0, Math.min(n - wide, viewStart.value - (wide - span) / 2)))
+      const end = Math.ceil(Math.min(n, start + wide))
+      const columns = Math.min(16384, Math.round(width.value * (window.devicePixelRatio || 1) * (end - start) / span))
+      const key = waveKey()
+      const s = settings.settings
+      const data = await editor.wave(start, end, columns, s.waveChannels === 'split', s.waveColors === 'frequency')
+      waveRange = { start, end, key }
       wave.value = data
-  },
-)
+    } while (readAgain)
+  }
+  finally {
+    reading = false
+  }
+}
+
+watch([() => editor.revision, viewStart, viewEnd, width, () => settings.settings.waveChannels, () => settings.settings.waveColors], readWave)
 
 const x = (frame: number) => ((frame - viewStart.value) / (viewEnd.value - viewStart.value)) * width.value
 
@@ -222,9 +262,23 @@ function draw() {
   const selW = sel ? Math.max(1, x(sel.end) - selX) : 0
   if (wave.value) {
     const { waveStyle, waveScale, waveColors } = settings.settings
-    const area = { top: RULER, width: w, height: h - RULER, dpr }
     const look = { style: waveStyle, scale: waveScale, colors: waveColors, zoom: vZoom.value, lineColor: color('--border'), color: color('--wave-strong') }
-    drawWave(ctx, wave.value, area, look)
+    // The wave covers its own range (see readWave), placed under the view.
+    const data = wave.value
+    const left = x(waveRange.start)
+    const area = { top: RULER, width: x(waveRange.end) - left, height: h - RULER, dpr }
+    const placed = (l: typeof look) => {
+      ctx.save()
+      ctx.translate(left, 0)
+      drawWave(ctx, data, area, l)
+      ctx.restore()
+    }
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(0, 0, w, h)
+    ctx.clip()
+    placed(look)
+    ctx.restore()
     if (sel) {
       ctx.save()
       ctx.beginPath()
@@ -233,7 +287,7 @@ function draw() {
       ctx.fillStyle = color('--primary')
       ctx.fillRect(selX, RULER, selW, h - RULER)
       // Frequency colours stay as they are; the theme colour flips to the canvas colour.
-      drawWave(ctx, wave.value, area, { ...look, color: color('--card'), lineColor: color('--card') })
+      placed({ ...look, color: color('--card'), lineColor: color('--card') })
       ctx.restore()
     }
   }
@@ -308,7 +362,7 @@ function draw() {
   // moving them, every frame while playing, redraws nothing here.
 }
 
-watch([wave, () => editor.selection, width, height, vZoom, gridMode, bpm, downbeat, () => settings.settings, () => settings.themeRevision], draw, { deep: true })
+watch([wave, viewStart, viewEnd, () => editor.selection, width, height, vZoom, gridMode, bpm, downbeat, () => settings.settings, () => settings.themeRevision], draw, { deep: true })
 
 // Edit cursor: a thin dimmed line in the text colour. Playhead: the text colour at full
 // strength over a canvas-coloured halo, with a marker on the ruler. Positioned through

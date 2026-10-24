@@ -25,7 +25,12 @@ export interface WaveArea {
 /** Unpacks wave data sent by the backend (`editor::wave` / `overview` layout). */
 export function parseWave(buf: ArrayBuffer): Wave {
   const head = new Uint32Array(buf, 0, 4)
-  return { samples: head[0] === 1, lanes: head[1], count: head[2], stride: head[3], values: new Float32Array(buf, 16) }
+  // Values come as i16 fractions of full scale.
+  const packed = new Int16Array(buf, 16)
+  const values = new Float32Array(packed.length)
+  for (let i = 0; i < packed.length; i++)
+    values[i] = packed[i] / 32767
+  return { samples: head[0] === 1, lanes: head[1], count: head[2], stride: head[3], values }
 }
 
 /**

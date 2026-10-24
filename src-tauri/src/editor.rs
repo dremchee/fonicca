@@ -257,7 +257,9 @@ impl Session {
 }
 
 /// Waveform data for drawing, packed little-endian:
-/// `u32 mode, u32 lanes, u32 count, u32 stride`, then `f32` values lane by lane.
+/// `u32 mode, u32 lanes, u32 count, u32 stride`, then values lane by lane as `i16`
+/// fractions of full scale (see [`push_level`]): half the size of `f32`, and finer
+/// than a pixel even at the deepest vertical zoom.
 /// - mode 0 (columns): per column `min, max, rms, low, mid, high` (band RMS, 0 without bands);
 /// - mode 1 (samples, when there are fewer frames than columns): one value per frame.
 ///
@@ -356,6 +358,11 @@ fn merge(into: &mut [f32], v: &[f32]) {
     }
 }
 
+/// Appends one wave value, clamped to full scale: louder peaks are drawn clipped anyway.
+pub(crate) fn push_level(out: &mut Vec<u8>, v: f32) {
+    out.extend_from_slice(&((v.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16).to_le_bytes());
+}
+
 fn wave_with(pcm: &Pcm, pyramid: Option<&Pyramid>, start: usize, end: usize, columns: usize, split: bool, bands: bool) -> Vec<u8> {
     let ch = pcm.channels.max(1);
     let frames = pcm.frames();
@@ -365,7 +372,7 @@ fn wave_with(pcm: &Pcm, pyramid: Option<&Pyramid>, start: usize, end: usize, col
     let sample_mode = span <= columns;
     let (count, stride) = if sample_mode { (span, 1) } else { (columns, 6) };
 
-    let mut out = Vec::with_capacity(16 + lanes * count * stride * 4);
+    let mut out = Vec::with_capacity(16 + lanes * count * stride * 2);
     for v in [sample_mode as u32, lanes as u32, count as u32, stride as u32] {
         out.extend_from_slice(&v.to_le_bytes());
     }
@@ -386,7 +393,7 @@ fn wave_with(pcm: &Pcm, pyramid: Option<&Pyramid>, start: usize, end: usize, col
                 let n = acc[6].max(1.0);
                 let band = |e: f32| if bands { (e / n).sqrt() } else { 0.0 };
                 for v in [acc[0], acc[1], (acc[2] / n).sqrt(), band(acc[3]), band(acc[4]), band(acc[5])] {
-                    out.extend_from_slice(&v.to_le_bytes());
+                    push_level(&mut out, v);
                 }
             }
         }
@@ -400,7 +407,7 @@ fn wave_with(pcm: &Pcm, pyramid: Option<&Pyramid>, start: usize, end: usize, col
     for lane in 0..lanes {
         if sample_mode {
             for f in start..end {
-                out.extend_from_slice(&value(f, lane).to_le_bytes());
+                push_level(&mut out, value(f, lane));
             }
             continue;
         }
@@ -436,7 +443,7 @@ fn wave_with(pcm: &Pcm, pyramid: Option<&Pyramid>, start: usize, end: usize, col
             }
             let n = (b - a) as f32;
             for v in [lo, hi, (sq / n).sqrt(), (e_low / n).sqrt(), (e_mid / n).sqrt(), (e_high / n).sqrt()] {
-                out.extend_from_slice(&v.to_le_bytes());
+                push_level(&mut out, v);
             }
         }
     }
@@ -589,7 +596,7 @@ mod tests {
 
     fn unpack(bytes: &[u8]) -> (u32, u32, u32, u32, Vec<f32>) {
         let u = |i: usize| u32::from_le_bytes(bytes[i * 4..i * 4 + 4].try_into().unwrap());
-        let values = bytes[16..].chunks_exact(4).map(|b| f32::from_le_bytes(b.try_into().unwrap())).collect();
+        let values = bytes[16..].chunks_exact(2).map(|b| i16::from_le_bytes(b.try_into().unwrap()) as f32 / i16::MAX as f32).collect();
         (u(0), u(1), u(2), u(3), values)
     }
 
@@ -647,6 +654,7 @@ mod tests {
         let p = Pcm { samples: vec![0.1, -0.1, 0.2, -0.2, 0.3, -0.3], channels: 2, sample_rate: 1000 };
         let (mode, lanes, count, stride, v) = unpack(&wave(&p, 0, 3, 100, true, false));
         assert_eq!((mode, lanes, count, stride), (1, 2, 3, 1));
-        assert_eq!(v, vec![0.1, 0.2, 0.3, -0.1, -0.2, -0.3]);
+        let want = [0.1, 0.2, 0.3, -0.1, -0.2, -0.3];
+        assert!(v.iter().zip(want).all(|(a, b)| (a - b).abs() < 1e-4), "{v:?}");
     }
 }
