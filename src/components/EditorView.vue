@@ -11,18 +11,30 @@ import {
   Save,
   Scissors,
   Square,
+  SlidersHorizontal,
   Undo2,
   VolumeX,
   ZoomIn,
   ZoomOut,
 } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
-import { useResizeObserver } from '@vueuse/core'
+import { useLocalStorage, useResizeObserver } from '@vueuse/core'
 import { computed, nextTick, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import EditorMinimap from '@/components/EditorMinimap.vue'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
@@ -43,6 +55,22 @@ const wave = shallowRef<Wave | null>(null)
 // Vertical zoom (⌥-scroll); 1 = full scale.
 const vZoom = ref(1)
 const RULER = 18
+// A per-window look preference, not worth a field in settings.json.
+const showGrid = useLocalStorage('editor.grid', true)
+
+// The View menu: the same waveform options as in settings, applied right away.
+type WaveKey = 'waveStyle' | 'waveScale' | 'waveChannels' | 'waveColors'
+const viewOptions: { key: WaveKey, label: string, choices: { value: string, label: string }[] }[] = [
+  { key: 'waveStyle', label: 'settings.waveform.style', choices: [{ value: 'peaks', label: 'settings.waveform.peaks' }, { value: 'peaksRms', label: 'settings.waveform.peaksRms' }, { value: 'bars', label: 'settings.waveform.bars' }] },
+  { key: 'waveChannels', label: 'settings.waveform.channels', choices: [{ value: 'split', label: 'settings.waveform.split' }, { value: 'mix', label: 'settings.waveform.mix' }] },
+  { key: 'waveScale', label: 'settings.waveform.scale', choices: [{ value: 'linear', label: 'settings.waveform.linear' }, { value: 'db', label: 'settings.waveform.db' }] },
+  { key: 'waveColors', label: 'settings.waveform.colors', choices: [{ value: 'theme', label: 'settings.waveform.theme' }, { value: 'frequency', label: 'settings.waveform.frequency' }] },
+]
+
+function setView(key: WaveKey, value: unknown) {
+  if (typeof value === 'string' && value !== settings.settings[key])
+    settings.update({ [key]: value })
+}
 
 // Visible range in frames.
 const viewStart = ref(0)
@@ -129,11 +157,13 @@ function draw() {
     ticks.push(t)
 
   // Faint grid under everything, one line per ruler tick.
-  ctx.fillStyle = color('--border')
-  ctx.globalAlpha = 0.5
-  for (const t of ticks)
-    ctx.fillRect(x(t * rate.value), RULER, 1 / dpr, h - RULER)
-  ctx.globalAlpha = 1
+  if (showGrid.value) {
+    ctx.fillStyle = color('--border')
+    ctx.globalAlpha = 0.5
+    for (const t of ticks)
+      ctx.fillRect(x(t * rate.value), RULER, 1 / dpr, h - RULER)
+    ctx.globalAlpha = 1
+  }
 
   // Waveform, one lane per channel (or one mixed lane), in the full brand colour.
   // The selection is the inverse: a brand-colour block with the wave in the canvas colour.
@@ -195,7 +225,7 @@ function draw() {
   }
 }
 
-watch([wave, () => editor.selection, () => editor.cursor, () => editor.playhead, width, height, vZoom, () => settings.settings], draw, { deep: true })
+watch([wave, () => editor.selection, () => editor.cursor, () => editor.playhead, width, height, vZoom, showGrid, () => settings.settings], draw, { deep: true })
 
 // --- Mouse ------------------------------------------------------------------
 
@@ -445,6 +475,34 @@ const curves: { value: Curve, label: string }[] = [
         </Button>
       </Hint>
       <div class="ml-auto flex items-center gap-1">
+        <DropdownMenu>
+          <DropdownMenuTrigger as-child>
+            <Button variant="ghost" size="sm" class="data-[state=open]:bg-accent">
+              <SlidersHorizontal /> {{ t('editor.toolbar.view') }}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" class="w-52">
+            <template v-for="(opt, i) in viewOptions" :key="opt.key">
+              <DropdownMenuSeparator v-if="i" />
+              <DropdownMenuLabel class="text-xs text-muted-foreground font-normal">
+                {{ t(opt.label) }}
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup :model-value="settings.settings[opt.key]" @update:model-value="setView(opt.key, $event)">
+                <DropdownMenuRadioItem v-for="c in opt.choices" :key="c.value" :value="c.value" @select.prevent>
+                  {{ t(c.label) }}
+                </DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </template>
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem v-model="showGrid" @select.prevent>
+              {{ t('editor.view.grid') }}
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuItem :disabled="vZoom <= 1.01" @select="vZoom = 1">
+              {{ t('editor.view.resetVZoom') }}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Separator orientation="vertical" class="mx-1 h-5" />
         <Hint :text="t('editor.toolbar.zoomOut')" shortcut="−">
           <Button variant="ghost" size="icon-sm" @click="zoom(2)">
             <ZoomOut />

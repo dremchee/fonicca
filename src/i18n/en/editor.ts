@@ -43,6 +43,11 @@ export default {
     zoomOut: 'Zoom out',
     zoomIn: 'Zoom in (to the selection if any)',
     fit: 'Show everything',
+    view: 'View',
+  },
+  view: {
+    grid: 'Time grid',
+    resetVZoom: 'Reset vertical zoom',
   },
   curves: {
     smooth: 'Smooth',
