@@ -36,6 +36,15 @@ import EditorSlicer from '@/components/EditorSlicer.vue'
 import FadeIcon from '@/components/icons/FadeIcon.vue'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
+import {
+  ContextMenu,
+  ContextMenuCheckboxItem,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuShortcut,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
@@ -626,12 +635,33 @@ async function onDoubleClick(e: MouseEvent) {
     addMarkers(await zeroSnapped([snapped(frameAt(e.clientX), e)], e))
 }
 
+// --- Context menu -----------------------------------------------------------
+
+// What was right-clicked: a marker's flag, the selection, or any other point,
+// which moves the cursor there like a click.
+const menu = shallowRef<{ kind: 'marker', index: number } | { kind: 'selection' } | { kind: 'point', frame: number } | null>(null)
+// The region starting at the right-clicked marker, for "skip / include".
+const menuRegion = computed(() => {
+  const m = menu.value
+  const marker = m?.kind === 'marker' ? editor.state?.markers[m.index] : undefined
+  return marker ? editor.regions.find(r => r.start === marker.frame) : undefined
+})
+
 function onContextMenu(e: MouseEvent) {
   const i = markerAt(e)
   if (i >= 0) {
-    e.preventDefault()
-    removeMarker(i)
+    menu.value = { kind: 'marker', index: i }
+    return
   }
+  const f = frameAt(e.clientX)
+  const s = editor.selection
+  if (s && f >= s.start && f <= s.end) {
+    menu.value = { kind: 'selection' }
+    return
+  }
+  editor.selection = null
+  editor.cursor = f
+  menu.value = { kind: 'point', frame: f }
 }
 
 function onHover(e: MouseEvent) {
@@ -1019,23 +1049,120 @@ const curves: { value: Curve, label: string }[] = [
     <div class="flex-1 min-h-0 flex">
     <div ref="box" class="relative flex-1 min-w-0 bg-card">
       <!-- Cut, copy and paste come as DOM events: the native Edit menu takes ⌘X/⌘C/⌘V before keydown. -->
-      <canvas
-        ref="canvas"
-        tabindex="0"
-        class="absolute inset-0 size-full outline-none"
-        :class="hoverEdge || hoverMarker ? 'cursor-ew-resize' : 'cursor-text'"
-        :aria-label="t('editor.waveform.label')"
-        @mousedown="onMouseDown"
-        @copy.prevent="editor.copy()"
-        @cut.prevent="editor.cut()"
-        @paste.prevent="editor.paste()"
-        @dblclick="onDoubleClick"
-        @contextmenu="onContextMenu"
-        @mousemove="onHover"
-        @mouseleave="hoverEdge = null; hoverMarker = false; hoverFrame = null"
-        @wheel="onWheel"
-        @keydown="onKeyDown"
-      />
+      <ContextMenu>
+        <ContextMenuTrigger as-child>
+          <canvas
+            ref="canvas"
+            tabindex="0"
+            class="absolute inset-0 size-full outline-none"
+            :class="hoverEdge || hoverMarker ? 'cursor-ew-resize' : 'cursor-text'"
+            :aria-label="t('editor.waveform.label')"
+            @mousedown="onMouseDown"
+            @copy.prevent="editor.copy()"
+            @cut.prevent="editor.cut()"
+            @paste.prevent="editor.paste()"
+            @dblclick="onDoubleClick"
+            @contextmenu="onContextMenu"
+            @mousemove="onHover"
+            @mouseleave="hoverEdge = null; hoverMarker = false; hoverFrame = null"
+            @wheel="onWheel"
+            @keydown="onKeyDown"
+          />
+        </ContextMenuTrigger>
+        <ContextMenuContent class="min-w-56">
+          <!-- On a marker's flag -->
+          <template v-if="menu?.kind === 'marker'">
+            <ContextMenuItem v-if="menuRegion" @select="toggleSkip(menuRegion)">
+              {{ menuRegion.skip ? t('editor.menu.includeRegion') : t('editor.menu.skipRegion') }}
+            </ContextMenuItem>
+            <ContextMenuItem class="text-destructive focus:text-destructive" @select="removeMarker(menu.index)">
+              {{ t('editor.menu.deleteMarker') }}
+            </ContextMenuItem>
+          </template>
+          <!-- Inside the selection -->
+          <template v-else-if="menu?.kind === 'selection'">
+            <ContextMenuItem @select="editor.play()">
+              {{ t('editor.toolbar.playSelection') }}<ContextMenuShortcut>{{ t('editor.toolbar.space') }}</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuCheckboxItem :model-value="editor.looping" @update:model-value="editor.looping = $event === true">
+              {{ t('editor.toolbar.loop') }}<ContextMenuShortcut>L</ContextMenuShortcut>
+            </ContextMenuCheckboxItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem @select="editor.cut()">
+              {{ t('editor.toolbar.cut') }}<ContextMenuShortcut>⌘X</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem @select="editor.copy()">
+              {{ t('editor.toolbar.copy') }}<ContextMenuShortcut>⌘C</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem :disabled="!editor.clipboard" @select="editor.paste()">
+              {{ t('editor.menu.pasteOver') }}<ContextMenuShortcut>⌘V</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem @select="editor.remove()">
+              {{ t('editor.toolbar.delete') }}<ContextMenuShortcut>⌫</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem @select="crop()">
+              {{ t('editor.toolbar.cropHint') }}
+            </ContextMenuItem>
+            <ContextMenuItem @select="editor.silence()">
+              {{ t('editor.menu.silence') }}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem @select="editor.fade('in')">
+              {{ t('editor.toolbar.fadeIn') }}
+            </ContextMenuItem>
+            <ContextMenuItem @select="editor.fade('out')">
+              {{ t('editor.toolbar.fadeOut') }}
+            </ContextMenuItem>
+            <ContextMenuItem @select="editor.gain(3)">
+              {{ t('editor.menu.gainUp') }}
+            </ContextMenuItem>
+            <ContextMenuItem @select="editor.gain(-3)">
+              {{ t('editor.menu.gainDown') }}
+            </ContextMenuItem>
+            <ContextMenuItem @select="editor.normalize()">
+              {{ t('editor.toolbar.normalize') }}
+            </ContextMenuItem>
+            <ContextMenuItem @select="editor.reverse()">
+              {{ t('editor.menu.reverse') }}
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem @select="addMarkers([editor.selection!.start, editor.selection!.end])">
+              {{ t('editor.menu.markEdges') }}<ContextMenuShortcut>M</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem @select="editor.toggleLoopPoints()">
+              {{ t('editor.menu.setLoopPoints') }}<ContextMenuShortcut>⇧L</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem @select="zoomToSelection()">
+              {{ t('editor.menu.zoomToSelection') }}
+            </ContextMenuItem>
+            <ContextMenuItem @select="editor.selection = null">
+              {{ t('editor.menu.deselect') }}<ContextMenuShortcut>Esc</ContextMenuShortcut>
+            </ContextMenuItem>
+          </template>
+          <!-- Anywhere else: the cursor moved to the click -->
+          <template v-else-if="menu?.kind === 'point'">
+            <ContextMenuItem @select="editor.play()">
+              {{ t('editor.menu.playFromHere') }}<ContextMenuShortcut>{{ t('editor.toolbar.space') }}</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem :disabled="!editor.clipboard" @select="editor.paste()">
+              {{ t('editor.menu.pasteHere') }}<ContextMenuShortcut>⌘V</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem @select="addMarkers([menu.frame])">
+              {{ t('editor.menu.addMarker') }}<ContextMenuShortcut>M</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuSeparator />
+            <ContextMenuItem v-if="editor.state?.loop" @select="selectLoop()">
+              {{ t('editor.menu.selectLoop') }}
+            </ContextMenuItem>
+            <ContextMenuItem @select="editor.selection = { start: 0, end: frames }">
+              {{ t('editor.menu.selectAll') }}<ContextMenuShortcut>⌘A</ContextMenuShortcut>
+            </ContextMenuItem>
+            <ContextMenuItem @select="fit()">
+              {{ t('editor.toolbar.fit') }}<ContextMenuShortcut>0</ContextMenuShortcut>
+            </ContextMenuItem>
+          </template>
+        </ContextMenuContent>
+      </ContextMenu>
       <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         <div ref="cursorEl" class="absolute left-0 bottom-0 w-px bg-foreground/60" :style="{ top: `${RULER}px` }" />
         <div ref="hoverEl" class="absolute left-0 top-0 bottom-0" style="display: none">
