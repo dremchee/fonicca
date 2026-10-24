@@ -100,6 +100,7 @@ export default {
     favorite: 'Toggle favorite',
     tag: 'Add tag',
     edit: 'Edit in a new window (or double-click)',
+    info: 'Edit track info (title, artist, cover…)',
     similar: 'Find similar sounds',
     verticalZoom: 'Vertical zoom in the editor',
     palette: 'Command palette',

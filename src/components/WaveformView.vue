@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Sample, TrackTags } from '@/api'
 import type { Wave } from '@/stores/editor'
-import { FolderOpen, Pencil, Play, Square, Star, X } from '@lucide/vue'
+import { FolderOpen, Info, Pencil, Play, Square, Star, X } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { useResizeObserver } from '@vueuse/core'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
@@ -14,6 +14,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import { openTrackInfo, trackInfoRevision } from '@/composables/trackInfo'
 import { categoryHint, categoryLabel, formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, kindLabel, shortPath, sourceHint } from '@/format'
 import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
@@ -43,7 +45,7 @@ function setCover(url: string | null) {
   coverUrl.value = url
 }
 
-watch(() => props.sample?.id, async (id) => {
+watch([() => props.sample?.id, trackInfoRevision], async ([id]) => {
   const req = ++tagsRequest
   tags.value = null
   setCover(null)
@@ -194,7 +196,7 @@ function onDragStart(e: DragEvent) {
         </Button>
       </Hint>
       <div
-        class="min-w-24 max-w-[45%] flex items-center gap-2.5 cursor-grab"
+        class="min-w-0 flex-1 flex items-center gap-2.5 cursor-grab"
         draggable="true"
         :title="t('player.dragToDaw')"
         @dragstart="onDragStart"
@@ -212,31 +214,26 @@ function onDragStart(e: DragEvent) {
           </div>
         </div>
       </div>
-      <Hint :text="sample.favorite ? t('list.favorite.remove') : t('list.favorite.add')" shortcut="F">
-        <Button variant="ghost" size="icon-sm" class="-ml-2 shrink-0" @click="library.toggleFavorite()">
-          <Star :class="sample.favorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground'" />
-        </Button>
-      </Hint>
-      <Hint :text="t('player.edit')" shortcut="E">
-        <Button variant="ghost" size="icon-sm" class="-ml-2 shrink-0 text-muted-foreground" :aria-label="t('player.edit')" @click="openEditor(sample)">
-          <Pencil />
-        </Button>
-      </Hint>
-      <!-- One badge row: tags that do not fit wrap onto the hidden second line. -->
-      <div v-if="sample.tags.length" class="min-w-0 h-6 flex flex-wrap items-center gap-1 overflow-hidden">
-        <Badge v-for="tag in sample.tags" :key="tag.id" variant="secondary" class="h-6 pr-1">
-          {{ tag.name }}
-          <button
-            class="rounded-full opacity-60 hover:opacity-100 focus-visible:opacity-100 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-            :aria-label="t('player.removeTag', { name: tag.name })"
-            @click="library.removeTag(tag.id)"
-          >
-            <X class="size-3" />
-          </button>
-        </Badge>
+      <!-- Actions on the sample, then playback options. -->
+      <div class="shrink-0 flex items-center gap-0.5">
+        <Hint :text="sample.favorite ? t('list.favorite.remove') : t('list.favorite.add')" shortcut="F">
+          <Button variant="ghost" size="icon-sm" @click="library.toggleFavorite()">
+            <Star :class="sample.favorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground'" />
+          </Button>
+        </Hint>
+        <Hint :text="t('trackInfo.edit')" shortcut="I">
+          <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('trackInfo.edit')" @click="openTrackInfo(sample)">
+            <Info />
+          </Button>
+        </Hint>
+        <Hint :text="t('player.edit')" shortcut="E">
+          <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('player.edit')" @click="openEditor(sample)">
+            <Pencil />
+          </Button>
+        </Hint>
       </div>
-      <TagPicker :assigned="sample.tags" :count="selectionSize" />
-      <div class="ml-auto flex items-center gap-2 shrink-0">
+      <Separator orientation="vertical" class="h-5" />
+      <div class="shrink-0 flex items-center gap-2">
         <ProjectSync />
         <Checkbox
           id="autoplay"
@@ -259,8 +256,24 @@ function onDragStart(e: DragEvent) {
     </div>
     <!-- Status bar. One line tall: fields that do not fit wrap onto the hidden second line
          and drop out whole, least important (the last ones) first. -->
-    <div class="h-7 shrink-0 px-3 flex items-start gap-3 text-[11px] leading-7 text-muted-foreground tabular">
-      <div class="min-w-0 flex-1 h-7 flex flex-wrap items-center gap-x-3 overflow-hidden">
+    <div class="h-8 shrink-0 px-3 flex items-center gap-3 text-[11px] text-muted-foreground tabular">
+      <!-- The sample's own tags and the picker to add more; badges that do not fit drop out. -->
+      <div class="shrink-0 max-w-[40%] min-w-0 flex items-center gap-1">
+        <div v-if="sample.tags.length" class="min-w-0 h-5 flex flex-wrap items-center gap-1 overflow-hidden">
+          <Badge v-for="tag in sample.tags" :key="tag.id" variant="secondary" class="h-5 pr-1 text-[11px]">
+            {{ tag.name }}
+            <button
+              class="rounded-full opacity-60 hover:opacity-100 focus-visible:opacity-100 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+              :aria-label="t('player.removeTag', { name: tag.name })"
+              @click="library.removeTag(tag.id)"
+            >
+              <X class="size-3" />
+            </button>
+          </Badge>
+        </div>
+        <TagPicker :assigned="sample.tags" :count="selectionSize" />
+      </div>
+      <div class="min-w-0 flex-1 h-8 flex flex-wrap items-center gap-x-3 leading-8 overflow-hidden">
         <span v-if="sample.category" :title="categoryHint(sample.categorySource, sample.categoryConfidence)">{{ categoryLabel(sample.category) }}</span>
         <span v-if="sample.kind">{{ kindLabel(sample.kind) }}</span>
         <span v-if="sample.bpm != null" :title="sourceHint(sample.bpmSource)">{{ t('common.units.bpm', { n: formatBpm(sample.bpm) }) }}</span>

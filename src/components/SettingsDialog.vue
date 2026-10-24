@@ -194,6 +194,7 @@ const shortcuts: { keys: string[], labelKey: string }[] = [
   { keys: ['F'], labelKey: 'settings.shortcuts.favorite' },
   { keys: ['T'], labelKey: 'settings.shortcuts.tag' },
   { keys: ['E'], labelKey: 'settings.shortcuts.edit' },
+  { keys: ['I'], labelKey: 'settings.shortcuts.info' },
   { keys: ['S'], labelKey: 'settings.shortcuts.similar' },
   { keys: ['⌥', 'scroll'], labelKey: 'settings.shortcuts.verticalZoom' },
   { keys: ['⌘', 'K'], labelKey: 'settings.shortcuts.palette' },

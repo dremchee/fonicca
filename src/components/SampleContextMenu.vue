@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Sample } from '@/api'
-import { AudioLines, CircleMinus, FolderOpen, Layers, Pencil, Play, Square, Star, Tag } from '@lucide/vue'
+import { AudioLines, CircleMinus, FolderOpen, Info, Layers, Pencil, Play, Square, Star, Tag } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -15,6 +15,7 @@ import {
   ContextMenuSubTrigger,
 } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
+import { openTrackInfo } from '@/composables/trackInfo'
 import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
@@ -76,6 +77,11 @@ async function submitNew() {
       <Pencil />
       {{ t('list.menu.edit') }}
       <ContextMenuShortcut>E</ContextMenuShortcut>
+    </ContextMenuItem>
+    <ContextMenuItem @select="runAfterClose(() => openTrackInfo(sample))">
+      <Info />
+      {{ t('trackInfo.edit') }}
+      <ContextMenuShortcut>I</ContextMenuShortcut>
     </ContextMenuItem>
     <ContextMenuItem
       :disabled="!library.soundModel?.installed"

@@ -6,6 +6,7 @@ import {
   Download,
   Folder,
   FolderPlus,
+  Info,
   Layers,
   Library,
   ListFilter,
@@ -33,6 +34,7 @@ import {
 } from '@/components/ui/command'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { CATEGORIES, categoryLabel, folderName, kindLabel } from '@/format'
+import { openTrackInfo } from '@/composables/trackInfo'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
@@ -107,6 +109,11 @@ function go(scope: Scope) {
               <Tag />
               {{ t('palette.addTag') }}
               <CommandShortcut>T</CommandShortcut>
+            </CommandItem>
+            <CommandItem value="sample-info" @select="run(() => openTrackInfo(focused), true)">
+              <Info />
+              {{ t('trackInfo.edit') }}
+              <CommandShortcut>I</CommandShortcut>
             </CommandItem>
             <CommandItem value="sample-similar" @select="run(() => library.findSimilar(focused!))">
               <Sparkles />

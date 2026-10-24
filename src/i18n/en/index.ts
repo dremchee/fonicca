@@ -11,6 +11,7 @@ import editor from './editor'
 import palette from './palette'
 import sync from './sync'
 import dialogs from './dialogs'
+import trackInfo from './trackInfo'
 
 export default {
   common,
@@ -25,4 +26,5 @@ export default {
   palette,
   sync,
   dialogs,
+  trackInfo,
 }

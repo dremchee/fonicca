@@ -16,12 +16,14 @@ import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import SampleList from '@/components/SampleList.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
+import TrackInfoDialog from '@/components/TrackInfoDialog.vue'
 import SourceSidebar from '@/components/SourceSidebar.vue'
 import WaveformView from '@/components/WaveformView.vue'
 import { formatNumber } from '@/format'
 import { installAppMenu } from '@/menu'
 import { useDuplicatesStore } from '@/stores/duplicates'
 import { openEditor } from '@/stores/editor'
+import { openTrackInfo } from '@/composables/trackInfo'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
@@ -97,6 +99,12 @@ onKeyStroke(['t', 'е'], (e) => {
     return
   e.preventDefault()
   library.requestTagInput()
+})
+onKeyStroke(['i', 'ш'], (e) => {
+  if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey || !library.focused)
+    return
+  e.preventDefault()
+  openTrackInfo(library.focused)
 })
 onKeyStroke(['e', 'у'], (e) => {
   if (isTyping(e) || e.metaKey || e.ctrlKey || e.altKey || !library.focused)
@@ -185,6 +193,7 @@ onKeyStroke(',', (e) => {
       </ResizablePanel>
     </ResizablePanelGroup>
     <SettingsDialog />
+    <TrackInfoDialog />
     <CommandPalette v-model:open="paletteOpen" />
     <ConfirmDialog />
     <Toaster theme="system" position="bottom-right" />

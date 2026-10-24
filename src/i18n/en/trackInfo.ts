@@ -1,0 +1,20 @@
+export default {
+  edit: 'Edit info…',
+  title: 'Track info',
+  description: 'Written into the file’s own tags, so other apps see it too.',
+  fields: {
+    title: 'Title',
+    artist: 'Artist',
+    album: 'Album',
+    year: 'Year',
+    genre: 'Genre',
+  },
+  cover: 'Cover',
+  noCover: 'No cover',
+  chooseImage: 'Choose image…',
+  removeCover: 'Remove cover',
+  newCover: 'New: {name}',
+  coverRemoved: 'Will be removed',
+  imageFiles: 'Images',
+  saved: 'Saved to the file',
+}

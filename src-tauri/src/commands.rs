@@ -214,6 +214,24 @@ pub async fn sample_tags(state: State<'_, AppState>, id: i64) -> Result<Option<c
         .map_err(|e| Error::Other(e.to_string()))
 }
 
+/// Writes tags (and the cover) into the file itself and returns them as read back.
+/// The library row keeps its id: a rescan matches the file by path.
+#[tauri::command]
+pub async fn update_sample_tags(
+    state: State<'_, AppState>,
+    id: i64,
+    edit: crate::tags::TagEdit,
+) -> Result<Option<crate::tags::TrackTags>> {
+    let path = sample_path(&state, id)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let path = std::path::Path::new(&path);
+        crate::tags::write(path, edit)?;
+        Ok(crate::tags::read(path))
+    })
+    .await
+    .map_err(|e| Error::Other(e.to_string()))?
+}
+
 /// Embedded cover art as image bytes; empty when the file has none.
 #[tauri::command]
 pub async fn sample_cover(state: State<'_, AppState>, id: i64) -> Result<tauri::ipc::Response> {

@@ -3,10 +3,13 @@
 
 use std::path::Path;
 
-use lofty::picture::PictureType;
+use lofty::config::WriteOptions;
+use lofty::picture::{Picture, PictureType};
 use lofty::prelude::*;
 use lofty::tag::Tag;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+
+use crate::error::{Error, Result};
 
 #[derive(Debug, Default, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -52,11 +55,84 @@ pub fn cover(path: &Path) -> Option<Vec<u8>> {
     .flatten()
 }
 
+/// New values for a file's tags; an empty or missing value removes that field.
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TagEdit {
+    pub title: Option<String>,
+    pub artist: Option<String>,
+    pub album: Option<String>,
+    pub year: Option<u16>,
+    pub genre: Option<String>,
+    #[serde(default)]
+    pub cover: CoverEdit,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(tag = "kind", rename_all = "camelCase")]
+pub enum CoverEdit {
+    #[default]
+    Keep,
+    Remove,
+    /// Replace the front cover with this image file.
+    File { path: String },
+}
+
+fn set_text(tag: &mut Tag, value: Option<String>, set: fn(&mut Tag, String), remove: fn(&mut Tag)) {
+    match value.map(|v| v.trim().to_owned()).filter(|v| !v.is_empty()) {
+        Some(v) => set(tag, v),
+        None => remove(tag),
+    }
+}
+
+/// Writes `edit` into the file's main tag, creating one of the file's own kind (ID3v2
+/// for MP3 and WAV, Vorbis comments for FLAC and Ogg, MP4 atoms…) if it has none.
+pub fn write(path: &Path, edit: TagEdit) -> Result<()> {
+    let cover = match &edit.cover {
+        CoverEdit::File { path } => {
+            let mut pic = Picture::from_reader(&mut std::fs::File::open(path)?)
+                .map_err(|e| Error::Other(format!("not a supported image: {e}")))?;
+            pic.set_pic_type(PictureType::CoverFront);
+            Some(pic)
+        }
+        _ => None,
+    };
+    let mut file = lofty::read_from_path(path).map_err(|e| Error::Audio(e.to_string()))?;
+    if file.primary_tag().is_none() && file.first_tag().is_none() {
+        file.insert_tag(Tag::new(file.primary_tag_type()));
+    }
+    let tag = match file.primary_tag_mut() {
+        Some(tag) => tag,
+        None => file.first_tag_mut().expect("a tag was just inserted"),
+    };
+    set_text(tag, edit.title, Tag::set_title, Tag::remove_title);
+    set_text(tag, edit.artist, Tag::set_artist, Tag::remove_artist);
+    set_text(tag, edit.album, Tag::set_album, Tag::remove_album);
+    set_text(tag, edit.genre, Tag::set_genre, Tag::remove_genre);
+    tag.remove_key(ItemKey::Year);
+    tag.remove_key(ItemKey::RecordingDate);
+    if let Some(year) = edit.year.filter(|&y| y > 0) {
+        tag.insert_text(ItemKey::RecordingDate, year.to_string());
+    }
+    match edit.cover {
+        CoverEdit::Keep => {}
+        CoverEdit::Remove => {
+            while !tag.pictures().is_empty() {
+                tag.remove_picture(0);
+            }
+        }
+        CoverEdit::File { .. } => {
+            tag.remove_picture_type(PictureType::CoverFront);
+            tag.push_picture(cover.expect("read above"));
+        }
+    }
+    tag.save_to_path(path, WriteOptions::default()).map_err(|e| Error::Audio(e.to_string()))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use lofty::config::WriteOptions;
-    use lofty::picture::{MimeType, Picture};
+    use lofty::picture::MimeType;
     use lofty::tag::TagType;
 
     fn silent_wav(path: &Path) {
@@ -100,5 +176,33 @@ mod tests {
         assert_eq!(tags.year, Some(1970));
         assert!(tags.has_cover);
         assert_eq!(cover(&path), Some(png));
+    }
+
+    #[test]
+    fn writes_tags_into_an_untagged_file_and_clears_them() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("loop.wav");
+        silent_wav(&path);
+        let png = dir.path().join("cover.png");
+        // Smallest valid PNG: 1x1, so lofty can tell the format.
+        std::fs::write(&png, b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR\0\0\0\x01\0\0\0\x01\x08\x06\0\0\0\x1f\x15\xc4\x89\0\0\0\rIDATx\x9cc\xf8\x0f\0\x01\x01\x01\0\x18\xdd\x8d\xb4\0\0\0\0IEND\xaeB`\x82").unwrap();
+
+        let edit = TagEdit {
+            title: Some(" Groove ".into()),
+            artist: Some("Me".into()),
+            year: Some(2024),
+            cover: CoverEdit::File { path: png.to_string_lossy().into() },
+            ..Default::default()
+        };
+        write(&path, edit).unwrap();
+        let tags = read(&path).unwrap();
+        assert_eq!((tags.title.as_deref(), tags.artist.as_deref(), tags.year), (Some("Groove"), Some("Me"), Some(2024)));
+        assert!(tags.has_cover);
+        // The audio is still readable after the tag was added.
+        assert!(crate::audio::probe(&path).is_ok());
+
+        write(&path, TagEdit { title: Some("Groove".into()), cover: CoverEdit::Remove, ..Default::default() }).unwrap();
+        let tags = read(&path).unwrap();
+        assert_eq!((tags.artist, tags.year, tags.has_cover), (None, None, false));
     }
 }
