@@ -2,6 +2,7 @@
 import type { Curve, Wave } from '@/stores/editor'
 import {
   ArrowLeftRight,
+  ArrowUpToLine,
   Crop,
   FolderOpen,
   Magnet,
@@ -14,6 +15,8 @@ import {
   Square,
   SlidersHorizontal,
   Undo2,
+  Volume1,
+  Volume2,
   VolumeX,
   ZoomIn,
   ZoomOut,
@@ -23,6 +26,7 @@ import { useLocalStorage, useResizeObserver } from '@vueuse/core'
 import { computed, nextTick, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import EditorMinimap from '@/components/EditorMinimap.vue'
+import FadeIcon from '@/components/icons/FadeIcon.vue'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -56,6 +60,10 @@ const wave = shallowRef<Wave | null>(null)
 // Vertical zoom (⌥-scroll); 1 = full scale.
 const vZoom = ref(1)
 const RULER = 18
+// Toggles look like the ghost icon buttons around them; switched on, the icon takes
+// the brand colour instead of getting a background. Styled by aria-pressed: the
+// tooltip trigger wrapping them overwrites their data-state.
+const toggleIcon = 'size-8 px-0 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 aria-pressed:bg-transparent aria-pressed:text-primary aria-pressed:hover:text-primary aria-pressed:hover:bg-accent dark:aria-pressed:hover:bg-accent/50'
 // Per-window preferences, not worth fields in settings.json.
 type GridMode = 'beats' | 'time' | 'off'
 const gridMode = useLocalStorage<GridMode>('editor.gridMode', 'beats')
@@ -502,19 +510,19 @@ const curves: { value: Curve, label: string }[] = [
         </Button>
       </Hint>
       <Hint :text="t('editor.toolbar.loopHint')" shortcut="L">
-        <Toggle v-model="editor.looping" size="sm" :aria-label="t('editor.toolbar.loop')">
+        <Toggle v-model="editor.looping" size="sm" :class="toggleIcon" :aria-label="t('editor.toolbar.loop')">
           <Repeat />
         </Toggle>
       </Hint>
       <Separator orientation="vertical" class="mx-1 h-5" />
       <Hint :text="t('editor.toolbar.cropHint')">
-        <Button variant="ghost" size="sm" :disabled="!editor.selection" @click="crop()">
-          <Crop /> {{ t('editor.toolbar.crop') }}
+        <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.crop')" @click="crop()">
+          <Crop />
         </Button>
       </Hint>
       <Hint :text="t('editor.toolbar.deleteHint')" shortcut="⌫">
-        <Button variant="ghost" size="sm" :disabled="!editor.selection" @click="editor.remove()">
-          <Scissors /> {{ t('editor.toolbar.delete') }}
+        <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.delete')" @click="editor.remove()">
+          <Scissors />
         </Button>
       </Hint>
       <Hint :text="t('editor.toolbar.silenceHint')">
@@ -524,68 +532,131 @@ const curves: { value: Curve, label: string }[] = [
       </Hint>
       <Separator orientation="vertical" class="mx-1 h-5" />
       <Hint :text="t('editor.toolbar.fadeInHint')">
-        <Button variant="ghost" size="sm" @click="editor.fade('in')">
-          {{ t('editor.toolbar.fadeIn') }}
+        <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.fadeIn')" @click="editor.fade('in')">
+          <FadeIcon direction="in" :curve="editor.curve" />
         </Button>
       </Hint>
       <Hint :text="t('editor.toolbar.fadeOutHint')">
-        <Button variant="ghost" size="sm" @click="editor.fade('out')">
-          {{ t('editor.toolbar.fadeOut') }}
+        <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.fadeOut')" @click="editor.fade('out')">
+          <FadeIcon direction="out" :curve="editor.curve" />
         </Button>
       </Hint>
+      <!-- Curve picker shown as the curve itself; the items name it too. The tooltip sits
+           on a wrapper: on the trigger itself it would take the select's anchor away. -->
       <Select v-model="editor.curve">
-        <SelectTrigger size="sm" class="w-28" :aria-label="t('editor.toolbar.fadeCurve')">
-          <SelectValue>{{ t(curves.find(c => c.value === editor.curve)?.label ?? 'editor.curves.smooth') }}</SelectValue>
-        </SelectTrigger>
+        <Hint :text="t('editor.toolbar.fadeCurve')">
+          <span class="inline-flex">
+            <SelectTrigger size="sm" class="gap-1 px-2 border-transparent bg-transparent shadow-none dark:bg-transparent hover:bg-accent" :aria-label="t('editor.toolbar.fadeCurve')">
+              <SelectValue>
+                <FadeIcon :curve="editor.curve" class="size-4 text-foreground" />
+              </SelectValue>
+            </SelectTrigger>
+          </span>
+        </Hint>
         <SelectContent>
           <SelectItem v-for="c in curves" :key="c.value" :value="c.value">
-            {{ t(c.label) }}
+            <FadeIcon :curve="c.value" class="size-4" /> {{ t(c.label) }}
           </SelectItem>
         </SelectContent>
       </Select>
       <Separator orientation="vertical" class="mx-1 h-5" />
       <Hint :text="t('editor.toolbar.normalizeHint')">
-        <Button variant="ghost" size="sm" @click="editor.normalize()">
-          {{ t('editor.toolbar.normalize') }}
+        <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.normalize')" @click="editor.normalize()">
+          <ArrowUpToLine />
         </Button>
       </Hint>
-      <Button variant="ghost" size="sm" class="tabular" @click="editor.gain(-3)">
-        −3 {{ t('common.units.dB') }}
-      </Button>
-      <Button variant="ghost" size="sm" class="tabular" @click="editor.gain(3)">
-        +3 {{ t('common.units.dB') }}
-      </Button>
+      <Hint :text="t('editor.toolbar.gainDownHint')">
+        <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.gainDownHint')" @click="editor.gain(-3)">
+          <Volume1 />
+        </Button>
+      </Hint>
+      <Hint :text="t('editor.toolbar.gainUpHint')">
+        <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.gainUpHint')" @click="editor.gain(3)">
+          <Volume2 />
+        </Button>
+      </Hint>
       <Hint :text="t('editor.toolbar.reverseHint')">
         <Button variant="ghost" size="icon-sm" @click="editor.reverse()">
           <ArrowLeftRight />
         </Button>
       </Hint>
-      <div class="ml-auto flex items-center gap-1">
-        <Hint :text="t('editor.toolbar.bpmHint')">
-          <Input
-            :model-value="bpm ?? ''"
-            type="number"
-            min="20"
-            max="999"
-            step="0.01"
-            :placeholder="t('editor.toolbar.bpm')"
-            :aria-label="t('editor.toolbar.bpm')"
-            class="h-7 w-20 text-xs tabular"
-            @update:model-value="setBpm"
-          />
-        </Hint>
+      <!-- Tempo of the bar grid (and of snapping), next to the edits it lines up. -->
+      <Hint :text="t('editor.toolbar.bpmHint')">
+        <Input
+          :model-value="bpm ?? ''"
+          type="number"
+          min="20"
+          max="999"
+          step="0.01"
+          :placeholder="t('editor.toolbar.bpm')"
+          :aria-label="t('editor.toolbar.bpm')"
+          class="ml-auto h-7 w-20 px-2 text-xs tabular [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          @update:model-value="setBpm"
+        />
+      </Hint>
+    </div>
+
+    <EditorMinimap
+      :view-start="viewStart"
+      :view-end="viewEnd"
+      @view="(a, b) => { viewStart = a; viewEnd = b }"
+      @zoom="zoom"
+      @fit="fit()"
+    />
+    <div ref="box" class="relative flex-1 min-h-0 bg-card">
+      <canvas
+        ref="canvas"
+        tabindex="0"
+        class="absolute inset-0 size-full outline-none cursor-text"
+        :aria-label="t('editor.waveform.label')"
+        @mousedown="onMouseDown"
+        @wheel="onWheel"
+        @keydown="onKeyDown"
+      />
+      <div v-if="editor.loading" class="absolute inset-0 grid place-items-center text-muted-foreground text-sm">
+        {{ t('editor.waveform.opening') }}
+      </div>
+      <div v-else-if="editor.error" class="absolute inset-0 grid place-items-center text-destructive text-sm px-6 text-center">
+        {{ editor.error }}
+      </div>
+    </div>
+
+    <footer class="h-9 shrink-0 pl-4 pr-2 flex items-center gap-4 border-t border-border text-xs text-muted-foreground tabular">
+      <span class="shrink-0">{{ t('editor.status.cursor', { time: status.cursor }) }}</span>
+      <button
+        v-if="vZoom > 1.01" class="shrink-0 hover:text-foreground"
+        :title="t('editor.status.vZoom')"
+        @click="vZoom = 1"
+      >
+        ↕ ×{{ formatNumber(vZoom, { fixed: 1 }) }}
+      </button>
+      <span v-if="status.selection" class="shrink-0">{{ t('editor.status.selection', { range: status.selection }) }}</span>
+      <button
+        class="group min-w-0 flex-1 flex items-center justify-end gap-1.5 hover:text-foreground"
+        :title="`${editor.sample?.path}\n${t('editor.status.reveal')}`"
+        @click="editor.sample && revealItemInDir(editor.sample.path)"
+      >
+        <FolderOpen class="size-3.5 shrink-0" />
+        <span class="truncate group-hover:underline">{{ editor.sample ? shortPath(editor.sample.path) : '' }}</span>
+      </button>
+      <span class="shrink-0">{{ status.length }} · {{ formatRate(rate) }} · {{ editor.state?.channels === 1 ? t('common.channels.mono') : t('common.channels.stereo') }}</span>
+      <Separator orientation="vertical" class="h-4" />
+      <!-- View controls: beat grid, snapping, look and zoom. -->
+      <div class="shrink-0 flex items-center gap-1 text-foreground">
         <Hint :text="t('editor.toolbar.snapHint')" shortcut="S">
-          <Toggle v-model="snap" size="sm" :disabled="gridMode === 'off'" :aria-label="t('editor.toolbar.snap')">
+          <Toggle v-model="snap" size="sm" :class="toggleIcon" :disabled="gridMode === 'off'" :aria-label="t('editor.toolbar.snap')">
             <Magnet />
           </Toggle>
         </Hint>
         <DropdownMenu>
-          <DropdownMenuTrigger as-child>
-            <Button variant="ghost" size="sm" class="data-[state=open]:bg-accent">
-              <SlidersHorizontal /> {{ t('editor.toolbar.view') }}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" class="w-52">
+          <Hint :text="t('editor.toolbar.view')">
+            <DropdownMenuTrigger as-child>
+              <Button variant="ghost" size="icon-sm" class="data-[state=open]:bg-accent" :aria-label="t('editor.toolbar.view')">
+                <SlidersHorizontal />
+              </Button>
+            </DropdownMenuTrigger>
+          </Hint>
+          <DropdownMenuContent align="end" side="top" class="w-52">
             <template v-for="(opt, i) in viewOptions" :key="opt.key">
               <DropdownMenuSeparator v-if="i" />
               <DropdownMenuLabel class="text-xs text-muted-foreground font-normal">
@@ -621,7 +692,7 @@ const curves: { value: Curve, label: string }[] = [
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <Separator orientation="vertical" class="mx-1 h-5" />
+        <Separator orientation="vertical" class="mx-0.5 h-4" />
         <Hint :text="t('editor.toolbar.zoomOut')" shortcut="−">
           <Button variant="ghost" size="icon-sm" @click="zoom(2)">
             <ZoomOut />
@@ -638,52 +709,6 @@ const curves: { value: Curve, label: string }[] = [
           </Button>
         </Hint>
       </div>
-    </div>
-
-    <EditorMinimap
-      :view-start="viewStart"
-      :view-end="viewEnd"
-      @view="(a, b) => { viewStart = a; viewEnd = b }"
-      @zoom="zoom"
-      @fit="fit()"
-    />
-    <div ref="box" class="relative flex-1 min-h-0 bg-card">
-      <canvas
-        ref="canvas"
-        tabindex="0"
-        class="absolute inset-0 size-full outline-none cursor-text"
-        :aria-label="t('editor.waveform.label')"
-        @mousedown="onMouseDown"
-        @wheel="onWheel"
-        @keydown="onKeyDown"
-      />
-      <div v-if="editor.loading" class="absolute inset-0 grid place-items-center text-muted-foreground text-sm">
-        {{ t('editor.waveform.opening') }}
-      </div>
-      <div v-else-if="editor.error" class="absolute inset-0 grid place-items-center text-destructive text-sm px-6 text-center">
-        {{ editor.error }}
-      </div>
-    </div>
-
-    <footer class="h-8 shrink-0 px-4 flex items-center gap-4 border-t border-border text-xs text-muted-foreground tabular">
-      <span class="shrink-0">{{ t('editor.status.cursor', { time: status.cursor }) }}</span>
-      <button
-        v-if="vZoom > 1.01" class="shrink-0 hover:text-foreground"
-        :title="t('editor.status.vZoom')"
-        @click="vZoom = 1"
-      >
-        ↕ ×{{ formatNumber(vZoom, { fixed: 1 }) }}
-      </button>
-      <span v-if="status.selection" class="shrink-0">{{ t('editor.status.selection', { range: status.selection }) }}</span>
-      <button
-        class="group min-w-0 flex-1 flex items-center justify-end gap-1.5 hover:text-foreground"
-        :title="`${editor.sample?.path}\n${t('editor.status.reveal')}`"
-        @click="editor.sample && revealItemInDir(editor.sample.path)"
-      >
-        <FolderOpen class="size-3.5 shrink-0" />
-        <span class="truncate group-hover:underline">{{ editor.sample ? shortPath(editor.sample.path) : '' }}</span>
-      </button>
-      <span class="shrink-0">{{ status.length }} · {{ formatRate(rate) }} · {{ editor.state?.channels === 1 ? t('common.channels.mono') : t('common.channels.stereo') }}</span>
     </footer>
   </div>
 </template>

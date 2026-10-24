@@ -39,6 +39,8 @@ export default {
     fadeCurve: 'Fade curve',
     normalize: 'Normalize',
     normalizeHint: 'Peak to −0.3 dB (selection or whole file)',
+    gainDownHint: 'Lower the level by 3 dB (selection or whole file)',
+    gainUpHint: 'Raise the level by 3 dB (selection or whole file)',
     reverseHint: 'Reverse (selection or whole file)',
     zoomOut: 'Zoom out',
     zoomIn: 'Zoom in (to the selection if any)',
