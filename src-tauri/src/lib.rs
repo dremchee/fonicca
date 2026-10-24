@@ -156,6 +156,7 @@ pub fn run() {
             commands::sample_tags,
             commands::sample_cover,
             commands::update_sample_tags,
+            commands::cover_preview,
             commands::set_favorite,
             commands::list_tags,
             commands::tag_samples,

@@ -55,6 +55,11 @@ pub fn cover(path: &Path) -> Option<Vec<u8>> {
     .flatten()
 }
 
+/// Reads an image file picked as a new cover, refusing anything lofty would not embed.
+pub fn image_file(path: &Path) -> Result<Picture> {
+    Picture::from_reader(&mut std::fs::File::open(path)?).map_err(|e| Error::Other(format!("not a supported image: {e}")))
+}
+
 /// New values for a file's tags; an empty or missing value removes that field.
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -90,8 +95,7 @@ fn set_text(tag: &mut Tag, value: Option<String>, set: fn(&mut Tag, String), rem
 pub fn write(path: &Path, edit: TagEdit) -> Result<()> {
     let cover = match &edit.cover {
         CoverEdit::File { path } => {
-            let mut pic = Picture::from_reader(&mut std::fs::File::open(path)?)
-                .map_err(|e| Error::Other(format!("not a supported image: {e}")))?;
+            let mut pic = image_file(Path::new(path))?;
             pic.set_pic_type(PictureType::CoverFront);
             Some(pic)
         }

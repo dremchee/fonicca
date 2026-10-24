@@ -232,6 +232,15 @@ pub async fn update_sample_tags(
     .map_err(|e| Error::Other(e.to_string()))?
 }
 
+/// Bytes of an image picked as a new cover, for its preview; errors on non-images.
+#[tauri::command]
+pub async fn cover_preview(path: String) -> Result<tauri::ipc::Response> {
+    let pic = tauri::async_runtime::spawn_blocking(move || crate::tags::image_file(std::path::Path::new(&path)))
+        .await
+        .map_err(|e| Error::Other(e.to_string()))??;
+    Ok(tauri::ipc::Response::new(pic.into_data()))
+}
+
 /// Embedded cover art as image bytes; empty when the file has none.
 #[tauri::command]
 pub async fn sample_cover(state: State<'_, AppState>, id: i64) -> Result<tauri::ipc::Response> {

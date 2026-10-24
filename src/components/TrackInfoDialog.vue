@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TagEdit } from '@/api'
-import { ImageOff, ImagePlus } from '@lucide/vue'
+import { ImagePlus, X } from '@lucide/vue'
 import { open as pickFile } from '@tauri-apps/plugin-dialog'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -16,7 +16,9 @@ const { t } = useI18n()
 
 const form = ref({ title: '', artist: '', album: '', year: '', genre: '' })
 const cover = ref<TagEdit['cover']>({ kind: 'keep' })
+// The file's current cover, and the preview of a newly picked image.
 const coverUrl = ref<string | null>(null)
+const newUrl = ref<string | null>(null)
 const saving = ref(false)
 
 const open = computed({
@@ -33,10 +35,20 @@ function setCoverUrl(url: string | null) {
   coverUrl.value = url
 }
 
+function setNewUrl(url: string | null) {
+  if (newUrl.value)
+    URL.revokeObjectURL(newUrl.value)
+  newUrl.value = url
+}
+
+const shownUrl = computed(() => (cover.value.kind === 'file' ? newUrl.value : cover.value.kind === 'keep' ? coverUrl.value : null))
+const hasCover = computed(() => !!shownUrl.value || cover.value.kind === 'file')
+
 // Load what the file has each time the dialog opens.
 watch(trackInfoFor, async (sample) => {
   cover.value = { kind: 'keep' }
   setCoverUrl(null)
+  setNewUrl(null)
   if (!sample)
     return
   form.value = { title: '', artist: '', album: '', year: '', genre: '' }
@@ -61,8 +73,16 @@ const fileName = (path: string) => path.split('/').pop() ?? path
 
 async function chooseImage() {
   const path = await pickFile({ filters: [{ name: t('trackInfo.imageFiles'), extensions: ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'] }] })
-  if (typeof path === 'string')
+  if (typeof path !== 'string')
+    return
+  try {
+    const bytes = await api.coverPreview(path)
+    setNewUrl(URL.createObjectURL(new Blob([bytes])))
     cover.value = { kind: 'file', path }
+  }
+  catch (e) {
+    toast.error(String(e))
+  }
 }
 
 async function save() {
@@ -105,26 +125,48 @@ async function save() {
           <span>{{ t('trackInfo.description') }}</span>
         </DialogDescription>
       </DialogHeader>
-      <form class="min-w-0 grid grid-cols-[136px_minmax(0,1fr)] gap-5" @submit.prevent="save">
-        <div class="min-w-0 flex flex-col gap-2">
-          <div class="size-34 rounded-md border bg-muted grid place-items-center overflow-hidden text-muted-foreground">
-            <img v-if="coverUrl && cover.kind === 'keep'" :src="coverUrl" :alt="t('trackInfo.cover')" class="size-full object-cover">
-            <span v-else-if="cover.kind === 'file'" class="px-2 text-center text-xs [overflow-wrap:anywhere]">
-              {{ t('trackInfo.newCover', { name: fileName(cover.path) }) }}
-            </span>
-            <span v-else class="px-2 text-center text-xs">
-              {{ cover.kind === 'remove' ? t('trackInfo.coverRemoved') : t('trackInfo.noCover') }}
-            </span>
+      <form class="min-w-0 grid grid-cols-[148px_minmax(0,1fr)] gap-5" @submit.prevent="save">
+        <div class="min-w-0 flex flex-col gap-1.5">
+          <!-- The tile is the picker: click to choose an image; ✕ in the corner removes it. -->
+          <div class="relative">
+            <button
+              type="button"
+              class="group relative w-full aspect-square rounded-lg border bg-muted overflow-hidden grid place-items-center text-muted-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              :aria-label="t('trackInfo.chooseImage')"
+              @click="chooseImage"
+            >
+              <img v-if="shownUrl" :src="shownUrl" :alt="t('trackInfo.cover')" class="size-full object-cover">
+              <span v-else class="flex flex-col items-center gap-1.5 text-xs">
+                <ImagePlus class="size-6" />
+                {{ t('trackInfo.noCover') }}
+              </span>
+              <span
+                v-if="shownUrl"
+                class="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/55 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+              >
+                <ImagePlus class="size-5" />
+                {{ t('trackInfo.chooseImage') }}
+              </span>
+            </button>
+            <Button
+              v-if="hasCover"
+              type="button" variant="secondary" size="icon-xs"
+              class="absolute top-1.5 right-1.5 rounded-full shadow-sm"
+              :aria-label="t('trackInfo.removeCover')"
+              @click="cover = { kind: 'remove' }"
+            >
+              <X />
+            </Button>
           </div>
-          <Button type="button" variant="outline" size="sm" class="w-full" @click="chooseImage">
-            <ImagePlus /> {{ t('trackInfo.chooseImage') }}
-          </Button>
-          <Button
-            v-if="coverUrl || cover.kind === 'file'" type="button" variant="ghost" size="sm" class="w-full text-muted-foreground"
-            @click="cover = { kind: 'remove' }"
-          >
-            <ImageOff /> {{ t('trackInfo.removeCover') }}
-          </Button>
+          <p v-if="cover.kind === 'file'" class="truncate text-xs text-muted-foreground">
+            {{ t('trackInfo.newCover', { name: fileName(cover.path) }) }}
+          </p>
+          <p v-else-if="cover.kind === 'remove' && coverUrl" class="text-xs text-muted-foreground">
+            {{ t('trackInfo.coverRemoved') }} ·
+            <button type="button" class="underline hover:text-foreground" @click="cover = { kind: 'keep' }">
+              {{ t('common.actions.undo') }}
+            </button>
+          </p>
         </div>
         <FieldGroup class="min-w-0 gap-3">
           <Field class="gap-1.5">

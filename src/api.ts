@@ -219,6 +219,8 @@ export const api = {
   sampleTags: (id: number) => invoke<TrackTags | null>('sample_tags', { id }),
   /** Embedded cover art as image bytes, empty when there is none. */
   sampleCover: (id: number) => invoke<ArrayBuffer>('sample_cover', { id }),
+  /** Bytes of an image file picked as a new cover, for a preview; rejects non-images. */
+  coverPreview: (path: string) => invoke<ArrayBuffer>('cover_preview', { path }),
   /** Writes tags into the file; empty fields are removed. Returns the tags as read back. */
   updateSampleTags: (id: number, edit: TagEdit) => invoke<TrackTags | null>('update_sample_tags', { id, edit }),
   setFavorite: (ids: number[], favorite: boolean) => invoke<void>('set_favorite', { ids, favorite }),
