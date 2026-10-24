@@ -61,7 +61,10 @@ export function drawWave(ctx: CanvasRenderingContext2D, data: Wave, area: WaveAr
       const step = w / Math.max(1, data.count)
       const px = (i: number) => (i + 0.5) * step
       ctx.strokeStyle = look.color
-      ctx.lineWidth = 1.25
+      // Thick enough to read as the wave itself, not a hairline over the lane.
+      ctx.lineWidth = 2
+      ctx.lineJoin = 'round'
+      ctx.lineCap = 'round'
       ctx.beginPath()
       for (let i = 0; i < data.count; i++)
         i ? ctx.lineTo(px(i), y(at(i, 0))) : ctx.moveTo(px(i), y(at(i, 0)))
@@ -69,7 +72,7 @@ export function drawWave(ctx: CanvasRenderingContext2D, data: Wave, area: WaveAr
       if (step >= 6) {
         ctx.fillStyle = look.color
         for (let i = 0; i < data.count; i++)
-          ctx.fillRect(px(i) - 1.5, y(at(i, 0)) - 1.5, 3, 3)
+          ctx.fillRect(px(i) - 2, y(at(i, 0)) - 2, 4, 4)
       }
     }
     else {
@@ -96,12 +99,27 @@ export function drawWave(ctx: CanvasRenderingContext2D, data: Wave, area: WaveAr
         }
       }
       else {
-        // Peaks dimmed around a full-strength RMS body (or full strength alone).
+        // Peaks dimmed around a full-strength RMS body (or full strength alone). Zoomed
+        // in, a column spans few frames: each one reaches over to its neighbour so the
+        // wave stays one stroke, and gets a little thickness so it is not a hairline.
         ctx.globalAlpha = look.style === 'peaksRms' ? 0.4 : 1
+        const pad = 0.75
+        // Narrow columns also widen a little, so steep slopes get the same thickness.
+        const padX = colW < 2 ? 0.75 : 0
+        let prevLo = at(0, 0)
+        let prevHi = at(0, 1)
         for (let i = 0; i < data.count; i++) {
-          const top = y(at(i, 1))
+          let lo = at(i, 0)
+          let hi = at(i, 1)
+          if (hi < prevLo)
+            hi = prevLo
+          if (lo > prevHi)
+            lo = prevHi
+          prevLo = at(i, 0)
+          prevHi = at(i, 1)
+          const top = y(hi) - pad
           ctx.fillStyle = fill(i)
-          ctx.fillRect(i * colW, top, Math.max(1 / dpr, colW), Math.max(1 / dpr, y(at(i, 0)) - top))
+          ctx.fillRect(i * colW - padX, top, Math.max(1 / dpr, colW) + 2 * padX, y(lo) + pad - top)
         }
         ctx.globalAlpha = 1
         if (look.style === 'peaksRms') {
