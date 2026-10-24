@@ -2,12 +2,15 @@
 import { onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
+import { invoke } from '@tauri-apps/api/core'
 
 // A peak meter like a DAW's master: per channel, RMS solid and peak translucent
 // above it, a peak-hold line, and a clip light that stays on until clicked.
 const props = defineProps<{
   /** Something is playing: poll the levels. When it stops, the bars fall back. */
   active: boolean
+  project?: boolean
+  horizontal?: boolean
 }>()
 
 const { t } = useI18n()
@@ -58,6 +61,7 @@ const barGradient = `linear-gradient(to top, var(--primary) 0%, var(--primary) $
 let frame = 0
 let last = performance.now()
 let pending = false
+let disposed = false
 
 async function tick(now: number) {
   const dt = Math.min(0.1, (now - last) / 1000)
@@ -66,7 +70,7 @@ async function tick(now: number) {
   if (props.active && !pending) {
     pending = true
     try {
-      next = await api.playbackLevels()
+      next = props.project ? await invoke<Awaited<ReturnType<typeof api.playbackLevels>>>('project_levels') : await api.playbackLevels()
     }
     catch {
       next = null
@@ -75,6 +79,8 @@ async function tick(now: number) {
       pending = false
     }
   }
+  if (disposed)
+    return
   let moving = false
   channels.forEach((ch, i) => {
     // Mono feeds both bars.
@@ -110,18 +116,38 @@ watch(() => props.active, (on) => {
   if (on)
     start()
 }, { immediate: true })
-onBeforeUnmount(() => cancelAnimationFrame(frame))
+onBeforeUnmount(() => {
+  disposed = true
+  cancelAnimationFrame(frame)
+})
 </script>
 
 <template>
-  <div class="w-[52px] shrink-0 flex flex-col gap-1 border-l border-border bg-card px-1.5 py-2 select-none" :title="t('player.meter.title')">
+  <button
+    v-if="horizontal" class="horizontal-meter" :class="{ clipped }"
+    :aria-label="`${t('player.meter.title')}. ${t(clipped ? 'player.meter.clip' : 'player.meter.noClip')}`"
+    :aria-pressed="clipped" :title="`${t('player.meter.title')} · ${t(clipped ? 'player.meter.clip' : 'player.meter.noClip')}`"
+    @click="clipped = false"
+  >
+    <span v-for="(ch, i) in channels" :key="i" class="horizontal-lane" aria-hidden="true">
+      <span class="horizontal-peak" :style="{ width: pct(ch.peak) }" />
+      <span class="horizontal-rms" :style="{ width: pct(ch.rms) }" />
+      <span v-if="ch.hold > FLOOR" class="horizontal-hold" :style="{ left: `min(${pct(ch.hold)}, calc(100% - 1px))` }" />
+    </span>
+    <span class="horizontal-clip" aria-hidden="true" />
+  </button>
+  <div v-else
+    class="level-meter w-[52px] shrink-0 flex flex-col gap-1 border-l border-border bg-card px-1.5 py-2 select-none"
+    role="group" :aria-label="t('player.meter.title')" :title="t('player.meter.title')"
+  >
     <div class="flex gap-[3px]">
       <span class="w-3.5 shrink-0" />
       <button
         class="h-1.5 w-[25px] rounded-sm transition-colors"
         :class="clipped ? 'bg-destructive' : 'bg-muted'"
-        :aria-label="t('player.meter.clip')"
-        :title="t('player.meter.clip')"
+        :aria-label="t(clipped ? 'player.meter.clip' : 'player.meter.noClip')"
+        :aria-pressed="clipped"
+        :title="t(clipped ? 'player.meter.clip' : 'player.meter.noClip')"
         @click="clipped = false"
       />
     </div>
@@ -138,10 +164,58 @@ onBeforeUnmount(() => cancelAnimationFrame(frame))
         <div v-if="ch.hold > FLOOR" class="hold" :style="{ bottom: pct(ch.hold) }" />
       </div>
     </div>
+
   </div>
 </template>
 
 <style scoped>
+.horizontal-meter {
+  width: 96px;
+  height: 26px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 3px;
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+  flex-shrink: 0;
+}
+.horizontal-meter:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.horizontal-lane {
+  position: relative;
+  overflow: hidden;
+}
+.horizontal-lane:nth-child(2) {
+  grid-column: 1;
+  grid-row: 2;
+}
+.horizontal-peak,
+.horizontal-rms {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  background: var(--foreground);
+}
+.horizontal-peak { opacity: 0.25; }
+.horizontal-rms { opacity: 0.8; }
+.horizontal-hold {
+  position: absolute;
+  inset-block: 0;
+  width: 1px;
+  background: var(--foreground);
+  opacity: 0.75;
+}
+.horizontal-clip {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  background: transparent;
+}
+.clipped .horizontal-clip { background: var(--destructive); }
+
 .bar {
   position: relative;
   width: 11px;

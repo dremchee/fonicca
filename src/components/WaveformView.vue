@@ -8,6 +8,7 @@ import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useId, watch, wa
 import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
 import Hint from '@/components/Hint.vue'
+import LevelMeter from '@/components/LevelMeter.vue'
 import ProjectSync from '@/components/ProjectSync.vue'
 import SampleInfoHover from '@/components/SampleInfoHover.vue'
 import TagPicker from '@/components/TagPicker.vue'
@@ -15,7 +16,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
 import { Slider } from '@/components/ui/slider'
 import { trackInfoRevision } from '@/composables/trackInfo'
 import { categoryHint, categoryLabel, formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, kindLabel, shortPath, sourceHint } from '@/format'
@@ -83,6 +83,7 @@ const playedCanvas = ref<HTMLCanvasElement | null>(null)
 const dimEl = ref<HTMLElement | null>(null)
 const box = ref<HTMLElement | null>(null)
 const width = ref(0)
+const height = ref(0)
 const wave = shallowRef<Wave | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -109,6 +110,7 @@ const progress = computed(() => {
 
 useResizeObserver(box, (entries) => {
   width.value = Math.floor(entries[0].contentRect.width)
+  height.value = Math.floor(entries[0].contentRect.height)
 })
 
 // Re-read when the sample, the width or the channel layout changes; the backend
@@ -165,7 +167,7 @@ function draw() {
     drawWave(playedCtx, data, area, { ...look, color: color('--wave-played') })
 }
 
-watch([wave, () => settings.settings, () => settings.themeRevision, width], draw, { deep: true })
+watch([wave, () => settings.settings, () => settings.themeRevision, width, height], draw, { deep: true })
 onMounted(draw)
 
 // The part already played: in the accent colour, or (frequency colours) the rest
@@ -231,14 +233,14 @@ function onDragStart(e: DragEvent) {
 <template>
   <!-- Hidden until a sample is selected, so the list gets the whole height. -->
   <section v-if="sample" class="player-panel h-full bg-card flex flex-col">
-    <div class="player-toolbar h-12 shrink-0 px-3 flex items-center gap-3">
+    <div class="player-toolbar shrink-0 px-3">
       <Hint :text="player.isPlaying(sample.id) ? t('common.actions.pause') : t('common.actions.play')" :shortcut="t('player.space')">
         <Button size="icon-sm" class="rounded-full shrink-0" :aria-label="player.isPlaying(sample.id) ? t('common.actions.pause') : t('common.actions.play')" @click="player.toggle(sample)">
           <component :is="player.isPlaying(sample.id) ? Pause : Play" class="fill-current" />
         </Button>
       </Hint>
       <div
-        class="min-w-0 flex-1 flex items-center gap-2.5 cursor-grab"
+        class="preview-track min-w-0 flex items-center gap-2.5 cursor-grab"
         draggable="true"
         :title="t('player.dragToDaw')"
         @dragstart="onDragStart"
@@ -256,12 +258,25 @@ function onDragStart(e: DragEvent) {
           </div>
         </div>
       </div>
-      <div class="shrink-0 tabular text-xs text-muted-foreground whitespace-nowrap">
+      <div class="preview-audio flex items-center gap-2">
+        <LevelMeter horizontal :active="player.playingId !== null && !player.paused" />
+        <div class="preview-volume shrink-0 flex items-center gap-2 w-28 text-xs text-muted-foreground tabular">
+          <Volume2 class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <Slider
+            :model-value="[volumePercent]" :min="0" :max="100" :step="1"
+            :aria-label="t('settings.playback.volume')"
+            @update:model-value="volumeDrag = ($event?.[0] ?? 0) / 100"
+            @value-commit="settings.update({ volume: ($event[0] ?? 0) / 100 }).then(() => volumeDrag = null)"
+          />
+          <span class="w-7 shrink-0 text-right">{{ volumePercent }}%</span>
+        </div>
+      </div>
+      <div class="preview-time shrink-0 tabular text-xs text-muted-foreground whitespace-nowrap">
         <span class="text-foreground">{{ elapsedLabel }}</span>
         <span class="mx-1">/</span>{{ formatDuration(sample.duration) }}
       </div>
-      <!-- Actions on the sample, then playback options. -->
-      <div class="shrink-0 flex items-center gap-0.5">
+      <!-- Actions on the sample. -->
+      <div class="preview-actions shrink-0 flex items-center gap-0.5">
         <Hint :text="sample.favorite ? t('list.favorite.remove') : t('list.favorite.add')" shortcut="F">
           <Button
             variant="ghost" size="icon-sm"
@@ -278,50 +293,39 @@ function onDragStart(e: DragEvent) {
           </Button>
         </Hint>
       </div>
-      <Separator orientation="vertical" class="h-5" />
-      <div class="shrink-0 flex items-center gap-2">
-        <ProjectSync />
-        <Checkbox
-          id="autoplay"
-          :aria-label="t('player.autoplay')"
-          :model-value="player.autoplay"
-          @update:model-value="player.autoplay = $event === true"
-        />
-        <Label for="autoplay" class="text-muted-foreground font-normal" :title="t('player.autoplay')">
-          <span class="autoplay-long">{{ t('player.autoplay') }}</span>
-          <span class="autoplay-short">{{ t('player.autoplayShort') }}</span>
-        </Label>
-      </div>
+
     </div>
     <p :id="seekHintId" class="sr-only">{{ t('player.seekHint') }}</p>
-    <div ref="box" class="seek-surface relative flex-1 mx-3 rounded-md bg-background overflow-hidden cursor-pointer">
-      <canvas ref="canvas" class="absolute inset-0 size-full" />
-      <canvas ref="playedCanvas" class="absolute inset-0 size-full" aria-hidden="true" />
-      <div ref="dimEl" class="pointer-events-none absolute inset-y-0 right-0 bg-background/50" style="display: none" />
-      <div
-        v-if="player.playingId === sample.id || seekPreview !== null"
-        class="pointer-events-none absolute inset-y-0 w-px bg-primary"
-        :style="{ left: `clamp(0px, ${progress * 100}%, calc(100% - 1px))` }"
-      />
-      <input
-        :key="sample.id" type="range" class="seek-input absolute inset-0 size-full opacity-0 cursor-pointer"
-        min="0" :max="sample.duration || 0" step="any" :value="elapsed" :disabled="!sample.duration"
-        :aria-label="t('player.seek')" :aria-describedby="seekHintId" :title="t('player.seekHint')"
-        :aria-valuetext="t('player.position', { elapsed: elapsedLabel, duration: formatDuration(sample.duration) })"
-        @input="seekPreview = Number(($event.target as HTMLInputElement).value)"
-        @change="commitSeek(Number(($event.target as HTMLInputElement).value))"
-        @keydown="onSeekKeydown" @pointercancel="seekPreview = null"
-      >
-      <div v-if="loading" class="pointer-events-none absolute inset-0 grid place-items-center text-muted-foreground text-xs">
-        {{ t('player.readingWaveform') }}
-      </div>
-      <div v-else-if="error" class="pointer-events-none absolute inset-0 grid place-items-center text-destructive text-xs px-4 text-center">
-        {{ error }}
+    <div class="preview-signal flex flex-1 min-h-0 gap-2 mx-3">
+      <div ref="box" class="seek-surface relative flex-1 min-w-0 rounded-md bg-background overflow-hidden cursor-pointer">
+        <canvas ref="canvas" class="absolute inset-0 size-full" />
+        <canvas ref="playedCanvas" class="absolute inset-0 size-full" aria-hidden="true" />
+        <div ref="dimEl" class="pointer-events-none absolute inset-y-0 right-0 bg-background/50" style="display: none" />
+        <div
+          v-if="player.playingId === sample.id || seekPreview !== null"
+          class="pointer-events-none absolute inset-y-0 w-px bg-primary"
+          :style="{ left: `clamp(0px, ${progress * 100}%, calc(100% - 1px))` }"
+        />
+        <input
+          :key="sample.id" type="range" class="seek-input absolute inset-0 size-full opacity-0 cursor-pointer"
+          min="0" :max="sample.duration || 0" step="any" :value="elapsed" :disabled="!sample.duration"
+          :aria-label="t('player.seek')" :aria-describedby="seekHintId" :title="t('player.seekHint')"
+          :aria-valuetext="t('player.position', { elapsed: elapsedLabel, duration: formatDuration(sample.duration) })"
+          @input="seekPreview = Number(($event.target as HTMLInputElement).value)"
+          @change="commitSeek(Number(($event.target as HTMLInputElement).value))"
+          @keydown="onSeekKeydown" @pointercancel="seekPreview = null"
+        >
+        <div v-if="loading" class="pointer-events-none absolute inset-0 grid place-items-center text-muted-foreground text-xs">
+          {{ t('player.readingWaveform') }}
+        </div>
+        <div v-else-if="error" class="pointer-events-none absolute inset-0 grid place-items-center text-destructive text-xs px-4 text-center">
+          {{ error }}
+        </div>
       </div>
     </div>
     <!-- Status bar. One line tall: fields that do not fit wrap onto the hidden second line
          and drop out whole, least important (the last ones) first. -->
-    <div class="h-8 shrink-0 px-3 flex items-center gap-3 text-xs text-muted-foreground tabular">
+    <div class="h-8 shrink-0 px-4 flex items-center gap-3 text-xs text-muted-foreground tabular">
       <!-- The sample's own tags and the picker to add more; badges that do not fit drop out. -->
       <div class="shrink-0 max-w-[40%] min-w-0 flex items-center gap-1">
         <div v-if="sample.tags.length" class="min-w-0 h-5 flex flex-wrap items-center gap-1 overflow-hidden">
@@ -351,16 +355,6 @@ function onDragStart(e: DragEvent) {
         <span>{{ formatChannels(sample.channels) }}</span>
         <span>{{ formatSize(sample.size) }}</span>
       </div>
-      <div class="shrink-0 flex items-center gap-2 w-28">
-        <Volume2 class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <Slider
-          :model-value="[volumePercent]" :min="0" :max="100" :step="1"
-          :aria-label="t('settings.playback.volume')"
-          @update:model-value="volumeDrag = ($event?.[0] ?? 0) / 100"
-          @value-commit="settings.update({ volume: ($event[0] ?? 0) / 100 }).then(() => volumeDrag = null)"
-        />
-        <span class="w-7 shrink-0 text-right">{{ volumePercent }}%</span>
-      </div>
       <button
         class="group min-w-0 max-w-[25%] flex items-center gap-1.5 hover:text-foreground"
         :title="`${sample.path}\n${t('player.clickToReveal')}`"
@@ -369,6 +363,19 @@ function onDragStart(e: DragEvent) {
         <FolderOpen class="size-3.5 shrink-0" />
         <span class="truncate group-hover:underline">{{ shortPath(sample.path) }}</span>
       </button>
+      <div class="preview-options shrink-0 flex items-center gap-3 border-l border-border pl-3">
+        <ProjectSync />
+        <Checkbox
+          id="autoplay"
+          :aria-label="t('player.autoplay')"
+          :model-value="player.autoplay"
+          @update:model-value="player.autoplay = $event === true"
+        />
+        <Label for="autoplay" class="text-muted-foreground font-normal" :title="t('player.autoplay')">
+          <span class="autoplay-long">{{ t('player.autoplay') }}</span>
+          <span class="autoplay-short">{{ t('player.autoplayShort') }}</span>
+        </Label>
+      </div>
     </div>
     <div v-if="player.error" class="px-3 pb-2 text-destructive text-xs truncate">
       {{ player.error }}
@@ -379,6 +386,42 @@ function onDragStart(e: DragEvent) {
 <style scoped>
 .player-panel {
   container-type: inline-size;
+}
+.preview-options :deep([data-slot="button"]) {
+  height: 22px;
+  padding-inline: 8px;
+  gap: 6px;
+  font-size: 12px;
+}
+.preview-options :deep([data-slot="button"] svg) {
+  width: 12px;
+  height: 12px;
+}
+.preview-options :deep([data-slot="checkbox"]) {
+  width: 12px;
+  height: 12px;
+}
+.preview-options :deep([data-slot="checkbox"] svg) {
+  width: 10px;
+  height: 10px;
+}
+.player-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(120px, 1fr) auto auto auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  padding-block: 6px;
+}
+@container (max-width: 650px) {
+  .player-toolbar {
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    gap: 6px 10px;
+  }
+  .preview-track { grid-column: 2; grid-row: 1; }
+  .preview-time { grid-column: 3; grid-row: 1; }
+  .preview-actions { grid-column: 4; grid-row: 1; }
+  .preview-audio { grid-column: 1 / 5; grid-row: 2; justify-self: end; }
 }
 .seek-input {
   margin: 0;
@@ -397,9 +440,6 @@ function onDragStart(e: DragEvent) {
   }
   .autoplay-short {
     display: inline;
-  }
-  .player-toolbar {
-    gap: 8px;
   }
 }
 </style>

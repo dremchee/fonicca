@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
-import { Globe, Search } from '@lucide/vue'
+import { Globe, PanelsTopLeft, Search } from '@lucide/vue'
 import { computed, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import CollectionPicker from '@/components/CollectionPicker.vue'
@@ -10,6 +10,7 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Kbd } from '@/components/ui/kbd'
 import { folderName, formatNumber } from '@/format'
 import { useLibraryStore } from '@/stores/library'
+import { openProjectWindow } from '@/composables/projectWindow'
 
 const { t } = useI18n()
 const library = useLibraryStore()
@@ -64,6 +65,7 @@ defineExpose({ searchElement })
       </InputGroupAddon>
       <InputGroupAddon align="inline-end" class="search-shortcut"><Kbd>⌘F</Kbd></InputGroupAddon>
     </InputGroup>
+    <Button variant="outline" size="sm" :title="t('project.openWindow')" @click="openProjectWindow()"><PanelsTopLeft />{{ t('project.title') }}</Button>
     <CollectionPicker />
   </header>
 </template>

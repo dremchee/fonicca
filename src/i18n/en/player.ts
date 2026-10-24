@@ -15,6 +15,7 @@ export default {
   wavePreview: 'Waveform preview',
   cover: 'Cover art',
   meter: {
+    noClip: 'No clipping',
     title: 'Output level, dBFS',
     clip: 'Clipped. Click to reset',
   },

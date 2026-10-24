@@ -141,7 +141,7 @@ fn remix(pcm: &mut Pcm, channels: usize) {
     *pcm = Pcm { samples, channels: to, sample_rate: pcm.sample_rate };
 }
 
-fn resample(pcm: &mut Pcm, rate: u32) -> Result<()> {
+pub(crate) fn resample(pcm: &mut Pcm, rate: u32) -> Result<()> {
     if pcm.sample_rate == rate || pcm.frames() < 2 {
         pcm.sample_rate = rate;
         return Ok(());

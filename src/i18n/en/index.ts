@@ -13,6 +13,7 @@ import sync from './sync'
 import dialogs from './dialogs'
 import trackInfo from './trackInfo'
 import batch from './batch'
+import project from './project'
 
 export default {
   common,
@@ -29,4 +30,5 @@ export default {
   dialogs,
   trackInfo,
   batch,
+  project,
 }

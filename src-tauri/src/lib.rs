@@ -15,6 +15,7 @@ mod meter;
 mod models;
 mod overview;
 mod player;
+mod project;
 mod scan;
 mod settings;
 mod similar;
@@ -28,8 +29,10 @@ use rusqlite::Connection;
 use tauri::{Emitter, Manager};
 
 pub struct AppState {
+    pub project: Mutex<project::Transport>,
     pub db: Mutex<Connection>,
     pub player: player::Player,
+    pub project_player: player::Player,
     pub scanner: Arc<watch::Scanner>,
     pub analyzer: Arc<analyzer::Analyzer>,
     pub models_dir: std::path::PathBuf,
@@ -111,9 +114,13 @@ pub fn run() {
                 // Pick up changes made while the app was closed.
                 scanner.request(*id);
             }
+            let player = player::Player::new();
+            let project_player = player.fork();
             app.manage(AppState {
+                project: Default::default(),
                 db: Mutex::new(conn),
-                player: player::Player::new(),
+                player,
+                project_player,
                 scanner,
                 analyzer,
                 models_dir,
@@ -132,6 +139,9 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::Destroyed) && window.label() == project::WINDOW_LABEL {
+                project::release(window.app_handle());
+            }
             if matches!(event, tauri::WindowEvent::Destroyed)
                 && window.label().starts_with(editor_commands::WINDOW_PREFIX)
             {
@@ -191,6 +201,18 @@ pub fn run() {
             commands::analysis_status,
             commands::sound_model_status,
             commands::download_sound_model,
+            project::project_play,
+            project::open_project_window,
+            project::project_take_samples,
+            project::project_sources,
+            project::project_stop,
+            project::project_position,
+            project::project_levels,
+            project::project_samples,
+            project::project_wave,
+            project::project_save,
+            project::project_load,
+            project::project_export,
             commands::play,
             commands::stop,
             commands::pause,

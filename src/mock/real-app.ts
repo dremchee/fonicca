@@ -6,6 +6,7 @@ import { groups as fake } from './duplicates-data'
 import { batchCommand } from './batch'
 import { editorCommand } from './editor'
 import { spectrogram } from './spectrogram'
+import { projectCommand } from './project'
 
 const ROOT = '/Users/me/Projects/Sound/Source'
 let groups: DuplicateGroup[] = fake.map(g => ({
@@ -29,6 +30,8 @@ let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], 
 
 export function install() {
   mockIPC((cmd, args: any) => {
+    const project = projectCommand(cmd, args)
+    if (project !== undefined) return project
     switch (cmd) {
       case 'editor_spectrogram': return new Promise(resolve => setTimeout(() => resolve(spectrogram(args.start, args.end, args.columns)), 80))
       case 'list_sources': return [{ id: 1, path: ROOT, sampleCount: 32187 }]
