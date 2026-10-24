@@ -148,6 +148,31 @@ pub fn editor_wave(
     })
 }
 
+/// Build the analysis once per audio revision without holding the session lock.
+#[tauri::command]
+pub async fn editor_spectrogram(
+    state: State<'_, AppState>, window: Window, start: usize, end: usize, columns: usize,
+) -> Result<tauri::ipc::Response> {
+    let (cached, pcm, revision) = with_session(&state, &window, |s| {
+        let cached = s.spectrogram();
+        let pcm = if cached.is_none() {
+            let audio = s.audio();
+            Some(crate::audio::Pcm { samples: audio.samples.clone(), channels: audio.channels, sample_rate: audio.sample_rate })
+        } else { None };
+        Ok((cached, pcm, s.audio_revision()))
+    })?;
+    let (spectrum, bytes) = tauri::async_runtime::spawn_blocking(move || -> Result<_> {
+        let spectrum = match cached {
+            Some(cached) => cached,
+            None => std::sync::Arc::new(editor::spectrogram::Spectrogram::build(&pcm.unwrap())?),
+        };
+        let bytes = spectrum.range(start, end, columns);
+        Ok((spectrum, bytes))
+    }).await.map_err(|e| Error::Other(format!("spectrogram analysis failed: {e}")))??;
+    with_session(&state, &window, |s| s.cache_spectrogram(revision, spectrum))?;
+    Ok(tauri::ipc::Response::new(bytes))
+}
+
 /// Copies `[start, end)` to the clipboard shared by all editor windows.
 #[tauri::command]
 pub fn editor_copy(state: State<'_, AppState>, window: Window, start: usize, end: usize) -> Result<Option<editor::clipboard::ClipInfo>> {

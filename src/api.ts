@@ -83,7 +83,14 @@ export interface DownloadProgress {
 
 export type Theme = 'system' | 'light' | 'dark'
 
-export interface Settings {
+export interface WaveformSettings {
+  waveStyle: WaveStyle
+  waveChannels: 'mix' | 'split'
+  waveScale: 'linear' | 'db'
+  waveColors: 'theme' | 'frequency'
+}
+
+export interface Settings extends WaveformSettings {
   theme: Theme
   /** Colour theme id: built-in or one of `customThemes`. */
   colorTheme: string
@@ -102,10 +109,7 @@ export interface Settings {
   projectBpm: number | null
   /** Key name like "Am" or "F#". */
   projectKey: string | null
-  waveStyle: WaveStyle
-  waveChannels: 'mix' | 'split'
-  waveScale: 'linear' | 'db'
-  waveColors: 'theme' | 'frequency'
+  editorWaveform: WaveformSettings
 }
 
 export type WaveStyle = 'peaks' | 'peaksRms' | 'bars'

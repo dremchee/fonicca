@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { WaveformSettings } from '@/api'
 import { useResizeObserver } from '@vueuse/core'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -7,6 +8,7 @@ import { demoWave, drawWave } from '@/waveform'
 
 // Live preview of the waveform settings on a made-up groove.
 const { t } = useI18n()
+const props = defineProps<{ options: WaveformSettings }>()
 const settings = useSettingsStore()
 const box = ref<HTMLElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
@@ -28,7 +30,7 @@ function draw() {
   const ctx = el.getContext('2d')!
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   ctx.clearRect(0, 0, width, height)
-  const s = settings.settings
+  const s = props.options
   const style = getComputedStyle(el)
   drawWave(ctx, demoWave(Math.round(width * dpr), s.waveChannels === 'split'), { top: 0, width, height, dpr }, {
     style: s.waveStyle,
@@ -40,7 +42,7 @@ function draw() {
   })
 }
 
-watch([size, () => settings.settings, () => settings.themeRevision], draw, { deep: true })
+watch([size, () => props.options, () => settings.themeRevision], draw, { deep: true })
 </script>
 
 <template>

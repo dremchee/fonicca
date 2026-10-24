@@ -119,6 +119,23 @@ pub enum WaveColors {
     Frequency,
 }
 
+/// Independent drawing options for an editor window.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct WaveformSettings {
+    pub wave_style: WaveStyle,
+    pub wave_channels: WaveChannels,
+    pub wave_scale: WaveScale,
+    pub wave_colors: WaveColors,
+}
+
+impl Default for WaveformSettings {
+    fn default() -> Self {
+        Self { wave_style: WaveStyle::PeaksRms, wave_channels: WaveChannels::Split,
+            wave_scale: WaveScale::Linear, wave_colors: WaveColors::Theme }
+    }
+}
+
 /// Missing or unknown fields fall back to defaults, so older and newer files both load.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -145,6 +162,7 @@ pub struct Settings {
     pub wave_channels: WaveChannels,
     pub wave_scale: WaveScale,
     pub wave_colors: WaveColors,
+    pub editor_waveform: WaveformSettings,
 }
 
 impl Default for Settings {
@@ -165,6 +183,7 @@ impl Default for Settings {
             wave_channels: WaveChannels::Split,
             wave_scale: WaveScale::Linear,
             wave_colors: WaveColors::Theme,
+            editor_waveform: WaveformSettings::default(),
         }
     }
 }
@@ -243,7 +262,20 @@ impl SettingsStore {
     /// Loads the file; a missing or unreadable one gives defaults.
     pub fn load(path: PathBuf) -> Self {
         let current = match std::fs::read(&path) {
-            Ok(bytes) => serde_json::from_slice::<Settings>(&bytes).unwrap_or_else(|e| {
+            Ok(bytes) => serde_json::from_slice::<serde_json::Value>(&bytes).and_then(|mut data| {
+                // Before profiles were split, these four options were shared.
+                // Copy them only once; subsequent loads preserve independent values.
+                if let Some(object) = data.as_object_mut() {
+                    if !object.contains_key("editorWaveform") {
+                        let options: serde_json::Map<String, serde_json::Value> =
+                            ["waveStyle", "waveChannels", "waveScale", "waveColors"].into_iter()
+                                .filter_map(|key| object.get(key).map(|value| (key.to_string(), value.clone())))
+                                .collect();
+                        object.insert("editorWaveform".into(), serde_json::Value::Object(options));
+                    }
+                }
+                serde_json::from_value::<Settings>(data)
+            }).unwrap_or_else(|e| {
                 eprintln!("ignoring invalid {}: {e}", path.display());
                 Settings::default()
             }),
@@ -342,5 +374,32 @@ mod tests {
         let reloaded = SettingsStore::load(path).get();
         assert_eq!((reloaded.theme, reloaded.volume, reloaded.project_bpm), (Theme::Dark, 0.5, Some(400.0)));
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn legacy_waveform_options_migrate_to_independent_editor_settings() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        std::fs::write(&path, r#"{"waveStyle":"bars","waveChannels":"mix","waveScale":"db","waveColors":"frequency"}"#).unwrap();
+        let store = SettingsStore::load(path.clone());
+        let mut settings = store.get();
+        assert_eq!(settings.editor_waveform, WaveformSettings {
+            wave_style: WaveStyle::Bars, wave_channels: WaveChannels::Mix,
+            wave_scale: WaveScale::Db, wave_colors: WaveColors::Frequency,
+        });
+        settings.editor_waveform.wave_style = WaveStyle::Peaks;
+        settings.editor_waveform.wave_channels = WaveChannels::Split;
+        store.replace(settings).unwrap();
+        let restored = SettingsStore::load(path.clone());
+        let mut settings = restored.get();
+        assert_eq!(settings.wave_style, WaveStyle::Bars);
+        assert_eq!(settings.wave_channels, WaveChannels::Mix);
+        assert_eq!(settings.editor_waveform.wave_style, WaveStyle::Peaks);
+        assert_eq!(settings.editor_waveform.wave_channels, WaveChannels::Split);
+        settings.wave_colors = WaveColors::Theme;
+        restored.replace(settings).unwrap();
+        let settings = SettingsStore::load(path).get();
+        assert_eq!(settings.wave_colors, WaveColors::Theme);
+        assert_eq!(settings.editor_waveform.wave_colors, WaveColors::Frequency);
     }
 }

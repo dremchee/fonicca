@@ -146,6 +146,7 @@ pub fn run() {
             editor_commands::editor_undo,
             editor_commands::editor_redo,
             editor_commands::editor_wave,
+            editor_commands::editor_spectrogram,
             batch::batch_preview,
             batch::batch_run,
             batch::batch_cancel,

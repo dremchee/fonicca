@@ -28,6 +28,7 @@ const DEFAULTS: Settings = {
   waveChannels: 'split',
   waveScale: 'linear',
   waveColors: 'theme',
+  editorWaveform: { waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' },
 }
 
 export const useSettingsStore = defineStore('settings', () => {

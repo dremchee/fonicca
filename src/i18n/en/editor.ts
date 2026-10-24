@@ -132,6 +132,11 @@ export default {
     skipRegion: 'Skip this region when saving',
     includeRegion: 'Save this region again',
   },
+  spectrogram: {
+    display: 'Audio display', waveform: 'Waveform', title: 'Spectrogram',
+    loading: 'Calculating spectrum…', error: 'Could not calculate the spectrum', retry: 'Retry',
+    label: 'Spectrogram: drag to select, ⌘-scroll to zoom', legend: 'Spectral energy, −100 to 0 dBFS',
+  },
   processing: {
     dcOffset: 'Remove DC offset', dcOffsetHint: 'Centre each channel around zero (selection or whole file)',
     stretch: 'Pitch / time-stretch', lufs: 'Normalize loudness (LUFS)',

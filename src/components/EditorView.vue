@@ -32,6 +32,9 @@ import { useLocalStorage, useResizeObserver } from '@vueuse/core'
 import { computed, nextTick, ref, shallowRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import EditorMinimap from '@/components/EditorMinimap.vue'
+import EditorDisplayControls from '@/components/EditorDisplayControls.vue'
+import { useEditorSpectrogram } from '@/composables/editor/spectrogram'
+import { drawFrequencyAxis, drawSpectrogram } from '@/spectrogram'
 import EditorProcessing from '@/components/EditorProcessing.vue'
 import LevelMeter from '@/components/LevelMeter.vue'
 import EditorSlicer from '@/components/EditorSlicer.vue'
@@ -87,6 +90,8 @@ const RULER = 18
 // tooltip trigger wrapping them overwrites their data-state.
 const toggleIcon = 'size-8 px-0 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 aria-pressed:bg-transparent aria-pressed:text-primary aria-pressed:hover:text-primary aria-pressed:hover:bg-accent dark:aria-pressed:hover:bg-accent/50'
 // Per-window preferences, not worth fields in settings.json.
+const displayMode = useLocalStorage<'waveform' | 'spectrogram'>('editor.displayMode', 'waveform')
+const isSpectrogram = computed(() => displayMode.value === 'spectrogram')
 const gridMode = useLocalStorage<GridMode>('editor.gridMode', 'beats')
 const snap = useLocalStorage('editor.snap', true)
 const zeroSnap = useLocalStorage('editor.zeroSnap', true)
@@ -96,7 +101,7 @@ const slicePreview = ref<Marker[]>([])
 const bpm = ref<number | null>(null)
 const downbeat = ref(0)
 
-// The View menu: the same waveform options as in settings, applied right away.
+// The View menu changes the editor profile only; library preview has its own options.
 type WaveKey = 'waveStyle' | 'waveScale' | 'waveChannels' | 'waveColors'
 const viewOptions: { key: WaveKey, label: string, choices: { value: string, label: string }[] }[] = [
   { key: 'waveStyle', label: 'settings.waveform.style', choices: [{ value: 'peaks', label: 'settings.waveform.peaks' }, { value: 'peaksRms', label: 'settings.waveform.peaksRms' }, { value: 'bars', label: 'settings.waveform.bars' }] },
@@ -106,13 +111,17 @@ const viewOptions: { key: WaveKey, label: string, choices: { value: string, labe
 ]
 
 function setView(key: WaveKey, value: unknown) {
-  if (typeof value === 'string' && value !== settings.settings[key])
-    settings.update({ [key]: value })
+  if (typeof value === 'string' && value !== settings.settings.editorWaveform[key])
+    settings.update({ editorWaveform: { ...settings.settings.editorWaveform, [key]: value } })
 }
 
 const frames = computed(() => editor.state?.frames ?? 0)
 const rate = computed(() => editor.state?.sampleRate ?? 44100)
 const { viewStart, viewEnd, fit, zoom, pan, zoomToSelection } = useEditorViewport(frames, () => editor.selection)
+const { data: spectrum, loading: spectrumLoading, error: spectrumError, refresh: refreshSpectrum } = useEditorSpectrogram({
+  enabled: isSpectrogram, revision: computed(() => editor.revision), frames,
+  start: viewStart, end: viewEnd, width, read: editor.spectrogram,
+})
 
 watch(() => editor.sample?.id, async (id) => {
   if (id == null)
@@ -143,7 +152,7 @@ let reading = false
 let readAgain = false
 
 function waveKey() {
-  const s = settings.settings
+  const s = settings.settings.editorWaveform
   return `${editor.revision}|${s.waveChannels}|${s.waveColors}`
 }
 
@@ -170,7 +179,7 @@ async function readWave() {
   try {
     do {
       readAgain = false
-      if (!editor.open || width.value === 0 || waveFits())
+      if (isSpectrogram.value || !editor.open || width.value === 0 || waveFits())
         continue
       const n = editor.state?.frames ?? 0
       const span = viewEnd.value - viewStart.value
@@ -179,7 +188,7 @@ async function readWave() {
       const end = Math.ceil(Math.min(n, start + wide))
       const columns = Math.min(16384, Math.round(width.value * (window.devicePixelRatio || 1) * (end - start) / span))
       const key = waveKey()
-      const s = settings.settings
+      const s = settings.settings.editorWaveform
       const data = await editor.wave(start, end, columns, s.waveChannels === 'split', s.waveColors === 'frequency')
       waveRange = { start, end, key }
       wave.value = data
@@ -190,7 +199,7 @@ async function readWave() {
   }
 }
 
-watch([() => editor.revision, viewStart, viewEnd, width, () => settings.settings.waveChannels, () => settings.settings.waveColors], readWave)
+watch([isSpectrogram, () => editor.revision, viewStart, viewEnd, width, () => settings.settings.editorWaveform.waveChannels, () => settings.settings.editorWaveform.waveColors], readWave)
 
 const x = (frame: number) => ((frame - viewStart.value) / (viewEnd.value - viewStart.value)) * width.value
 
@@ -217,7 +226,12 @@ function draw() {
   const h = height.value
   const ctx = canvasContext(el, w, h, dpr)
   const style = getComputedStyle(el)
-  const color = (name: string) => style.getPropertyValue(name).trim()
+  const spectralColors: Record<string, string> = { '--foreground': '#eee8f5', '--muted-foreground': '#c9bfd6', '--border': '#554b64', '--card': '#080511', '--background': '#080511' }
+  const color = (name: string) => (isSpectrogram.value && spectralColors[name]) || style.getPropertyValue(name).trim()
+  if (isSpectrogram.value) {
+    ctx.fillStyle = '#080511'
+    ctx.fillRect(0, 0, w, h)
+  }
   const step = tickStep(viewEnd.value - viewStart.value)
   const first = Math.ceil(viewStart.value / rate.value / step) * step
   const ticks: number[] = []
@@ -229,8 +243,24 @@ function draw() {
   const sel = editor.selection
   const selX = sel ? x(sel.start) : 0
   const selW = sel ? Math.max(1, x(sel.end) - selX) : 0
-  if (wave.value) {
-    const { waveStyle, waveScale, waveColors } = settings.settings
+  if (isSpectrogram.value) {
+    const data = spectrum.value
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(0, RULER, w, Math.max(0, h - RULER))
+    ctx.clip()
+    if (data)
+      drawSpectrogram(ctx, data, { left: x(data.start), top: RULER, width: x(data.end) - x(data.start), height: h - RULER })
+    if (sel) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.14)'
+      ctx.fillRect(selX, RULER, selW, h - RULER)
+      ctx.strokeStyle = '#eee8f5'
+      ctx.strokeRect(selX + 0.5, RULER, selW - 1, h - RULER)
+    }
+    ctx.restore()
+  }
+  else if (wave.value) {
+    const { waveStyle, waveScale, waveColors } = settings.settings.editorWaveform
     const look = { style: waveStyle, scale: waveScale, colors: waveColors, zoom: vZoom.value, lineColor: color('--border'), color: color('--wave-strong') }
     // The wave covers its own range (see readWave), placed under the view.
     const data = wave.value
@@ -326,19 +356,21 @@ function draw() {
     ctx.globalAlpha = 1
   }
   drawSlices(ctx, w, h, color)
+  if (isSpectrogram.value)
+    drawFrequencyAxis(ctx, rate.value, w, RULER, h - RULER)
 
   // Cursor and playhead are elements over the canvas (see cursorEl, playheadEl):
   // moving them, every frame while playing, redraws nothing here.
 }
 
 watch([
-  wave, viewStart, viewEnd, width, height, vZoom, gridMode, bpm, downbeat,
+  wave, spectrum, isSpectrogram, viewStart, viewEnd, width, height, vZoom, gridMode, bpm, downbeat,
   () => editor.selection?.start,
   () => editor.selection?.end,
-  () => settings.settings.waveStyle,
-  () => settings.settings.waveScale,
-  () => settings.settings.waveChannels,
-  () => settings.settings.waveColors,
+  () => settings.settings.editorWaveform.waveStyle,
+  () => settings.settings.editorWaveform.waveScale,
+  () => settings.settings.editorWaveform.waveChannels,
+  () => settings.settings.editorWaveform.waveColors,
   () => settings.themeRevision,
 ], scheduleDraw)
 
@@ -1048,7 +1080,7 @@ const curves: { value: Curve, label: string }[] = [
       @zoom="zoom"
       @fit="fit()"
     />
-    <!-- The waveform, and the level meter at its right. -->
+    <!-- Both displays share the canvas interactions and overlays. -->
     <div class="flex-1 min-h-0 flex">
     <div ref="box" class="relative flex-1 min-w-0 bg-card">
       <!-- Cut, copy and paste come as DOM events: the native Edit menu takes ⌘X/⌘C/⌘V before keydown. -->
@@ -1059,7 +1091,7 @@ const curves: { value: Curve, label: string }[] = [
             tabindex="0"
             class="absolute inset-0 size-full outline-none"
             :class="hoverBadge !== null ? 'cursor-pointer' : hoverEdge || hoverMarker ? 'cursor-ew-resize' : 'cursor-text'"
-            :aria-label="t('editor.waveform.label')"
+            :aria-label="t(isSpectrogram ? 'editor.spectrogram.label' : 'editor.waveform.label')"
             @mousedown="onMouseDown"
             @copy.prevent="editor.copy()"
             @cut.prevent="editor.cut()"
@@ -1170,17 +1202,26 @@ const curves: { value: Curve, label: string }[] = [
         </ContextMenuContent>
       </ContextMenu>
       <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-        <div ref="cursorEl" class="absolute left-0 bottom-0 w-px bg-foreground/60" :style="{ top: `${RULER}px` }" />
+        <div ref="cursorEl" class="absolute left-0 bottom-0 w-px" :class="isSpectrogram ? 'bg-white/60' : 'bg-foreground/60'" :style="{ top: `${RULER}px` }" />
         <div ref="hoverEl" class="absolute left-0 top-0 bottom-0" style="display: none">
-          <div class="absolute left-0 bottom-0 w-px bg-foreground/35" :style="{ top: `${RULER}px` }" />
+          <div class="absolute left-0 bottom-0 w-px" :class="isSpectrogram ? 'bg-white/35' : 'bg-foreground/35'" :style="{ top: `${RULER}px` }" />
           <span ref="hoverLabel" class="absolute top-px px-1 rounded-sm bg-foreground text-background text-[10px] leading-4 tabular whitespace-nowrap" />
         </div>
-        <div ref="playheadEl" class="absolute left-0 top-0 bottom-0 text-foreground" style="display: none">
+        <div ref="playheadEl" class="absolute left-0 top-0 bottom-0" :class="isSpectrogram ? 'text-white' : 'text-foreground'" style="display: none">
           <div class="absolute -left-px bottom-0 w-0.5 bg-current shadow-[0_0_0_1px_var(--card)]" :style="{ top: `${RULER}px` }" />
           <svg class="absolute -left-[5px]" :style="{ top: `${RULER - 7}px` }" width="10" height="7" viewBox="0 0 10 7">
             <path d="M0 0H10L5 7Z" fill="currentColor" />
           </svg>
         </div>
+      </div>
+      <div
+        v-if="isSpectrogram && spectrum && !spectrumError"
+        class="pointer-events-none absolute bottom-2 right-14 flex items-center gap-2 rounded bg-black/70 px-2 py-1 text-[10px] text-white/75 tabular"
+        :aria-label="t('editor.spectrogram.legend')"
+      >
+        <span>−100 dB</span>
+        <span class="w-12 h-1.5 rounded-full" style="background: linear-gradient(90deg, #080511, #6f2687, #e44f55, #fc9d39, #fcfabe)" />
+        <span>0 dB</span>
       </div>
       <div v-if="editor.loading" class="absolute inset-0 grid place-items-center text-muted-foreground text-sm">
         {{ t('editor.waveform.opening') }}
@@ -1192,31 +1233,35 @@ const curves: { value: Curve, label: string }[] = [
     <LevelMeter :active="editor.playhead !== null" />
     </div>
 
-    <footer class="h-9 shrink-0 pl-4 pr-2 flex items-center gap-4 border-t border-border text-xs text-muted-foreground tabular">
-      <span class="shrink-0">{{ t('editor.status.cursor', { time: status.cursor }) }}</span>
-      <button
-        v-if="vZoom > 1.01" class="shrink-0 hover:text-foreground"
-        :title="t('editor.status.vZoom')"
-        @click="vZoom = 1"
-      >
-        ↕ ×{{ formatNumber(vZoom, { fixed: 1 }) }}
-      </button>
-      <span v-if="status.selection" class="shrink-0">{{ t('editor.status.selection', { range: status.selection }) }}</span>
-      <button v-if="status.loop" class="shrink-0 hover:text-foreground" :title="t('editor.status.selectLoop')" @click="selectLoop()">
-        {{ t('editor.status.loop', { range: status.loop }) }}
-      </button>
-      <button
-        class="group min-w-0 flex-1 flex items-center justify-end gap-1.5 hover:text-foreground"
-        :title="`${editor.sample?.path}\n${t('editor.status.reveal')}`"
-        @click="editor.sample && revealItemInDir(editor.sample.path)"
-      >
-        <FolderOpen class="size-3.5 shrink-0" />
-        <span class="truncate group-hover:underline">{{ editor.sample ? shortPath(editor.sample.path) : '' }}</span>
-      </button>
-      <span class="shrink-0">{{ status.length }} · {{ formatRate(rate) }} · {{ editor.state?.channels === 1 ? t('common.channels.mono') : t('common.channels.stereo') }}</span>
-      <Separator orientation="vertical" class="h-4" />
+    <footer class="h-9 shrink-0 px-4 flex items-center gap-4 border-t border-border text-xs text-muted-foreground tabular">
+      <div class="min-w-0 flex-1 flex items-center gap-4 overflow-hidden">
+        <span class="shrink-0">{{ t('editor.status.cursor', { time: status.cursor }) }}</span>
+        <button
+          v-if="vZoom > 1.01" class="shrink-0 hover:text-foreground"
+          :title="t('editor.status.vZoom')"
+          @click="vZoom = 1"
+        >
+          ↕ ×{{ formatNumber(vZoom, { fixed: 1 }) }}
+        </button>
+        <span v-if="status.selection" class="min-w-0 truncate" :title="t('editor.status.selection', { range: status.selection })">{{ t('editor.status.selection', { range: status.selection }) }}</span>
+        <button v-if="status.loop" class="shrink-0 hover:text-foreground" :title="t('editor.status.selectLoop')" @click="selectLoop()">
+          {{ t('editor.status.loop', { range: status.loop }) }}
+        </button>
+        <button
+          class="group min-w-0 flex-1 flex items-center justify-end gap-1.5 hover:text-foreground"
+          :title="`${editor.sample?.path}\n${t('editor.status.reveal')}`"
+          @click="editor.sample && revealItemInDir(editor.sample.path)"
+        >
+          <FolderOpen class="size-3.5 shrink-0" />
+          <span class="truncate group-hover:underline">{{ editor.sample ? shortPath(editor.sample.path) : '' }}</span>
+        </button>
+        <span class="min-w-0 truncate">{{ status.length }} · {{ formatRate(rate) }} · {{ editor.state?.channels === 1 ? t('common.channels.mono') : t('common.channels.stereo') }}</span>
+      </div>
+      <Separator orientation="vertical" class="h-3" />
       <!-- View controls: beat grid, snapping, look and zoom. -->
-      <div class="shrink-0 flex items-center gap-1 text-foreground">
+      <div class="footer-controls shrink-0 flex items-center gap-1.5 text-foreground">
+        <EditorDisplayControls v-model="displayMode" :loading="spectrumLoading" :error="spectrumError" @retry="refreshSpectrum" />
+        <Separator orientation="vertical" class="mx-0.5 h-3" />
         <Hint :text="t('editor.toolbar.snapHint')" shortcut="S">
           <Toggle v-model="snap" size="sm" :class="toggleIcon" :disabled="gridMode === 'off'" :aria-label="t('editor.toolbar.snap')">
             <Magnet />
@@ -1237,7 +1282,7 @@ const curves: { value: Curve, label: string }[] = [
                   <DropdownMenuLabel class="text-xs text-muted-foreground font-normal">
                     {{ t(opt.label) }}
                   </DropdownMenuLabel>
-                  <DropdownMenuRadioGroup :model-value="settings.settings[opt.key]" @update:model-value="setView(opt.key, $event)">
+                  <DropdownMenuRadioGroup :model-value="settings.settings.editorWaveform[opt.key]" @update:model-value="setView(opt.key, $event)">
                     <DropdownMenuRadioItem v-for="c in opt.choices" :key="c.value" :value="c.value" @select.prevent>
                       {{ t(c.label) }}
                     </DropdownMenuRadioItem>
@@ -1272,7 +1317,7 @@ const curves: { value: Curve, label: string }[] = [
             </DropdownMenu>
           </span>
         </Hint>
-        <Separator orientation="vertical" class="mx-0.5 h-4" />
+        <Separator orientation="vertical" class="mx-0.5 h-3" />
         <Hint :text="t('editor.toolbar.zoomOut')" shortcut="−">
           <Button variant="ghost" size="icon-sm" @click="zoom(2)">
             <ZoomOut />
@@ -1292,3 +1337,16 @@ const curves: { value: Curve, label: string }[] = [
     </footer>
   </div>
 </template>
+
+<style scoped>
+.footer-controls :deep(button) {
+  width: 28px;
+  min-width: 28px;
+  height: 24px;
+  padding: 0;
+}
+.footer-controls :deep(button svg) {
+  width: 12px;
+  height: 12px;
+}
+</style>

@@ -15,6 +15,7 @@ mod loops;
 mod markers;
 mod slices;
 pub mod processing;
+pub mod spectrogram;
 pub use loops::{zero_crossing, Loop};
 pub use markers::{append_markers, Marker};
 pub use slices::{slices, SliceBy, Span};
@@ -75,6 +76,10 @@ pub enum Op {
 }
 
 impl Op {
+    fn changes_audio(&self) -> bool {
+        !matches!(self, Op::SetLoop { .. } | Op::ClearLoop | Op::SetMarkers { .. })
+    }
+
     fn range(&self) -> (usize, usize) {
         match *self {
             Op::Crop { start, end }
@@ -178,6 +183,8 @@ fn next_revision() -> u64 {
 /// An open file with its edit history.
 pub struct Session {
     revision: u64,
+    audio_revision: u64,
+    spectrum: Option<std::sync::Arc<spectrogram::Spectrogram>>,
     pub sample_id: i64,
     pub path: PathBuf,
     pub bit_depth: Option<u32>,
@@ -225,6 +232,8 @@ impl Session {
         let original_markers = markers::normalized(markers::read_markers(path), frames);
         Ok(Self {
             revision: next_revision(),
+            audio_revision: next_revision(),
+            spectrum: None,
             sample_id,
             path: path.to_path_buf(),
             bit_depth,
@@ -265,6 +274,27 @@ impl Session {
         Ok(())
     }
 
+    pub fn audio_revision(&self) -> u64 { self.audio_revision }
+
+    pub fn spectrogram(&self) -> Option<std::sync::Arc<spectrogram::Spectrogram>> {
+        self.spectrum.clone()
+    }
+
+    pub fn cache_spectrogram(&mut self, revision: u64, data: std::sync::Arc<spectrogram::Spectrogram>) -> Result<()> {
+        if self.audio_revision != revision {
+            return Err(Error::Other("the audio changed during spectrogram analysis".into()));
+        }
+        self.spectrum = Some(data);
+        Ok(())
+    }
+
+    fn invalidate_spectrogram(&mut self, op: &Op) {
+        if op.changes_audio() {
+            self.audio_revision = next_revision();
+            self.spectrum = None;
+        }
+    }
+
     pub fn markers(&self) -> &[Marker] {
         &self.current_markers
     }
@@ -285,6 +315,7 @@ impl Session {
 
     pub fn apply(&mut self, op: Op) {
         self.apply_op(&op);
+        self.invalidate_spectrogram(&op);
         self.ops.push(op);
         self.redo.clear();
         self.pyramid = OnceLock::new();
@@ -293,6 +324,7 @@ impl Session {
 
     pub fn undo(&mut self) {
         let Some(op) = self.ops.pop() else { return };
+        self.invalidate_spectrogram(&op);
         self.redo.push(op);
         // Re-render from the original: ops are cheap compared to keeping snapshots.
         self.current = Pcm {
@@ -313,6 +345,7 @@ impl Session {
     pub fn redo(&mut self) {
         if let Some(op) = self.redo.pop() {
             self.apply_op(&op);
+            self.invalidate_spectrogram(&op);
             self.ops.push(op);
             self.pyramid = OnceLock::new();
             self.revision = next_revision();

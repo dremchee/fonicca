@@ -29,6 +29,7 @@ import {
 } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { storeToRefs } from 'pinia'
+import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
@@ -162,6 +163,23 @@ async function deleteModel() {
 }
 
 type WaveKey = 'waveStyle' | 'waveScale' | 'waveChannels' | 'waveColors'
+const waveTargets = [
+  { value: 'preview', labelKey: 'settings.waveform.previewTab' },
+  { value: 'editor', labelKey: 'settings.waveform.editorTab' },
+] as const
+
+function waveSettings(target: 'preview' | 'editor') {
+  return target === 'editor' ? settings.value.editorWaveform : settings.value
+}
+
+function setWaveOption(target: 'preview' | 'editor', key: WaveKey, value: unknown) {
+  if (typeof value !== 'string' || !waveOptions.find(opt => opt.key === key)?.choices.some(c => c.value === value))
+    return
+  if (target === 'editor')
+    store.update({ editorWaveform: { ...settings.value.editorWaveform, [key]: value } })
+  else
+    store.update({ [key]: value })
+}
 const waveOptions: { key: WaveKey, titleKey: string, descKey: string, choices: { value: Settings[WaveKey], labelKey: string }[] }[] = [
   {
     key: 'waveStyle',
@@ -443,35 +461,47 @@ function keyLabel(k: string) {
 
           <!-- Waveform -->
           <template v-else-if="section === 'waveform'">
-            <section class="group-box">
-              <div v-for="opt in waveOptions" :key="opt.key" class="row">
-                <div class="row-text">
-                  <div class="row-title">
-                    {{ t(opt.titleKey) }}
-                  </div>
-                  <div class="row-desc">
-                    {{ t(opt.descKey) }}
-                  </div>
-                </div>
-                <ToggleGroup
-                  :model-value="settings[opt.key]"
-                  type="single"
-                  variant="outline"
-                  size="sm"
-                  @update:model-value="$event && store.update({ [opt.key]: $event })"
+            <TabsRoot default-value="preview" class="flex flex-col gap-4">
+              <TabsList class="inline-flex h-9 w-fit items-center rounded-md bg-muted p-1 text-muted-foreground" :aria-label="t('settings.nav.waveform')">
+                <TabsTrigger
+                  v-for="target in waveTargets" :key="target.value" :value="target.value"
+                  class="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
                 >
-                  <ToggleGroupItem v-for="c in opt.choices" :key="c.value" :value="c.value">
-                    {{ t(c.labelKey) }}
-                  </ToggleGroupItem>
-                </ToggleGroup>
-              </div>
-            </section>
-            <section class="group-box p-3 grid gap-2">
-              <div class="text-xs text-muted-foreground">
-                {{ t('settings.waveform.preview') }}
-              </div>
-              <WaveformPreview />
-            </section>
+                  {{ t(target.labelKey) }}
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent v-for="target in waveTargets" :key="target.value" :value="target.value" class="flex flex-col gap-4 outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=inactive]:hidden">
+                <section class="group-box">
+                  <div v-for="opt in waveOptions" :key="opt.key" class="row">
+                    <div class="row-text">
+                      <div class="row-title">
+                        {{ t(opt.titleKey) }}
+                      </div>
+                      <div class="row-desc">
+                        {{ t(opt.descKey) }}
+                      </div>
+                    </div>
+                    <ToggleGroup
+                      :model-value="waveSettings(target.value)[opt.key]"
+                      type="single"
+                      variant="outline"
+                      size="sm"
+                      @update:model-value="setWaveOption(target.value, opt.key, $event)"
+                    >
+                      <ToggleGroupItem v-for="c in opt.choices" :key="c.value" :value="c.value">
+                        {{ t(c.labelKey) }}
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                </section>
+                <section class="group-box p-3 grid gap-2">
+                  <div class="text-xs text-muted-foreground">
+                    {{ t('settings.waveform.preview') }}
+                  </div>
+                  <WaveformPreview :options="waveSettings(target.value)" />
+                </section>
+              </TabsContent>
+            </TabsRoot>
           </template>
 
           <!-- Analysis -->

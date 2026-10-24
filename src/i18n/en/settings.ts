@@ -47,6 +47,8 @@ export default {
     volumeDesc: 'Applies to previews only, not to files dragged into a DAW.',
   },
   waveform: {
+    previewTab: 'Preview',
+    editorTab: 'Editor',
     style: 'Style',
     styleDesc: 'Peaks + RMS shows the average level inside the peaks.',
     peaks: 'Peaks',

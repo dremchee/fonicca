@@ -36,13 +36,13 @@ useResizeObserver(box, (entries) => {
 const frames = () => editor.state?.frames ?? 0
 
 let request = 0
-watch([() => editor.revision, () => size.value.width, () => settings.settings.waveColors], async () => {
+watch([() => editor.revision, () => size.value.width, () => settings.settings.editorWaveform.waveColors], async () => {
   const n = frames()
   if (!n || !size.value.width)
     return
   const req = ++request
   const columns = Math.min(4096, Math.round(size.value.width * (window.devicePixelRatio || 1)))
-  const data = await editor.wave(0, n, columns, false, settings.settings.waveColors === 'frequency')
+  const data = await editor.wave(0, n, columns, false, settings.settings.editorWaveform.waveColors === 'frequency')
   if (req === request)
     wave.value = data
 }, { immediate: true })
@@ -66,7 +66,7 @@ function draw() {
     ctx.fillStyle = color('--primary-soft')
     ctx.fillRect(x(sel.start), 0, Math.max(1, x(sel.end) - x(sel.start)), h)
   }
-  const s = settings.settings
+  const s = settings.settings.editorWaveform
   drawWave(ctx, wave.value, { top: 0, width: w, height: h, dpr }, {
     style: s.waveStyle === 'bars' ? 'peaks' : s.waveStyle,
     scale: s.waveScale,

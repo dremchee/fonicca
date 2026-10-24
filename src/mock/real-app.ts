@@ -5,6 +5,7 @@ import { mockIPC } from '@tauri-apps/api/mocks'
 import { groups as fake } from './duplicates-data'
 import { batchCommand } from './batch'
 import { editorCommand } from './editor'
+import { spectrogram } from './spectrogram'
 
 const ROOT = '/Users/me/Projects/Sound/Source'
 let groups: DuplicateGroup[] = fake.map(g => ({
@@ -23,11 +24,12 @@ let hidden: HiddenFile[] = []
 let playStart: number | null = null
 let playFrom = 0
 let preferred: string[] = []
-let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], language: 'en', watchFolders: true, autoplay: true, volume: 1, analysisThreads: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' }
+let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], language: 'en', watchFolders: true, autoplay: true, volume: 1, analysisThreads: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme', editorWaveform: { waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' } }
 
 export function install() {
   mockIPC((cmd, args: any) => {
     switch (cmd) {
+      case 'editor_spectrogram': return new Promise(resolve => setTimeout(() => resolve(spectrogram(args.start, args.end, args.columns)), 80))
       case 'list_sources': return [{ id: 1, path: ROOT, sampleCount: 32187 }]
       case 'count_samples': return 0
       case 'list_samples': case 'sample_ids': case 'list_tags': case 'list_collections': return []

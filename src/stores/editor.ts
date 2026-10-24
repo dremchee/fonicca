@@ -10,6 +10,7 @@ import { confirm } from '@/composables/confirm'
 import { formatNumber } from '@/format'
 import { t } from '@/i18n'
 import { parseWave } from '@/waveform'
+import { parseSpectrogram } from '@/spectrogram'
 
 export type Curve = 'linear' | 'smooth' | 'exponential'
 
@@ -104,6 +105,7 @@ const editorApi = {
   wave: async (start: number, end: number, columns: number, split: boolean, bands: boolean): Promise<Wave> => {
     return parseWave(await invoke<ArrayBuffer>('editor_wave', { start, end, columns, split, bands }))
   },
+  spectrogram: async (start: number, end: number, columns: number) => parseSpectrogram(await invoke<ArrayBuffer>('editor_spectrogram', { start, end, columns })),
   slices: (start: number, end: number, by: SliceBy, zero: boolean) => invoke<Span[]>('editor_slices', { start, end, by, zero }),
   exportSlices: (spans: Span[]) => invoke<{ dir: string, count: number, inLibrary: boolean }>('editor_export_slices', { spans }),
   copy: (start: number, end: number) => invoke<ClipInfo | null>('editor_copy', { start, end }),
@@ -496,6 +498,7 @@ export const useEditorStore = defineStore('editor', () => {
     canOverwrite,
     init,
     wave: editorApi.wave,
+    spectrogram: editorApi.spectrogram,
     undo,
     redo,
     crop,

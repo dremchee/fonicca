@@ -49,6 +49,8 @@ export default {
     volumeDesc: 'Влияет только на прослушивание, а не на файлы, перетащенные в DAW.',
   },
   waveform: {
+    previewTab: 'Превью',
+    editorTab: 'Редактор',
     style: 'Стиль',
     styleDesc: 'Пики + RMS показывают средний уровень внутри пиков.',
     peaks: 'Пики',
