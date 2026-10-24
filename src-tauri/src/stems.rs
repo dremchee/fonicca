@@ -33,13 +33,15 @@ pub enum Model {
     #[default]
     Spleeter,
     ScnetLarge,
+    ScnetXlIhf,
 }
 impl Model {
-    pub const ALL: [Self; 2] = [Self::Spleeter, Self::ScnetLarge];
+    pub const ALL: [Self; 3] = [Self::Spleeter, Self::ScnetLarge, Self::ScnetXlIhf];
     pub fn id(self) -> &'static str {
         match self {
             Self::Spleeter => "spleeter",
             Self::ScnetLarge => "scnetLarge",
+            Self::ScnetXlIhf => "scnetXlIhf",
         }
     }
 }
@@ -240,8 +242,8 @@ fn separate_to_folder_with_model(
             hound::WavWriter::create(working.path.join(format!("{n}.wav")), spec).map_err(failure)
         })
         .collect::<Result<Vec<_>>>()?;
-    if model == Model::ScnetLarge {
-        let mut separator = scnet::Separator::load(model_dir)?;
+    if matches!(model, Model::ScnetLarge | Model::ScnetXlIhf) {
+        let mut separator = scnet::Separator::load_for(model_dir, model)?;
         separator.separate(&pcm, cancel, &progress, |stems| {
             for (writer, stem) in writers.iter_mut().zip(stems) {
                 for sample in stem {
@@ -401,6 +403,11 @@ mod tests {
     #[ignore = "requires SCNET_MODELS and STEM_AUDIO; full file write and cancellation"]
     fn scnet_file_export_keeps_original_and_cleans_cancelled_work() {
         check_file_export(Model::ScnetLarge, "SCNET_MODELS")
+    }
+    #[test]
+    #[ignore = "requires SCNET_XL_MODELS and STEM_AUDIO; XL full file write and cancellation"]
+    fn xl_file_export_keeps_original_and_cleans_cancelled_work() {
+        check_file_export(Model::ScnetXlIhf, "SCNET_XL_MODELS")
     }
     fn check_file_export(model: Model, model_env: &str) {
         let dir = tempfile::tempdir().unwrap();

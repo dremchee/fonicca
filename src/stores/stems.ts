@@ -6,15 +6,15 @@ import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref } from 'vue'
 export interface StemProgress { model: StemModel, running: boolean, stage: string, progress: number, error: string | null, cancelled: boolean, paths: string[], ids: number[], name: string }
 interface Status { progress: StemProgress, modelReady: boolean, downloadBytes: number }
-const initial = (): StemProgress => ({ model: 'scnetLarge', running: false, stage: '', progress: 0, error: null, cancelled: false, paths: [], ids: [], name: '' })
+const initial = (): StemProgress => ({ model: 'scnetXlIhf', running: false, stage: '', progress: 0, error: null, cancelled: false, paths: [], ids: [], name: '' })
 export const useStemsStore = defineStore('stems', () => {
   const open = ref(false)
-  const model = useLocalStorage<StemModel>('stems.model', 'scnetLarge')
-  if (model.value !== 'spleeter' && model.value !== 'scnetLarge') model.value = 'scnetLarge'
+  const model = useLocalStorage<StemModel>('stems.model', 'scnetXlIhf')
+  if (model.value !== 'spleeter' && model.value !== 'scnetLarge' && model.value !== 'scnetXlIhf') model.value = 'scnetXlIhf'
   const sample = ref<Sample | null>(null)
   const progress = ref(initial())
   const ready = ref(false)
-  const bytes = ref(78856560)
+  const bytes = ref(221482626)
   const error = ref('')
   const cancelling = ref(false)
   const starting = ref(false)
@@ -35,7 +35,7 @@ export const useStemsStore = defineStore('stems', () => {
     catch (e) { error.value = String(e) }
   }
   function setModel(value: unknown) {
-    if (starting.value || progress.value.running || (value !== 'spleeter' && value !== 'scnetLarge')) return
+    if (starting.value || progress.value.running || (value !== 'spleeter' && value !== 'scnetLarge' && value !== 'scnetXlIhf')) return
     model.value = value
     void load()
   }

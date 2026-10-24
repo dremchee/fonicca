@@ -35,6 +35,7 @@ async function edit(index: number) {
         <Select :model-value="stems.model" :disabled="stems.progress.running || stems.starting" @update:model-value="stems.setModel">
           <SelectTrigger id="stem-model"><SelectValue /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="scnetXlIhf">{{ t('stems.models.scnetXlIhf') }}</SelectItem>
             <SelectItem value="scnetLarge">{{ t('stems.models.scnetLarge') }}</SelectItem>
             <SelectItem value="spleeter">{{ t('stems.models.spleeter') }}</SelectItem>
           </SelectContent>

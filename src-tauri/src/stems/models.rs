@@ -1,4 +1,4 @@
-//! Pinned optional Spleeter and SCNet-large model packs. Downloaded separately from the app.
+//! Pinned optional Spleeter and SCNet model packs. Downloaded separately from the app.
 use super::{Model, check, failure};
 use crate::error::Result;
 use sha2::{Digest, Sha256};
@@ -43,10 +43,18 @@ const SCNET_FILES: [Artifact; 1] = [Artifact {
     size: SCNET_TOTAL,
     hash: "b2dc586a1e0e6c0afe4915e9057ea29111397b7bbf589edc3d85de91de79cd72",
 }];
+pub const XL_TOTAL: u64 = 221_482_626;
+const XL_REVISION: &str = "30b749fd691312b1e4b3f8fe79df0b51cde836cd";
+const XL_FILES: [Artifact; 1] = [Artifact {
+    name: "scnet_xl_wide_v5_fp32.onnx",
+    size: XL_TOTAL,
+    hash: "6e2e46b669fa368247afbe867aaa61317425f3f0568309fd6e0c79671c39f0b6",
+}];
 fn files(model: Model) -> &'static [Artifact] {
     match model {
         Model::Spleeter => &FILES,
         Model::ScnetLarge => &SCNET_FILES,
+        Model::ScnetXlIhf => &XL_FILES,
     }
 }
 #[cfg(test)]
@@ -57,6 +65,7 @@ pub fn directory_for(root: &Path, model: Model) -> PathBuf {
     root.join(match model {
         Model::Spleeter => "spleeter4-v1",
         Model::ScnetLarge => "scnet-large-v1",
+        Model::ScnetXlIhf => "scnet-xl-ihf-v1",
     })
 }
 #[cfg(test)]
@@ -72,6 +81,7 @@ pub fn total(model: Model) -> u64 {
     match model {
         Model::Spleeter => TOTAL,
         Model::ScnetLarge => SCNET_TOTAL,
+        Model::ScnetXlIhf => XL_TOTAL,
     }
 }
 fn valid(path: &Path, f: &Artifact) -> bool {
@@ -121,6 +131,15 @@ pub fn ensure_for(
             dir.join("NOTICE.txt"),
             include_str!("../../../docs/licenses/spleeter-onnx-NOTICE.txt"),
         )?;
+    } else if model == Model::ScnetXlIhf {
+        std::fs::write(
+            dir.join("LICENSE-code-MIT.txt"),
+            include_str!("../../../docs/licenses/scnet-MIT.txt"),
+        )?;
+        std::fs::write(
+            dir.join("NOTICE.txt"),
+            include_str!("../../../docs/licenses/scnet-xl-NOTICE.txt"),
+        )?;
     } else {
         std::fs::write(
             dir.join("LICENSE-MIT.txt"),
@@ -151,10 +170,16 @@ pub fn ensure_for(
                     "https://huggingface.co/audiojs/scnet-large/resolve/{SCNET_REVISION}/{}",
                     f.name
                 ),
+                Model::ScnetXlIhf => format!(
+                    "https://huggingface.co/Ryan5453/unblend/resolve/{XL_REVISION}/{}",
+                    f.name
+                ),
             };
             let response = ureq::get(&url)
                 .config()
-                .timeout_global(Some(std::time::Duration::from_secs(180)))
+                .timeout_global(Some(std::time::Duration::from_secs(
+                    if model == Model::ScnetXlIhf { 600 } else { 180 },
+                )))
                 .build()
                 .call()
                 .map_err(failure)?;
@@ -225,6 +250,27 @@ mod tests {
             "\"scnetLarge\""
         );
         assert!(serde_json::from_str::<Model>("\"unknown\"").is_err());
+    }
+    #[test]
+    #[ignore = "requires SCNET_XL_MODELS; checks the actual XL pack and install notices"]
+    fn xl_manifest_and_installation_are_verified() {
+        let cache = PathBuf::from(std::env::var("SCNET_XL_MODELS").unwrap());
+        let root = tempfile::tempdir().unwrap();
+        let dir = directory_for(root.path(), Model::ScnetXlIhf);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::hard_link(cache.join(XL_FILES[0].name), dir.join(XL_FILES[0].name)).unwrap();
+        let result = ensure_for(
+            root.path(),
+            Model::ScnetXlIhf,
+            &AtomicBool::new(false),
+            |_| {},
+        )
+        .unwrap();
+        assert_eq!(result, dir);
+        assert!(installed_for(root.path(), Model::ScnetXlIhf));
+        assert!(!installed_for(root.path(), Model::ScnetLarge));
+        assert!(dir.join("NOTICE.txt").is_file());
+        assert!(dir.join("LICENSE-code-MIT.txt").is_file());
     }
     #[test]
     fn checksum_rejects_corrupt_downloads_of_the_expected_size() {

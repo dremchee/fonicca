@@ -1,0 +1,20 @@
+SCNet XL IHF
+Original architecture: Weinan Tong and SCNet contributors (starrytong/SCNet).
+Code: MIT, Copyright (c) 2024 starrytong; see LICENSE-code-MIT.txt.
+Training and released XL IHF weights: Roman Solovyev / ZFTurbo,
+Music-Source-Separation-Training, release v1.0.15.
+Checkpoint: model_scnet_ep_36_sdr_10.0891.ckpt
+SHA-256: ac25975f0f5704f3d1a3c3c251505b7a0f417a22eafe82773440ee4f7e14b74f
+
+FP32 ONNX conversion and safe artifact packaging: Ryan5453/unblend (MIT code).
+https://huggingface.co/Ryan5453/unblend
+Revision: 30b749fd691312b1e4b3f8fe79df0b51cde836cd
+Artifact: scnet_xl_wide_v5_fp32.onnx
+The artifact metadata labels the weights unlicensed. The original architecture's
+code license and statements about starrytong's own weights do not automatically
+license ZFTurbo's separately trained checkpoint. No new weight license is claimed.
+Review weight and training-data rights before commercial distribution.
+
+Fonicca uses external rectangular STFT/iSTFT and the reference MSST segment scheme.
+Input normalization is disabled as required by the XL IHF training configuration.
+The approved FP32 reference is preserved without FP16/INT8 weight compression.

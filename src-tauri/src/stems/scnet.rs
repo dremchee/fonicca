@@ -1,6 +1,6 @@
-//! SCNet-large's complex STFT contract and bounded-memory overlapping segments.
+//! SCNet-large and XL IHF STFT contracts and bounded-memory overlapping segments.
 //! See docs/research/stem-separation.md for the pinned export and attribution.
-use super::{check, dsp::RATE, failure};
+use super::{Model, check, dsp::RATE, failure};
 use crate::{audio::Pcm, error::Result};
 use ort::{
     session::{Session, builder::GraphOptimizationLevel},
@@ -102,22 +102,76 @@ fn reconstruct(spec: &[f32], length: usize) -> Result<Vec<f32>> {
 
 pub struct Separator {
     session: Session,
+    model: Model,
 }
 impl Separator {
-    pub fn load(dir: &Path) -> Result<Self> {
+    pub fn load_for(dir: &Path, model: Model) -> Result<Self> {
+        let file = match model {
+            Model::ScnetLarge => "scnet-large.int8.onnx",
+            Model::ScnetXlIhf => "scnet_xl_wide_v5_fp32.onnx",
+            _ => return Err(failure("unsupported SCNet variant")),
+        };
         let threads = std::thread::available_parallelism().map_or(2, |n| n.get().min(4));
-        let session = Session::builder()
+        let mut builder = Session::builder()
             .map_err(failure)?
             .with_optimization_level(GraphOptimizationLevel::Level3)
             .map_err(failure)?
             .with_intra_threads(threads)
-            .map_err(failure)?
-            .commit_from_file(dir.join("scnet-large.int8.onnx"))
             .map_err(failure)?;
-        Ok(Self { session })
+        if model == Model::ScnetXlIhf {
+            builder = builder
+                .with_execution_providers([ort::ep::CPU::default()
+                    .with_arena_allocator(false)
+                    .build()])
+                .map_err(failure)?;
+        }
+        let session = builder.commit_from_file(dir.join(file)).map_err(failure)?;
+        Ok(Self { session, model })
     }
     fn segment(&mut self, pcm: &Pcm, cancel: &AtomicBool) -> Result<Vec<Vec<f32>>> {
         check(cancel)?;
+        if self.model == Model::ScnetXlIhf {
+            let spec = analyse(pcm)?;
+            let mut real = Vec::with_capacity(2 * PLANE);
+            let mut imag = Vec::with_capacity(2 * PLANE);
+            for ch in 0..2 {
+                real.extend_from_slice(&spec[2 * ch * PLANE..(2 * ch + 1) * PLANE]);
+                imag.extend_from_slice(&spec[(2 * ch + 1) * PLANE..(2 * ch + 2) * PLANE]);
+            }
+            let real = Tensor::from_array(([1usize, 2, BINS, FRAMES], real)).map_err(failure)?;
+            let imag = Tensor::from_array(([1usize, 2, BINS, FRAMES], imag)).map_err(failure)?;
+            let outputs = self
+                .session
+                .run(ort::inputs!["spec_real"=>real, "spec_imag"=>imag])
+                .map_err(failure)?;
+            check(cancel)?;
+            let (real_shape, real) = outputs["out_spec_real"]
+                .try_extract_tensor::<f32>()
+                .map_err(failure)?;
+            let (imag_shape, imag) = outputs["out_spec_imag"]
+                .try_extract_tensor::<f32>()
+                .map_err(failure)?;
+            let expected = [1, 4, 2, BINS as i64, FRAMES as i64];
+            if real_shape.as_ref() != expected
+                || imag_shape.as_ref() != expected
+                || real.iter().chain(imag).any(|v| !v.is_finite())
+            {
+                return Err(failure("invalid SCNet XL IHF model output"));
+            }
+            return [3usize, 0, 1, 2]
+                .into_iter()
+                .map(|source| {
+                    check(cancel)?;
+                    let mut packed = Vec::with_capacity(4 * PLANE);
+                    for ch in 0..2 {
+                        let offset = (source * 2 + ch) * PLANE;
+                        packed.extend_from_slice(&real[offset..offset + PLANE]);
+                        packed.extend_from_slice(&imag[offset..offset + PLANE]);
+                    }
+                    reconstruct(&packed, SEGMENT)
+                })
+                .collect();
+        }
         let input =
             Tensor::from_array(([1usize, 4, BINS, FRAMES], analyse(pcm)?)).map_err(failure)?;
         let outputs = self
@@ -152,9 +206,14 @@ impl Separator {
         progress: impl Fn(f64),
         emit: impl FnMut(&[Vec<f32>]) -> Result<()>,
     ) -> Result<()> {
-        demix(pcm, cancel, progress, emit, |segment| {
-            self.segment(segment, cancel)
-        })
+        demix(
+            pcm,
+            self.model == Model::ScnetLarge,
+            cancel,
+            progress,
+            emit,
+            |segment| self.segment(segment, cancel),
+        )
     }
 }
 
@@ -163,6 +222,7 @@ impl Separator {
 // immediately, so a ten-minute track doesn't allocate four whole-track outputs.
 fn demix(
     pcm: &Pcm,
+    normalize: bool,
     cancel: &AtomicBool,
     progress: impl Fn(f64),
     mut emit: impl FnMut(&[Vec<f32>]) -> Result<()>,
@@ -174,18 +234,25 @@ fn demix(
             "SCNet expects non-empty mono or stereo 44.1 kHz audio",
         ));
     }
-    let mono = |i: usize| {
-        pcm.samples[i * pcm.channels..(i + 1) * pcm.channels]
-            .iter()
-            .map(|v| *v as f64)
-            .sum::<f64>()
-            / pcm.channels as f64
+    // XL IHF was trained without external input normalization. Preserve its
+    // approved reference behavior rather than inheriting Large's normalization.
+    let (mean, std) = if normalize {
+        let mono = |i: usize| {
+            pcm.samples[i * pcm.channels..(i + 1) * pcm.channels]
+                .iter()
+                .map(|v| *v as f64)
+                .sum::<f64>()
+                / pcm.channels as f64
+        };
+        let mean = (0..n).map(mono).sum::<f64>() / n as f64;
+        let std = ((0..n).map(|i| (mono(i) - mean).powi(2)).sum::<f64>()
+            / n.saturating_sub(1).max(1) as f64)
+            .sqrt()
+            + 1e-8;
+        (mean, std)
+    } else {
+        (0.0, 1.0)
     };
-    let mean = (0..n).map(mono).sum::<f64>() / n as f64;
-    let std = ((0..n).map(|i| (mono(i) - mean).powi(2)).sum::<f64>()
-        / n.saturating_sub(1).max(1) as f64)
-        .sqrt()
-        + 1e-8;
     let border = if n > 2 * (SEGMENT - STEP) {
         SEGMENT - STEP
     } else {
@@ -314,6 +381,7 @@ mod tests {
             let mut out = Vec::new();
             demix(
                 &pcm,
+                true,
                 &AtomicBool::new(false),
                 |_| {},
                 |s| {
@@ -331,6 +399,37 @@ mod tests {
         }
     }
     #[test]
+    fn xl_pipeline_preserves_raw_level_and_dc_without_standardization() {
+        for n in [1, SEGMENT + STEP, 2 * SEGMENT] {
+            let pcm = Pcm {
+                samples: (0..n * 2)
+                    .map(|i| 0.13 + (i as f32 * 0.07).sin() * 0.2)
+                    .collect(),
+                channels: 2,
+                sample_rate: RATE,
+            };
+            let mut out = Vec::new();
+            demix(
+                &pcm,
+                false,
+                &AtomicBool::new(false),
+                |_| {},
+                |s| {
+                    out.extend_from_slice(&s[0]);
+                    Ok(())
+                },
+                |seg| Ok(vec![seg.samples.clone(); 4]),
+            )
+            .unwrap();
+            assert_eq!(out.len(), pcm.samples.len());
+            assert!(
+                out.iter()
+                    .zip(&pcm.samples)
+                    .all(|(a, b)| (a - b).abs() < 2e-6)
+            );
+        }
+    }
+    #[test]
     fn cancellation_prevents_inference_and_output() {
         let pcm = Pcm {
             samples: vec![0.1],
@@ -340,6 +439,7 @@ mod tests {
         assert!(
             demix(
                 &pcm,
+                true,
                 &AtomicBool::new(true),
                 |_| {},
                 |_| panic!("output after cancel"),
@@ -357,7 +457,12 @@ mod tests {
         crate::batch::resample(&mut pcm, RATE).unwrap();
         pcm.samples.truncate(8 * RATE as usize * pcm.channels);
         let started = std::time::Instant::now();
-        let mut model = Separator::load(Path::new(&dir)).unwrap();
+        let variant = if std::env::var("SCNET_VARIANT").as_deref() == Ok("xlIhf") {
+            Model::ScnetXlIhf
+        } else {
+            Model::ScnetLarge
+        };
+        let mut model = Separator::load_for(Path::new(&dir), variant).unwrap();
         let mut stems = vec![Vec::new(); 4];
         model
             .separate(
@@ -373,7 +478,7 @@ mod tests {
             )
             .unwrap();
         eprintln!(
-            "SCNet-large total={:?}; duration={}s",
+            "{variant:?} total={:?}; duration={}s",
             started.elapsed(),
             pcm.frames() as f64 / RATE as f64
         );
