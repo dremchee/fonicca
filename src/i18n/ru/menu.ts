@@ -3,13 +3,13 @@ import type en from '../en/menu'
 // Wording of the standard items as macOS shows them in Russian.
 export default {
   app: {
-    about: 'О программе Samplette',
+    about: 'О программе Fonicca',
     settings: 'Настройки…',
     services: 'Службы',
-    hide: 'Скрыть Samplette',
+    hide: 'Скрыть Fonicca',
     hideOthers: 'Скрыть остальные',
     showAll: 'Показать все',
-    quit: 'Завершить Samplette',
+    quit: 'Завершить Fonicca',
   },
   file: {
     title: 'Файл',

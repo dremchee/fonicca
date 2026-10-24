@@ -1436,6 +1436,40 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "77ce24cb58228fbb8aa041425bb1050850ac19177686ea6e0f41a70416f56fdb"
 
 [[package]]
+name = "fonicca"
+version = "0.1.0"
+dependencies = [
+ "ebur128",
+ "hound",
+ "lofty",
+ "notify",
+ "ort",
+ "rayon",
+ "realfft",
+ "regex",
+ "rodio",
+ "rubato",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "signalsmith-stretch",
+ "stratum-dsp",
+ "symphonia",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-drag",
+ "tauri-plugin-opener",
+ "tempfile",
+ "thiserror 2.0.21",
+ "trash",
+ "ureq",
+ "walkdir",
+ "xxhash-rust",
+]
+
+[[package]]
 name = "foreign-types"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3986,40 +4020,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "samplette"
-version = "0.1.0"
-dependencies = [
- "ebur128",
- "hound",
- "lofty",
- "notify",
- "ort",
- "rayon",
- "realfft",
- "regex",
- "rodio",
- "rubato",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2 0.11.1",
- "signalsmith-stretch",
- "stratum-dsp",
- "symphonia",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-drag",
- "tauri-plugin-opener",
- "tempfile",
- "thiserror 2.0.21",
- "trash",
- "ureq",
- "walkdir",
- "xxhash-rust",
 ]
 
 [[package]]

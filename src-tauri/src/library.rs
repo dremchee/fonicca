@@ -418,7 +418,7 @@ pub fn remove_from_collection(conn: &mut Connection, ids: &[i64], collection_id:
 
 // --- Export / import of user data ------------------------------------------
 
-const EXPORT_FORMAT: &str = "samplette-user-data";
+const EXPORT_FORMAT: &str = "fonicca-user-data";
 const EXPORT_VERSION: u32 = 1;
 
 /// Portable copy of everything the user added: favorites, tags and collections.
@@ -515,7 +515,7 @@ pub fn export_user_data(conn: &Connection) -> Result<UserData> {
 /// favorites, never removes anything.
 pub fn import_user_data(conn: &mut Connection, data: &UserData) -> Result<ImportReport> {
     if data.format != EXPORT_FORMAT || data.version > EXPORT_VERSION {
-        return Err(Error::Other("not a Samplette export or made by a newer version".into()));
+        return Err(Error::Other("not a Fonicca export or made by a newer version".into()));
     }
     let tx = conn.transaction()?;
     let mut report = ImportReport::default();

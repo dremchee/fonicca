@@ -24,7 +24,7 @@ const open = ref(true)
 const mode = ref<Mode>(matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
 
 const themes = ref<Theme[]>(clone(BUILT_IN))
-const activeId = ref('samplette')
+const activeId = ref('fonicca')
 const active = computed(() => themes.value.find(t => t.id === activeId.value) ?? themes.value[0]!)
 
 // --- Editing ------------------------------------------------------------------
@@ -108,12 +108,12 @@ async function back() {
 }
 
 async function remove(theme: Theme) {
-  const ok = await confirm({ title: `Delete “${theme.name}”?`, description: 'The Samplette theme is used instead if it is active.', action: 'Delete', destructive: true })
+  const ok = await confirm({ title: `Delete “${theme.name}”?`, description: 'The Fonicca theme is used instead if it is active.', action: 'Delete', destructive: true })
   if (!ok)
     return
   themes.value = themes.value.filter(t => t.id !== theme.id)
   if (activeId.value === theme.id)
-    activeId.value = 'samplette'
+    activeId.value = 'fonicca'
   if (editingId.value === theme.id) {
     editingId.value = null
     draft.value = null
@@ -122,10 +122,10 @@ async function remove(theme: Theme) {
 
 function exportTheme(theme: Theme) {
   const { id: _, builtIn: __, ...data } = theme
-  const blob = new Blob([JSON.stringify({ format: 'samplette-theme', version: 1, ...data }, null, 2)], { type: 'application/json' })
+  const blob = new Blob([JSON.stringify({ format: 'fonicca-theme', version: 1, ...data }, null, 2)], { type: 'application/json' })
   const a = document.createElement('a')
   a.href = URL.createObjectURL(blob)
-  a.download = `${theme.name}.samplette-theme.json`
+  a.download = `${theme.name}.fonicca-theme.json`
   a.click()
   URL.revokeObjectURL(a.href)
 }
@@ -138,8 +138,8 @@ async function importTheme(e: Event) {
   try {
     const data = JSON.parse(await file.text())
     const valid = (pal: unknown) => !!pal && COLOR_KEYS.every(k => typeof (pal as Palette)[k] === 'string' && isHex((pal as Palette)[k]))
-    if (data.format !== 'samplette-theme' || !valid(data.light) || !valid(data.dark))
-      throw new Error('not a Samplette theme')
+    if (data.format !== 'fonicca-theme' || !valid(data.light) || !valid(data.dark))
+      throw new Error('not a Fonicca theme')
     const theme: Theme = { id: newId(), name: uniqueName(String(data.name || 'Imported theme')), builtIn: false, light: data.light, dark: data.dark }
     themes.value.push(theme)
     activeId.value = theme.id

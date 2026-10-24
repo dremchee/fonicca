@@ -23,7 +23,7 @@ let hidden: HiddenFile[] = []
 let playStart: number | null = null
 let playFrom = 0
 let preferred: string[] = []
-let settings: any = { theme: 'system', colorTheme: 'samplette', customThemes: [], language: 'en', watchFolders: true, autoplay: true, volume: 1, analysisThreads: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' }
+let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], language: 'en', watchFolders: true, autoplay: true, volume: 1, analysisThreads: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' }
 
 export function install() {
   mockIPC((cmd, args: any) => {

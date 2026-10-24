@@ -14,9 +14,9 @@ export async function installAppMenu(openSettings: () => void) {
   const separator = () => item('Separator')
 
   const app = await Submenu.new({
-    text: 'Samplette',
+    text: 'Fonicca',
     items: [
-      await item({ About: { name: 'Samplette', version: await getVersion() } }, t('menu.app.about')),
+      await item({ About: { name: 'Fonicca', version: await getVersion() } }, t('menu.app.about')),
       await separator(),
       await MenuItem.new({
         id: 'settings',

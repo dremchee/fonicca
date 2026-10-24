@@ -607,7 +607,7 @@ function keyLabel(k: string) {
               </div>
               <div>
                 <div class="text-base font-semibold">
-                  Samplette
+                  Fonicca
                 </div>
                 <div v-if="info" class="text-muted-foreground tabular">
                   {{ t('settings.about.version', { version: info.version }) }}

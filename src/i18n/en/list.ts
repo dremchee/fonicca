@@ -21,7 +21,7 @@ export default {
   },
   empty: {
     noSamplesYet: 'No samples yet',
-    noSamplesYetText: 'Add a folder with samples to start. Files stay where they are — Samplette only indexes them.',
+    noSamplesYetText: 'Add a folder with samples to start. Files stay where they are — Fonicca only indexes them.',
     nothingMatches: 'Nothing matches',
     nothingMatchesText: 'Try another search or loosen the filters.',
     noFavorites: 'No favorites yet',
@@ -35,7 +35,7 @@ export default {
     scanning: 'Scanning…',
     scanningText: 'Samples show up here as the folder is indexed.',
     emptyFolder: 'No samples in this folder',
-    emptyFolderText: 'Samplette reads WAV, AIFF, FLAC, MP3, OGG, M4A and CAF files.',
+    emptyFolderText: 'Fonicca reads WAV, AIFF, FLAC, MP3, OGG, M4A and CAF files.',
     noSamples: 'No samples',
     addFolders: 'Add folders',
     clearSearch: 'Clear search',

@@ -148,7 +148,7 @@ onKeyStroke(',', (e) => {
 <template>
   <TooltipProvider :delay-duration="500" :skip-delay-duration="300">
     <!-- Sidebar and player sizes are in px and saved by the splitters (localStorage). -->
-    <ResizablePanelGroup direction="horizontal" auto-save-id="samplette-layout-columns" class="h-full">
+    <ResizablePanelGroup direction="horizontal" auto-save-id="fonicca-layout-columns" class="h-full">
       <ResizablePanel id="sidebar" :order="1" size-unit="px" :default-size="210" :min-size="170" :max-size="320">
         <SourceSidebar />
       </ResizablePanel>
@@ -180,7 +180,7 @@ onKeyStroke(',', (e) => {
             </span>
           </header>
           <FilterBar />
-          <ResizablePanelGroup direction="vertical" auto-save-id="samplette-layout-rows" class="min-h-0 flex-1">
+          <ResizablePanelGroup direction="vertical" auto-save-id="fonicca-layout-rows" class="min-h-0 flex-1">
             <ResizablePanel id="list" :order="1" :min-size="20" class="flex flex-col">
               <SampleList />
             </ResizablePanel>

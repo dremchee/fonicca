@@ -26,7 +26,7 @@ const { settings, mode } = storeToRefs(store)
 const themes = computed<Theme[]>(() => [...BUILT_IN, ...settings.value.customThemes.map(c => ({ ...c, builtIn: false }))])
 
 function themeName(theme: Pick<Theme, 'id' | 'name' | 'builtIn'>) {
-  return theme.builtIn ? t(`settings.themes.names.${theme.id as 'samplette'}`) : theme.name
+  return theme.builtIn ? t(`settings.themes.names.${theme.id as 'fonicca'}`) : theme.name
 }
 
 // Plain JSON data: a JSON round trip also unwraps Vue's reactive proxies.
@@ -139,7 +139,7 @@ const fileFilters = () => [{ name: t('settings.themes.fileFilter'), extensions: 
 
 async function exportTheme(theme: Theme | CustomTheme) {
   const name = 'builtIn' in theme ? themeName(theme) : theme.name
-  const path = await save({ title: t('settings.themes.exportTitle'), defaultPath: `${name}.samplette-theme.json`, filters: fileFilters() })
+  const path = await save({ title: t('settings.themes.exportTitle'), defaultPath: `${name}.fonicca-theme.json`, filters: fileFilters() })
   if (!path)
     return
   try {

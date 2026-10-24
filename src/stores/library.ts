@@ -416,7 +416,7 @@ export const useLibraryStore = defineStore('library', () => {
     const date = new Date().toISOString().slice(0, 10)
     const path = await save({
       title: t('list.dialogs.exportTitle'),
-      defaultPath: `samplette-${date}.json`,
+      defaultPath: `fonicca-${date}.json`,
       filters: [{ name: 'JSON', extensions: ['json'] }],
     })
     if (!path)

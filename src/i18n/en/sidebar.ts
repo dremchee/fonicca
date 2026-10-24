@@ -15,13 +15,13 @@ export default {
   deleteCollection: 'Delete collection',
   deleteTag: 'Delete tag',
   empty: {
-    folders: 'Add a folder with samples to start. Files stay where they are — Samplette only indexes them.',
+    folders: 'Add a folder with samples to start. Files stay where they are — Fonicca only indexes them.',
     collections: 'Right-click samples → Add to collection.',
     tags: 'Select samples and press T to tag them.',
   },
   confirmRemoveSource: {
     title: 'Remove “{name}” from the library?',
-    description: '{n} sample will disappear from Samplette. Files on disk are not touched. | {n} samples will disappear from Samplette. Files on disk are not touched.',
+    description: '{n} sample will disappear from Fonicca. Files on disk are not touched. | {n} samples will disappear from Fonicca. Files on disk are not touched.',
   },
   confirmDeleteCollection: {
     title: 'Delete collection “{name}”?',

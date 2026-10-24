@@ -31,8 +31,8 @@ const p = (background: string, surface: string, text: string, muted: string, bor
 
 export const BUILT_IN: Theme[] = [
   {
-    id: 'samplette',
-    name: 'Samplette',
+    id: 'fonicca',
+    name: 'Fonicca',
     builtIn: true,
     light: p('#f6f6f8', '#ffffff', '#1c1c22', '#6e6e7a', '#e1e1e8', '#6d4aff', '#d92d4a', '#8b8b99'),
     dark: p('#141418', '#1b1b21', '#e8e8ee', '#8d8d9a', '#2c2c35', '#8b6dff', '#ff5c77', '#5c5c6a'),

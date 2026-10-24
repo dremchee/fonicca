@@ -17,7 +17,7 @@ export const useDuplicatesStore = defineStore('duplicates', () => {
   const loading = ref(false)
   /** Groups that turned out different once their files were hashed whole. */
   const falseMatches = ref(0)
-  const rule = useStorage<KeepRule>('samplette-duplicates-rule', 'shortest')
+  const rule = useStorage<KeepRule>('fonicca-duplicates-rule', 'shortest')
   /** Folders whose copies always win, newest first. */
   const preferred = ref<string[]>([])
   /** Per-group choices made by hand (group key → copy id); they beat the rule and folders. */

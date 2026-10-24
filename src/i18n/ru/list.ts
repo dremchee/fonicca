@@ -23,7 +23,7 @@ export default {
   },
   empty: {
     noSamplesYet: 'Семплов пока нет',
-    noSamplesYetText: 'Добавьте папку с семплами, чтобы начать. Файлы остаются на месте — Samplette только индексирует их.',
+    noSamplesYetText: 'Добавьте папку с семплами, чтобы начать. Файлы остаются на месте — Fonicca только индексирует их.',
     nothingMatches: 'Ничего не найдено',
     nothingMatchesText: 'Измените запрос или ослабьте фильтры.',
     noFavorites: 'В избранном пока пусто',
@@ -37,7 +37,7 @@ export default {
     scanning: 'Сканирование…',
     scanningText: 'Семплы появятся здесь по мере индексации папки.',
     emptyFolder: 'В этой папке нет семплов',
-    emptyFolderText: 'Samplette читает файлы WAV, AIFF, FLAC, MP3, OGG, M4A и CAF.',
+    emptyFolderText: 'Fonicca читает файлы WAV, AIFF, FLAC, MP3, OGG, M4A и CAF.',
     noSamples: 'Нет семплов',
     addFolders: 'Добавить папки',
     clearSearch: 'Сбросить поиск',

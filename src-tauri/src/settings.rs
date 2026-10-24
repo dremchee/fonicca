@@ -63,8 +63,8 @@ pub struct CustomTheme {
     pub dark: Palette,
 }
 
-pub const BUILT_IN_THEMES: &[&str] = &["samplette", "graphite", "midnight", "tape", "moss", "neon"];
-const DEFAULT_THEME: &str = "samplette";
+pub const BUILT_IN_THEMES: &[&str] = &["fonicca", "graphite", "midnight", "tape", "moss", "neon"];
+const DEFAULT_THEME: &str = "fonicca";
 const MAX_CUSTOM_THEMES: usize = 200;
 const MAX_THEME_NAME: usize = 60;
 
@@ -190,9 +190,9 @@ impl Settings {
     }
 }
 
-const THEME_FILE_FORMAT: &str = "samplette-theme";
+const THEME_FILE_FORMAT: &str = "fonicca-theme";
 
-/// What a `.samplette-theme.json` file holds: a theme without its local id.
+/// What a `.fonicca-theme.json` file holds: a theme without its local id.
 #[derive(Serialize, Deserialize)]
 struct ThemeFile {
     format: String,
@@ -216,7 +216,7 @@ pub fn write_theme_file(path: &Path, theme: &CustomTheme) -> Result<()> {
 
 /// Reads a shared theme; the caller gives it an id. Errors on anything that is not a valid theme.
 pub fn read_theme_file(path: &Path) -> Result<CustomTheme> {
-    let invalid = || crate::error::Error::Other("not a Samplette theme".into());
+    let invalid = || crate::error::Error::Other("not a Fonicca theme".into());
     let file: ThemeFile = serde_json::from_slice(&std::fs::read(path)?).map_err(|_| invalid())?;
     if file.format != THEME_FILE_FORMAT {
         return Err(invalid());
@@ -312,7 +312,7 @@ mod tests {
 
     #[test]
     fn theme_files_round_trip_and_reject_other_json() {
-        let dir = std::env::temp_dir().join(format!("samplette-themes-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("fonicca-themes-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("t.json");
         let theme = CustomTheme { id: "x".into(), name: "Tape 2".into(), light: palette("#a8650b"), dark: palette("#e6a23c") };
@@ -327,7 +327,7 @@ mod tests {
 
     #[test]
     fn partial_and_out_of_range_files_load() {
-        let dir = std::env::temp_dir().join(format!("samplette-settings-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("fonicca-settings-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("settings.json");
         std::fs::write(&path, r#"{"volume": 3.5, "analysisThreads": 100000, "unknown": 1}"#).unwrap();

@@ -1,13 +1,13 @@
 // The native menu bar (macOS), with the standard items' usual wording.
 export default {
   app: {
-    about: 'About Samplette',
+    about: 'About Fonicca',
     settings: 'Settings…',
     services: 'Services',
-    hide: 'Hide Samplette',
+    hide: 'Hide Fonicca',
     hideOthers: 'Hide Others',
     showAll: 'Show All',
-    quit: 'Quit Samplette',
+    quit: 'Quit Fonicca',
   },
   file: {
     title: 'File',
