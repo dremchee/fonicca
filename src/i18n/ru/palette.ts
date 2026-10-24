@@ -13,6 +13,7 @@ export default {
   },
   play: 'Играть «{name}»',
   stop: 'Остановить «{name}»',
+  pause: 'Приостановить «{name}»',
   addFavorite: 'Добавить в избранное',
   removeFavorite: 'Убрать из избранного',
   addTag: 'Добавить тег…',

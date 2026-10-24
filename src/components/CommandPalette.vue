@@ -14,7 +14,6 @@ import {
   Play,
   Settings,
   Sparkles,
-  Square,
   Star,
   Tag,
   Upload,
@@ -98,8 +97,8 @@ function go(scope: Scope) {
 
           <CommandGroup v-if="focused" :heading="t('palette.groups.sample')">
             <CommandItem value="sample-play" @select="run(() => player.toggle(focused!))">
-              <component :is="player.playingId === focused.id ? Square : Play" />
-              {{ t(player.playingId === focused.id ? 'palette.stop' : 'palette.play', { name: focused.name }) }}
+              <component :is="player.isPlaying(focused.id) ? Pause : Play" />
+              {{ t(player.isPlaying(focused.id) ? 'palette.pause' : 'palette.play', { name: focused.name }) }}
               <CommandShortcut>{{ t('palette.spaceKey') }}</CommandShortcut>
             </CommandItem>
             <CommandItem value="sample-favorite" @select="run(() => library.toggleFavorite())">

@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import type { ComponentPublicInstance } from 'vue'
-import { Search } from '@lucide/vue'
 import { onKeyStroke } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
@@ -10,8 +8,7 @@ import CommandPalette from '@/components/CommandPalette.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DuplicatesView from '@/components/DuplicatesView.vue'
 import FilterBar from '@/components/FilterBar.vue'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
-import { Kbd } from '@/components/ui/kbd'
+import LibraryToolbar from '@/components/LibraryToolbar.vue'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -20,7 +17,6 @@ import SettingsDialog from '@/components/SettingsDialog.vue'
 import TrackInfoDialog from '@/components/TrackInfoDialog.vue'
 import SourceSidebar from '@/components/SourceSidebar.vue'
 import WaveformView from '@/components/WaveformView.vue'
-import { formatNumber } from '@/format'
 import { installAppMenu } from '@/menu'
 import { useDuplicatesStore } from '@/stores/duplicates'
 import { openEditor } from '@/stores/editor'
@@ -29,18 +25,17 @@ import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
 
-const { t, locale } = useI18n()
+const { locale } = useI18n()
 const library = useLibraryStore()
 const player = usePlayerStore()
 const settings = useSettingsStore()
 const duplicates = useDuplicatesStore()
 const paletteOpen = ref(false)
-const { query, total, focused, selectedIds } = storeToRefs(library)
+const { focused } = storeToRefs(library)
 // The selected sample, or the one playing once nothing is selected.
 const shownSample = computed(() => focused.value ?? player.playingSample ?? undefined)
-const searchInput = useTemplateRef<ComponentPublicInstance>('searchInput')
-// InputGroupInput renders a bare <input> as its root.
-const search = computed(() => searchInput.value?.$el as HTMLInputElement | undefined)
+const toolbar = useTemplateRef<InstanceType<typeof LibraryToolbar>>('toolbar')
+const search = computed(() => toolbar.value?.searchElement)
 
 onMounted(() => Promise.all([settings.init(), library.init(), duplicates.init()]))
 
@@ -52,9 +47,9 @@ const inDuplicates = computed(() => library.scope.kind === 'duplicates')
 
 // Typing in a field or working in an open menu, popover or dialog: global shortcuts stay out of the way.
 function isTyping(e: KeyboardEvent) {
-  if (inDuplicates.value)
+  if (inDuplicates.value || e.defaultPrevented)
     return true
-  if (e.target instanceof Element && e.target.closest('[role="menu"], [role="dialog"], [role="alertdialog"]'))
+  if (e.target instanceof Element && e.target.closest('button, a, [role="slider"], [role="checkbox"], [role="combobox"], [role="menu"], [role="dialog"], [role="alertdialog"]'))
     return true
   return e.target instanceof HTMLInputElement && e.target.type !== 'checkbox'
 }
@@ -157,28 +152,7 @@ onKeyStroke(',', (e) => {
       <ResizablePanel id="main" :order="2" as="main" size-unit="px" :min-size="520" class="min-w-0 flex flex-col">
         <DuplicatesView v-if="inDuplicates" />
         <template v-else>
-          <header class="h-11 shrink-0 px-3 flex items-center gap-3 border-b border-border" data-tauri-drag-region>
-            <InputGroup class="flex-1 max-w-md">
-              <InputGroupAddon>
-                <Search />
-              </InputGroupAddon>
-              <InputGroupInput
-                ref="searchInput"
-                v-model="query"
-                type="search"
-                :placeholder="t('list.search.placeholder')"
-                :aria-label="t('list.search.placeholder')"
-              />
-              <InputGroupAddon align="inline-end">
-                <Kbd>⌘F</Kbd>
-              </InputGroupAddon>
-            </InputGroup>
-            <span class="text-xs text-muted-foreground tabular" data-tauri-drag-region>
-              <template v-if="selectedIds.size > 1">{{ t('list.search.selected', { n: formatNumber(selectedIds.size) }) }} · </template>
-              {{ t('common.count.samples', { n: formatNumber(total) }, total) }}
-              <template v-if="library.isScanning"> · {{ t('list.search.scanning') }}</template>
-            </span>
-          </header>
+          <LibraryToolbar ref="toolbar" />
           <FilterBar />
           <ResizablePanelGroup direction="vertical" auto-save-id="fonicca-layout-rows" class="min-h-0 flex-1">
             <ResizablePanel id="list" :order="1" :min-size="20" class="flex flex-col">

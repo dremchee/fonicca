@@ -12,6 +12,8 @@ use crate::similar::Ranking;
 pub struct Filter {
     pub query: Option<String>,
     pub source_id: Option<i64>,
+    /// Include files in this directory and all its descendants.
+    pub directory: Option<String>,
     pub tag_id: Option<i64>,
     pub favorites: bool,
     pub collection_id: Option<i64>,
@@ -79,6 +81,35 @@ pub struct Tag {
     pub sample_count: i64,
 }
 
+#[derive(Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceFolder {
+    pub path: String,
+    pub sample_count: i64,
+}
+
+/// Directories containing indexed audio, including intermediate parents. Counts
+/// include descendants; no filesystem walk is needed when expanding the sidebar.
+pub fn source_folders(conn: &Connection, source_id: i64) -> Result<Vec<SourceFolder>> {
+    let root: Option<String> = conn.query_row(
+        "SELECT path FROM sources WHERE id = ?", [source_id], |r| r.get(0),
+    ).optional()?;
+    let Some(root) = root else { return Ok(Vec::new()) };
+    let root = std::path::Path::new(&root);
+    let mut counts = std::collections::BTreeMap::<String, i64>::new();
+    let mut stmt = conn.prepare("SELECT path FROM samples WHERE source_id = ?")?;
+    for path in stmt.query_map([source_id], |r| r.get::<_, String>(0))? {
+        let path = path?;
+        let mut parent = std::path::Path::new(&path).parent();
+        while let Some(dir) = parent {
+            if dir == root || !dir.starts_with(root) { break; }
+            *counts.entry(dir.to_string_lossy().into_owned()).or_default() += 1;
+            parent = dir.parent();
+        }
+    }
+    Ok(counts.into_iter().map(|(path, sample_count)| SourceFolder { path, sample_count }).collect())
+}
+
 /// Turns free text into an FTS5 query: every word must match as a prefix
 /// in the name, folder or tags.
 fn fts_query(text: &str) -> Option<String> {
@@ -97,6 +128,17 @@ fn where_clause(f: &Filter) -> (String, Vec<Box<dyn ToSql>>) {
     if let Some(id) = f.source_id {
         clauses.push("s.source_id = ?");
         args.push(Box::new(id));
+    }
+    if let Some(directory) = &f.directory {
+        // Literal prefix with a separator: pack does not match pack-old, and
+        // names containing SQL wildcard characters keep their literal meaning.
+        let mut prefix = directory.clone();
+        if !prefix.ends_with(std::path::MAIN_SEPARATOR) {
+            prefix.push(std::path::MAIN_SEPARATOR);
+        }
+        clauses.push("substr(s.path, 1, length(?)) = ?");
+        args.push(Box::new(prefix.clone()));
+        args.push(Box::new(prefix));
     }
     if let Some(id) = f.tag_id {
         clauses.push("s.id IN (SELECT sample_id FROM sample_tags WHERE tag_id = ?)");
@@ -593,6 +635,43 @@ mod tests {
 
     fn search(conn: &Connection, q: &str) -> Vec<i64> {
         ids(conn, &Filter { query: Some(q.into()), ..Default::default() }).unwrap()
+    }
+
+    #[test]
+    fn folder_tree_counts_descendants_and_omits_the_source_root() {
+        let conn = setup();
+        let folders = source_folders(&conn, 1).unwrap();
+        let entries: Vec<(&str, i64)> = folders.iter().map(|f| (f.path.as_str(), f.sample_count)).collect();
+        assert_eq!(entries, vec![
+            ("/lib/Ambient", 1), ("/lib/Café Sounds", 1),
+            ("/lib/Trap Pack", 2), ("/lib/Trap Pack/Drums", 2),
+        ]);
+        assert!(source_folders(&conn, 999).unwrap().is_empty());
+        conn.execute("DELETE FROM samples WHERE id = 1", []).unwrap();
+        assert_eq!(source_folders(&conn, 1).unwrap().last().unwrap().sample_count, 1);
+    }
+
+    #[test]
+    fn directory_filters_use_literal_component_boundaries_and_combine_with_search() {
+        let conn = setup();
+        for (id, path) in [(5, "/lib/Trap Pack-old/Other.wav"), (6, "/lib/100%_Pack/Hit.wav"), (7, "/lib/100xxPack/Hit.wav")] {
+            conn.execute(
+                "INSERT INTO samples (id, source_id, path, name, ext, size, mtime) VALUES (?, 1, ?, 'Hit', 'wav', 0, 0)",
+                params![id, path],
+            ).unwrap();
+        }
+        let mut filter = Filter { source_id: Some(1), directory: Some("/lib/Trap Pack".into()), ..Default::default() };
+        assert_eq!(ids(&conn, &filter).unwrap(), vec![1, 2]);
+        assert_eq!(count(&conn, &filter).unwrap(), 2);
+        filter.query = Some("snare".into());
+        assert_eq!(ids(&conn, &filter).unwrap(), vec![2]);
+        filter.query = None;
+        filter.directory = Some("/lib/100%_Pack/".into());
+        assert_eq!(ids(&conn, &filter).unwrap(), vec![6]);
+        filter.directory = Some("/lib/Café Sounds".into());
+        assert_eq!(ids(&conn, &filter).unwrap(), vec![4]);
+        filter.source_id = Some(999);
+        assert!(ids(&conn, &filter).unwrap().is_empty());
     }
 
     #[test]

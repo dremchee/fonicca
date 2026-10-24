@@ -90,9 +90,7 @@ export function editorCommand(cmd: string, args: any): unknown {
     case 'editor_wave': return wave(args.start, args.end, args.columns, args.split)
     case 'editor_apply':
       remember()
-      if (args.op.op === 'dcOffset')
-        processed = true
-      else if (args.op.op === 'setLoop')
+      if (args.op.op === 'setLoop')
         loop = { start: args.op.start, end: args.op.end }
       else if (args.op.op === 'clearLoop')
         loop = null

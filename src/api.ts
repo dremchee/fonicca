@@ -8,6 +8,11 @@ export interface Source {
   sampleCount: number
 }
 
+export interface SourceFolder {
+  path: string
+  sampleCount: number
+}
+
 /** Tags read from the file itself (ID3, Vorbis, MP4…); most samples have none. */
 export interface TrackTags {
   title: string | null
@@ -203,6 +208,7 @@ export interface ScanProgress {
 export interface SampleFilter {
   query?: string
   sourceId?: number | null
+  directory?: string | null
   tagId?: number | null
   favorites?: boolean
   collectionId?: number | null
@@ -222,6 +228,7 @@ export const DUPLICATES_VERIFIED_EVENT = 'duplicates-verified'
 
 export const api = {
   listSources: () => invoke<Source[]>('list_sources'),
+  sourceFolders: (sourceId: number) => invoke<SourceFolder[]>('source_folders', { sourceId }),
   addSource: (path: string) => invoke<number>('add_source', { path }),
   removeSource: (id: number) => invoke<void>('remove_source', { id }),
   rescanSource: (id: number) => invoke<void>('rescan_source', { id }),
@@ -278,6 +285,8 @@ export const api = {
   play: (id: number, start = 0, sync: { bpm: number | null, key: string | null } | null = null) =>
     invoke<Adjust>('play', { id, start, sync }),
   stop: () => invoke<void>('stop'),
+  pause: () => invoke<number | null>('pause'),
+  resume: () => invoke<boolean>('resume'),
   seek: (position: number) => invoke<void>('seek', { position }),
   playbackPosition: () => invoke<number | null>('playback_position'),
   /** `null` when nothing plays. */

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DuplicateCopy, DuplicateGroup } from '@/api'
-import { CircleCheck, EyeOff, FolderOpen, Pin, Play, Square, Trash2, X } from '@lucide/vue'
+import { CircleCheck, EyeOff, FolderOpen, Pin, Pause, Play, Trash2, X } from '@lucide/vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { onKeyStroke } from '@vueuse/core'
@@ -331,7 +331,7 @@ onKeyStroke(' ', (e) => {
                 :class="{
                   focused: focusedId === row.c.id,
                   extra: dup.keepOf(row.g).id !== row.c.id,
-                  playing: player.playingId === row.c.id,
+                  playing: player.isPlaying(row.c.id),
                 }"
                 :style="{ height: `${item.size}px`, transform: `translateY(${item.start}px)` }"
                 @click="focusedId = row.c.id"
@@ -348,10 +348,10 @@ onKeyStroke(' ', (e) => {
                   variant="ghost"
                   size="icon-xs"
                   class="rounded-full shrink-0"
-                  :aria-label="player.playingId === row.c.id ? t('common.actions.stop') : t('common.actions.play')"
+                  :aria-label="player.isPlaying(row.c.id) ? t('common.actions.pause') : t('common.actions.play')"
                   @click.stop="focusedId = row.c.id; player.toggle(row.c)"
                 >
-                  <component :is="player.playingId === row.c.id ? Square : Play" class="fill-current" />
+                  <component :is="player.isPlaying(row.c.id) ? Pause : Play" class="fill-current" />
                 </Button>
                 <span class="flex-1 min-w-0 truncate" :title="row.c.path">
                   <template v-for="(p, i) in segments(row.g, row.c)" :key="i">

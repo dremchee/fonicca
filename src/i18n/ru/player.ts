@@ -1,10 +1,14 @@
 import type en from '../en/player'
 
 export default {
+  seek: 'Позиция воспроизведения',
+  seekHint: 'Стрелки — перемотка, Shift — больший шаг, Home и End — начало и конец. Пробел — играть или приостановить.',
+  position: '{elapsed} из {duration}',
   space: 'Пробел',
   dragToDaw: 'Перетащите в DAW',
   edit: 'Редактировать',
   removeTag: 'Убрать тег {name}',
+  autoplayShort: 'Авто',
   autoplay: 'Автовоспроизведение',
   readingWaveform: 'Чтение формы волны…',
   samplePeak: 'Пиковый уровень',

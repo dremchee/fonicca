@@ -1,22 +1,25 @@
 <script setup lang="ts">
 import type { Sample, TrackTags } from '@/api'
 import type { Wave } from '@/stores/editor'
-import { FolderOpen, Info, Pencil, Play, Square, Star, X } from '@lucide/vue'
+import { FolderOpen, Pencil, Pause, Play, Star, Volume2, X } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { useResizeObserver } from '@vueuse/core'
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useId, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
 import Hint from '@/components/Hint.vue'
 import ProjectSync from '@/components/ProjectSync.vue'
+import SampleInfoHover from '@/components/SampleInfoHover.vue'
 import TagPicker from '@/components/TagPicker.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { openTrackInfo, trackInfoRevision } from '@/composables/trackInfo'
+import { Slider } from '@/components/ui/slider'
+import { trackInfoRevision } from '@/composables/trackInfo'
 import { categoryHint, categoryLabel, formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, kindLabel, shortPath, sourceHint } from '@/format'
+import { playbackSeekTarget } from '@/playback-navigation'
 import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
@@ -84,11 +87,24 @@ const wave = shallowRef<Wave | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 
+const seekHintId = useId()
+const seekPreview = ref<number | null>(null)
+const elapsed = computed(() => seekPreview.value ?? (player.playingId === props.sample?.id ? player.position : 0))
+watch(() => props.sample?.id, () => seekPreview.value = null)
+const elapsedLabel = computed(() => {
+  if ((props.sample?.duration ?? 0) < 10)
+    return formatDuration(elapsed.value)
+  const seconds = Math.max(0, Math.floor(elapsed.value))
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+})
+const volumeDrag = ref<number | null>(null)
+const volumePercent = computed(() => Math.round((volumeDrag.value ?? settings.settings.volume) * 100))
+
 const progress = computed(() => {
   const s = props.sample
-  if (!s?.duration || player.playingId !== s.id)
+  if (!s?.duration)
     return 0
-  return Math.min(1, player.position / s.duration)
+  return Math.min(1, Math.max(0, elapsed.value / s.duration))
 })
 
 useResizeObserver(box, (entries) => {
@@ -170,13 +186,39 @@ watchEffect(() => {
   dim.style.display = frequency && p > 0 ? '' : 'none'
 })
 
-function onSeek(e: MouseEvent) {
+async function commitSeek(position: number) {
   const s = props.sample
-  if (!s?.duration || !box.value)
+  if (!s?.duration)
     return
-  const rect = box.value.getBoundingClientRect()
-  const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
-  player.seek(s, ratio * s.duration)
+  seekPreview.value = Math.min(s.duration, Math.max(0, position))
+  const preview = seekPreview.value
+  try {
+    await player.seek(s, preview)
+  }
+  catch (error) {
+    player.error = String(error)
+  }
+  finally {
+    // A newer drag or another sample must keep its own preview.
+    if (props.sample?.id === s.id && seekPreview.value === preview)
+      seekPreview.value = null
+  }
+}
+
+function onSeekKeydown(e: KeyboardEvent) {
+  if (e.key === ' ') {
+    e.preventDefault()
+    if (props.sample)
+      player.toggle(props.sample)
+    return
+  }
+  if (e.metaKey || e.ctrlKey || e.altKey)
+    return
+  const target = playbackSeekTarget(e.key, elapsed.value, props.sample?.duration ?? 0, e.shiftKey)
+  if (target == null)
+    return
+  e.preventDefault()
+  commitSeek(target)
 }
 
 function onDragStart(e: DragEvent) {
@@ -188,11 +230,11 @@ function onDragStart(e: DragEvent) {
 
 <template>
   <!-- Hidden until a sample is selected, so the list gets the whole height. -->
-  <section v-if="sample" class="h-full bg-card flex flex-col">
-    <div class="h-12 px-3 flex items-center gap-3">
-      <Hint :text="player.playingId === sample.id ? t('common.actions.stop') : t('common.actions.play')" :shortcut="t('player.space')">
-        <Button size="icon-sm" class="rounded-full shrink-0" @click="player.toggle(sample)">
-          <component :is="player.playingId === sample.id ? Square : Play" class="fill-current" />
+  <section v-if="sample" class="player-panel h-full bg-card flex flex-col">
+    <div class="player-toolbar h-12 shrink-0 px-3 flex items-center gap-3">
+      <Hint :text="player.isPlaying(sample.id) ? t('common.actions.pause') : t('common.actions.play')" :shortcut="t('player.space')">
+        <Button size="icon-sm" class="rounded-full shrink-0" :aria-label="player.isPlaying(sample.id) ? t('common.actions.pause') : t('common.actions.play')" @click="player.toggle(sample)">
+          <component :is="player.isPlaying(sample.id) ? Pause : Play" class="fill-current" />
         </Button>
       </Hint>
       <div
@@ -214,18 +256,22 @@ function onDragStart(e: DragEvent) {
           </div>
         </div>
       </div>
+      <div class="shrink-0 tabular text-xs text-muted-foreground whitespace-nowrap">
+        <span class="text-foreground">{{ elapsedLabel }}</span>
+        <span class="mx-1">/</span>{{ formatDuration(sample.duration) }}
+      </div>
       <!-- Actions on the sample, then playback options. -->
       <div class="shrink-0 flex items-center gap-0.5">
         <Hint :text="sample.favorite ? t('list.favorite.remove') : t('list.favorite.add')" shortcut="F">
-          <Button variant="ghost" size="icon-sm" @click="library.toggleFavorite(sample)">
+          <Button
+            variant="ghost" size="icon-sm"
+            :aria-label="sample.favorite ? t('list.favorite.remove') : t('list.favorite.add')"
+            :aria-pressed="sample.favorite" @click="library.toggleFavorite(sample)"
+          >
             <Star :class="sample.favorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground'" />
           </Button>
         </Hint>
-        <Hint :text="t('trackInfo.edit')" shortcut="I">
-          <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('trackInfo.edit')" @click="openTrackInfo(sample)">
-            <Info />
-          </Button>
-        </Hint>
+        <SampleInfoHover :key="sample.id" :sample="sample" :tags="tags" :cover-url="coverUrl" />
         <Hint :text="t('player.edit')" shortcut="E">
           <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('player.edit')" @click="openEditor(sample)">
             <Pencil />
@@ -237,29 +283,45 @@ function onDragStart(e: DragEvent) {
         <ProjectSync />
         <Checkbox
           id="autoplay"
+          :aria-label="t('player.autoplay')"
           :model-value="player.autoplay"
           @update:model-value="player.autoplay = $event === true"
         />
-        <Label for="autoplay" class="text-muted-foreground font-normal">
-          {{ t('player.autoplay') }}
+        <Label for="autoplay" class="text-muted-foreground font-normal" :title="t('player.autoplay')">
+          <span class="autoplay-long">{{ t('player.autoplay') }}</span>
+          <span class="autoplay-short">{{ t('player.autoplayShort') }}</span>
         </Label>
       </div>
     </div>
-    <!-- Seeking listens on the box: the clipped canvases do not take clicks where cut away. -->
-    <div ref="box" class="relative flex-1 mx-3 rounded-md bg-background overflow-hidden cursor-pointer" @mousedown="onSeek">
+    <p :id="seekHintId" class="sr-only">{{ t('player.seekHint') }}</p>
+    <div ref="box" class="seek-surface relative flex-1 mx-3 rounded-md bg-background overflow-hidden cursor-pointer">
       <canvas ref="canvas" class="absolute inset-0 size-full" />
       <canvas ref="playedCanvas" class="absolute inset-0 size-full" aria-hidden="true" />
       <div ref="dimEl" class="pointer-events-none absolute inset-y-0 right-0 bg-background/50" style="display: none" />
-      <div v-if="loading" class="absolute inset-0 grid place-items-center text-muted-foreground text-xs">
+      <div
+        v-if="player.playingId === sample.id || seekPreview !== null"
+        class="pointer-events-none absolute inset-y-0 w-px bg-primary"
+        :style="{ left: `clamp(0px, ${progress * 100}%, calc(100% - 1px))` }"
+      />
+      <input
+        :key="sample.id" type="range" class="seek-input absolute inset-0 size-full opacity-0 cursor-pointer"
+        min="0" :max="sample.duration || 0" step="any" :value="elapsed" :disabled="!sample.duration"
+        :aria-label="t('player.seek')" :aria-describedby="seekHintId" :title="t('player.seekHint')"
+        :aria-valuetext="t('player.position', { elapsed: elapsedLabel, duration: formatDuration(sample.duration) })"
+        @input="seekPreview = Number(($event.target as HTMLInputElement).value)"
+        @change="commitSeek(Number(($event.target as HTMLInputElement).value))"
+        @keydown="onSeekKeydown" @pointercancel="seekPreview = null"
+      >
+      <div v-if="loading" class="pointer-events-none absolute inset-0 grid place-items-center text-muted-foreground text-xs">
         {{ t('player.readingWaveform') }}
       </div>
-      <div v-else-if="error" class="absolute inset-0 grid place-items-center text-destructive text-xs px-4 text-center">
+      <div v-else-if="error" class="pointer-events-none absolute inset-0 grid place-items-center text-destructive text-xs px-4 text-center">
         {{ error }}
       </div>
     </div>
     <!-- Status bar. One line tall: fields that do not fit wrap onto the hidden second line
          and drop out whole, least important (the last ones) first. -->
-    <div class="h-8 shrink-0 px-3 flex items-center gap-3 text-[11px] text-muted-foreground tabular">
+    <div class="h-8 shrink-0 px-3 flex items-center gap-3 text-xs text-muted-foreground tabular">
       <!-- The sample's own tags and the picker to add more; badges that do not fit drop out. -->
       <div class="shrink-0 max-w-[40%] min-w-0 flex items-center gap-1">
         <div v-if="sample.tags.length" class="min-w-0 h-5 flex flex-wrap items-center gap-1 overflow-hidden">
@@ -289,8 +351,18 @@ function onDragStart(e: DragEvent) {
         <span>{{ formatChannels(sample.channels) }}</span>
         <span>{{ formatSize(sample.size) }}</span>
       </div>
+      <div class="shrink-0 flex items-center gap-2 w-28">
+        <Volume2 class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+        <Slider
+          :model-value="[volumePercent]" :min="0" :max="100" :step="1"
+          :aria-label="t('settings.playback.volume')"
+          @update:model-value="volumeDrag = ($event?.[0] ?? 0) / 100"
+          @value-commit="settings.update({ volume: ($event[0] ?? 0) / 100 }).then(() => volumeDrag = null)"
+        />
+        <span class="w-7 shrink-0 text-right">{{ volumePercent }}%</span>
+      </div>
       <button
-        class="group min-w-0 max-w-[50%] flex items-center gap-1.5 hover:text-foreground"
+        class="group min-w-0 max-w-[25%] flex items-center gap-1.5 hover:text-foreground"
         :title="`${sample.path}\n${t('player.clickToReveal')}`"
         @click="revealItemInDir(sample.path)"
       >
@@ -303,3 +375,31 @@ function onDragStart(e: DragEvent) {
     </div>
   </section>
 </template>
+
+<style scoped>
+.player-panel {
+  container-type: inline-size;
+}
+.seek-input {
+  margin: 0;
+  touch-action: none;
+}
+.seek-surface:has(.seek-input:focus-visible) {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.autoplay-short {
+  display: none;
+}
+@container (max-width: 680px) {
+  .autoplay-long {
+    display: none;
+  }
+  .autoplay-short {
+    display: inline;
+  }
+  .player-toolbar {
+    gap: 8px;
+  }
+}
+</style>

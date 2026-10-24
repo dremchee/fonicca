@@ -1,0 +1,37 @@
+import type { ComputedRef } from 'vue'
+import type { ResizableSampleColumnId, SampleColumnWidths, SAMPLE_COLUMNS } from '@/sample-columns'
+import { useStorage } from '@vueuse/core'
+import { computed, shallowRef } from 'vue'
+import { boundedSampleColumnWidth, sampleTableLayout } from '@/sample-columns'
+
+export function useSampleColumnWidths(columns: ComputedRef<readonly typeof SAMPLE_COLUMNS[number][]>) {
+  const saved = useStorage<SampleColumnWidths>('fonicca-list-column-widths-v1', {})
+  const draft = shallowRef<{ id: ResizableSampleColumnId, width: number } | null>(null)
+  const tableStyle = computed(() => sampleTableLayout(columns.value, draft.value
+    ? { ...saved.value, [draft.value.id]: draft.value.width }
+    : saved.value))
+
+  function preview(id: ResizableSampleColumnId, width: number) {
+    draft.value = { id, width: boundedSampleColumnWidth(id, width) }
+  }
+  function commit(id: ResizableSampleColumnId, width: number) {
+    saved.value = { ...saved.value, [id]: boundedSampleColumnWidth(id, width) }
+    draft.value = null
+  }
+  function cancel() {
+    draft.value = null
+  }
+  function reset(id?: ResizableSampleColumnId) {
+    if (id) {
+      const next = { ...saved.value }
+      delete next[id]
+      saved.value = next
+    }
+    else {
+      saved.value = {}
+    }
+    cancel()
+  }
+
+  return { tableStyle, resizingColumn: computed(() => draft.value?.id), preview, commit, cancel, reset }
+}

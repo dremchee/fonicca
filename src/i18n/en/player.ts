@@ -1,8 +1,12 @@
 export default {
+  seek: 'Playback position',
+  seekHint: 'Arrow keys seek; hold Shift for larger steps. Home and End jump to the start and end. Space plays or pauses.',
+  position: '{elapsed} of {duration}',
   space: 'Space',
   dragToDaw: 'Drag into your DAW',
   edit: 'Edit',
   removeTag: 'Remove tag {name}',
+  autoplayShort: 'Auto',
   autoplay: 'Autoplay',
   readingWaveform: 'Reading waveform…',
   samplePeak: 'Sample peak',

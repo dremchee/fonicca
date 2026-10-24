@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Sample } from '@/api'
-import { AudioLines, CircleMinus, FolderOpen, Info, Layers, Pencil, Play, Square, Star, Tag, WandSparkles } from '@lucide/vue'
+import { AudioLines, CircleMinus, FolderOpen, Info, Layers, Pencil, Pause, Play, Star, Tag, WandSparkles } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -70,8 +70,8 @@ async function submitNew() {
 <template>
   <ContextMenuContent class="w-56" @close-auto-focus="onCloseAutoFocus">
     <ContextMenuItem @select="player.toggle(sample)">
-      <component :is="player.playingId === sample.id ? Square : Play" />
-      {{ player.playingId === sample.id ? t('common.actions.stop') : t('common.actions.play') }}
+      <component :is="player.isPlaying(sample.id) ? Pause : Play" />
+      {{ player.isPlaying(sample.id) ? t('common.actions.pause') : t('common.actions.play') }}
       <ContextMenuShortcut>{{ t('list.menu.space') }}</ContextMenuShortcut>
     </ContextMenuItem>
     <ContextMenuItem @select="openEditor(sample)">

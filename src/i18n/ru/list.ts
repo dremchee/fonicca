@@ -2,11 +2,26 @@ import type en from '../en/list'
 
 export default {
   search: {
+    entireLibrary: 'Поиск по всей библиотеке',
+    inScope: 'Поиск в «{name}»',
     placeholder: 'Поиск семплов',
     selected: 'выбрано: {n}',
     scanning: 'сканирование…',
   },
+  collectionPicker: {
+    button: 'В коллекцию',
+    placeholder: 'Найти или создать коллекцию…',
+    empty: 'Введите название новой коллекции.',
+    create: 'Создать «{name}» и добавить',
+    selectSamples: 'Выберите семплы для добавления в коллекцию',
+  },
   columns: {
+    resize: 'Ширина колонки «{name}»',
+    resizeHint: 'Потяните границу, чтобы изменить ширину. Двойной щелчок — сброс. Стрелки — шаг 10 пикселей, Shift — 40.',
+    resetWidths: 'Сбросить ширину колонок',
+    configure: 'Колонки',
+    required: 'всегда',
+    reset: 'Вернуть по умолчанию',
     name: 'Имя',
     tags: 'Теги',
     category: 'Категория',

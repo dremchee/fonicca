@@ -11,6 +11,7 @@ export default {
   },
   play: 'Play “{name}”',
   stop: 'Stop “{name}”',
+  pause: 'Pause “{name}”',
   addFavorite: 'Add to favorites',
   removeFavorite: 'Remove from favorites',
   addTag: 'Add tag…',

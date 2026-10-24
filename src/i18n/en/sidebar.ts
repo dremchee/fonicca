@@ -5,6 +5,8 @@ export default {
   favorites: 'Favorites',
   duplicates: 'Duplicates',
   folders: 'Folders',
+  expandFolder: 'Expand {name}',
+  collapseFolder: 'Collapse {name}',
   collections: 'Collections',
   tags: 'Tags',
   scanning: 'scanning…',
@@ -16,7 +18,7 @@ export default {
   deleteTag: 'Delete tag',
   empty: {
     folders: 'Add a folder with samples to start. Files stay where they are — Fonicca only indexes them.',
-    collections: 'Right-click samples → Add to collection.',
+    collections: 'Keep sounds together for tracks and projects.',
     tags: 'Select samples and press T to tag them.',
   },
   confirmRemoveSource: {

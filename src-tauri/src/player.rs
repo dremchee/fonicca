@@ -163,6 +163,22 @@ impl Player {
         self.current.lock().unwrap().take();
     }
 
+    /// Keep the decoder and its exact source position for a later resume.
+    pub fn pause(&self) -> Option<f64> {
+        let timing = *self.timing.lock().unwrap();
+        let guard = self.current.lock().unwrap();
+        let player = guard.as_ref().filter(|p| !p.empty())?;
+        player.pause();
+        Some(timing.source_time(player.get_pos().as_secs_f64()))
+    }
+
+    pub fn resume(&self) -> bool {
+        let guard = self.current.lock().unwrap();
+        let Some(player) = guard.as_ref().filter(|p| !p.empty()) else { return false };
+        player.play();
+        true
+    }
+
     pub fn seek(&self, pos: f64) -> Result<()> {
         if let Some(p) = self.current.lock().unwrap().as_ref() {
             let t = *self.timing.lock().unwrap();
@@ -175,7 +191,7 @@ impl Player {
     /// Peak and RMS per channel since the last call, as heard (volume applied);
     /// `None` when nothing is playing.
     pub fn levels(&self) -> Option<Levels> {
-        let playing = self.current.lock().unwrap().as_ref().is_some_and(|p| !p.empty());
+        let playing = self.current.lock().unwrap().as_ref().is_some_and(|p| !p.empty() && !p.is_paused());
         playing.then(|| self.meter.drain(*self.volume.lock().unwrap()))
     }
 
@@ -191,5 +207,45 @@ impl Player {
             }
             None => None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pause_keeps_the_source_position_and_resume_continues_the_same_buffer() {
+        // Drive a mixer manually: no sound device or wall-clock sleeps needed.
+        let (mixer, mut output) = rodio::mixer::mixer(
+            std::num::NonZero::new(1).unwrap(), std::num::NonZero::new(48000).unwrap(),
+        );
+        let sink = RodioPlayer::connect_new(&mixer);
+        sink.append(rodio::buffer::SamplesBuffer::new(
+            std::num::NonZero::new(1).unwrap(), std::num::NonZero::new(48000).unwrap(), vec![0.25; 48000],
+        ));
+        let player = Player {
+            mixer: Some(mixer), current: Mutex::new(Some(sink)), volume: Mutex::new(1.0),
+            timing: Mutex::new(Timing { scale: 0.5, offset: 2.0, loop_len: None }), meter: Arc::default(),
+        };
+        for _ in 0..4800 { output.next(); }
+        let paused_at = player.pause().unwrap();
+        assert!(paused_at > 2.0);
+        assert!(player.current.lock().unwrap().as_ref().unwrap().is_paused());
+        for _ in 0..4800 { output.next(); }
+        // Rodio applies controls and publishes position at 5 ms boundaries.
+        // Once that boundary is processed, paused playback cannot advance.
+        let settled = player.position().unwrap();
+        assert!((settled - paused_at).abs() <= 0.005 * 0.5 + f64::EPSILON);
+        for _ in 0..4800 { output.next(); }
+        assert_eq!(player.position(), Some(settled));
+        assert!(player.levels().is_none());
+        assert!(player.resume());
+        for _ in 0..4800 { output.next(); }
+        assert!(player.position().unwrap() > paused_at);
+        player.stop();
+        assert_eq!(player.position(), None);
+        assert_eq!(player.pause(), None);
+        assert!(!player.resume());
     }
 }

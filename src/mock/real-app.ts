@@ -23,6 +23,7 @@ let groups: DuplicateGroup[] = fake.map(g => ({
 let hidden: HiddenFile[] = []
 let playStart: number | null = null
 let playFrom = 0
+let playLoaded = false
 let preferred: string[] = []
 let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], language: 'en', watchFolders: true, autoplay: true, volume: 1, analysisThreads: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme', editorWaveform: { waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' } }
 
@@ -31,6 +32,12 @@ export function install() {
     switch (cmd) {
       case 'editor_spectrogram': return new Promise(resolve => setTimeout(() => resolve(spectrogram(args.start, args.end, args.columns)), 80))
       case 'list_sources': return [{ id: 1, path: ROOT, sampleCount: 32187 }]
+      case 'source_folders': return [
+        { path: `${ROOT}/Drums`, sampleCount: 240 },
+        { path: `${ROOT}/Drums/Kicks`, sampleCount: 120 },
+        { path: `${ROOT}/Drums/Snares`, sampleCount: 120 },
+        { path: `${ROOT}/Loops`, sampleCount: 84 },
+      ]
       case 'count_samples': return 0
       case 'list_samples': case 'sample_ids': case 'list_tags': case 'list_collections': return []
       case 'analysis_status': return { pending: 0, pendingEmbeddings: 0, modelReady: false, paused: false, updated: [] }
@@ -71,9 +78,22 @@ export function install() {
         preferred = args.preferred ? [args.path, ...preferred.filter(p => p !== args.path)] : preferred.filter(p => p !== args.path)
         return null
       // Playback: time runs from the play call; levels mimic a kick on every beat at 120 BPM.
-      case 'editor_play': playStart = performance.now(); playFrom = args.start / 48000; return null
-      case 'play': playStart = performance.now(); playFrom = args.start ?? 0; return { stretch: 1, semitones: 0 }
-      case 'stop': playStart = null; return null
+      case 'editor_play': playLoaded = true; playStart = performance.now(); playFrom = args.start / 48000; return null
+      case 'play': playLoaded = true; playStart = performance.now(); playFrom = args.start ?? 0; return { stretch: 1, semitones: 0 }
+      case 'stop': playLoaded = false; playStart = null; return null
+      case 'pause':
+        if (!playLoaded) return null
+        if (playStart !== null) playFrom += (performance.now() - playStart) / 1000
+        playStart = null
+        return playFrom
+      case 'resume':
+        if (!playLoaded) return false
+        playStart = performance.now()
+        return true
+      case 'seek':
+        playFrom = args.position
+        if (playStart !== null) playStart = performance.now()
+        return null
       case 'playback_position': return playStart === null ? null : playFrom + (performance.now() - playStart) / 1000
       case 'playback_levels': {
         if (playStart === null)

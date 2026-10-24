@@ -12,6 +12,7 @@ export default {
     save: 'Сохранить',
     showInFinder: 'Показать в Finder',
     play: 'Играть',
+    pause: 'Пауза',
     stop: 'Стоп',
   },
   count: {

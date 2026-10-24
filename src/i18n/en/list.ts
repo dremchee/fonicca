@@ -1,10 +1,25 @@
 export default {
   search: {
+    entireLibrary: 'Search entire library',
+    inScope: 'Search in “{name}”',
     placeholder: 'Search samples',
     selected: '{n} selected',
     scanning: 'scanning…',
   },
+  collectionPicker: {
+    button: 'Collect',
+    placeholder: 'Find or create a collection…',
+    empty: 'Type a name to create a collection.',
+    create: 'Create “{name}” and add',
+    selectSamples: 'Select samples to add to a collection',
+  },
   columns: {
+    resize: 'Width of {name} column',
+    resizeHint: 'Drag to resize. Double-click to reset. Arrow keys adjust by 10 pixels; Shift by 40.',
+    resetWidths: 'Reset column widths',
+    configure: 'Columns',
+    required: 'always shown',
+    reset: 'Reset to default',
     name: 'Name',
     tags: 'Tags',
     category: 'Category',

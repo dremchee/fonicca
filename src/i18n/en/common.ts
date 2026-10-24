@@ -11,6 +11,7 @@ export default {
     save: 'Save',
     showInFinder: 'Show in Finder',
     play: 'Play',
+    pause: 'Pause',
     stop: 'Stop',
   },
   count: {

@@ -7,6 +7,8 @@ export default {
   favorites: 'Избранное',
   duplicates: 'Дубликаты',
   folders: 'Папки',
+  expandFolder: 'Развернуть «{name}»',
+  collapseFolder: 'Свернуть «{name}»',
   collections: 'Коллекции',
   tags: 'Теги',
   scanning: 'сканирование…',
@@ -18,7 +20,7 @@ export default {
   deleteTag: 'Удалить тег',
   empty: {
     folders: 'Добавьте папку с семплами, чтобы начать. Файлы остаются на своих местах — Fonicca только индексирует их.',
-    collections: 'Правый клик по семплам → Добавить в коллекцию.',
+    collections: 'Собирайте семплы для треков и проектов.',
     tags: 'Выделите семплы и нажмите T, чтобы добавить тег.',
   },
   confirmRemoveSource: {

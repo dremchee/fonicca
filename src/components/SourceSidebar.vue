@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import type { Scope } from '@/stores/library'
-import { FolderOpen, FolderPlus, Pencil, Plus, RefreshCw, Settings, Trash2, X } from '@lucide/vue'
+import { ChevronRight, FolderOpen, FolderPlus, Pencil, Plus, RefreshCw, Settings, Trash2, X } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { storeToRefs } from 'pinia'
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import Hint from '@/components/Hint.vue'
+import SourceDirectories from '@/components/SourceDirectories.vue'
 import { Button } from '@/components/ui/button'
 import {
   ContextMenu,
@@ -35,9 +36,39 @@ const editInput = ref<HTMLInputElement[]>([])
 const creatingCollection = ref(false)
 const newCollection = ref('')
 const newCollectionInput = ref<HTMLInputElement | null>(null)
+const expandedSources = ref(new Set<number>())
+const loadingSources = ref(new Set<number>())
+
+watch(scope, (current) => {
+  if (current.kind === 'source' && current.path)
+    expandedSources.value.add(current.id)
+}, { immediate: true })
+
+async function toggleSource(id: number) {
+  if (expandedSources.value.has(id)) {
+    expandedSources.value.delete(id)
+    return
+  }
+  expandedSources.value.add(id)
+  if (library.sourceFolders.has(id))
+    return
+  loadingSources.value.add(id)
+  try {
+    await library.loadSourceFolders(id)
+  }
+  catch (e) {
+    expandedSources.value.delete(id)
+    toast.error(String(e))
+  }
+  finally {
+    loadingSources.value.delete(id)
+  }
+}
 
 function isActive(s: Scope) {
   const cur = scope.value
+  if (s.kind === 'source')
+    return cur.kind === 'source' && cur.id === s.id && cur.path === s.path
   return cur.kind === s.kind && ('id' in s ? 'id' in cur && cur.id === s.id : true)
 }
 
@@ -117,6 +148,7 @@ function onCreateKeydown(e: KeyboardEvent) {
 
 // Right-click on a folder, collection or tag row opens one shared menu for it.
 const menuTarget = ref<{ kind: 'source' | Editable, id: number } | null>(null)
+const menuDirectory = ref<string | null>(null)
 const menuSource = computed(() => {
   const m = menuTarget.value
   return m?.kind === 'source' ? sources.value.find(s => s.id === m.id) : undefined
@@ -138,6 +170,7 @@ function onContextMenu(e: MouseEvent) {
     return
   }
   menuTarget.value = { kind: kind as 'source' | Editable, id: Number(id) }
+  menuDirectory.value = row?.dataset.directoryPath ?? null
 }
 
 // Renaming focuses an input, so it waits until the menu has given focus back.
@@ -258,33 +291,54 @@ async function confirmDeleteTag(id: number) {
           <h3 class="section">
             {{ t('sidebar.folders') }}
           </h3>
-          <div
-            v-for="s in sources" :key="s.id"
-            class="row group" :class="{ active: isActive({ kind: 'source', id: s.id }) }"
-            :data-menu="`source:${s.id}`"
-            @click="scope = { kind: 'source', id: s.id }"
-          >
-            <span class="i-lucide-folder shrink-0" />
-            <Hint :text="s.path" side="right">
-              <span class="flex-1 truncate">{{ folderName(s.path) }}</span>
-            </Hint>
-            <span v-if="progressLabel(s.id)" class="text-[11px] text-primary tabular">{{ progressLabel(s.id) }}</span>
-            <template v-else>
-              <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ formatNumber(s.sampleCount) }}</span>
-              <span class="hidden group-hover:flex gap-0.5">
-                <Hint :text="t('sidebar.rescan')">
-                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('sidebar.rescan')" @click.stop="library.rescanSource(s.id)">
-                    <RefreshCw />
-                  </Button>
-                </Hint>
-                <Hint :text="t('sidebar.removeFromLibrary')">
-                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" :aria-label="t('sidebar.removeFromLibrary')" @click.stop="confirmRemoveSource(s.id)">
-                    <X />
-                  </Button>
-                </Hint>
-              </span>
-            </template>
-          </div>
+          <template v-for="s in sources" :key="s.id">
+            <div
+              class="row group" :class="{ active: isActive({ kind: 'source', id: s.id }) }"
+              :data-menu="`source:${s.id}`"
+              @click="scope = { kind: 'source', id: s.id }"
+            >
+              <button
+                v-if="!library.sourceFolders.has(s.id) || library.sourceFolders.get(s.id)?.length"
+                class="grid size-4 shrink-0 place-items-center rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                :aria-expanded="expandedSources.has(s.id)" :aria-busy="loadingSources.has(s.id)"
+                :aria-label="t(expandedSources.has(s.id) ? 'sidebar.collapseFolder' : 'sidebar.expandFolder', { name: folderName(s.path) })"
+                @click.stop="toggleSource(s.id)"
+              >
+                <ChevronRight class="size-3 transition-transform" :class="{ 'rotate-90': expandedSources.has(s.id) }" />
+              </button>
+              <span v-else class="size-4 shrink-0" />
+              <span class="i-lucide-folder shrink-0" />
+              <Hint :text="s.path" side="right">
+                <button
+                  class="min-w-0 flex-1 truncate rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  :aria-current="isActive({ kind: 'source', id: s.id }) ? 'page' : undefined"
+                  @click.stop="scope = { kind: 'source', id: s.id }"
+                >
+                  {{ folderName(s.path) }}
+                </button>
+              </Hint>
+              <span v-if="progressLabel(s.id)" class="text-[11px] text-primary tabular">{{ progressLabel(s.id) }}</span>
+              <template v-else>
+                <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ formatNumber(s.sampleCount) }}</span>
+                <span class="hidden group-hover:flex gap-0.5">
+                  <Hint :text="t('sidebar.rescan')">
+                    <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('sidebar.rescan')" @click.stop="library.rescanSource(s.id)">
+                      <RefreshCw />
+                    </Button>
+                  </Hint>
+                  <Hint :text="t('sidebar.removeFromLibrary')">
+                    <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" :aria-label="t('sidebar.removeFromLibrary')" @click.stop="confirmRemoveSource(s.id)">
+                      <X />
+                    </Button>
+                  </Hint>
+                </span>
+              </template>
+            </div>
+            <SourceDirectories
+              v-if="expandedSources.has(s.id)" :source-id="s.id" :root-path="s.path"
+              :folders="library.sourceFolders.get(s.id) ?? []"
+            />
+          </template>
           <p v-if="!sources.length" class="px-2 py-2 text-muted-foreground text-xs leading-relaxed">
             {{ t('sidebar.empty.folders') }}
           </p>
@@ -342,9 +396,12 @@ async function confirmDeleteTag(id: number) {
               @blur="commitCreateCollection"
             >
           </div>
-          <p v-else-if="!collections.length" class="px-2 py-2 text-muted-foreground text-xs leading-relaxed">
-            {{ t('sidebar.empty.collections') }}
-          </p>
+          <div v-else-if="!collections.length" class="px-2 py-2 flex flex-col items-start gap-2">
+            <p class="text-muted-foreground text-xs leading-relaxed">{{ t('sidebar.empty.collections') }}</p>
+            <Button variant="outline" size="sm" class="max-w-full" @click="startCreateCollection">
+              <Plus /> <span class="truncate">{{ t('sidebar.newCollection') }}</span>
+            </Button>
+          </div>
 
           <h3 class="section">
             {{ t('sidebar.tags') }}
@@ -394,12 +451,12 @@ async function confirmDeleteTag(id: number) {
             <RefreshCw />
             {{ t('sidebar.rescan') }}
           </ContextMenuItem>
-          <ContextMenuItem @select="revealItemInDir(menuSource.path)">
+          <ContextMenuItem @select="revealItemInDir(menuDirectory ?? menuSource.path)">
             <FolderOpen />
             {{ t('common.actions.showInFinder') }}
           </ContextMenuItem>
-          <ContextMenuSeparator />
-          <ContextMenuItem variant="destructive" @select="removeSourceFromMenu">
+          <ContextMenuSeparator v-if="!menuDirectory" />
+          <ContextMenuItem v-if="!menuDirectory" variant="destructive" @select="removeSourceFromMenu">
             <X />
             {{ t('sidebar.removeFromLibrary') }}
           </ContextMenuItem>

@@ -1,7 +1,10 @@
-import type { AnalysisProgress, Collection, DownloadProgress, Sample, SampleFilter, SampleKind, ScanProgress, SoundModelStatus, Source, Tag } from '@/api'
+import type { AnalysisProgress, Collection, DownloadProgress, Sample, SampleFilter, SampleKind, ScanProgress, SoundModelStatus, Source, SourceFolder, Tag } from '@/api'
 import { listen } from '@tauri-apps/api/event'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { acceptHMRUpdate, defineStore } from 'pinia'
+import { StorageSerializers, useStorage } from '@vueuse/core'
+import type { LibrarySession } from '@/library-session'
+import { findSessionSampleIndex, parseLibrarySession, resolveSessionScope, sessionScope } from '@/library-session'
 import { computed, reactive, ref, shallowReactive, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { ANALYSIS_PROGRESS_EVENT, api, MODEL_DOWNLOAD_EVENT, SCAN_PROGRESS_EVENT, startFileDrag } from '@/api'
@@ -20,7 +23,7 @@ function countSamples(n: number) {
 export type Scope
   = | { kind: 'all' }
     | { kind: 'favorites' }
-    | { kind: 'source', id: number }
+    | { kind: 'source', id: number, path?: string }
     | { kind: 'tag', id: number }
     | { kind: 'collection', id: number }
     /** Samples that sound like `id`, most similar first. */
@@ -30,8 +33,15 @@ export type Scope
 
 export const useLibraryStore = defineStore('library', () => {
   const sources = ref<Source[]>([])
+  const sourceFolders = shallowReactive(new Map<number, SourceFolder[]>())
   const tags = ref<Tag[]>([])
   const collections = ref<Collection[]>([])
+  const lastSession = useStorage<LibrarySession | null>('fonicca-library-session-v1', null, undefined, {
+    serializer: StorageSerializers.object, flush: 'sync', listenToStorageChanges: false,
+  })
+  let sessionReady = false
+  let restoringSession = true
+  let navigationRevision = 0
   const scope = ref<Scope>({ kind: 'all' })
   const query = ref('')
   const kindFilter = ref<SampleKind | null>(null)
@@ -68,6 +78,7 @@ export const useLibraryStore = defineStore('library', () => {
     return {
       query: query.value,
       sourceId: s.kind === 'source' ? s.id : null,
+      directory: s.kind === 'source' ? s.path ?? null : null,
       tagId: s.kind === 'tag' ? s.id : null,
       favorites: s.kind === 'favorites',
       collectionId: s.kind === 'collection' ? s.id : null,
@@ -118,7 +129,7 @@ export const useLibraryStore = defineStore('library', () => {
 
   /** Reloads rows and count. Selection is kept unless the filter itself changed. */
   async function refresh({ keepSelection = false } = {}) {
-    generation++
+    const gen = ++generation
     pages.clear()
     pending.clear()
     if (!keepSelection) {
@@ -127,7 +138,10 @@ export const useLibraryStore = defineStore('library', () => {
       selectedIds.clear()
     }
     try {
-      total.value = await api.countSamples(filter.value)
+      const count = await api.countSamples(filter.value)
+      if (gen !== generation)
+        return
+      total.value = count
     }
     catch (e) {
       // E.g. "find similar" without the sound model: go back to where we were.
@@ -155,7 +169,28 @@ export const useLibraryStore = defineStore('library', () => {
       scope.value = scopeBeforeSimilar
   }
 
-  watch(filter, () => refresh())
+  watch(filter, () => {
+    navigationRevision++
+    if (!restoringSession)
+      refresh()
+  }, { flush: 'sync' })
+
+  function rememberSelection(sample: Sample, index: number) {
+    const current = sessionScope(scope.value)
+    if (sessionReady && current)
+      lastSession.value = { scope: current, sample: { id: sample.id, index } }
+  }
+
+  watch(scope, (value) => {
+    const current = sessionScope(value)
+    if (!sessionReady || !current)
+      return
+    const previous = parseLibrarySession(lastSession.value)
+    lastSession.value = {
+      scope: current,
+      sample: JSON.stringify(previous?.scope) === JSON.stringify(current) ? previous?.sample ?? null : null,
+    }
+  }, { flush: 'sync', deep: true })
 
   const hasAnalysisFilters = computed(() =>
     kindFilter.value !== null || bpmMin.value !== null || bpmMax.value !== null || keyFilter.value !== null
@@ -256,6 +291,7 @@ export const useLibraryStore = defineStore('library', () => {
       anchorIndex.value = index
     }
     focusIndex.value = index
+    rememberSelection(sample, index)
   }
 
   /** Moves keyboard focus; with `extend` grows the selection from the anchor. */
@@ -273,6 +309,9 @@ export const useLibraryStore = defineStore('library', () => {
       setSelection(s ? [s.id] : [])
       anchorIndex.value = index
     }
+    const sample = sampleAt(index)
+    if (sample)
+      rememberSelection(sample, index)
   }
 
   async function selectAll() {
@@ -453,6 +492,17 @@ export const useLibraryStore = defineStore('library', () => {
 
   async function loadSources() {
     sources.value = await api.listSources()
+    for (const id of sourceFolders.keys()) {
+      if (!sources.value.some(s => s.id === id))
+        sourceFolders.delete(id)
+    }
+    await Promise.all([...sourceFolders.keys()].map(loadSourceFolders))
+  }
+
+  async function loadSourceFolders(id: number) {
+    const folders = await api.sourceFolders(id)
+    if (sources.value.some(s => s.id === id))
+      sourceFolders.set(id, folders)
   }
 
   async function addSources() {
@@ -505,11 +555,60 @@ export const useLibraryStore = defineStore('library', () => {
       if (payload.changes > 0)
         await Promise.all([loadSources(), loadTags(), loadCollections(), refresh({ keepSelection: true })])
     })
-    await Promise.all([loadSources(), loadTags(), loadCollections(), refresh()])
+    await Promise.all([loadSources(), loadTags(), loadCollections()])
+    const saved = parseLibrarySession(lastSession.value)
+    const canRestore = navigationRevision === 0
+    if (saved && canRestore) {
+      let restored = resolveSessionScope(saved.scope, sources.value, tags.value, collections.value)
+      if (restored.kind === 'source' && restored.path) {
+        const sourceScope = restored
+        try {
+          await loadSourceFolders(sourceScope.id)
+          restored = resolveSessionScope(sourceScope, sources.value, tags.value, collections.value, sourceFolders.get(sourceScope.id))
+        }
+        catch {
+          restored = { kind: 'source', id: sourceScope.id }
+        }
+      }
+      // User navigation during folder loading takes precedence over the saved view.
+      if (navigationRevision === 0)
+        scope.value = restored
+    }
+    const restoreRevision = navigationRevision
+    restoringSession = false
+    const loading = refresh()
+    const gen = generation
+    await loading
+    try {
+      if (saved?.sample && canRestore && navigationRevision === restoreRevision && gen === generation) {
+        const currentFilter = filter.value
+        const index = await findSessionSampleIndex(saved.sample, total.value, async (index) => {
+          await ensureRange(index, index)
+          return gen === generation ? sampleAt(index)?.id : undefined
+        }, () => gen === generation ? api.sampleIds(currentFilter) : Promise.resolve([]))
+        if (index >= 0 && gen === generation) {
+          await ensureRange(index, index)
+          if (gen === generation && sampleAt(index)?.id === saved.sample.id)
+            await clickRow(index)
+        }
+      }
+    }
+    catch (error) {
+      // A stale bookmark must never prevent the library from opening.
+      console.warn('Could not restore the last sample', error)
+    }
+    finally {
+      sessionReady = true
+      const current = sessionScope(scope.value)
+      if (current)
+        lastSession.value = { scope: current, sample: focused.value ? { id: focused.value.id, index: focusIndex.value } : null }
+    }
   }
 
   return {
     sources,
+    sourceFolders,
+    loadSourceFolders,
     tags,
     collections,
     scope,

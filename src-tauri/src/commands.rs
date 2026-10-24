@@ -36,6 +36,11 @@ pub fn list_sources(state: State<'_, AppState>) -> Result<Vec<Source>> {
 }
 
 #[tauri::command]
+pub fn source_folders(state: State<'_, AppState>, source_id: i64) -> Result<Vec<library::SourceFolder>> {
+    library::source_folders(&state.db.lock().unwrap(), source_id)
+}
+
+#[tauri::command]
 pub fn add_source(state: State<'_, AppState>, path: String) -> Result<i64> {
     if !PathBuf::from(&path).is_dir() {
         return Err(Error::Other(format!("not a folder: {path}")));
@@ -374,6 +379,16 @@ pub async fn play(
 #[tauri::command]
 pub fn stop(state: State<'_, AppState>) {
     state.player.stop();
+}
+
+#[tauri::command]
+pub fn pause(state: State<'_, AppState>) -> Option<f64> {
+    state.player.pause()
+}
+
+#[tauri::command]
+pub fn resume(state: State<'_, AppState>) -> bool {
+    state.player.resume()
 }
 
 #[tauri::command]
