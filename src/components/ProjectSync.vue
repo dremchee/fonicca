@@ -66,63 +66,66 @@ const applied = computed(() => {
 </script>
 
 <template>
-  <Popover>
-    <Hint :text="applied ? t('sync.hintApplied', { applied }) : t('sync.hint')">
-      <PopoverTrigger as-child>
-        <Button
-          variant="ghost" size="sm"
-          :class="enabled ? 'text-primary' : 'text-muted-foreground'"
-          :aria-label="t('sync.ariaLabel')"
-        >
-          <Metronome />
-          {{ enabled ? label : t('sync.button') }}
-        </Button>
-      </PopoverTrigger>
-    </Hint>
-    <PopoverContent class="w-64 grid gap-3" align="end">
-      <div class="flex items-center justify-between gap-2">
-        <Label for="project-sync">{{ t('sync.match') }}</Label>
-        <Switch id="project-sync" :model-value="enabled" @update:model-value="enabled = $event" />
-      </div>
-      <p class="text-xs text-muted-foreground leading-relaxed">
-        {{ t('sync.description') }}
-      </p>
-      <div class="flex items-center justify-between gap-2">
-        <Label for="project-bpm" class="font-normal">{{ t('sync.tempo') }}</Label>
-        <Input
-          id="project-bpm" type="number" min="20" max="400" placeholder="BPM"
-          class="h-8 w-24 num" :model-value="settings.settings.projectBpm ?? ''" @change="setBpm"
-        />
-      </div>
-      <div class="flex items-center justify-between gap-2">
-        <Label class="font-normal">{{ t('sync.key') }}</Label>
-        <Select v-model="key">
-          <SelectTrigger size="sm" class="w-24" :aria-label="t('sync.projectKey')">
-            <SelectValue>{{ key === NONE ? t('sync.none') : key }}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem :value="NONE">
-              {{ t('sync.none') }}
-            </SelectItem>
-            <SelectSeparator />
-            <SelectGroup>
-              <SelectLabel>{{ t('sync.major') }}</SelectLabel>
-              <SelectItem v-for="n in notes" :key="n" :value="n">
-                {{ n }}
-              </SelectItem>
-            </SelectGroup>
-            <SelectSeparator />
-            <SelectGroup>
-              <SelectLabel>{{ t('sync.minor') }}</SelectLabel>
-              <SelectItem v-for="n in notes" :key="`${n}m`" :value="`${n}m`">
-                {{ n }}m
-              </SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-      </div>
-    </PopoverContent>
-  </Popover>
+  <!-- The tooltip wraps the whole picker: inside it, it would take the popup's anchor. -->
+  <Hint :text="applied ? t('sync.hintApplied', { applied }) : t('sync.hint')">
+    <span class="inline-flex">
+      <Popover>
+        <PopoverTrigger as-child>
+          <Button
+            variant="ghost" size="sm"
+            :class="enabled ? 'text-primary' : 'text-muted-foreground'"
+            :aria-label="t('sync.ariaLabel')"
+          >
+            <Metronome />
+            {{ enabled ? label : t('sync.button') }}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent class="w-64 grid gap-3" align="end">
+          <div class="flex items-center justify-between gap-2">
+            <Label for="project-sync">{{ t('sync.match') }}</Label>
+            <Switch id="project-sync" :model-value="enabled" @update:model-value="enabled = $event" />
+          </div>
+          <p class="text-xs text-muted-foreground leading-relaxed">
+            {{ t('sync.description') }}
+          </p>
+          <div class="flex items-center justify-between gap-2">
+            <Label for="project-bpm" class="font-normal">{{ t('sync.tempo') }}</Label>
+            <Input
+              id="project-bpm" type="number" min="20" max="400" placeholder="BPM"
+              class="h-8 w-24 num" :model-value="settings.settings.projectBpm ?? ''" @change="setBpm"
+            />
+          </div>
+          <div class="flex items-center justify-between gap-2">
+            <Label class="font-normal">{{ t('sync.key') }}</Label>
+            <Select v-model="key">
+              <SelectTrigger size="sm" class="w-24" :aria-label="t('sync.projectKey')">
+                <SelectValue>{{ key === NONE ? t('sync.none') : key }}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem :value="NONE">
+                  {{ t('sync.none') }}
+                </SelectItem>
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel>{{ t('sync.major') }}</SelectLabel>
+                  <SelectItem v-for="n in notes" :key="n" :value="n">
+                    {{ n }}
+                  </SelectItem>
+                </SelectGroup>
+                <SelectSeparator />
+                <SelectGroup>
+                  <SelectLabel>{{ t('sync.minor') }}</SelectLabel>
+                  <SelectItem v-for="n in notes" :key="`${n}m`" :value="`${n}m`">
+                    {{ n }}m
+                  </SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </span>
+  </Hint>
 </template>
 
 <style scoped>

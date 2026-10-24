@@ -541,24 +541,24 @@ const curves: { value: Curve, label: string }[] = [
           <FadeIcon direction="out" :curve="editor.curve" />
         </Button>
       </Hint>
-      <!-- Curve picker shown as the curve itself; the items name it too. The tooltip sits
-           on a wrapper: on the trigger itself it would take the select's anchor away. -->
-      <Select v-model="editor.curve">
-        <Hint :text="t('editor.toolbar.fadeCurve')">
-          <span class="inline-flex">
+      <!-- Curve picker shown as the curve itself; the items name it too. -->
+      <!-- The tooltip wraps the whole picker: inside it, it would take the popup's anchor. -->
+      <Hint :text="t('editor.toolbar.fadeCurve')">
+        <span class="inline-flex">
+          <Select v-model="editor.curve">
             <SelectTrigger size="sm" class="gap-1 px-2 border-transparent bg-transparent shadow-none dark:bg-transparent hover:bg-accent" :aria-label="t('editor.toolbar.fadeCurve')">
               <SelectValue>
                 <FadeIcon :curve="editor.curve" class="size-4 text-foreground" />
               </SelectValue>
             </SelectTrigger>
-          </span>
-        </Hint>
-        <SelectContent>
-          <SelectItem v-for="c in curves" :key="c.value" :value="c.value">
-            <FadeIcon :curve="c.value" class="size-4" /> {{ t(c.label) }}
-          </SelectItem>
-        </SelectContent>
-      </Select>
+            <SelectContent>
+              <SelectItem v-for="c in curves" :key="c.value" :value="c.value">
+                <FadeIcon :curve="c.value" class="size-4" /> {{ t(c.label) }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+        </span>
+      </Hint>
       <Separator orientation="vertical" class="mx-1 h-5" />
       <Hint :text="t('editor.toolbar.normalizeHint')">
         <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.normalize')" @click="editor.normalize()">
@@ -648,50 +648,53 @@ const curves: { value: Curve, label: string }[] = [
             <Magnet />
           </Toggle>
         </Hint>
-        <DropdownMenu>
-          <Hint :text="t('editor.toolbar.view')">
-            <DropdownMenuTrigger as-child>
-              <Button variant="ghost" size="icon-sm" class="data-[state=open]:bg-accent" :aria-label="t('editor.toolbar.view')">
-                <SlidersHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-          </Hint>
-          <DropdownMenuContent align="end" side="top" class="w-52">
-            <template v-for="(opt, i) in viewOptions" :key="opt.key">
-              <DropdownMenuSeparator v-if="i" />
-              <DropdownMenuLabel class="text-xs text-muted-foreground font-normal">
-                {{ t(opt.label) }}
-              </DropdownMenuLabel>
-              <DropdownMenuRadioGroup :model-value="settings.settings[opt.key]" @update:model-value="setView(opt.key, $event)">
-                <DropdownMenuRadioItem v-for="c in opt.choices" :key="c.value" :value="c.value" @select.prevent>
-                  {{ t(c.label) }}
-                </DropdownMenuRadioItem>
-              </DropdownMenuRadioGroup>
-            </template>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel class="text-xs text-muted-foreground font-normal">
-              {{ t('editor.view.grid') }}
-            </DropdownMenuLabel>
-            <DropdownMenuRadioGroup v-model="gridMode">
-              <DropdownMenuRadioItem value="beats" @select.prevent>
-                {{ t('editor.view.gridBeats') }}
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="time" @select.prevent>
-                {{ t('editor.view.gridTime') }}
-              </DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="off" @select.prevent>
-                {{ t('editor.view.gridOff') }}
-              </DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-            <DropdownMenuItem :disabled="!beatGrid" @select="downbeat = editor.cursor">
-              {{ t('editor.view.downbeat') }}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem :disabled="vZoom <= 1.01" @select="vZoom = 1">
-              {{ t('editor.view.resetVZoom') }}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <!-- The tooltip wraps the whole picker: inside it, it would take the popup's anchor. -->
+        <Hint :text="t('editor.toolbar.view')">
+          <span class="inline-flex">
+            <DropdownMenu>
+              <DropdownMenuTrigger as-child>
+                <Button variant="ghost" size="icon-sm" class="data-[state=open]:bg-accent" :aria-label="t('editor.toolbar.view')">
+                  <SlidersHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" side="top" class="w-52">
+                <template v-for="(opt, i) in viewOptions" :key="opt.key">
+                  <DropdownMenuSeparator v-if="i" />
+                  <DropdownMenuLabel class="text-xs text-muted-foreground font-normal">
+                    {{ t(opt.label) }}
+                  </DropdownMenuLabel>
+                  <DropdownMenuRadioGroup :model-value="settings.settings[opt.key]" @update:model-value="setView(opt.key, $event)">
+                    <DropdownMenuRadioItem v-for="c in opt.choices" :key="c.value" :value="c.value" @select.prevent>
+                      {{ t(c.label) }}
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </template>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel class="text-xs text-muted-foreground font-normal">
+                  {{ t('editor.view.grid') }}
+                </DropdownMenuLabel>
+                <DropdownMenuRadioGroup v-model="gridMode">
+                  <DropdownMenuRadioItem value="beats" @select.prevent>
+                    {{ t('editor.view.gridBeats') }}
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="time" @select.prevent>
+                    {{ t('editor.view.gridTime') }}
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="off" @select.prevent>
+                    {{ t('editor.view.gridOff') }}
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+                <DropdownMenuItem :disabled="!beatGrid" @select="downbeat = editor.cursor">
+                  {{ t('editor.view.downbeat') }}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem :disabled="vZoom <= 1.01" @select="vZoom = 1">
+                  {{ t('editor.view.resetVZoom') }}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </span>
+        </Hint>
         <Separator orientation="vertical" class="mx-0.5 h-4" />
         <Hint :text="t('editor.toolbar.zoomOut')" shortcut="−">
           <Button variant="ghost" size="icon-sm" @click="zoom(2)">

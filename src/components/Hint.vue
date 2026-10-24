@@ -4,6 +4,9 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 
 // Tooltip around a single control: <Hint text="Rescan"><Button … /></Hint>
 // An empty text renders the control alone.
+// Around a menu, select or popover, wrap the whole root in <span> inside the Hint, not
+// just its trigger: the tooltip's popper context would otherwise capture the trigger
+// as its anchor and the popup would open off screen.
 withDefaults(defineProps<{
   text: string
   shortcut?: string

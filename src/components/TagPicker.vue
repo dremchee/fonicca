@@ -4,6 +4,7 @@ import { Check, Plus } from '@lucide/vue'
 import { ListboxItem } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -48,46 +49,50 @@ async function add(name: string) {
 </script>
 
 <template>
-  <Popover v-model:open="open">
-    <!-- No Hint here: a tooltip trigger around the popover trigger takes its anchor away. -->
-    <PopoverTrigger as-child>
-      <Button variant="ghost" size="xs" class="text-muted-foreground data-[state=open]:bg-accent">
-        <Plus /> {{ t('sidebar.tagPicker.button') }}
-      </Button>
-    </PopoverTrigger>
-    <PopoverContent align="start" class="w-56 p-0">
-      <Command>
-        <CommandInput
-          :placeholder="count > 1 ? t('sidebar.tagPicker.placeholderMany', { n: formatNumber(count) }, count) : t('sidebar.tagPicker.placeholder')"
-          @input="query = ($event.target as HTMLInputElement).value"
-        />
-        <CommandList>
-          <CommandEmpty v-if="!canCreate">
-            {{ t('sidebar.tagPicker.empty') }}
-          </CommandEmpty>
-          <CommandGroup v-if="available.length">
-            <CommandItem v-for="tag in available" :key="tag.id" :value="tag.name" @select="add(tag.name)">
-              {{ tag.name }}
-              <span class="ml-auto text-xs text-muted-foreground tabular">{{ formatNumber(tag.sampleCount) }}</span>
-            </CommandItem>
-          </CommandGroup>
-          <!-- A plain Listbox item: it must show for any query, and CommandItem filters itself
-               against the text it had when first mounted. -->
-          <ListboxItem
-            v-if="canCreate"
-            :value="`create:${query}`"
-            class="m-1 relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground [&_svg]:size-4 [&_svg]:text-muted-foreground"
-            @select="add(query.trim())"
-          >
-            <Plus /> {{ t('sidebar.tagPicker.create', { name: query.trim() }) }}
-          </ListboxItem>
-          <CommandGroup v-if="assigned.length" :heading="t('sidebar.tagPicker.assigned')">
-            <CommandItem v-for="tag in assigned" :key="tag.id" :value="`on:${tag.name}`" disabled>
-              <Check /> {{ tag.name }}
-            </CommandItem>
-          </CommandGroup>
-        </CommandList>
-      </Command>
-    </PopoverContent>
-  </Popover>
+  <!-- The tooltip wraps the whole picker: inside it, it would take the popup's anchor. -->
+  <Hint :text="t('list.menu.addTag')" shortcut="T">
+    <span class="inline-flex">
+      <Popover v-model:open="open">
+        <PopoverTrigger as-child>
+          <Button variant="ghost" size="xs" class="text-muted-foreground data-[state=open]:bg-accent">
+            <Plus /> {{ t('sidebar.tagPicker.button') }}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" class="w-56 p-0">
+          <Command>
+            <CommandInput
+              :placeholder="count > 1 ? t('sidebar.tagPicker.placeholderMany', { n: formatNumber(count) }, count) : t('sidebar.tagPicker.placeholder')"
+              @input="query = ($event.target as HTMLInputElement).value"
+            />
+            <CommandList>
+              <CommandEmpty v-if="!canCreate">
+                {{ t('sidebar.tagPicker.empty') }}
+              </CommandEmpty>
+              <CommandGroup v-if="available.length">
+                <CommandItem v-for="tag in available" :key="tag.id" :value="tag.name" @select="add(tag.name)">
+                  {{ tag.name }}
+                  <span class="ml-auto text-xs text-muted-foreground tabular">{{ formatNumber(tag.sampleCount) }}</span>
+                </CommandItem>
+              </CommandGroup>
+              <!-- A plain Listbox item: it must show for any query, and CommandItem filters itself
+                   against the text it had when first mounted. -->
+              <ListboxItem
+                v-if="canCreate"
+                :value="`create:${query}`"
+                class="m-1 relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground [&_svg]:size-4 [&_svg]:text-muted-foreground"
+                @select="add(query.trim())"
+              >
+                <Plus /> {{ t('sidebar.tagPicker.create', { name: query.trim() }) }}
+              </ListboxItem>
+              <CommandGroup v-if="assigned.length" :heading="t('sidebar.tagPicker.assigned')">
+                <CommandItem v-for="tag in assigned" :key="tag.id" :value="`on:${tag.name}`" disabled>
+                  <Check /> {{ tag.name }}
+                </CommandItem>
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </span>
+  </Hint>
 </template>
