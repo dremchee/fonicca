@@ -79,7 +79,7 @@ export interface SoundModelStatus {
   size: number
 }
 
-export type StemModel = 'spleeter' | 'scnetLarge'
+export type StemModel = 'spleeter' | 'scnetLarge' | 'htdemucsFt'
 
 export interface ModelStorage {
   id: 'clap' | StemModel

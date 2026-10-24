@@ -2,8 +2,8 @@ import type { StemModel } from '@/api'
 import { emit } from '@tauri-apps/api/event'
 const initial = () => ({ model: 'spleeter' as StemModel, running: false, stage: '', progress: 0, error: null, cancelled: false, paths: [] as string[], ids: [] as number[], name: '' })
 let progress = initial()
-const ready: Record<StemModel, boolean> = { spleeter: location.hash === '#models', scnetLarge: location.hash === '#models' }
-const bytes = { spleeter: 78856560, scnetLarge: 45082486 }
+const ready: Record<StemModel, boolean> = { spleeter: location.hash === '#models', scnetLarge: location.hash === '#models', htdemucsFt: location.hash === '#models' }
+const bytes = { spleeter: 78856560, scnetLarge: 45082486, htdemucsFt: 1265787812 }
 let generation = 0
 export function stemModelStorage(model: StemModel) {
   const downloading = progress.running && progress.stage === 'downloading' && progress.model === model

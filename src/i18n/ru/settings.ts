@@ -104,6 +104,7 @@ export default {
     clap: { name: 'Аудиоэнкодер CLAP', description: 'Определяет категории по звуку и находит похожие семплы.' },
     spleeter: { name: 'Spleeter · 4 стема', description: 'Вокал, ударные, бас и остальное · ONNX FP16' },
     scnetLarge: { name: 'SCNet-large · 4 стема', description: 'Детальное разделение на стемы · ONNX · веса INT8' },
+    htdemucsFt: { name: 'HTDemucs FT · 4 стема', description: 'Вокал, ударные, бас и остальное · ONNX FP32' },
   },
   shortcuts: {
     keys: {

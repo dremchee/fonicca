@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { openProjectWindow } from '@/composables/projectWindow'
-import { shortPath } from '@/format'
+import { formatSize, shortPath } from '@/format'
 import { useStemsStore } from '@/stores/stems'
 const stems = useStemsStore()
 const { t } = useI18n()
@@ -35,12 +35,13 @@ async function edit(index: number) {
         <Select :model-value="stems.model" :disabled="stems.progress.running || stems.starting" @update:model-value="stems.setModel">
           <SelectTrigger id="stem-model"><SelectValue /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="htdemucsFt">{{ t('stems.models.htdemucsFt') }}</SelectItem>
             <SelectItem value="scnetLarge">{{ t('stems.models.scnetLarge') }}</SelectItem>
             <SelectItem value="spleeter">{{ t('stems.models.spleeter') }}</SelectItem>
           </SelectContent>
         </Select>
         <p class="text-xs text-muted-foreground">{{ t(`stems.modelDescriptions.${stems.model}`) }}</p>
-        <p class="text-xs text-muted-foreground">{{ stems.ready ? t('stems.ready') : t('stems.download', { mb: Math.round(stems.bytes / 1000000) }) }}</p>
+        <p class="text-xs text-muted-foreground">{{ stems.ready ? t('stems.ready') : t('stems.download', { size: formatSize(stems.bytes) }) }}</p>
       </div>
       <div class="rounded-md border border-border p-3 flex flex-col gap-2">
         <span class="text-xs font-medium">{{ t('stems.folder') }}</span>

@@ -58,36 +58,26 @@ pub fn disk_size(path: &Path) -> u64 {
     })
 }
 
-pub fn storage(root: &Path, clap_downloading: bool, stems_downloading: bool, scnet_downloading: bool) -> Vec<Storage> {
+pub fn storage(root: &Path, clap_downloading: bool, downloading: impl Fn(crate::stems::Model) -> bool) -> Vec<Storage> {
     let clap = model_path(root);
-    let spleeter = crate::stems::models::directory(root);
-    let scnet = crate::stems::models::directory_for(root, crate::stems::Model::ScnetLarge);
-    vec![
+    let mut entries = vec![Storage {
+        id: "clap",
+        path: clap.to_string_lossy().into_owned(),
+        installed: is_installed(root),
+        downloading: clap_downloading,
+        size: disk_size(&clap) + disk_size(&clap.with_extension("part")),
+        download_size: clap::MODEL_SIZE,
+    }];
+    entries.extend(crate::stems::Model::ALL.map(|model| {
+        let dir = crate::stems::models::directory_for(root, model);
         Storage {
-            id: "clap",
-            path: clap.to_string_lossy().into_owned(),
-            installed: is_installed(root),
-            downloading: clap_downloading,
-            size: disk_size(&clap) + disk_size(&clap.with_extension("part")),
-            download_size: clap::MODEL_SIZE,
-        },
-        Storage {
-            id: "spleeter",
-            path: spleeter.to_string_lossy().into_owned(),
-            installed: crate::stems::models::installed(root),
-            downloading: stems_downloading,
-            size: disk_size(&spleeter),
-            download_size: crate::stems::models::TOTAL,
-        },
-        Storage {
-            id: "scnetLarge",
-            path: scnet.to_string_lossy().into_owned(),
-            installed: crate::stems::models::installed_for(root, crate::stems::Model::ScnetLarge),
-            downloading: scnet_downloading,
-            size: disk_size(&scnet),
-            download_size: crate::stems::models::SCNET_TOTAL,
-        },
-    ]
+            id: model.id(), path: dir.to_string_lossy().into_owned(),
+            installed: crate::stems::models::installed_for(root, model),
+            downloading: downloading(model), size: disk_size(&dir),
+            download_size: crate::stems::models::total(model),
+        }
+    }));
+    entries
 }
 
 /// Downloads the pinned model to a temporary file, verifies size and SHA-256,
@@ -149,7 +139,7 @@ mod tests {
         std::fs::write(spleeter.join("vocals.fp16.onnx"), [0; 11]).unwrap();
         std::fs::write(spleeter.join("drums.fp16.part"), [0; 13]).unwrap();
         std::fs::write(spleeter.join("NOTICE.txt"), [0; 3]).unwrap();
-        let models = storage(root.path(), true, false, false);
+        let models = storage(root.path(), true, |_| false);
         assert_eq!(models[0].size, 7);
         assert!(models[0].downloading);
         assert!(!models[0].installed);
@@ -160,7 +150,7 @@ mod tests {
 
         std::fs::remove_file(clap.with_extension("part")).unwrap();
         File::create(&clap).unwrap().set_len(clap::MODEL_SIZE).unwrap();
-        let models = storage(root.path(), false, false, false);
+        let models = storage(root.path(), false, |_| false);
         assert!(models[0].installed);
         assert_eq!(models[0].size, clap::MODEL_SIZE);
         assert_eq!(disk_size(root.path()), clap::MODEL_SIZE + 27);
@@ -169,8 +159,8 @@ mod tests {
     #[test]
     fn missing_models_have_zero_disk_usage() {
         let root = tempfile::tempdir().unwrap();
-        let models = storage(root.path(), false, false, false);
-        assert_eq!(models.len(), 3);
+        let models = storage(root.path(), false, |_| false);
+        assert_eq!(models.len(), 4);
         assert!(models.iter().all(|m| !m.installed && m.size == 0 && m.download_size > 0));
     }
 

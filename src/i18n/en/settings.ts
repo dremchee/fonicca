@@ -102,6 +102,7 @@ export default {
     clap: { name: 'CLAP audio encoder', description: 'Categorizes samples by sound and finds similar samples.' },
     spleeter: { name: 'Spleeter · 4 stems', description: 'Vocals, drums, bass and other · ONNX FP16' },
     scnetLarge: { name: 'SCNet-large · 4 stems', description: 'Detailed stem separation · ONNX · INT8 stored weights' },
+    htdemucsFt: { name: 'HTDemucs FT · 4 stems', description: 'Vocals, drums, bass and other · ONNX FP32' },
   },
   shortcuts: {
     keys: {

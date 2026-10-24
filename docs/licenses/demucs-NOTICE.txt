@@ -1,0 +1,22 @@
+HTDemucs FT — research model
+Original model and inference code: facebookresearch/demucs.
+Copyright (c) Meta Platforms, Inc. and affiliates.
+Code license: MIT, see LICENSE-code-MIT.txt.
+
+Original author statement about pretrained weights:
+https://github.com/facebookresearch/demucs/issues/327
+"The model weights are not covered by the MIT license, and are provided only
+for scientific purposes." (Alexandre Defossez, 2022-05-23)
+
+The ONNX conversion's model card is tagged MIT. This does not resolve the
+original weights restriction. Local research/comparison only; commercial
+redistribution or release needs separate rights review.
+
+ONNX export and packaging: StemSplit, https://huggingface.co/StemSplitio/htdemucs-ft-onnx
+Pinned revision: 8616370ed541bc183dbe15fb0d54d5f49918f47e.
+Four float32 specialist graphs: drums, bass, other, vocals.
+
+Fonicca's Rust windowing follows demucs.apply.apply_model and TensorChunk:
+centred padding with adjacent track context, positive triangular overlap-add,
+25% overlap, no random shifts. Input normalization follows the original API;
+DC is left out of every stem, matching Fonicca's SCNet pipeline.

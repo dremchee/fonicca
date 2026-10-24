@@ -334,8 +334,7 @@ pub fn model_storage(state: State<'_, AppState>) -> Vec<crate::models::Storage> 
     crate::models::storage(
         &state.models_dir,
         state.model_downloading.load(std::sync::atomic::Ordering::SeqCst),
-        state.stems.downloading(crate::stems::Model::Spleeter),
-        state.stems.downloading(crate::stems::Model::ScnetLarge),
+        |model| state.stems.downloading(model),
     )
 }
 
