@@ -267,8 +267,17 @@ pub async fn sample_wave(
     let overview = match state.overviews.get(key) {
         Some(o) => o,
         None => {
+            // From the disk cache when it has it, otherwise decoded and stored there.
+            let disk = state.overviews.disk();
             let o = tauri::async_runtime::spawn_blocking(move || {
-                crate::overview::Overview::compute(std::path::Path::new(&path), frames.map(|f| f as usize))
+                if let Some(o) = disk.as_ref().and_then(|d| d.load(key)) {
+                    return Ok(o);
+                }
+                let o = crate::overview::Overview::compute(std::path::Path::new(&path), frames.map(|f| f as usize))?;
+                if let Some(d) = &disk {
+                    d.store(key, &o);
+                }
+                Ok::<_, Error>(o)
             })
             .await
             .map_err(|e| Error::Other(e.to_string()))??;

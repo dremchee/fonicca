@@ -118,7 +118,7 @@ pub fn run() {
                 db_path,
                 settings,
                 similar: Default::default(),
-                overviews: Default::default(),
+                overviews: overview::Cache::with_disk(app.path().app_cache_dir()?.join("waveforms")),
                 editor: Default::default(),
                 model_downloading: Default::default(),
                 duplicates_verifying: Default::default(),

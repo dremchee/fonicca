@@ -4,8 +4,9 @@
 //! megabytes, then reduced to any number of columns in the editor's wave format.
 
 use std::collections::VecDeque;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
 
 use crate::audio;
 use crate::error::Result;
@@ -16,6 +17,11 @@ const FIELDS: usize = 7;
 const TARGET_BLOCKS: usize = 8192;
 /// Overviews kept in memory (recently previewed samples).
 const CACHE: usize = 8;
+/// Disk space for cached overviews; the least recently used go first beyond it.
+const DISK_BUDGET: u64 = 256 << 20;
+/// Leading bytes of a cached overview file, then its format version.
+const DISK_MAGIC: &[u8; 4] = b"SPWV";
+const DISK_VERSION: u32 = 1;
 
 pub struct Overview {
     channels: usize,
@@ -96,6 +102,33 @@ impl Overview {
         Ok(Self { channels: channels.max(1), blocks, data })
     }
 
+    /// The overview as bytes for the disk cache: magic, version, channels, blocks, data.
+    fn encode(&self) -> Vec<u8> {
+        let mut out = Vec::with_capacity(16 + self.data.len() * 4);
+        out.extend_from_slice(DISK_MAGIC);
+        for v in [DISK_VERSION, self.channels as u32, self.blocks as u32] {
+            out.extend_from_slice(&v.to_le_bytes());
+        }
+        for v in &self.data {
+            out.extend_from_slice(&v.to_le_bytes());
+        }
+        out
+    }
+
+    fn decode(bytes: &[u8]) -> Option<Self> {
+        let u = |i: usize| bytes.get(i..i + 4).map(|b| u32::from_le_bytes(b.try_into().unwrap()));
+        if bytes.get(..4)? != DISK_MAGIC || u(4)? != DISK_VERSION {
+            return None;
+        }
+        let (channels, blocks) = (u(8)? as usize, u(12)? as usize);
+        let values = (channels + 1).checked_mul(blocks)?.checked_mul(FIELDS)?;
+        if channels == 0 || bytes.len() != 16 + values * 4 {
+            return None;
+        }
+        let data = bytes[16..].chunks_exact(4).map(|b| f32::from_le_bytes(b.try_into().unwrap())).collect();
+        Some(Self { channels, blocks, data })
+    }
+
     /// Packs `columns` columns in the editor wave format (`editor::wave`, mode 0).
     pub fn render(&self, columns: usize, split: bool) -> Vec<u8> {
         let lanes: Vec<usize> = if split && self.channels > 1 { (1..=self.channels).collect() } else { vec![0] };
@@ -132,19 +165,105 @@ impl Overview {
     }
 }
 
-/// Recently computed overviews, keyed by sample id plus size and mtime so an
-/// edited file is read again.
+/// Key of a cached overview: sample id, file size and mtime, so an edited file is
+/// read again.
+pub type Key = (i64, i64, i64);
+
+/// Overviews on disk, one file per sample, so the player does not decode a long
+/// file again after a restart.
+#[derive(Clone)]
+pub struct DiskCache {
+    dir: PathBuf,
+    budget: u64,
+}
+
+impl DiskCache {
+    pub fn new(dir: PathBuf) -> Self {
+        Self { dir, budget: DISK_BUDGET }
+    }
+
+    fn file(&self, key: Key) -> PathBuf {
+        self.dir.join(format!("{}-{}-{}.wave", key.0, key.1, key.2))
+    }
+
+    /// The cached overview, if any; reading it marks it as recently used. Disk
+    /// trouble just means a miss.
+    pub fn load(&self, key: Key) -> Option<Overview> {
+        let path = self.file(key);
+        let overview = Overview::decode(&std::fs::read(&path).ok()?)?;
+        if let Ok(f) = std::fs::File::options().write(true).open(&path) {
+            let _ = f.set_modified(SystemTime::now());
+        }
+        Some(overview)
+    }
+
+    /// Stores an overview, replacing older ones of the same sample, then keeps the
+    /// directory within its budget. Errors are ignored: it is only a cache.
+    pub fn store(&self, key: Key, overview: &Overview) {
+        if std::fs::create_dir_all(&self.dir).is_err() {
+            return;
+        }
+        let path = self.file(key);
+        let tmp = path.with_extension("tmp");
+        if std::fs::write(&tmp, overview.encode()).is_err() || std::fs::rename(&tmp, &path).is_err() {
+            let _ = std::fs::remove_file(&tmp);
+            return;
+        }
+        let prefix = format!("{}-", key.0);
+        let mut files: Vec<(PathBuf, u64, SystemTime)> = std::fs::read_dir(&self.dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .filter_map(|e| {
+                let p = e.path();
+                let name = p.file_name()?.to_str()?.to_owned();
+                if name.starts_with(&prefix) && p != path {
+                    let _ = std::fs::remove_file(&p);
+                    return None;
+                }
+                let meta = e.metadata().ok()?;
+                Some((p, meta.len(), meta.modified().unwrap_or(SystemTime::UNIX_EPOCH)))
+            })
+            .collect();
+        let mut total: u64 = files.iter().map(|f| f.1).sum();
+        if total <= self.budget {
+            return;
+        }
+        // Oldest first, down to 80% so pruning does not run on every store.
+        files.sort_by_key(|f| f.2);
+        for (p, len, _) in files {
+            if total <= self.budget / 5 * 4 {
+                break;
+            }
+            if p != path && std::fs::remove_file(&p).is_ok() {
+                total -= len;
+            }
+        }
+    }
+}
+
+/// Recently computed overviews in memory, backed by an optional disk cache.
 #[derive(Default)]
 pub struct Cache {
-    entries: Mutex<VecDeque<((i64, i64, i64), Arc<Overview>)>>,
+    entries: Mutex<VecDeque<(Key, Arc<Overview>)>>,
+    disk: Option<DiskCache>,
 }
 
 impl Cache {
-    pub fn get(&self, key: (i64, i64, i64)) -> Option<Arc<Overview>> {
+    pub fn with_disk(dir: PathBuf) -> Self {
+        Self { entries: Default::default(), disk: Some(DiskCache::new(dir)) }
+    }
+
+    /// The disk side, to use off the async runtime.
+    pub fn disk(&self) -> Option<DiskCache> {
+        self.disk.clone()
+    }
+
+    pub fn get(&self, key: Key) -> Option<Arc<Overview>> {
         self.entries.lock().unwrap().iter().find(|(k, _)| *k == key).map(|(_, o)| Arc::clone(o))
     }
 
-    pub fn put(&self, key: (i64, i64, i64), overview: Arc<Overview>) {
+    pub fn put(&self, key: Key, overview: Arc<Overview>) {
         let mut entries = self.entries.lock().unwrap();
         entries.retain(|(k, _)| k.0 != key.0);
         entries.push_front((key, overview));
@@ -186,6 +305,47 @@ mod tests {
         // Mixed: one lane.
         let (lanes, ..) = unpack(&o.render(20, false));
         assert_eq!(lanes, 1);
+    }
+
+    fn small_overview(seed: f32) -> Overview {
+        Overview { channels: 2, blocks: 4, data: (0..3 * 4 * FIELDS).map(|i| i as f32 * seed).collect() }
+    }
+
+    #[test]
+    fn disk_cache_round_trips_and_replaces_stale_versions() {
+        let dir = tempfile::tempdir().unwrap();
+        let disk = DiskCache::new(dir.path().join("waveforms"));
+        assert!(disk.load((1, 10, 100)).is_none());
+        disk.store((1, 10, 100), &small_overview(0.5));
+        let back = disk.load((1, 10, 100)).unwrap();
+        assert_eq!((back.channels, back.blocks, back.data.len()), (2, 4, 3 * 4 * FIELDS));
+        assert_eq!(back.data[7], 3.5);
+
+        // The file changed: the new version replaces the old one on disk.
+        disk.store((1, 11, 101), &small_overview(1.0));
+        assert!(disk.load((1, 10, 100)).is_none());
+        assert!(disk.load((1, 11, 101)).is_some());
+        // Garbage or a newer format is a miss, not an error.
+        std::fs::write(disk.file((2, 0, 0)), b"SPWV\x09\0\0\0junk").unwrap();
+        assert!(disk.load((2, 0, 0)).is_none());
+    }
+
+    #[test]
+    fn disk_cache_drops_least_recently_used_beyond_budget() {
+        let dir = tempfile::tempdir().unwrap();
+        let one = small_overview(1.0).encode().len() as u64;
+        let disk = DiskCache { dir: dir.path().to_path_buf(), budget: one * 3 };
+        for id in 1..=3 {
+            disk.store((id, 0, 0), &small_overview(1.0));
+            std::thread::sleep(std::time::Duration::from_millis(20));
+        }
+        // Reading 1 makes it recent; storing a fourth goes over budget and drops 2.
+        assert!(disk.load((1, 0, 0)).is_some());
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        disk.store((4, 0, 0), &small_overview(1.0));
+        assert!(disk.load((1, 0, 0)).is_some());
+        assert!(disk.load((2, 0, 0)).is_none());
+        assert!(disk.load((4, 0, 0)).is_some());
     }
 
     #[test]
