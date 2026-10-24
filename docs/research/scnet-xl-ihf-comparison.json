@@ -1,0 +1,426 @@
+{
+  "model": {
+    "url": "https://github.com/ZFTurbo/Music-Source-Separation-Training/releases/download/v1.0.15/model_scnet_ep_36_sdr_10.0891.ckpt",
+    "size": 214063778,
+    "sha256": "ac25975f0f5704f3d1a3c3c251505b7a0f417a22eafe82773440ee4f7e14b74f",
+    "tag": "v1.0.15",
+    "source_tag": "v1.0.15",
+    "parameters": 53466800,
+    "runtime": "PyTorch 2.14.1, CPU, float32, 4 threads",
+    "normalize": false,
+    "config_sha256": "54ddcb8aeeae85c8d0e148741e7d87b0fbd38bd21cffa5d59ba124fe1e672f40",
+    "source_sha256": {
+      "models/scnet/separation.py": "4fdda9982003b795c3b5d964f998ca0bc416d7c232b813706a6088b16a1a1639",
+      "models/scnet/scnet.py": "a024c6a6b3e5eda6da29f052076772c277183dc273f144b4feca1c565030e1ed",
+      "models/scnet/__init__.py": "8ef8829a84f72fb500ee364c0394527cbbba7f86cd04f76052bea5824e5b9a12"
+    }
+  },
+  "tracks": [
+    {
+      "track": "Cristina Vane - So Easy",
+      "spleeter_wall_s": 0.74605125002563,
+      "scnet": {
+        "model": "SCNet-large INT8",
+        "load_s": 0.24628283304627985,
+        "inference_s": 13.394745207973756,
+        "total_s": 13.81501537503209,
+        "audio_s": 6.8034467120181406,
+        "peak_rss_bytes": 3186475008,
+        "rms": {
+          "drums": 0.07420027208065946,
+          "bass": 0.024707940485384636,
+          "other": 0.036977637462627465,
+          "vocals": 0.05042338295883037
+        }
+      },
+      "si_sdr_db": {
+        "vocals": {
+          "spleeter": 13.147237988637988,
+          "scnet-large": 18.00940981865527,
+          "scnet-xl-ihf": 18.576454508958072
+        },
+        "drums": {
+          "spleeter": 10.352657683433717,
+          "scnet-large": 16.40860140718174,
+          "scnet-xl-ihf": 16.392347068024364
+        },
+        "bass": {
+          "spleeter": -2.6788428397362374,
+          "scnet-large": 2.600246681363039,
+          "scnet-xl-ihf": 5.254890701716759
+        },
+        "other": {
+          "spleeter": 0.9259934125492375,
+          "scnet-large": 3.751372487510063,
+          "scnet-xl-ihf": 5.71702362446397
+        }
+      },
+      "scnet_xl_ihf": {
+        "audio_s": 6.8034467120181406,
+        "inference_s": 34.879014707985334,
+        "load_s": 0.35982916702050716,
+        "peak_rss_bytes": 4409819136
+      },
+      "validity": {
+        "spleeter/vocals": {
+          "frames": 300032,
+          "peak": 0.2182803750038147,
+          "over_full_scale": 0
+        },
+        "spleeter/drums": {
+          "frames": 300032,
+          "peak": 0.46365097165107727,
+          "over_full_scale": 0
+        },
+        "spleeter/bass": {
+          "frames": 300032,
+          "peak": 0.1923646479845047,
+          "over_full_scale": 0
+        },
+        "spleeter/other": {
+          "frames": 300032,
+          "peak": 0.23734156787395477,
+          "over_full_scale": 0
+        },
+        "scnet-large/vocals": {
+          "frames": 300032,
+          "peak": 0.21956825256347656,
+          "over_full_scale": 0
+        },
+        "scnet-large/drums": {
+          "frames": 300032,
+          "peak": 0.473560631275177,
+          "over_full_scale": 0
+        },
+        "scnet-large/bass": {
+          "frames": 300032,
+          "peak": 0.183302640914917,
+          "over_full_scale": 0
+        },
+        "scnet-large/other": {
+          "frames": 300032,
+          "peak": 0.2763030230998993,
+          "over_full_scale": 0
+        },
+        "scnet-xl-ihf/vocals": {
+          "frames": 300032,
+          "peak": 0.21658740937709808,
+          "over_full_scale": 0
+        },
+        "scnet-xl-ihf/drums": {
+          "frames": 300032,
+          "peak": 0.46680736541748047,
+          "over_full_scale": 0
+        },
+        "scnet-xl-ihf/bass": {
+          "frames": 300032,
+          "peak": 0.18043643236160278,
+          "over_full_scale": 0
+        },
+        "scnet-xl-ihf/other": {
+          "frames": 300032,
+          "peak": 0.25503960251808167,
+          "over_full_scale": 0
+        },
+        "reference/vocals": {
+          "frames": 300032,
+          "peak": 0.22155910730361938,
+          "over_full_scale": 0
+        },
+        "reference/drums": {
+          "frames": 300032,
+          "peak": 0.454336017370224,
+          "over_full_scale": 0
+        },
+        "reference/bass": {
+          "frames": 300032,
+          "peak": 0.2269497960805893,
+          "over_full_scale": 0
+        },
+        "reference/other": {
+          "frames": 300032,
+          "peak": 0.25892820954322815,
+          "over_full_scale": 0
+        }
+      }
+    },
+    {
+      "track": "Louis Cressy Band - Good Time",
+      "spleeter_wall_s": 0.7329195420024917,
+      "scnet": {
+        "model": "SCNet-large INT8",
+        "load_s": 0.23621183296199888,
+        "inference_s": 11.318877832964063,
+        "total_s": 11.752353915944695,
+        "audio_s": 6.8034467120181406,
+        "peak_rss_bytes": 3783933952,
+        "rms": {
+          "drums": 0.06515406491899824,
+          "bass": 0.05106043583138108,
+          "other": 0.07950743360569677,
+          "vocals": 0.05792352180611051
+        }
+      },
+      "si_sdr_db": {
+        "vocals": {
+          "spleeter": 5.199571646978601,
+          "scnet-large": 11.083532882018048,
+          "scnet-xl-ihf": 11.635284494403965
+        },
+        "drums": {
+          "spleeter": 5.434345877664947,
+          "scnet-large": 9.16934415867258,
+          "scnet-xl-ihf": 10.282792171408918
+        },
+        "bass": {
+          "spleeter": 3.643575915482007,
+          "scnet-large": 9.849985930072538,
+          "scnet-xl-ihf": 9.06026299954404
+        },
+        "other": {
+          "spleeter": 5.4978170554729475,
+          "scnet-large": 9.000037101794197,
+          "scnet-xl-ihf": 9.383114271766003
+        }
+      },
+      "scnet_xl_ihf": {
+        "audio_s": 6.8034467120181406,
+        "inference_s": 41.50478266691789,
+        "load_s": 0.35982916702050716,
+        "peak_rss_bytes": 4409819136
+      },
+      "validity": {
+        "spleeter/vocals": {
+          "frames": 300032,
+          "peak": 0.30365288257598877,
+          "over_full_scale": 0
+        },
+        "spleeter/drums": {
+          "frames": 300032,
+          "peak": 0.5013988614082336,
+          "over_full_scale": 0
+        },
+        "spleeter/bass": {
+          "frames": 300032,
+          "peak": 0.215910866856575,
+          "over_full_scale": 0
+        },
+        "spleeter/other": {
+          "frames": 300032,
+          "peak": 0.3507694900035858,
+          "over_full_scale": 0
+        },
+        "scnet-large/vocals": {
+          "frames": 300032,
+          "peak": 0.2689390480518341,
+          "over_full_scale": 0
+        },
+        "scnet-large/drums": {
+          "frames": 300032,
+          "peak": 0.5268591642379761,
+          "over_full_scale": 0
+        },
+        "scnet-large/bass": {
+          "frames": 300032,
+          "peak": 0.22143729031085968,
+          "over_full_scale": 0
+        },
+        "scnet-large/other": {
+          "frames": 300032,
+          "peak": 0.37784886360168457,
+          "over_full_scale": 0
+        },
+        "scnet-xl-ihf/vocals": {
+          "frames": 300032,
+          "peak": 0.26845622062683105,
+          "over_full_scale": 0
+        },
+        "scnet-xl-ihf/drums": {
+          "frames": 300032,
+          "peak": 0.5419396162033081,
+          "over_full_scale": 0
+        },
+        "scnet-xl-ihf/bass": {
+          "frames": 300032,
+          "peak": 0.22436560690402985,
+          "over_full_scale": 0
+        },
+        "scnet-xl-ihf/other": {
+          "frames": 300032,
+          "peak": 0.3416288197040558,
+          "over_full_scale": 0
+        },
+        "reference/vocals": {
+          "frames": 300032,
+          "peak": 0.2889300286769867,
+          "over_full_scale": 0
+        },
+        "reference/drums": {
+          "frames": 300032,
+          "peak": 0.5106394290924072,
+          "over_full_scale": 0
+        },
+        "reference/bass": {
+          "frames": 300032,
+          "peak": 0.24584300816059113,
+          "over_full_scale": 0
+        },
+        "reference/other": {
+          "frames": 300032,
+          "peak": 0.43771281838417053,
+          "over_full_scale": 0
+        }
+      }
+    },
+    {
+      "track": "Secretariat - Borderline",
+      "spleeter_wall_s": 0.7460760000394657,
+      "scnet": {
+        "model": "SCNet-large INT8",
+        "load_s": 0.23413808294571936,
+        "inference_s": 10.692816292052157,
+        "total_s": 11.357810707995668,
+        "audio_s": 6.8034467120181406,
+        "peak_rss_bytes": 4075601920,
+        "rms": {
+          "drums": 0.035783299268635375,
+          "bass": 0.04100594100651635,
+          "other": 0.0898844898493413,
+          "vocals": 0.07950134650361905
+        }
+      },
+      "si_sdr_db": {
+        "vocals": {
+          "spleeter": 5.748003251601043,
+          "scnet-large": 10.213022536409486,
+          "scnet-xl-ihf": 10.745646852847932
+        },
+        "drums": {
+          "spleeter": 0.40917531275974883,
+          "scnet-large": 5.127298277114756,
+          "scnet-xl-ihf": 4.919471918200827
+        },
+        "bass": {
+          "spleeter": 1.2614099875049314,
+          "scnet-large": 6.779745177167409,
+          "scnet-xl-ihf": 5.579416683845382
+        },
+        "other": {
+          "spleeter": 3.996059740192469,
+          "scnet-large": 8.987736304617629,
+          "scnet-xl-ihf": 8.832055188245029
+        }
+      },
+      "scnet_xl_ihf": {
+        "audio_s": 6.8034467120181406,
+        "inference_s": 41.99072433297988,
+        "load_s": 0.35982916702050716,
+        "peak_rss_bytes": 4634689536
+      },
+      "validity": {
+        "spleeter/vocals": {
+          "frames": 300032,
+          "peak": 0.4838021993637085,
+          "over_full_scale": 0
+        },
+        "spleeter/drums": {
+          "frames": 300032,
+          "peak": 0.48608946800231934,
+          "over_full_scale": 0
+        },
+        "spleeter/bass": {
+          "frames": 300032,
+          "peak": 0.1495509296655655,
+          "over_full_scale": 0
+        },
+        "spleeter/other": {
+          "frames": 300032,
+          "peak": 0.4530767500400543,
+          "over_full_scale": 0
+        },
+        "scnet-large/vocals": {
+          "frames": 300032,
+          "peak": 0.44957175850868225,
+          "over_full_scale": 0
+        },
+        "scnet-large/drums": {
+          "frames": 300032,
+          "peak": 0.4834928810596466,
+          "over_full_scale": 0
+        },
+        "scnet-large/bass": {
+          "frames": 300032,
+          "peak": 0.1087861955165863,
+          "over_full_scale": 0
+        },
+        "scnet-large/other": {
+          "frames": 300032,
+          "peak": 0.5114468932151794,
+          "over_full_scale": 0
+        },
+        "scnet-xl-ihf/vocals": {
+          "frames": 300032,
+          "peak": 0.48573607206344604,
+          "over_full_scale": 0
+        },
+        "scnet-xl-ihf/drums": {
+          "frames": 300032,
+          "peak": 0.517539918422699,
+          "over_full_scale": 0
+        },
+        "scnet-xl-ihf/bass": {
+          "frames": 300032,
+          "peak": 0.11429359018802643,
+          "over_full_scale": 0
+        },
+        "scnet-xl-ihf/other": {
+          "frames": 300032,
+          "peak": 0.5192861557006836,
+          "over_full_scale": 0
+        },
+        "reference/vocals": {
+          "frames": 300032,
+          "peak": 0.5025126934051514,
+          "over_full_scale": 0
+        },
+        "reference/drums": {
+          "frames": 300032,
+          "peak": 0.5871379375457764,
+          "over_full_scale": 0
+        },
+        "reference/bass": {
+          "frames": 300032,
+          "peak": 0.15048716962337494,
+          "over_full_scale": 0
+        },
+        "reference/other": {
+          "frames": 300032,
+          "peak": 0.5272301435470581,
+          "over_full_scale": 0
+        }
+      }
+    }
+  ],
+  "mean_si_sdr_db": {
+    "vocals": {
+      "spleeter": 8.03160429573921,
+      "scnet-large": 13.101988412360933,
+      "scnet-xl-ihf": 13.65246195206999
+    },
+    "drums": {
+      "spleeter": 5.398726291286138,
+      "scnet-large": 10.235081280989691,
+      "scnet-xl-ihf": 10.531537052544703
+    },
+    "bass": {
+      "spleeter": 0.7420476877502337,
+      "scnet-large": 6.409992596200996,
+      "scnet-xl-ihf": 6.63152346170206
+    },
+    "other": {
+      "spleeter": 3.4732900694048845,
+      "scnet-large": 7.24638196464063,
+      "scnet-xl-ihf": 7.977397694825001
+    }
+  }
+}
