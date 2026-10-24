@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { GridMode } from '@/composables/editor/grid'
 import type { Curve, Marker, Wave } from '@/stores/editor'
 import {
   ArrowLeftRight,
@@ -60,6 +61,9 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
+import { MIN_LINE_PX, useEditorGrid } from '@/composables/editor/grid'
+import { useEditorViewport } from '@/composables/editor/viewport'
+import { useFrameDraw } from '@/composables/editor/frameDraw'
 import { formatNumber, formatRate, shortPath } from '@/format'
 import { canvasContext, drawWave } from '@/waveform'
 import { regionsOf, useEditorStore } from '@/stores/editor'
@@ -82,7 +86,6 @@ const RULER = 18
 // tooltip trigger wrapping them overwrites their data-state.
 const toggleIcon = 'size-8 px-0 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 aria-pressed:bg-transparent aria-pressed:text-primary aria-pressed:hover:text-primary aria-pressed:hover:bg-accent dark:aria-pressed:hover:bg-accent/50'
 // Per-window preferences, not worth fields in settings.json.
-type GridMode = 'beats' | 'time' | 'off'
 const gridMode = useLocalStorage<GridMode>('editor.gridMode', 'beats')
 const snap = useLocalStorage('editor.snap', true)
 const zeroSnap = useLocalStorage('editor.zeroSnap', true)
@@ -106,16 +109,9 @@ function setView(key: WaveKey, value: unknown) {
     settings.update({ [key]: value })
 }
 
-// Visible range in frames.
-const viewStart = ref(0)
-const viewEnd = ref(1)
 const frames = computed(() => editor.state?.frames ?? 0)
 const rate = computed(() => editor.state?.sampleRate ?? 44100)
-
-function fit() {
-  viewStart.value = 0
-  viewEnd.value = Math.max(1, frames.value)
-}
+const { viewStart, viewEnd, fit, zoom, pan, zoomToSelection } = useEditorViewport(frames, () => editor.selection)
 
 watch(() => editor.sample?.id, async (id) => {
   if (id == null)
@@ -125,15 +121,6 @@ watch(() => editor.sample?.id, async (id) => {
   downbeat.value = 0
   await nextTick()
   canvas.value?.focus()
-})
-
-// After an edit shortens the audio, keep the view inside it.
-watch(frames, (n) => {
-  if (viewEnd.value > n || viewEnd.value - viewStart.value <= 0) {
-    const span = Math.min(viewEnd.value - viewStart.value, n)
-    viewEnd.value = Math.max(1, n)
-    viewStart.value = Math.max(0, n - span)
-  }
 })
 
 useResizeObserver(box, (entries) => {
@@ -214,44 +201,11 @@ function tickStep(span: number) {
 
 // --- Grid -------------------------------------------------------------------
 
-const beatFrames = computed(() => (bpm.value && bpm.value > 0 ? (60 / bpm.value) * rate.value : 0))
-// Bars and beats when the tempo is known, otherwise seconds. 4/4 assumed.
-const beatGrid = computed(() => gridMode.value === 'beats' && beatFrames.value > 0)
-const BEAT_STEPS = [1 / 8, 1 / 4, 1 / 2, 1, 4, 8, 16, 32, 64, 128, 256]
-const TIME_STEPS = [0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600]
-const MIN_LINE_PX = 12
+const { beatFrames, beatGrid, gridStep, gridOrigin, gridFrames, isMultiple, snapped } = useEditorGrid({
+  bpm, rate, frames, width, viewStart, viewEnd, downbeat, gridMode, snap,
+})
 
-/** The finest grid step, in frames, that is at least `minPx` wide on screen. */
-function gridStep(minPx: number) {
-  const pxPerFrame = width.value / (viewEnd.value - viewStart.value)
-  const unit = beatGrid.value ? beatFrames.value : rate.value
-  const steps = beatGrid.value ? BEAT_STEPS : TIME_STEPS
-  return (steps.find(s => s * unit * pxPerFrame >= minPx) ?? steps.at(-1)!) * unit
-}
-
-const gridOrigin = () => (beatGrid.value ? downbeat.value : 0)
-
-/** Visible multiples of `step` from the grid origin. */
-function gridFrames(step: number) {
-  const origin = gridOrigin()
-  const out: number[] = []
-  for (let k = Math.ceil((viewStart.value - origin) / step); origin + k * step <= viewEnd.value; k++)
-    out.push(origin + k * step)
-  return out
-}
-
-const isMultiple = (value: number, of: number) => Math.abs(value / of - Math.round(value / of)) < 1e-6
-
-/** Snaps a frame to the nearest grid line (and to the end of the file) while snapping is on; ⌥ inverts it. */
-function snapped(frame: number, e: MouseEvent) {
-  if (gridMode.value === 'off' || snap.value === e.altKey)
-    return frame
-  const step = gridStep(MIN_LINE_PX)
-  const origin = gridOrigin()
-  const line = origin + Math.round((frame - origin) / step) * step
-  const nearEnd = Math.abs(frames.value - frame) < Math.abs(line - frame)
-  return Math.round(Math.min(frames.value, Math.max(0, nearEnd ? frames.value : line)))
-}
+const scheduleDraw = useFrameDraw(draw)
 
 function draw() {
   const el = canvas.value
@@ -376,7 +330,16 @@ function draw() {
   // moving them, every frame while playing, redraws nothing here.
 }
 
-watch([wave, viewStart, viewEnd, () => editor.selection, width, height, vZoom, gridMode, bpm, downbeat, () => settings.settings, () => settings.themeRevision], draw, { deep: true })
+watch([
+  wave, viewStart, viewEnd, width, height, vZoom, gridMode, bpm, downbeat,
+  () => editor.selection?.start,
+  () => editor.selection?.end,
+  () => settings.settings.waveStyle,
+  () => settings.settings.waveScale,
+  () => settings.settings.waveChannels,
+  () => settings.settings.waveColors,
+  () => settings.themeRevision,
+], scheduleDraw)
 
 // Edit cursor: a thin dimmed line in the text colour. Playhead: the text colour at full
 // strength over a canvas-coloured halo, with a marker on the ruler. Positioned through
@@ -396,7 +359,7 @@ watchEffect(() => {
   if (p !== null)
     el.style.transform = `translateX(${Math.round(x(p))}px)`
 })
-watch(() => editor.state?.loop, draw)
+watch(() => editor.state?.loop, scheduleDraw)
 
 // Under the pointer: a faint line and its time on the ruler (and a mark on the
 // minimap), moved through style like the cursor.
@@ -425,19 +388,23 @@ watchEffect(() => {
 const draggedMarkers = shallowRef<Marker[] | null>(null)
 const shownMarkers = computed(() => draggedMarkers.value ?? editor.state?.markers ?? [])
 // Regions Save regions would write.
-const savedRegions = computed(() => editor.regions.filter(r => !r.skip).length)
+const playableRegions = computed(() => editor.regions.filter(r => !r.skip))
+const savedRegions = computed(() => playableRegions.value.length)
+const shownRegions = computed(() => regionsOf(shownMarkers.value, frames.value))
 
 // Region number badges as last drawn, for hovering and clicking them.
 let badges: { start: number, end: number, x: number, w: number }[] = []
 const BADGE_H = 14
 
 function drawSlices(ctx: CanvasRenderingContext2D, w: number, h: number, color: (name: string) => string) {
-  const regions = regionsOf(shownMarkers.value, frames.value)
+  const regions = shownRegions.value
   badges = []
   ctx.fillStyle = color('--card')
   ctx.globalAlpha = 0.65
-  for (const r of regions.filter(r => r.skip))
-    ctx.fillRect(x(r.start), RULER, x(r.end) - x(r.start), h - RULER)
+  for (const r of regions) {
+    if (r.skip)
+      ctx.fillRect(x(r.start), RULER, x(r.end) - x(r.start), h - RULER)
+  }
   ctx.globalAlpha = 1
 
   ctx.font = '600 10px system-ui, sans-serif'
@@ -503,13 +470,13 @@ function drawSlices(ctx: CanvasRenderingContext2D, w: number, h: number, color: 
     ctx.globalAlpha = 1
   }
 }
-watch([slicePreview, shownMarkers, () => editor.state?.markers], draw)
+watch([slicePreview, shownMarkers, () => editor.state?.markers], scheduleDraw)
 
 // A region's number badge turns into a play button under the pointer; a click plays
 // the region from its start (selecting it, as a click on the ruler does), every time,
 // like a sampler pad (so do the number keys, see onKeyDown). Space or the toolbar stops it.
 const hoverBadge = ref<number | null>(null)
-watch(hoverBadge, draw)
+watch(hoverBadge, scheduleDraw)
 
 function badgeAt(e: MouseEvent) {
   const rect = canvas.value?.getBoundingClientRect()
@@ -794,22 +761,6 @@ function onMouseDown(e: MouseEvent) {
   window.addEventListener('mouseup', up)
 }
 
-function zoom(factor: number, around = (viewStart.value + viewEnd.value) / 2) {
-  const span = Math.min(frames.value, Math.max(64, (viewEnd.value - viewStart.value) * factor))
-  const ratio = (around - viewStart.value) / (viewEnd.value - viewStart.value)
-  let start = around - span * ratio
-  start = Math.max(0, Math.min(frames.value - span, start))
-  viewStart.value = start
-  viewEnd.value = start + span
-}
-
-function pan(deltaFrames: number) {
-  const span = viewEnd.value - viewStart.value
-  const start = Math.max(0, Math.min(frames.value - span, viewStart.value + deltaFrames))
-  viewStart.value = start
-  viewEnd.value = start + span
-}
-
 // ⌘/Ctrl + wheel or pinch zooms around the pointer, ⌥ + wheel zooms vertically; plain scrolling pans.
 function onWheel(e: WheelEvent) {
   e.preventDefault()
@@ -819,14 +770,6 @@ function onWheel(e: WheelEvent) {
     zoom(Math.exp(e.deltaY * 0.01), frameAt(e.clientX))
   else
     pan(((e.deltaX || e.deltaY) / width.value) * (viewEnd.value - viewStart.value))
-}
-
-function zoomToSelection() {
-  const s = editor.selection
-  if (s) {
-    viewStart.value = s.start
-    viewEnd.value = Math.max(s.end, s.start + 64)
-  }
 }
 
 // --- Keyboard ---------------------------------------------------------------
@@ -842,7 +785,7 @@ function onKeyDown(e: KeyboardEvent) {
   // 1…9 play regions 1–9 like pads, ⇧1…⇧9 regions 10–18 (by key position, so any layout).
   else if (!mod && !e.altKey && /^Digit[1-9]$/.test(e.code)) {
     const n = Number(e.code.slice(5)) + (e.shiftKey ? 9 : 0)
-    const region = editor.regions.filter(r => !r.skip)[n - 1]
+    const region = playableRegions.value[n - 1]
     if (region) {
       handled()
       playRegion(region)
