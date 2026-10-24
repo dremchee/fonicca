@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import type { Wave } from '@/stores/editor'
 import { useResizeObserver } from '@vueuse/core'
-import { ref, shallowRef, watch } from 'vue'
+import { ref, shallowRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
-import { drawWave } from '@/waveform'
+import { canvasContext, drawWave } from '@/waveform'
 
 // Whole file at a glance, with the visible range as a draggable window.
 const props = defineProps<{ viewStart: number, viewEnd: number }>()
@@ -48,11 +48,7 @@ function draw() {
   if (!el || !w)
     return
   const dpr = window.devicePixelRatio || 1
-  el.width = w * dpr
-  el.height = h * dpr
-  const ctx = el.getContext('2d')!
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  ctx.clearRect(0, 0, w, h)
+  const ctx = canvasContext(el, w, h, dpr)
   const style = getComputedStyle(el)
   const color = (name: string) => style.getPropertyValue(name).trim()
   const n = frames()
@@ -86,24 +82,32 @@ function draw() {
   ctx.strokeStyle = color('--primary')
   ctx.lineWidth = 1
   ctx.strokeRect(a + 0.5, 0.5, b - a - 1, h - 1)
-
-  // Same marks as the main view: a dim cursor and a full-strength playhead, both in
-  // the text colour.
-  ctx.fillStyle = color('--foreground')
-  ctx.globalAlpha = 0.6
-  ctx.fillRect(x(editor.cursor), 0, 1, h)
-  ctx.globalAlpha = 1
-  if (editor.playhead !== null) {
-    ctx.fillStyle = color('--foreground')
-    ctx.fillRect(x(editor.playhead), 0, 1.5, h)
-  }
 }
 
 watch(
-  [wave, size, () => props.viewStart, () => props.viewEnd, () => editor.selection, () => editor.cursor, () => editor.playhead, () => settings.settings, () => settings.themeRevision],
+  [wave, size, () => props.viewStart, () => props.viewEnd, () => editor.selection, () => settings.settings, () => settings.themeRevision],
   draw,
   { deep: true },
 )
+
+// Same marks as the main view, as elements over the canvas so playback redraws
+// nothing: a dim cursor and a full-strength playhead, both in the text colour.
+const cursorEl = ref<HTMLElement | null>(null)
+const playheadEl = ref<HTMLElement | null>(null)
+const at = (f: number) => `${(f / Math.max(1, frames())) * 100}%`
+watchEffect(() => {
+  if (cursorEl.value)
+    cursorEl.value.style.left = at(editor.cursor)
+})
+watchEffect(() => {
+  const el = playheadEl.value
+  if (!el)
+    return
+  const p = editor.playhead
+  el.style.display = p === null ? 'none' : ''
+  if (p !== null)
+    el.style.left = at(p)
+})
 
 function frameAt(clientX: number) {
   const rect = canvas.value!.getBoundingClientRect()
@@ -150,5 +154,9 @@ function onWheel(e: WheelEvent) {
       @wheel="onWheel"
       @dblclick="emit('fit')"
     />
+    <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      <div ref="cursorEl" class="absolute inset-y-0 w-px bg-foreground/60" />
+      <div ref="playheadEl" class="absolute inset-y-0 w-[1.5px] bg-foreground" style="display: none" />
+    </div>
   </div>
 </template>

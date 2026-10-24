@@ -4,7 +4,7 @@ import type { Wave } from '@/stores/editor'
 import { FolderOpen, Info, Pencil, Play, Square, Star, X } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { useResizeObserver } from '@vueuse/core'
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
 import Hint from '@/components/Hint.vue'
@@ -21,7 +21,7 @@ import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
-import { drawWave, parseWave } from '@/waveform'
+import { canvasContext, drawWave, parseWave } from '@/waveform'
 
 const props = defineProps<{ sample: Sample | undefined }>()
 
@@ -76,6 +76,8 @@ const byline = computed(() => {
 })
 
 const canvas = ref<HTMLCanvasElement | null>(null)
+const playedCanvas = ref<HTMLCanvasElement | null>(null)
+const dimEl = ref<HTMLElement | null>(null)
 const box = ref<HTMLElement | null>(null)
 const width = ref(0)
 const wave = shallowRef<Wave | null>(null)
@@ -121,18 +123,18 @@ watch([() => props.sample?.id, width, () => settings.settings.waveChannels], asy
   }
 }, { immediate: true })
 
+// The wave is drawn twice, once in each colour, on stacked canvases; playback only
+// moves the clip of the played one (see below), so the wave is not redrawn per frame.
 function draw() {
   const el = canvas.value
-  if (!el)
+  const played = playedCanvas.value
+  if (!el || !played)
     return
   const dpr = window.devicePixelRatio || 1
   const w = el.clientWidth
   const h = el.clientHeight
-  el.width = Math.round(w * dpr)
-  el.height = Math.round(h * dpr)
-  const ctx = el.getContext('2d')!
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-  ctx.clearRect(0, 0, w, h)
+  const ctx = canvasContext(el, w, h, dpr)
+  const playedCtx = canvasContext(played, w, h, dpr)
   const data = wave.value
   if (!data)
     return
@@ -143,38 +145,36 @@ function draw() {
   const look = { style: waveStyle, scale: waveScale, colors: waveColors, zoom: 1, color: color('--wave'), lineColor: color('--border') }
   const area = { top: 0, width: w, height: h, dpr }
   drawWave(ctx, data, area, look)
-
-  // The part already played: in the accent colour, or (frequency colours) the
-  // rest dimmed so the colours stay readable.
-  const playedX = progress.value * w
-  if (playedX <= 0)
-    return
-  ctx.save()
-  ctx.beginPath()
-  if (waveColors === 'frequency') {
-    ctx.rect(playedX, 0, w - playedX, h)
-    ctx.clip()
-    ctx.globalAlpha = 0.5
-    ctx.fillStyle = color('--background')
-    ctx.fillRect(playedX, 0, w - playedX, h)
-  }
-  else {
-    ctx.rect(0, 0, playedX, h)
-    ctx.clip()
-    ctx.clearRect(0, 0, playedX, h)
-    drawWave(ctx, data, area, { ...look, color: color('--wave-played') })
-  }
-  ctx.restore()
+  if (waveColors !== 'frequency')
+    drawWave(playedCtx, data, area, { ...look, color: color('--wave-played') })
 }
 
-watch([wave, progress, () => settings.settings, () => settings.themeRevision, width], draw, { deep: true })
+watch([wave, () => settings.settings, () => settings.themeRevision, width], draw, { deep: true })
 onMounted(draw)
+
+// The part already played: in the accent colour, or (frequency colours) the rest
+// dimmed so the colours stay readable. Both only move a clip edge.
+watchEffect(() => {
+  const base = canvas.value
+  const played = playedCanvas.value
+  const dim = dimEl.value
+  if (!base || !played || !dim)
+    return
+  const frequency = settings.settings.waveColors === 'frequency'
+  const p = progress.value
+  // The base is cut away under the played part: its dimmed peaks would show through.
+  base.style.clipPath = frequency ? '' : `inset(0 0 0 ${p * 100}%)`
+  played.style.clipPath = `inset(0 ${(1 - p) * 100}% 0 0)`
+  played.style.display = frequency ? 'none' : ''
+  dim.style.left = `${p * 100}%`
+  dim.style.display = frequency && p > 0 ? '' : 'none'
+})
 
 function onSeek(e: MouseEvent) {
   const s = props.sample
-  if (!s?.duration || !canvas.value)
+  if (!s?.duration || !box.value)
     return
-  const rect = canvas.value.getBoundingClientRect()
+  const rect = box.value.getBoundingClientRect()
   const ratio = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
   player.seek(s, ratio * s.duration)
 }
@@ -245,8 +245,11 @@ function onDragStart(e: DragEvent) {
         </Label>
       </div>
     </div>
-    <div ref="box" class="relative flex-1 mx-3 rounded-md bg-background overflow-hidden">
-      <canvas ref="canvas" class="absolute inset-0 size-full cursor-pointer" @mousedown="onSeek" />
+    <!-- Seeking listens on the box: the clipped canvases do not take clicks where cut away. -->
+    <div ref="box" class="relative flex-1 mx-3 rounded-md bg-background overflow-hidden cursor-pointer" @mousedown="onSeek">
+      <canvas ref="canvas" class="absolute inset-0 size-full" />
+      <canvas ref="playedCanvas" class="absolute inset-0 size-full" aria-hidden="true" />
+      <div ref="dimEl" class="pointer-events-none absolute inset-y-0 right-0 bg-background/50" style="display: none" />
       <div v-if="loading" class="absolute inset-0 grid place-items-center text-muted-foreground text-xs">
         {{ t('player.readingWaveform') }}
       </div>

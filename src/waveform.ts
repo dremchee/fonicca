@@ -28,6 +28,24 @@ export function parseWave(buf: ArrayBuffer): Wave {
   return { samples: head[0] === 1, lanes: head[1], count: head[2], stride: head[3], values: new Float32Array(buf, 16) }
 }
 
+/**
+ * A cleared 2D context scaled to CSS pixels. The backing store is resized only when
+ * the size changes: reallocating it on every draw is the costly part of a redraw.
+ */
+export function canvasContext(el: HTMLCanvasElement, width: number, height: number, dpr: number) {
+  const bw = Math.round(width * dpr)
+  const bh = Math.round(height * dpr)
+  if (el.width !== bw)
+    el.width = bw
+  if (el.height !== bh)
+    el.height = bh
+  const ctx = el.getContext('2d')!
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  ctx.clearRect(0, 0, bw, bh)
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  return ctx
+}
+
 /** Amplitude (−1…1) to lane height fraction, with vertical zoom and dB scale. */
 export function waveLevel(v: number, look: Pick<WaveLook, 'scale' | 'zoom'>) {
   const z = Math.max(-1, Math.min(1, v * look.zoom))

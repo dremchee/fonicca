@@ -24,7 +24,7 @@ import {
 } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { useLocalStorage, useResizeObserver } from '@vueuse/core'
-import { computed, nextTick, ref, shallowRef, watch } from 'vue'
+import { computed, nextTick, ref, shallowRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import EditorMinimap from '@/components/EditorMinimap.vue'
 import EditorSlicer from '@/components/EditorSlicer.vue'
@@ -47,7 +47,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
 import { formatNumber, formatRate, shortPath } from '@/format'
-import { drawWave } from '@/waveform'
+import { canvasContext, drawWave } from '@/waveform'
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -204,15 +204,11 @@ function draw() {
   if (!el || width.value === 0)
     return
   const dpr = window.devicePixelRatio || 1
-  el.width = width.value * dpr
-  el.height = height.value * dpr
-  const ctx = el.getContext('2d')!
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
   const w = width.value
   const h = height.value
+  const ctx = canvasContext(el, w, h, dpr)
   const style = getComputedStyle(el)
   const color = (name: string) => style.getPropertyValue(name).trim()
-  ctx.clearRect(0, 0, w, h)
   const step = tickStep(viewEnd.value - viewStart.value)
   const first = Math.ceil(viewStart.value / rate.value / step) * step
   const ticks: number[] = []
@@ -308,29 +304,30 @@ function draw() {
   }
   drawSlices(ctx, w, h, color)
 
-  // Edit cursor: a thin dimmed line in the text colour. Playhead: the text colour at
-  // full strength, 2 px over a canvas-coloured halo so it reads on the brand-coloured
-  // wave and selection alike, with a marker on the ruler.
-  ctx.fillStyle = color('--foreground')
-  ctx.globalAlpha = 0.6
-  ctx.fillRect(Math.round(x(editor.cursor)), RULER, 1, h - RULER)
-  ctx.globalAlpha = 1
-  if (editor.playhead !== null) {
-    const px = Math.round(x(editor.playhead))
-    ctx.fillStyle = color('--card')
-    ctx.fillRect(px - 2, RULER, 4, h - RULER)
-    ctx.fillStyle = color('--foreground')
-    ctx.fillRect(px - 1, RULER, 2, h - RULER)
-    ctx.beginPath()
-    ctx.moveTo(px - 5, RULER - 7)
-    ctx.lineTo(px + 5, RULER - 7)
-    ctx.lineTo(px, RULER)
-    ctx.closePath()
-    ctx.fill()
-  }
+  // Cursor and playhead are elements over the canvas (see cursorEl, playheadEl):
+  // moving them, every frame while playing, redraws nothing here.
 }
 
-watch([wave, () => editor.selection, () => editor.cursor, () => editor.playhead, width, height, vZoom, gridMode, bpm, downbeat, () => settings.settings, () => settings.themeRevision], draw, { deep: true })
+watch([wave, () => editor.selection, width, height, vZoom, gridMode, bpm, downbeat, () => settings.settings, () => settings.themeRevision], draw, { deep: true })
+
+// Edit cursor: a thin dimmed line in the text colour. Playhead: the text colour at full
+// strength over a canvas-coloured halo, with a marker on the ruler. Positioned through
+// style only, so playback does not re-render the component either.
+const cursorEl = ref<HTMLElement | null>(null)
+const playheadEl = ref<HTMLElement | null>(null)
+watchEffect(() => {
+  if (cursorEl.value)
+    cursorEl.value.style.transform = `translateX(${Math.round(x(editor.cursor))}px)`
+})
+watchEffect(() => {
+  const el = playheadEl.value
+  if (!el)
+    return
+  const p = editor.playhead
+  el.style.display = p === null ? 'none' : ''
+  if (p !== null)
+    el.style.transform = `translateX(${Math.round(x(p))}px)`
+})
 watch(() => editor.state?.loop, draw)
 
 // Slice preview: what no slice covers dimmed, a line and a number at each slice start
@@ -771,6 +768,15 @@ const curves: { value: Curve, label: string }[] = [
         @wheel="onWheel"
         @keydown="onKeyDown"
       />
+      <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+        <div ref="cursorEl" class="absolute left-0 bottom-0 w-px bg-foreground/60" :style="{ top: `${RULER}px` }" />
+        <div ref="playheadEl" class="absolute left-0 top-0 bottom-0 text-foreground" style="display: none">
+          <div class="absolute -left-px bottom-0 w-0.5 bg-current shadow-[0_0_0_1px_var(--card)]" :style="{ top: `${RULER}px` }" />
+          <svg class="absolute -left-[5px]" :style="{ top: `${RULER - 7}px` }" width="10" height="7" viewBox="0 0 10 7">
+            <path d="M0 0H10L5 7Z" fill="currentColor" />
+          </svg>
+        </div>
+      </div>
       <div v-if="editor.loading" class="absolute inset-0 grid place-items-center text-muted-foreground text-sm">
         {{ t('editor.waveform.opening') }}
       </div>
