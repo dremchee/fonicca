@@ -135,35 +135,31 @@ function draw() {
     ctx.fillRect(x(t * rate.value), RULER, 1 / dpr, h - RULER)
   ctx.globalAlpha = 1
 
-  // Selection: a tint behind the wave and edges in the brand colour.
+  // Waveform, one lane per channel (or one mixed lane), in the full brand colour.
+  // The selection is the inverse: a brand-colour block with the wave in the canvas colour.
   const sel = editor.selection
   const selX = sel ? x(sel.start) : 0
   const selW = sel ? Math.max(1, x(sel.end) - selX) : 0
-  if (sel) {
-    ctx.fillStyle = color('--primary-soft')
-    ctx.fillRect(selX, RULER, selW, h - RULER)
-  }
-
-  // Waveform, one lane per channel (or one mixed lane): toned down overall, the
-  // selected part drawn again in the full brand colour.
   if (wave.value) {
     const { waveStyle, waveScale, waveColors } = settings.settings
     const area = { top: RULER, width: w, height: h - RULER, dpr }
-    const look = { style: waveStyle, scale: waveScale, colors: waveColors, zoom: vZoom.value, lineColor: color('--border') }
-    drawWave(ctx, wave.value, area, { ...look, color: color('--wave-strong') })
-    if (sel && waveColors === 'theme') {
+    const look = { style: waveStyle, scale: waveScale, colors: waveColors, zoom: vZoom.value, lineColor: color('--border'), color: color('--wave-strong') }
+    drawWave(ctx, wave.value, area, look)
+    if (sel) {
       ctx.save()
       ctx.beginPath()
       ctx.rect(selX, RULER, selW, h - RULER)
       ctx.clip()
-      drawWave(ctx, wave.value, area, { ...look, color: color('--primary') })
+      ctx.fillStyle = color('--primary')
+      ctx.fillRect(selX, RULER, selW, h - RULER)
+      // Frequency colours stay as they are; the theme colour flips to the canvas colour.
+      drawWave(ctx, wave.value, area, { ...look, color: color('--card'), lineColor: color('--card') })
       ctx.restore()
     }
   }
-  if (sel) {
-    ctx.fillStyle = color('--primary')
-    ctx.fillRect(selX, RULER, 1, h - RULER)
-    ctx.fillRect(selX + selW - 1, RULER, 1, h - RULER)
+  else if (sel) {
+    ctx.fillStyle = color('--primary-soft')
+    ctx.fillRect(selX, RULER, selW, h - RULER)
   }
 
   // Ruler, set off from the wave by a line.
@@ -177,16 +173,19 @@ function draw() {
   ctx.fillStyle = color('--border')
   ctx.fillRect(0, RULER, w, 1 / dpr)
 
-  // Edit cursor: a thin line in the text colour. Playhead: the brand colour with a
-  // marker on the ruler, so the two are told apart at a glance.
+  // Edit cursor: a thin dimmed line in the text colour. Playhead: the text colour at
+  // full strength, 2 px over a canvas-coloured halo so it reads on the brand-coloured
+  // wave and selection alike, with a marker on the ruler.
   ctx.fillStyle = color('--foreground')
   ctx.globalAlpha = 0.6
   ctx.fillRect(Math.round(x(editor.cursor)), RULER, 1, h - RULER)
   ctx.globalAlpha = 1
   if (editor.playhead !== null) {
-    const px = x(editor.playhead)
-    ctx.fillStyle = color('--primary')
-    ctx.fillRect(px - 0.75, RULER, 1.5, h - RULER)
+    const px = Math.round(x(editor.playhead))
+    ctx.fillStyle = color('--card')
+    ctx.fillRect(px - 2, RULER, 4, h - RULER)
+    ctx.fillStyle = color('--foreground')
+    ctx.fillRect(px - 1, RULER, 2, h - RULER)
     ctx.beginPath()
     ctx.moveTo(px - 5, RULER - 7)
     ctx.lineTo(px + 5, RULER - 7)

@@ -20,9 +20,8 @@
   --ring: var(--primary);
   --radius: 0.5rem;
   --wave: #8b8b99;
-  /* Editor waveform: the brand colour toned down (~45% of it over --wave), so the full
-     colour is left for what is selected. Plain hex: canvas reads these as strings. */
-  --wave-strong: #7d6dc6;
+  /* Editor waveform: the brand colour; the selection shows it inverted. */
+  --wave-strong: var(--primary);
   --wave-played: var(--primary);
 
   color-scheme: light dark;
@@ -48,7 +47,6 @@
     --border: #2c2c35;
     --input: #2c2c35;
     --wave: #5c5c6a;
-    --wave-strong: #7164ad;
   }
 }
 
