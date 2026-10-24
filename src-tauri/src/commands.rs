@@ -381,6 +381,12 @@ pub fn seek(state: State<'_, AppState>, position: f64) -> Result<()> {
     state.player.seek(position)
 }
 
+/// Peak and RMS per channel of the sound playing, for the level meter.
+#[tauri::command]
+pub fn playback_levels(state: State<'_, AppState>) -> Option<crate::meter::Levels> {
+    state.player.levels()
+}
+
 #[tauri::command]
 pub fn playback_position(state: State<'_, AppState>) -> Option<f64> {
     state.player.position()

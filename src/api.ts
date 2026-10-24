@@ -160,6 +160,12 @@ export interface HiddenFile {
   hiddenAt: number
 }
 
+/** Levels since the previous read, linear (1 = 0 dBFS), one per channel. */
+export interface PlaybackLevels {
+  peak: number[]
+  rms: number[]
+}
+
 export interface TagRef {
   id: number
   name: string
@@ -270,6 +276,8 @@ export const api = {
   stop: () => invoke<void>('stop'),
   seek: (position: number) => invoke<void>('seek', { position }),
   playbackPosition: () => invoke<number | null>('playback_position'),
+  /** `null` when nothing plays. */
+  playbackLevels: () => invoke<PlaybackLevels | null>('playback_levels'),
 }
 
 let dragIcon: string | undefined

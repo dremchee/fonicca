@@ -1,13 +1,14 @@
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
-use std::sync::{mpsc, Mutex};
+use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
 
 use rodio::{Decoder, DeviceSinkBuilder, Player as RodioPlayer};
 use rodio::mixer::Mixer;
 
 use crate::error::{Error, Result};
+use crate::meter::{Levels, MeterTap, Metered};
 use crate::sync::{self, Adjust};
 
 /// Longer files play unadjusted: they are rendered in one pass before playback.
@@ -22,6 +23,8 @@ pub struct Player {
     /// Maps playback time to time in the file, so positions and seeks stay in
     /// the file's (or edit buffer's) own time.
     timing: Mutex<Timing>,
+    /// Levels of what is playing, for the level meter.
+    meter: Arc<MeterTap>,
 }
 
 #[derive(Clone, Copy)]
@@ -68,6 +71,7 @@ impl Player {
             current: Mutex::new(None),
             volume: Mutex::new(1.0),
             timing: Mutex::new(Timing::PLAIN),
+            meter: Arc::default(),
         }
     }
 
@@ -83,7 +87,7 @@ impl Player {
                 let rate = std::num::NonZero::new(out.sample_rate).ok_or_else(|| Error::Audio("no sample rate".into()))?;
                 let player = RodioPlayer::connect_new(mixer);
                 player.set_volume(*self.volume.lock().unwrap());
-                player.append(rodio::buffer::SamplesBuffer::new(channels, rate, out.samples));
+                player.append(Metered::new(rodio::buffer::SamplesBuffer::new(channels, rate, out.samples), Arc::clone(&self.meter)));
                 let scale = 1.0 / adjust.stretch;
                 if start > 0.0 {
                     let _ = player.try_seek(Duration::from_secs_f64(start / scale));
@@ -107,7 +111,7 @@ impl Player {
 
         let player = RodioPlayer::connect_new(mixer);
         player.set_volume(*self.volume.lock().unwrap());
-        player.append(source);
+        player.append(Metered::new(source, Arc::clone(&self.meter)));
         if start > 0.0 {
             let _ = player.try_seek(Duration::from_secs_f64(start));
         }
@@ -133,9 +137,9 @@ impl Player {
         let player = RodioPlayer::connect_new(mixer);
         player.set_volume(*self.volume.lock().unwrap());
         if looping {
-            player.append(buffer.repeat_infinite());
+            player.append(Metered::new(buffer.repeat_infinite(), Arc::clone(&self.meter)));
         } else {
-            player.append(buffer);
+            player.append(Metered::new(buffer, Arc::clone(&self.meter)));
         }
         let sr = pcm.sample_rate as f64;
         *self.timing.lock().unwrap() = Timing {
@@ -166,6 +170,13 @@ impl Player {
             p.try_seek(Duration::from_secs_f64(played)).map_err(|e| Error::Audio(e.to_string()))?;
         }
         Ok(())
+    }
+
+    /// Peak and RMS per channel since the last call, as heard (volume applied);
+    /// `None` when nothing is playing.
+    pub fn levels(&self) -> Option<Levels> {
+        let playing = self.current.lock().unwrap().as_ref().is_some_and(|p| !p.empty());
+        playing.then(|| self.meter.drain(*self.volume.lock().unwrap()))
     }
 
     /// Current position in seconds of the file, or `None` when nothing is playing.

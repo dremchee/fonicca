@@ -10,6 +10,7 @@ mod editor;
 mod editor_commands;
 mod error;
 mod library;
+mod meter;
 mod models;
 mod overview;
 mod player;
@@ -184,6 +185,7 @@ pub fn run() {
             commands::stop,
             commands::seek,
             commands::playback_position,
+            commands::playback_levels,
             commands::get_settings,
             commands::update_settings,
             commands::app_info,

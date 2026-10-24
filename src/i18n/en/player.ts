@@ -10,4 +10,8 @@ export default {
   clickToReveal: 'Click to show in Finder',
   wavePreview: 'Waveform preview',
   cover: 'Cover art',
+  meter: {
+    title: 'Output level, dBFS',
+    clip: 'Clipped. Click to reset',
+  },
 }

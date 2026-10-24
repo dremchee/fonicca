@@ -12,4 +12,8 @@ export default {
   clickToReveal: 'Нажмите, чтобы показать в Finder',
   wavePreview: 'Предпросмотр формы волны',
   cover: 'Обложка',
+  meter: {
+    title: 'Уровень на выходе, дБFS',
+    clip: 'Перегрузка. Нажмите, чтобы сбросить',
+  },
 } satisfies typeof en

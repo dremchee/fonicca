@@ -27,6 +27,7 @@ import { useLocalStorage, useResizeObserver } from '@vueuse/core'
 import { computed, nextTick, ref, shallowRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import EditorMinimap from '@/components/EditorMinimap.vue'
+import LevelMeter from '@/components/LevelMeter.vue'
 import EditorSlicer from '@/components/EditorSlicer.vue'
 import FadeIcon from '@/components/icons/FadeIcon.vue'
 import Hint from '@/components/Hint.vue'
@@ -809,7 +810,9 @@ const curves: { value: Curve, label: string }[] = [
       @zoom="zoom"
       @fit="fit()"
     />
-    <div ref="box" class="relative flex-1 min-h-0 bg-card">
+    <!-- The waveform, and the level meter at its right. -->
+    <div class="flex-1 min-h-0 flex">
+    <div ref="box" class="relative flex-1 min-w-0 bg-card">
       <canvas
         ref="canvas"
         tabindex="0"
@@ -837,6 +840,8 @@ const curves: { value: Curve, label: string }[] = [
       <div v-else-if="editor.error" class="absolute inset-0 grid place-items-center text-destructive text-sm px-6 text-center">
         {{ editor.error }}
       </div>
+    </div>
+    <LevelMeter :active="editor.playhead !== null" />
     </div>
 
     <footer class="h-9 shrink-0 pl-4 pr-2 flex items-center gap-4 border-t border-border text-xs text-muted-foreground tabular">

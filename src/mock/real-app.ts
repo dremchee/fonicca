@@ -19,6 +19,8 @@ let groups: DuplicateGroup[] = fake.map(g => ({
   })),
 }))
 let hidden: HiddenFile[] = []
+let playStart: number | null = null
+let playFrom = 0
 let preferred: string[] = []
 let settings: any = { theme: 'system', colorTheme: 'samplette', customThemes: [], language: 'en', watchFolders: true, autoplay: true, volume: 1, analysisThreads: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' }
 
@@ -65,6 +67,18 @@ export function install() {
       case 'set_preferred_folder':
         preferred = args.preferred ? [args.path, ...preferred.filter(p => p !== args.path)] : preferred.filter(p => p !== args.path)
         return null
+      // Playback: time runs from the play call; levels mimic a kick on every beat at 120 BPM.
+      case 'editor_play': playStart = performance.now(); playFrom = args.start / 48000; return null
+      case 'play': playStart = performance.now(); playFrom = args.start ?? 0; return { stretch: 1, semitones: 0 }
+      case 'stop': playStart = null; return null
+      case 'playback_position': return playStart === null ? null : playFrom + (performance.now() - playStart) / 1000
+      case 'playback_levels': {
+        if (playStart === null)
+          return null
+        const beat = ((performance.now() - playStart) / 500) % 1
+        const level = 0.08 + 0.95 * Math.exp(-beat * 6)
+        return { peak: [level, level * 0.92], rms: [level * 0.45, level * 0.4] }
+      }
       default: return editorCommand(cmd, args) ?? null
     }
   }, { shouldMockEvents: true })
