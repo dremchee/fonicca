@@ -15,8 +15,10 @@ function level(frame: number) {
   return Math.min(1, 0.06 + kick * 0.9 + hat)
 }
 
+let loop: EditorState['loop'] = null
+
 function state(): EditorState {
-  return { sampleId: 1, frames: FRAMES, sampleRate: RATE, channels: 2, canUndo: false, canRedo: false, dirty: false }
+  return { sampleId: 1, frames: FRAMES, sampleRate: RATE, channels: 2, canUndo: false, canRedo: false, dirty: loop !== null, loop }
 }
 
 // Same packing as the backend: u32 mode, lanes, count, stride, then lane-major columns.
@@ -45,7 +47,18 @@ export function editorCommand(cmd: string, args: any): unknown {
   switch (cmd) {
     case 'editor_open': return { state: state(), name: 'Drum Loop 120', ext: 'wav', path: '/Users/me/Projects/Sound/Loops/Drum Loop 120.wav', bpm: BPM }
     case 'editor_wave': return wave(args.start, args.end, args.columns, args.split)
-    case 'editor_apply': case 'editor_undo': case 'editor_redo': return state()
+    case 'editor_apply':
+      if (args.op.op === 'setLoop')
+        loop = { start: args.op.start, end: args.op.end }
+      else if (args.op.op === 'clearLoop')
+        loop = null
+      return state()
+    case 'editor_undo': case 'editor_redo': return state()
+    // Every beat starts on a zero crossing; snap to the nearest within reach.
+    case 'editor_zero_snap': return args.frames.map((f: number) => {
+      const beat = Math.round(f / BEAT) * BEAT
+      return Math.abs(beat - f) <= args.radius ? Math.round(beat) : f
+    })
     default: return undefined
   }
 }

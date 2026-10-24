@@ -3,11 +3,15 @@
 //! until saved.
 
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use serde::{Deserialize, Serialize};
 
 use crate::audio::{self, Pcm};
 use crate::error::{Error, Result};
+
+mod loops;
+pub use loops::{zero_crossing, Loop};
 
 /// Files longer than this are not opened (the whole file is kept in memory).
 const MAX_SECONDS: f64 = 20.0 * 60.0;
@@ -49,6 +53,9 @@ pub enum Op {
     /// Scale the range so its peak hits `peak_db`.
     Normalize { start: usize, end: usize, peak_db: f32 },
     Reverse { start: usize, end: usize },
+    /// Loop points for samplers (the WAV's `smpl` chunk); the audio is untouched.
+    SetLoop { start: usize, end: usize },
+    ClearLoop,
 }
 
 impl Op {
@@ -61,7 +68,9 @@ impl Op {
             | Op::FadeOut { start, end, .. }
             | Op::Gain { start, end, .. }
             | Op::Normalize { start, end, .. }
-            | Op::Reverse { start, end } => (start, end),
+            | Op::Reverse { start, end }
+            | Op::SetLoop { start, end } => (start, end),
+            Op::ClearLoop => (0, 0),
         }
     }
 }
@@ -79,6 +88,7 @@ pub fn apply(pcm: &mut Pcm, op: &Op) {
     let len = end - start;
 
     match *op {
+        Op::SetLoop { .. } | Op::ClearLoop => {}
         Op::Crop { .. } => {
             pcm.samples.truncate(end * ch);
             pcm.samples.drain(..start * ch);
@@ -125,10 +135,15 @@ pub struct Session {
     pub bit_depth: Option<u32>,
     original: Pcm,
     current: Pcm,
+    /// Loop points read from the file, and after the edits.
+    original_loop: Option<Loop>,
+    current_loop: Option<Loop>,
     ops: Vec<Op>,
     redo: Vec<Op>,
     /// Ops at the last save, i.e. what is on disk.
     saved: Vec<Op>,
+    /// Peaks of `current` for wide wave requests, built on first use after each change.
+    pyramid: OnceLock<Pyramid>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -141,6 +156,8 @@ pub struct State {
     pub can_undo: bool,
     pub can_redo: bool,
     pub dirty: bool,
+    #[serde(rename = "loop")]
+    pub loop_points: Option<Loop>,
 }
 
 impl Session {
@@ -149,15 +166,22 @@ impl Session {
         if pcm.frames() as f64 > MAX_SECONDS * pcm.sample_rate as f64 {
             return Err(Error::Other("files longer than 20 minutes cannot be edited".into()));
         }
+        let frames = pcm.frames();
+        let original_loop = loops::read_smpl_loop(path)
+            .map(|l| Loop { start: l.start.min(frames), end: l.end.min(frames) })
+            .filter(|l| l.end > l.start);
         Ok(Self {
             sample_id,
             path: path.to_path_buf(),
             bit_depth,
             current: Pcm { samples: pcm.samples.clone(), channels: pcm.channels, sample_rate: pcm.sample_rate },
             original: pcm,
+            original_loop,
+            current_loop: original_loop,
             ops: Vec::new(),
             redo: Vec::new(),
             saved: Vec::new(),
+            pyramid: OnceLock::new(),
         })
     }
 
@@ -170,6 +194,7 @@ impl Session {
             can_undo: !self.ops.is_empty(),
             can_redo: !self.redo.is_empty(),
             dirty: self.ops != self.saved,
+            loop_points: self.current_loop,
         }
     }
 
@@ -177,10 +202,20 @@ impl Session {
         &self.current
     }
 
+    pub fn loop_points(&self) -> Option<Loop> {
+        self.current_loop
+    }
+
+    fn apply_op(&mut self, op: &Op) {
+        self.current_loop = loops::moved_loop(self.current_loop, op, self.current.frames());
+        apply(&mut self.current, op);
+    }
+
     pub fn apply(&mut self, op: Op) {
-        apply(&mut self.current, &op);
+        self.apply_op(&op);
         self.ops.push(op);
         self.redo.clear();
+        self.pyramid = OnceLock::new();
     }
 
     pub fn undo(&mut self) {
@@ -192,16 +227,26 @@ impl Session {
             channels: self.original.channels,
             sample_rate: self.original.sample_rate,
         };
-        for op in &self.ops {
-            apply(&mut self.current, op);
+        self.current_loop = self.original_loop;
+        for op in std::mem::take(&mut self.ops) {
+            self.apply_op(&op);
+            self.ops.push(op);
         }
+        self.pyramid = OnceLock::new();
     }
 
     pub fn redo(&mut self) {
         if let Some(op) = self.redo.pop() {
-            apply(&mut self.current, &op);
+            self.apply_op(&op);
             self.ops.push(op);
+            self.pyramid = OnceLock::new();
         }
+    }
+
+    /// Wave data of the current audio (see [`wave`]), wide ranges from the pyramid.
+    pub fn wave(&self, start: usize, end: usize, columns: usize, split: bool, bands: bool) -> Vec<u8> {
+        let pyramid = self.pyramid.get_or_init(|| Pyramid::build(&self.current));
+        wave_with(&self.current, Some(pyramid), start, end, columns, split, bands)
     }
 
     pub fn mark_saved(&mut self) {
@@ -215,7 +260,101 @@ impl Session {
 /// - mode 1 (samples, when there are fewer frames than columns): one value per frame.
 ///
 /// Lanes are the channels (`split`) or one mixed lane.
+/// Without a pyramid, reading every frame; the reference the pyramid is tested against.
+#[cfg(test)]
 pub fn wave(pcm: &Pcm, start: usize, end: usize, columns: usize, split: bool, bands: bool) -> Vec<u8> {
+    wave_with(pcm, None, start, end, columns, split, bands)
+}
+
+/// Fields per pyramid block and lane: min, max, sum of squares, low/mid/high band
+/// energy, frames.
+const PEAK_FIELDS: usize = 7;
+/// Frames per block at the finest pyramid level; each level up is 4× coarser.
+const PEAK_BASE: usize = 64;
+
+/// Min, max and energies per block of frames at several block sizes, so a wide wave
+/// request adds up a few thousand blocks instead of reading every frame.
+pub struct Pyramid {
+    /// Lanes stored: the mix, then each channel.
+    lanes: usize,
+    levels: Vec<PeakLevel>,
+}
+
+struct PeakLevel {
+    block: usize,
+    blocks: usize,
+    /// `[lane][block][field]`.
+    data: Vec<f32>,
+}
+
+impl Pyramid {
+    pub fn build(pcm: &Pcm) -> Self {
+        let ch = pcm.channels.max(1);
+        let lanes = ch + 1;
+        let frames = pcm.frames();
+        let blocks = frames.div_ceil(PEAK_BASE);
+        let mut data = vec![0.0f32; lanes * blocks * PEAK_FIELDS];
+        // The same two one-pole low-passes as the direct path, run once over the file.
+        let coef = |hz: f32| 1.0 - (-std::f32::consts::TAU * hz / pcm.sample_rate.max(1) as f32).exp();
+        let (a1, a2) = (coef(250.0), coef(4000.0));
+        for lane in 0..lanes {
+            let (mut lp1, mut lp2) = (0.0f32, 0.0f32);
+            for blk in 0..blocks {
+                let acc = &mut data[(lane * blocks + blk) * PEAK_FIELDS..(lane * blocks + blk + 1) * PEAK_FIELDS];
+                acc[0] = f32::MAX;
+                acc[1] = f32::MIN;
+                for f in blk * PEAK_BASE..((blk + 1) * PEAK_BASE).min(frames) {
+                    let frame = &pcm.samples[f * ch..(f + 1) * ch];
+                    let x = if lane == 0 { frame.iter().sum::<f32>() / ch as f32 } else { frame[lane - 1] };
+                    lp1 += a1 * (x - lp1);
+                    lp2 += a2 * (x - lp2);
+                    acc[0] = acc[0].min(x);
+                    acc[1] = acc[1].max(x);
+                    acc[2] += x * x;
+                    acc[3] += lp1 * lp1;
+                    acc[4] += (lp2 - lp1) * (lp2 - lp1);
+                    acc[5] += (x - lp2) * (x - lp2);
+                    acc[6] += 1.0;
+                }
+            }
+        }
+        let mut levels = vec![PeakLevel { block: PEAK_BASE, blocks, data }];
+        // Coarser levels until a whole file fits in a few columns' worth of blocks.
+        while levels.last().unwrap().blocks > 64 {
+            let prev = levels.last().unwrap();
+            let blocks = prev.blocks.div_ceil(4);
+            let mut data = vec![0.0f32; lanes * blocks * PEAK_FIELDS];
+            for lane in 0..lanes {
+                for blk in 0..blocks {
+                    let out = &mut data[(lane * blocks + blk) * PEAK_FIELDS..(lane * blocks + blk + 1) * PEAK_FIELDS];
+                    out[0] = f32::MAX;
+                    out[1] = f32::MIN;
+                    for child in blk * 4..((blk + 1) * 4).min(prev.blocks) {
+                        merge(out, &prev.data[(lane * prev.blocks + child) * PEAK_FIELDS..(lane * prev.blocks + child + 1) * PEAK_FIELDS]);
+                    }
+                }
+            }
+            levels.push(PeakLevel { block: prev.block * 4, blocks, data });
+        }
+        Self { lanes, levels }
+    }
+
+    /// The coarsest level that still has at least two blocks per `frames_per_column`,
+    /// so a column's edges are off by at most half a column of blocks.
+    fn level_for(&self, frames_per_column: usize) -> Option<&PeakLevel> {
+        self.levels.iter().rev().find(|l| l.block * 2 <= frames_per_column)
+    }
+}
+
+fn merge(into: &mut [f32], v: &[f32]) {
+    into[0] = into[0].min(v[0]);
+    into[1] = into[1].max(v[1]);
+    for i in 2..PEAK_FIELDS {
+        into[i] += v[i];
+    }
+}
+
+fn wave_with(pcm: &Pcm, pyramid: Option<&Pyramid>, start: usize, end: usize, columns: usize, split: bool, bands: bool) -> Vec<u8> {
     let ch = pcm.channels.max(1);
     let frames = pcm.frames();
     let (start, end) = (start.min(frames), end.min(frames).max(start.min(frames)));
@@ -227,6 +366,29 @@ pub fn wave(pcm: &Pcm, start: usize, end: usize, columns: usize, split: bool, ba
     let mut out = Vec::with_capacity(16 + lanes * count * stride * 4);
     for v in [sample_mode as u32, lanes as u32, count as u32, stride as u32] {
         out.extend_from_slice(&v.to_le_bytes());
+    }
+    let level = if sample_mode { None } else { pyramid.and_then(|p| p.level_for(span / columns).map(|l| (p, l))) };
+    if let Some((p, level)) = level {
+        debug_assert_eq!(p.lanes, ch + 1);
+        for lane in 0..lanes {
+            let stored = if split { lane + 1 } else { 0 };
+            let base = stored * level.blocks * PEAK_FIELDS;
+            for c in 0..columns {
+                let a = start + c * span / columns;
+                let b = (start + (c + 1) * span / columns).max(a + 1).min(end);
+                let (ba, bb) = (a / level.block, b.div_ceil(level.block).min(level.blocks));
+                let mut acc = [f32::MAX, f32::MIN, 0.0, 0.0, 0.0, 0.0, 0.0];
+                for blk in ba..bb.max(ba + 1).min(level.blocks) {
+                    merge(&mut acc, &level.data[base + blk * PEAK_FIELDS..base + (blk + 1) * PEAK_FIELDS]);
+                }
+                let n = acc[6].max(1.0);
+                let band = |e: f32| if bands { (e / n).sqrt() } else { 0.0 };
+                for v in [acc[0], acc[1], (acc[2] / n).sqrt(), band(acc[3]), band(acc[4]), band(acc[5])] {
+                    out.extend_from_slice(&v.to_le_bytes());
+                }
+            }
+        }
+        return out;
     }
     let value = |f: usize, lane: usize| -> f32 {
         let frame = &pcm.samples[f * ch..(f + 1) * ch];
@@ -280,8 +442,8 @@ pub fn wave(pcm: &Pcm, start: usize, end: usize, columns: usize, split: bool, ba
 }
 
 /// Writes a WAV file: integer PCM at the source bit depth (8/16/24), otherwise
-/// 32-bit float. Integer samples are clipped.
-pub fn write_wav(path: &Path, pcm: &Pcm, bit_depth: Option<u32>) -> Result<()> {
+/// 32-bit float. Integer samples are clipped. Loop points go into a `smpl` chunk.
+pub fn write_wav(path: &Path, pcm: &Pcm, bit_depth: Option<u32>, loop_points: Option<Loop>) -> Result<()> {
     let err = |e: hound::Error| Error::Other(format!("writing WAV: {e}"));
     let bits = match bit_depth {
         Some(b @ (8 | 16 | 24)) => b as u16,
@@ -305,6 +467,9 @@ pub fn write_wav(path: &Path, pcm: &Pcm, bit_depth: Option<u32>) -> Result<()> {
         }
     }
     w.finalize().map_err(err)?;
+    if let Some(lp) = loop_points {
+        loops::append_smpl(path, lp, pcm.sample_rate)?;
+    }
     Ok(())
 }
 
@@ -378,7 +543,7 @@ mod tests {
     fn undo_redo_and_dirty_state() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("a.wav");
-        write_wav(&path, &ramp(100, 2), Some(24)).unwrap();
+        write_wav(&path, &ramp(100, 2), Some(24), None).unwrap();
         let mut s = Session::open(1, &path, Some(24)).unwrap();
         assert!(!s.state().dirty && !s.state().can_undo);
 
@@ -407,7 +572,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let src = dir.path().join("Kick.wav");
         let pcm = ramp(64, 2);
-        write_wav(&src, &pcm, Some(16)).unwrap();
+        write_wav(&src, &pcm, Some(16), None).unwrap();
         let back = audio::decode(&src, 10.0).unwrap();
         assert_eq!((back.channels, back.sample_rate, back.frames()), (2, 1000, 64));
         assert!((back.samples[10] - pcm.samples[10]).abs() < 1e-3);
@@ -449,6 +614,30 @@ mod tests {
         // Mixed into one lane.
         let (_, lanes, ..) = unpack(&wave(&p, 0, sr, 10, false, false));
         assert_eq!(lanes, 1);
+    }
+
+    #[test]
+    fn pyramid_matches_reading_every_frame() {
+        // 60 s stereo: a slow swell on the left, a decaying tone on the right.
+        let sr = 8000;
+        let frames = sr * 60;
+        let samples = (0..frames)
+            .flat_map(|i| {
+                let t = i as f32 / sr as f32;
+                let tone = (t * 440.0 * std::f32::consts::TAU).sin();
+                [tone * (0.2 + 0.7 * (t / 9.0).sin().abs()), tone * (-t / 20.0).exp()]
+            })
+            .collect();
+        let p = Pcm { samples, channels: 2, sample_rate: sr as u32 };
+        let pyramid = Pyramid::build(&p);
+        for (start, end, split) in [(0, frames, true), (frames / 3, frames / 3 + sr * 7, false), (17, frames - 5, true)] {
+            let (_, lanes, count, _, direct) = unpack(&wave(&p, start, end, 1000, split, false));
+            let (_, lanes_p, count_p, _, fast) = unpack(&wave_with(&p, Some(&pyramid), start, end, 1000, split, false));
+            assert_eq!((lanes, count), (lanes_p, count_p));
+            // Min/max/RMS agree within what shifting a column edge by a block can change.
+            let worst = direct.iter().zip(&fast).map(|(a, b)| (a - b).abs()).fold(0.0f32, f32::max);
+            assert!(worst < 0.05, "pyramid differs by {worst} for {start}..{end}");
+        }
     }
 
     #[test]

@@ -5,6 +5,7 @@ import {
   ArrowUpToLine,
   Crop,
   FolderOpen,
+  IterationCw,
   Magnet,
   Maximize2,
   Play,
@@ -32,6 +33,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -68,6 +70,7 @@ const toggleIcon = 'size-8 px-0 hover:bg-accent hover:text-accent-foreground dar
 type GridMode = 'beats' | 'time' | 'off'
 const gridMode = useLocalStorage<GridMode>('editor.gridMode', 'beats')
 const snap = useLocalStorage('editor.snap', true)
+const zeroSnap = useLocalStorage('editor.zeroSnap', true)
 // Tempo of the bar grid (from the sample, editable) and where bar 1 starts, in frames.
 const bpm = ref<number | null>(null)
 const downbeat = ref(0)
@@ -280,6 +283,27 @@ function draw() {
   ctx.fillStyle = color('--border')
   ctx.fillRect(0, RULER, w, 1 / dpr)
 
+  // Loop points: a brand-colour band at the foot of the ruler, dashed edges through the wave.
+  const lp = editor.state?.loop
+  if (lp) {
+    const a = x(lp.start)
+    const b = x(lp.end)
+    ctx.fillStyle = color('--primary')
+    ctx.fillRect(a, RULER - 4, Math.max(1, b - a), 4)
+    ctx.strokeStyle = color('--foreground')
+    ctx.globalAlpha = 0.7
+    ctx.setLineDash([3, 3])
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    for (const px of [Math.round(a) + 0.5, Math.round(b) - 0.5]) {
+      ctx.moveTo(px, RULER)
+      ctx.lineTo(px, h)
+    }
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.globalAlpha = 1
+  }
+
   // Edit cursor: a thin dimmed line in the text colour. Playhead: the text colour at
   // full strength, 2 px over a canvas-coloured halo so it reads on the brand-coloured
   // wave and selection alike, with a marker on the ruler.
@@ -303,6 +327,7 @@ function draw() {
 }
 
 watch([wave, () => editor.selection, () => editor.cursor, () => editor.playhead, width, height, vZoom, gridMode, bpm, downbeat, () => settings.settings, () => settings.themeRevision], draw, { deep: true })
+watch(() => editor.state?.loop, draw)
 
 // --- Mouse ------------------------------------------------------------------
 
@@ -312,10 +337,71 @@ function frameAt(clientX: number) {
   return Math.round(Math.min(frames.value, Math.max(0, f)))
 }
 
+// Edges move to the nearest zero crossing, so cuts and loops don't click. Within
+// 10 ms (a 50 Hz period); ⌥ inverts it, like grid snapping.
+async function toZeroCrossings(e: MouseEvent) {
+  if (zeroSnap.value === e.altKey)
+    return
+  const sel = editor.selection
+  const cursor = editor.cursor
+  try {
+    const radius = Math.round(rate.value * 0.01)
+    const [a, b] = await editor.zeroSnap(sel ? [sel.start, sel.end] : [cursor], radius)
+    // Unless the user has moved on in the meantime.
+    if (editor.selection !== sel || editor.cursor !== cursor)
+      return
+    if (sel && b > a)
+      editor.selection = { start: a, end: b }
+    editor.cursor = a
+  }
+  catch (err) {
+    console.error(err)
+  }
+}
+
+function selectLoop() {
+  const lp = editor.state?.loop
+  if (lp) {
+    editor.selection = { ...lp }
+    editor.cursor = lp.start
+  }
+}
+
+// A selection edge under the pointer (within a few pixels, in the wave area): dragging it resizes the selection.
+const EDGE_PX = 5
+const hoverEdge = ref<'start' | 'end' | null>(null)
+
+function edgeAt(e: MouseEvent): 'start' | 'end' | null {
+  const sel = editor.selection
+  const rect = canvas.value?.getBoundingClientRect()
+  if (!sel || !rect || e.clientY - rect.top < RULER)
+    return null
+  const px = e.clientX - rect.left
+  const toStart = Math.abs(px - x(sel.start))
+  const toEnd = Math.abs(px - x(sel.end))
+  if (Math.min(toStart, toEnd) > EDGE_PX)
+    return null
+  return toStart < toEnd ? 'start' : 'end'
+}
+
 function onMouseDown(e: MouseEvent) {
   if (e.button !== 0)
     return
-  const anchor = e.shiftKey ? editor.cursor : snapped(frameAt(e.clientX), e)
+  // The loop band on the ruler selects the loop.
+  const lp = editor.state?.loop
+  if (lp && e.clientY - canvas.value!.getBoundingClientRect().top < RULER) {
+    const f = frameAt(e.clientX)
+    if (f >= lp.start && f <= lp.end) {
+      selectLoop()
+      return
+    }
+  }
+  // Grabbing an edge keeps the other one as the anchor; otherwise a new selection starts here.
+  const edge = e.shiftKey ? null : edgeAt(e)
+  const sel = editor.selection
+  const anchor = edge && sel
+    ? (edge === 'start' ? sel.end : sel.start)
+    : e.shiftKey ? editor.cursor : snapped(frameAt(e.clientX), e)
   const startX = e.clientX
   let dragged = false
   const move = (ev: MouseEvent) => {
@@ -331,6 +417,9 @@ function onMouseDown(e: MouseEvent) {
     // The last mousemove may lag behind the release point.
     if (dragged)
       move(ev)
+    // A click on an edge without moving leaves the selection as it is.
+    else if (edge)
+      return
     if (!dragged) {
       const f = snapped(frameAt(ev.clientX), ev)
       if (e.shiftKey && f !== anchor)
@@ -343,6 +432,7 @@ function onMouseDown(e: MouseEvent) {
     else if (editor.selection) {
       editor.cursor = editor.selection.start
     }
+    toZeroCrossings(ev)
   }
   window.addEventListener('mousemove', move)
   window.addEventListener('mouseup', up)
@@ -412,6 +502,9 @@ function onKeyDown(e: KeyboardEvent) {
   else if (e.key === 'Escape') {
     editor.selection = null
   }
+  else if (!mod && e.shiftKey && key === 'l') {
+    editor.toggleLoopPoints()
+  }
   else if (!mod && key === 'l') {
     editor.looping = !editor.looping
   }
@@ -453,9 +546,12 @@ function formatTime(seconds: number, precise = true) {
 const status = computed(() => {
   const sr = rate.value
   const sel = editor.selection
+  const lp = editor.state?.loop
+  const range = (r: { start: number, end: number }) => `${formatTime(r.start / sr)} – ${formatTime(r.end / sr)} (${formatTime((r.end - r.start) / sr)})`
   return {
     cursor: formatTime(editor.cursor / sr),
-    selection: sel ? `${formatTime(sel.start / sr)} – ${formatTime(sel.end / sr)} (${formatTime((sel.end - sel.start) / sr)})` : '',
+    selection: sel ? range(sel) : '',
+    loop: lp ? range(lp) : '',
     length: formatTime(frames.value / sr),
   }
 })
@@ -513,6 +609,17 @@ const curves: { value: Curve, label: string }[] = [
         <Toggle v-model="editor.looping" size="sm" :class="toggleIcon" :aria-label="t('editor.toolbar.loop')">
           <Repeat />
         </Toggle>
+      </Hint>
+      <Hint :text="editor.selection ? t('editor.toolbar.setLoopHint') : t('editor.toolbar.clearLoopHint')" shortcut="⇧L">
+        <Button
+          variant="ghost" size="icon-sm"
+          :class="editor.state?.loop && 'text-primary hover:text-primary'"
+          :disabled="!editor.selection && !editor.state?.loop"
+          :aria-label="t('editor.toolbar.loopPoints')"
+          @click="editor.toggleLoopPoints()"
+        >
+          <IterationCw />
+        </Button>
       </Hint>
       <Separator orientation="vertical" class="mx-1 h-5" />
       <Hint :text="t('editor.toolbar.cropHint')">
@@ -607,9 +714,12 @@ const curves: { value: Curve, label: string }[] = [
       <canvas
         ref="canvas"
         tabindex="0"
-        class="absolute inset-0 size-full outline-none cursor-text"
+        class="absolute inset-0 size-full outline-none"
+        :class="hoverEdge ? 'cursor-ew-resize' : 'cursor-text'"
         :aria-label="t('editor.waveform.label')"
         @mousedown="onMouseDown"
+        @mousemove="hoverEdge = edgeAt($event)"
+        @mouseleave="hoverEdge = null"
         @wheel="onWheel"
         @keydown="onKeyDown"
       />
@@ -631,6 +741,9 @@ const curves: { value: Curve, label: string }[] = [
         ↕ ×{{ formatNumber(vZoom, { fixed: 1 }) }}
       </button>
       <span v-if="status.selection" class="shrink-0">{{ t('editor.status.selection', { range: status.selection }) }}</span>
+      <button v-if="status.loop" class="shrink-0 hover:text-foreground" :title="t('editor.status.selectLoop')" @click="selectLoop()">
+        {{ t('editor.status.loop', { range: status.loop }) }}
+      </button>
       <button
         class="group min-w-0 flex-1 flex items-center justify-end gap-1.5 hover:text-foreground"
         :title="`${editor.sample?.path}\n${t('editor.status.reveal')}`"
@@ -687,6 +800,9 @@ const curves: { value: Curve, label: string }[] = [
                 <DropdownMenuItem :disabled="!beatGrid" @select="downbeat = editor.cursor">
                   {{ t('editor.view.downbeat') }}
                 </DropdownMenuItem>
+                <DropdownMenuCheckboxItem v-model="zeroSnap" @select.prevent>
+                  {{ t('editor.view.zeroSnap') }}
+                </DropdownMenuCheckboxItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem :disabled="vZoom <= 1.01" @select="vZoom = 1">
                   {{ t('editor.view.resetVZoom') }}

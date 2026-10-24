@@ -17,6 +17,8 @@ export type EditOp
     | { op: 'fadeIn' | 'fadeOut', start: number, end: number, curve: Curve }
     | { op: 'gain', start: number, end: number, db: number }
     | { op: 'normalize', start: number, end: number, peakDb: number }
+    | { op: 'setLoop', start: number, end: number }
+    | { op: 'clearLoop' }
 
 export interface EditorState {
   sampleId: number
@@ -26,6 +28,8 @@ export interface EditorState {
   canUndo: boolean
   canRedo: boolean
   dirty: boolean
+  /** Loop points for samplers, saved in the WAV's `smpl` chunk. */
+  loop: { start: number, end: number } | null
 }
 
 /**
@@ -58,6 +62,7 @@ const editorApi = {
   wave: async (start: number, end: number, columns: number, split: boolean, bands: boolean): Promise<Wave> => {
     return parseWave(await invoke<ArrayBuffer>('editor_wave', { start, end, columns, split, bands }))
   },
+  zeroSnap: (frames: number[], radius: number) => invoke<number[]>('editor_zero_snap', { frames, radius }),
   play: (start: number, end: number, looping: boolean) => invoke<void>('editor_play', { start, end, looping }),
   save: (asNew: boolean) =>
     invoke<{ path: string, backup: string | null, state: EditorState }>('editor_save', { asNew }),
@@ -150,8 +155,9 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
-  async function apply(op: EditOp) {
-    stopPlayback()
+  async function apply(op: EditOp, stop = true) {
+    if (stop)
+      stopPlayback()
     try {
       after(await editorApi.apply(op))
     }
@@ -218,6 +224,14 @@ export const useEditorStore = defineStore('editor', () => {
 
   function reverse() {
     apply({ op: 'reverse', ...target() })
+  }
+
+  /** Loop points from the selection; without one, clears them. Playback goes on. */
+  function toggleLoopPoints() {
+    if (selection.value)
+      apply({ op: 'setLoop', ...selection.value }, false)
+    else if (state.value?.loop)
+      apply({ op: 'clearLoop' }, false)
   }
 
   // --- Playback ------------------------------------------------------------
@@ -311,6 +325,8 @@ export const useEditorStore = defineStore('editor', () => {
     gain,
     normalize,
     reverse,
+    toggleLoopPoints,
+    zeroSnap: editorApi.zeroSnap,
     play,
     stopPlayback,
     togglePlay,

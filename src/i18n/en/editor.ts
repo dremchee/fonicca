@@ -27,6 +27,9 @@ export default {
     space: 'Space',
     loop: 'Loop',
     loopHint: 'Loop the selection',
+    loopPoints: 'Loop points',
+    setLoopHint: 'Loop points from the selection, saved in the WAV for samplers',
+    clearLoopHint: 'Clear the loop points',
     crop: 'Crop',
     cropHint: 'Keep only the selection',
     delete: 'Delete',
@@ -57,6 +60,7 @@ export default {
     gridTime: 'Time',
     gridOff: 'Off',
     downbeat: 'Bar 1 starts at the cursor',
+    zeroSnap: 'Snap to zero crossings',
     resetVZoom: 'Reset vertical zoom',
   },
   curves: {
@@ -75,6 +79,8 @@ export default {
   status: {
     cursor: 'Cursor {time}',
     selection: 'Selection {range}',
+    loop: 'Loop {range}',
+    selectLoop: 'Select the loop',
     vZoom: 'Vertical zoom (⌥-scroll). Click to reset.',
     reveal: 'Click to show in Finder',
   },

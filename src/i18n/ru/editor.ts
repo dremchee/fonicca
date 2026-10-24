@@ -28,6 +28,9 @@ export default {
     space: 'Пробел',
     loop: 'Луп',
     loopHint: 'Зациклить выделение',
+    loopPoints: 'Точки лупа',
+    setLoopHint: 'Точки лупа по выделению, сохраняются в WAV для семплеров',
+    clearLoopHint: 'Убрать точки лупа',
     crop: 'Обрезать',
     cropHint: 'Оставить только выделение',
     delete: 'Удалить',
@@ -58,6 +61,7 @@ export default {
     gridTime: 'Время',
     gridOff: 'Нет',
     downbeat: 'Первый такт от курсора',
+    zeroSnap: 'Привязка к нулям',
     resetVZoom: 'Сбросить вертикальный зум',
   },
   curves: {
@@ -76,6 +80,8 @@ export default {
   status: {
     cursor: 'Курсор {time}',
     selection: 'Выделение {range}',
+    loop: 'Луп {range}',
+    selectLoop: 'Выделить луп',
     vZoom: 'Вертикальный масштаб (⌥ и прокрутка). Щёлкните, чтобы сбросить.',
     reveal: 'Щёлкните, чтобы показать в Finder',
   },

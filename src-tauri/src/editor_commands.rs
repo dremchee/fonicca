@@ -111,8 +111,15 @@ pub fn editor_wave(
     bands: bool,
 ) -> Result<tauri::ipc::Response> {
     with_session(&state, &window, |s| {
-        Ok(tauri::ipc::Response::new(editor::wave(s.audio(), start, end, columns.clamp(1, 8192), split, bands)))
+        Ok(tauri::ipc::Response::new(s.wave(start, end, columns.clamp(1, 8192), split, bands)))
     })
+}
+
+/// Moves each frame to the nearest zero crossing within `radius` frames.
+#[tauri::command]
+pub fn editor_zero_snap(state: State<'_, AppState>, window: Window, frames: Vec<usize>, radius: usize) -> Result<Vec<usize>> {
+    let radius = radius.min(48_000);
+    with_session(&state, &window, |s| Ok(frames.iter().map(|&f| editor::zero_crossing(s.audio(), f, radius)).collect()))
 }
 
 #[tauri::command]
@@ -149,7 +156,7 @@ pub fn editor_save(state: State<'_, AppState>, window: Window, as_new: bool) -> 
         };
         // Through a temporary file so a failed write never truncates the target.
         let tmp = target.with_extension("wav.tmp");
-        editor::write_wav(&tmp, s.audio(), s.bit_depth)?;
+        editor::write_wav(&tmp, s.audio(), s.bit_depth, s.loop_points())?;
         std::fs::rename(&tmp, &target)?;
         if backup.is_some() {
             s.mark_saved();

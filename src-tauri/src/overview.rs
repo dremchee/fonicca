@@ -174,7 +174,7 @@ mod tests {
                 [(t * 100.0 * std::f32::consts::TAU).sin() * 0.5, (t * 10000.0 * std::f32::consts::TAU).sin() * 0.5]
             })
             .collect();
-        crate::editor::write_wav(&path, &audio::Pcm { samples, channels: 2, sample_rate: sr as u32 }, None).unwrap();
+        crate::editor::write_wav(&path, &audio::Pcm { samples, channels: 2, sample_rate: sr as u32 }, None, None).unwrap();
 
         let o = Overview::compute(&path, Some(sr)).unwrap();
         let (lanes, count, stride, v) = unpack(&o.render(20, true));
