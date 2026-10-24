@@ -11,6 +11,7 @@
 | tauri | 2.12 | MIT / Apache-2.0 | ✅ | Оболочка приложения |
 | @tauri-apps/api | 2.12 | MIT / Apache-2.0 | ✅ | JS-API Tauri |
 | vue-i18n | 11.4 | MIT | ✅ | Локализация интерфейса (en, ru) |
+| culori | 4.0 | MIT | ✅ | Цветовая математика колорпикера (HEX, RGB, HSL, OKLCH, P3) |
 | tauri-plugin-drag | 2.1 | MIT / Apache-2.0 | ✅ | Drag файлов в DAW |
 | rusqlite | 0.40 | MIT | ✅ | SQLite (+ FTS5) |
 | notify | 8.2 | CC0-1.0 | ✅ | Слежение за папками |

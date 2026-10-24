@@ -67,6 +67,18 @@ export default {
     vocal: 'Вокал',
     fx: 'Эффекты',
   },
+  color: {
+    pick: 'Выбрать цвет',
+    pickFromScreen: 'Взять цвет с экрана',
+    hexValue: 'Значение HEX',
+    alphaPercent: 'Непрозрачность, %',
+    copy: 'Скопировать цвет',
+    copied: 'Скопировано',
+    hue: 'Оттенок',
+    alpha: 'Непрозрачность',
+    saturationBrightness: 'Насыщенность и яркость',
+    saturationValue: 'Насыщенность {s}%, яркость {v}%',
+  },
   hints: {
     fromName: 'Из имени файла',
     fromAudio: 'Определено по звуку',

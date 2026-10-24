@@ -10,6 +10,7 @@ import { api } from '@/api'
 import ThemeThumb from '@/components/ThemeThumb.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ColorInput } from '@/components/ui/color-input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -253,14 +254,6 @@ async function importTheme() {
     <div class="grid grid-cols-[1fr_220px] gap-4 items-start">
       <section class="group-box">
         <div v-for="key in COLOR_KEYS" :key="key" class="color-row">
-          <label class="swatch" :style="{ background: draft[editMode][key] }">
-            <input
-              type="color"
-              :value="draft[editMode][key]"
-              :aria-label="t(`settings.themes.colors.${key}.label`)"
-              @input="setColor(key, ($event.target as HTMLInputElement).value)"
-            >
-          </label>
           <div class="flex-1 min-w-0">
             <div class="font-medium">
               {{ t(`settings.themes.colors.${key}.label`) }}
@@ -273,11 +266,15 @@ async function importTheme() {
               {{ t('settings.themes.contrast.message', { what: t(`settings.themes.contrast.${issue.check}`), ratio: formatNumber(issue.ratio, { fixed: 1 }), min: formatNumber(issue.min, { max: 1 }) }) }}
             </div>
           </div>
-          <Input
+          <!-- Themes store #rrggbb: hex only, no transparency. -->
+          <ColorInput
             :model-value="draft[editMode][key]"
-            class="h-7 w-24 font-mono text-xs"
+            class="h-8 w-32 font-mono text-xs"
+            :formats="['hex']"
+            :show-alpha="false"
+            popover-side="left"
             :aria-label="t('settings.themes.editor.hex', { color: t(`settings.themes.colors.${key}.label`) })"
-            @change="setColor(key, ($event.target as HTMLInputElement).value)"
+            @update:model-value="setColor(key, $event)"
           />
         </div>
       </section>
@@ -345,23 +342,5 @@ async function importTheme() {
 
 .color-row + .color-row {
   border-top: 1px solid var(--border);
-}
-
-.swatch {
-  position: relative;
-  width: 1.75rem;
-  height: 1.75rem;
-  flex-shrink: 0;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.08);
-  cursor: pointer;
-}
-
-.swatch input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
 }
 </style>

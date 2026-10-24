@@ -66,6 +66,18 @@ export default {
     vocal: 'Vocal',
     fx: 'FX',
   },
+  color: {
+    pick: 'Pick a colour',
+    pickFromScreen: 'Pick a colour from the screen',
+    hexValue: 'Hex value',
+    alphaPercent: 'Opacity, %',
+    copy: 'Copy colour',
+    copied: 'Copied',
+    hue: 'Hue',
+    alpha: 'Opacity',
+    saturationBrightness: 'Saturation and brightness',
+    saturationValue: 'Saturation {s}%, brightness {v}%',
+  },
   hints: {
     fromName: 'From the file name',
     fromAudio: 'Detected from audio',
