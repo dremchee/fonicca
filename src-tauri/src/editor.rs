@@ -14,6 +14,7 @@ pub mod clipboard;
 mod loops;
 mod markers;
 mod slices;
+pub mod processing;
 pub use loops::{zero_crossing, Loop};
 pub use markers::{append_markers, Marker};
 pub use slices::{slices, SliceBy, Span};
@@ -58,13 +59,17 @@ pub enum Op {
     /// Scale the range so its peak hits `peak_db`.
     Normalize { start: usize, end: usize, peak_db: f32 },
     Reverse { start: usize, end: usize },
+    /// Subtract each channel's mean over the range; no filtering or peak scaling.
+    DcOffset { start: usize, end: usize },
     /// Loop points for samplers (the WAV's `smpl` chunk); the audio is untouched.
     SetLoop { start: usize, end: usize },
     ClearLoop,
     /// Slice markers, all at once (cleaned up when applied); the audio is untouched.
     SetMarkers { markers: Vec<Marker> },
-    /// Replace the range with other audio, interleaved in this buffer's format (paste;
-    /// `end == start` inserts). Built by the paste command, never sent by the page.
+    /// Rendered pitch/time edit. Unlike paste, positions inside the range scale with it.
+    #[serde(skip)]
+    Stretch { start: usize, end: usize, samples: std::sync::Arc<Vec<f32>> },
+    /// Paste in this buffer's format; `end == start` inserts. Built on the backend.
     #[serde(skip)]
     Replace { start: usize, end: usize, samples: std::sync::Arc<Vec<f32>> },
 }
@@ -80,7 +85,9 @@ impl Op {
             | Op::Gain { start, end, .. }
             | Op::Normalize { start, end, .. }
             | Op::Reverse { start, end }
+            | Op::DcOffset { start, end }
             | Op::SetLoop { start, end }
+            | Op::Stretch { start, end, .. }
             | Op::Replace { start, end, .. } => (start, end),
             Op::ClearLoop | Op::SetMarkers { .. } => (0, 0),
         }
@@ -101,7 +108,7 @@ pub fn apply(pcm: &mut Pcm, op: &Op) {
 
     match *op {
         Op::SetLoop { .. } | Op::ClearLoop | Op::SetMarkers { .. } => {}
-        Op::Replace { ref samples, .. } => {
+        Op::Replace { ref samples, .. } | Op::Stretch { ref samples, .. } => {
             pcm.samples.splice(start * ch..end * ch, samples.iter().copied());
         }
         Op::Crop { .. } => {
@@ -131,6 +138,24 @@ pub fn apply(pcm: &mut Pcm, op: &Op) {
                 pcm.samples[start * ch..end * ch].iter_mut().for_each(|s| *s *= g);
             }
         }
+        Op::DcOffset { .. } => {
+            if len > 0 {
+                let range = &mut pcm.samples[start * ch..end * ch];
+                // Accumulate in f64 so long files do not lose small offsets.
+                let mut means = vec![0.0f64; ch];
+                for frame in range.chunks_exact(ch) {
+                    for (mean, sample) in means.iter_mut().zip(frame) {
+                        *mean += *sample as f64;
+                    }
+                }
+                means.iter_mut().for_each(|mean| *mean /= len as f64);
+                for frame in range.chunks_exact_mut(ch) {
+                    for (sample, mean) in frame.iter_mut().zip(&means) {
+                        *sample = (*sample as f64 - mean) as f32;
+                    }
+                }
+            }
+        }
         Op::Reverse { .. } => {
             let range = &mut pcm.samples[start * ch..end * ch];
             let n = range.len() / ch;
@@ -143,8 +168,16 @@ pub fn apply(pcm: &mut Pcm, op: &Op) {
     }
 }
 
+// Unique across sessions, so reopening a file invalidates an in-flight render too.
+static EDIT_REVISION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+fn next_revision() -> u64 {
+    EDIT_REVISION.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+}
+
 /// An open file with its edit history.
 pub struct Session {
+    revision: u64,
     pub sample_id: i64,
     pub path: PathBuf,
     pub bit_depth: Option<u32>,
@@ -191,6 +224,7 @@ impl Session {
             .filter(|l| l.end > l.start);
         let original_markers = markers::normalized(markers::read_markers(path), frames);
         Ok(Self {
+            revision: next_revision(),
             sample_id,
             path: path.to_path_buf(),
             bit_depth,
@@ -221,6 +255,16 @@ impl Session {
         }
     }
 
+    pub fn revision(&self) -> u64 { self.revision }
+
+    pub fn apply_processed(&mut self, revision: u64, op: Op) -> Result<()> {
+        if self.revision != revision {
+            return Err(Error::Other("the audio changed during processing; please try again".into()));
+        }
+        self.apply(op);
+        Ok(())
+    }
+
     pub fn markers(&self) -> &[Marker] {
         &self.current_markers
     }
@@ -244,6 +288,7 @@ impl Session {
         self.ops.push(op);
         self.redo.clear();
         self.pyramid = OnceLock::new();
+        self.revision = next_revision();
     }
 
     pub fn undo(&mut self) {
@@ -262,6 +307,7 @@ impl Session {
             self.ops.push(op);
         }
         self.pyramid = OnceLock::new();
+        self.revision = next_revision();
     }
 
     pub fn redo(&mut self) {
@@ -269,6 +315,7 @@ impl Session {
             self.apply_op(&op);
             self.ops.push(op);
             self.pyramid = OnceLock::new();
+            self.revision = next_revision();
         }
     }
 
@@ -564,6 +611,69 @@ mod tests {
         assert!((p.samples[1] + 1.0).abs() < 1e-6 && (p.samples[0] - 0.5).abs() < 1e-6);
         apply(&mut p, &Op::Gain { start: 0, end: 3, db: -6.0206 });
         assert!((p.samples[1] + 0.5).abs() < 1e-4);
+    }
+
+    #[test]
+    fn dc_offset_centres_each_channel_and_preserves_the_waveform() {
+        let mut pcm = Pcm {
+            samples: vec![0.0, -0.75, 0.25, -0.5, 0.5, -0.25, 0.25, -0.5],
+            channels: 2, sample_rate: 48000,
+        };
+        apply(&mut pcm, &Op::DcOffset { start: 0, end: 4 });
+        assert_eq!(pcm.samples, [-0.25, -0.25, 0.0, 0.0, 0.25, 0.25, 0.0, 0.0]);
+        assert_eq!(pcm.frames(), 4);
+        assert_eq!(pcm.sample_rate, 48000);
+        let once = pcm.samples.clone();
+        apply(&mut pcm, &Op::DcOffset { start: 0, end: 4 });
+        assert_eq!(pcm.samples, once);
+    }
+
+    #[test]
+    fn dc_offset_only_changes_the_clamped_selection_and_handles_silence() {
+        let original = vec![0.8, 0.25, 0.5, 0.75, -0.6];
+        let mut pcm = Pcm { samples: original.clone(), channels: 1, sample_rate: 48000 };
+        apply(&mut pcm, &Op::DcOffset { start: 1, end: 4 });
+        assert_eq!(pcm.samples, [0.8, -0.25, 0.0, 0.25, -0.6]);
+        let before = pcm.samples.clone();
+        for (start, end) in [(2, 2), (20, 30), (4, 1)] {
+            apply(&mut pcm, &Op::DcOffset { start, end });
+            assert_eq!(pcm.samples, before);
+        }
+        apply(&mut pcm, &Op::DcOffset { start: 4, end: usize::MAX });
+        assert_eq!(pcm.samples[4], 0.0);
+        let mut silence = Pcm { samples: vec![0.0; 20], channels: 2, sample_rate: 48000 };
+        apply(&mut silence, &Op::DcOffset { start: 0, end: 10 });
+        assert!(silence.samples.iter().all(|s| *s == 0.0));
+    }
+
+    #[test]
+    fn dc_offset_undo_redo_save_and_metadata() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("dc.wav");
+        let pcm = Pcm { samples: vec![0.0, -0.75, 0.25, -0.5, 0.5, -0.25, 0.25, -0.5], channels: 2, sample_rate: 48000 };
+        write_wav(&path, &pcm, Some(32), Some(Loop { start: 1, end: 3 })).unwrap();
+        append_markers(&path, &[Marker { frame: 2, skip: false }]).unwrap();
+        let mut session = Session::open(1, &path, Some(32)).unwrap();
+        let before = session.audio().samples.clone();
+        session.apply(Op::DcOffset { start: 0, end: 4 });
+        let corrected = session.audio().samples.clone();
+        assert!(session.state().dirty);
+        assert_eq!(session.loop_points(), Some(Loop { start: 1, end: 3 }));
+        assert_eq!(session.markers(), &[Marker { frame: 2, skip: false }]);
+        session.undo();
+        assert_eq!(session.audio().samples, before);
+        assert!(!session.state().dirty);
+        session.redo();
+        assert_eq!(session.audio().samples, corrected);
+        let saved = dir.path().join("corrected.wav");
+        write_wav(&saved, session.audio(), Some(32), session.loop_points()).unwrap();
+        append_markers(&saved, session.markers()).unwrap();
+        let reopened = Session::open(2, &saved, Some(32)).unwrap();
+        assert_eq!(reopened.audio().samples, corrected);
+        assert_eq!(reopened.loop_points(), session.loop_points());
+        assert_eq!(reopened.markers(), session.markers());
+        // The editor never overwrites the original before an explicit save.
+        assert_eq!(Session::open(3, &path, Some(32)).unwrap().audio().samples, before);
     }
 
     #[test]

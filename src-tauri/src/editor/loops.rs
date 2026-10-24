@@ -40,8 +40,13 @@ pub fn moved_loop(lp: Option<Loop>, op: &Op, frames: usize, channels: usize) -> 
             };
             lp.map(|l| Loop { start: map(l.start), end: map(l.end) })
         }
-        // Points after the replaced range shift by the size difference; points inside
-        // it go to its start.
+        // Time edits preserve positions within the transformed region.
+        Op::Stretch { ref samples, .. } => {
+            let inserted = samples.len() / channels.max(1);
+            let map = |p| super::processing::retimed_frame(p, start, end, inserted);
+            lp.map(|l| Loop { start: map(l.start), end: map(l.end) })
+        }
+        // Points after a pasted range shift; points inside it go to its start.
         Op::Replace { ref samples, .. } => {
             let inserted = samples.len() / channels.max(1);
             let map = |p: usize| {

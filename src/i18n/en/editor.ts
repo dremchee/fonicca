@@ -132,6 +132,17 @@ export default {
     skipRegion: 'Skip this region when saving',
     includeRegion: 'Save this region again',
   },
+  processing: {
+    dcOffset: 'Remove DC offset', dcOffsetHint: 'Centre each channel around zero (selection or whole file)',
+    stretch: 'Pitch / time-stretch', lufs: 'Normalize loudness (LUFS)',
+    pitch: 'Pitch (semitones)', pitchHelp: 'Change pitch independently of duration. Range: −24 to +24 semitones.',
+    percent: 'Duration (%)', duration: '{seconds} s', resultDuration: 'Result: {seconds} s. 200% doubles the duration without changing pitch.',
+    target: 'Target loudness (LUFS)', ceiling: 'Sample peak ceiling (dBFS)',
+    lufsHelp: 'Needs at least 400 ms of audible audio. Gain is reduced when needed to respect the sample peak ceiling; this does not limit true peaks.',
+    apply: 'Apply', running: 'Processing…',
+    normalized: 'Loudness: {before} → {after} LUFS',
+    limited: 'Loudness: {before} → {after} LUFS. Gain was reduced to respect the sample peak ceiling.',
+  },
   regions: {
     save: 'Save regions',
     saveHint: 'Save {n} region as a new sample | Save {n} regions as new samples',

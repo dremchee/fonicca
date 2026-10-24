@@ -15,7 +15,7 @@ export type Curve = 'linear' | 'smooth' | 'exponential'
 
 /** One edit; ranges are frames of the current buffer, `end` exclusive. */
 export type EditOp
-  = | { op: 'crop' | 'delete' | 'silence' | 'reverse', start: number, end: number }
+  = | { op: 'crop' | 'delete' | 'silence' | 'reverse' | 'dcOffset', start: number, end: number }
     | { op: 'fadeIn' | 'fadeOut', start: number, end: number, curve: Curve }
     | { op: 'gain', start: number, end: number, db: number }
     | { op: 'normalize', start: number, end: number, peakDb: number }
@@ -87,10 +87,18 @@ export interface EditedFile {
   bpm: number | null
 }
 
+export type AudioProcessing
+  = | { mode: 'stretch', semitones: number, ratio: number }
+    | { mode: 'lufs', target: number, ceiling: number }
+
+export interface LoudnessReport { before: number, after: number, gainDb: number, limited: boolean }
+interface ProcessedAudio { state: EditorState, start: number, end: number, loudness: LoudnessReport | null }
+
 const editorApi = {
   openWindow: (id: number) => invoke<void>('open_editor_window', { id }),
   open: (id: number) => invoke<{ state: EditorState, name: string, ext: string, path: string, bpm: number | null }>('editor_open', { id }),
   apply: (op: EditOp) => invoke<EditorState>('editor_apply', { op }),
+  process: (start: number, end: number, processing: AudioProcessing) => invoke<ProcessedAudio>('editor_process', { start, end, processing }),
   undo: () => invoke<EditorState>('editor_undo'),
   redo: () => invoke<EditorState>('editor_redo'),
   wave: async (start: number, end: number, columns: number, split: boolean, bands: boolean): Promise<Wave> => {
@@ -123,6 +131,7 @@ export const useEditorStore = defineStore('editor', () => {
   const state = ref<EditorState | null>(null)
   const open = computed(() => sample.value !== null)
   const loading = ref(false)
+  const processing = ref(false)
   /** Bumped after every change of the audio, so the view re-reads peaks. */
   const revision = ref(0)
 
@@ -203,6 +212,8 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   async function apply(op: EditOp, stop = true) {
+    if (processing.value)
+      return
     if (stop)
       stopPlayback()
     try {
@@ -214,12 +225,12 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   async function undo() {
-    if (state.value?.canUndo)
+    if (!processing.value && state.value?.canUndo)
       after(await editorApi.undo())
   }
 
   async function redo() {
-    if (state.value?.canRedo)
+    if (!processing.value && state.value?.canRedo)
       after(await editorApi.redo())
   }
 
@@ -229,6 +240,8 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function crop() {
+    if (processing.value)
+      return
     const s = selection.value
     if (!s)
       return
@@ -238,6 +251,8 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function remove() {
+    if (processing.value)
+      return
     const s = selection.value
     if (!s)
       return
@@ -256,6 +271,8 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   async function copy() {
+    if (processing.value)
+      return
     const s = selection.value
     if (!s)
       return
@@ -268,6 +285,8 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   async function cut() {
+    if (processing.value)
+      return
     if (!selection.value)
       return
     await copy()
@@ -276,7 +295,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   /** Pastes over the selection, or at the cursor; the pasted audio ends up selected. */
   async function paste() {
-    if (!clipboard.value)
+    if (processing.value || !clipboard.value)
       return
     stopPlayback()
     const s = selection.value ?? { start: cursor.value, end: cursor.value }
@@ -292,12 +311,16 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function silence() {
+    if (processing.value)
+      return
     if (selection.value)
       apply({ op: 'silence', ...selection.value })
   }
 
   /** Fades the selection; without one, from the start to the cursor (in) or the cursor to the end (out). */
   function fade(direction: 'in' | 'out') {
+    if (processing.value)
+      return
     const frames = state.value?.frames ?? 0
     const range = selection.value
       ?? (direction === 'in' ? { start: 0, end: cursor.value } : { start: cursor.value, end: frames })
@@ -314,6 +337,41 @@ export const useEditorStore = defineStore('editor', () => {
     apply({ op: 'normalize', ...target(), peakDb })
   }
 
+  async function processAudio(options: AudioProcessing): Promise<boolean> {
+    if (processing.value || !state.value)
+      return false
+    const range = target()
+    stopPlayback()
+    processing.value = true
+    try {
+      const result = await editorApi.process(range.start, range.end, options)
+      after(result.state)
+      selection.value = { start: result.start, end: result.end }
+      cursor.value = result.start
+      if (result.loudness) {
+        const report = result.loudness
+        toast.success(t(report.limited ? 'editor.processing.limited' : 'editor.processing.normalized', {
+          before: formatNumber(report.before, { fixed: 1 }),
+          after: formatNumber(report.after, { fixed: 1 }),
+        }))
+      }
+      return true
+    }
+    catch (e) {
+      toast.error(String(e))
+      return false
+    }
+    finally {
+      processing.value = false
+    }
+  }
+
+  function removeDcOffset() {
+    const range = target()
+    if (range.end > range.start)
+      return apply({ op: 'dcOffset', ...range })
+  }
+
   function reverse() {
     apply({ op: 'reverse', ...target() })
   }
@@ -327,6 +385,8 @@ export const useEditorStore = defineStore('editor', () => {
 
   /** Saves each region not skipped as a new sample, into a folder next to the file. */
   async function saveRegions() {
+    if (processing.value)
+      return
     const spans = regions.value.filter(r => !r.skip && r.end > r.start).map(({ start, end }) => ({ start, end }))
     if (!spans.length)
       return
@@ -402,6 +462,8 @@ export const useEditorStore = defineStore('editor', () => {
   // --- Saving --------------------------------------------------------------
 
   async function save(asNew = !canOverwrite.value) {
+    if (processing.value)
+      return
     stopPlayback()
     try {
       const r = await editorApi.save(asNew)
@@ -421,6 +483,8 @@ export const useEditorStore = defineStore('editor', () => {
     state,
     open,
     loading,
+    processing,
+    processAudio,
     error,
     revision,
     cursor,
@@ -440,6 +504,7 @@ export const useEditorStore = defineStore('editor', () => {
     fade,
     gain,
     normalize,
+    removeDcOffset,
     reverse,
     toggleLoopPoints,
     regions,

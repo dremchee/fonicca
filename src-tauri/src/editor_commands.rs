@@ -83,6 +83,39 @@ pub fn editor_apply(state: State<'_, AppState>, window: Window, op: Op) -> Resul
     })
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Processed {
+    state: EditorState,
+    start: usize,
+    end: usize,
+    loudness: Option<editor::processing::LoudnessReport>,
+}
+
+/// Copy only the target under the session lock; render without holding it.
+#[tauri::command]
+pub async fn editor_process(
+    state: State<'_, AppState>, window: Window, start: usize, end: usize,
+    processing: editor::processing::Processing,
+) -> Result<Processed> {
+    let (pcm, revision, total) = with_session(&state, &window, |s| {
+        let pcm = s.audio();
+        if start >= end || end > pcm.frames() {
+            return Err(Error::Other("select a non-empty range inside the file".into()));
+        }
+        Ok((crate::audio::Pcm {
+            samples: pcm.samples[start * pcm.channels..end * pcm.channels].to_vec(),
+            channels: pcm.channels, sample_rate: pcm.sample_rate,
+        }, s.revision(), pcm.frames()))
+    })?;
+    let rendered = tauri::async_runtime::spawn_blocking(move || editor::processing::render(pcm, start, total, processing))
+        .await.map_err(|e| Error::Other(format!("audio processing failed: {e}")))??;
+    with_session(&state, &window, |s| {
+        s.apply_processed(revision, rendered.op)?;
+        Ok(Processed { state: s.state(), start, end: rendered.end, loudness: rendered.loudness })
+    })
+}
+
 #[tauri::command]
 pub fn editor_undo(state: State<'_, AppState>, window: Window) -> Result<EditorState> {
     with_session(&state, &window, |s| {

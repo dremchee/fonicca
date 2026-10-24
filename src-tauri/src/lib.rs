@@ -142,6 +142,7 @@ pub fn run() {
             editor_commands::open_editor_window,
             editor_commands::editor_open,
             editor_commands::editor_apply,
+            editor_commands::editor_process,
             editor_commands::editor_undo,
             editor_commands::editor_redo,
             editor_commands::editor_wave,

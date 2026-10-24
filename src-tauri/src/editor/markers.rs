@@ -46,6 +46,10 @@ pub fn moved_markers(markers: &[Marker], op: &Op, frames: usize, channels: usize
             Box::new(move |p: usize| if p <= start { p } else if p >= end { p - (end - start) } else { start }),
             frames - (end - start),
         ),
+        Op::Stretch { ref samples, .. } => {
+            let inserted = samples.len() / channels.max(1);
+            (Box::new(move |p| super::processing::retimed_frame(p, start, end, inserted)), frames - (end - start) + inserted)
+        }
         Op::Replace { ref samples, .. } => {
             let inserted = samples.len() / channels.max(1);
             (

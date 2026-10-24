@@ -3,6 +3,7 @@ import type { Component } from 'vue'
 import type { AppInfo, Settings, Theme } from '@/api'
 import type { Locale } from '@/i18n'
 import type { SettingsSection } from '@/stores/settings'
+import appIcon from '../../src-tauri/icons/128x128.png'
 import {
   AudioLines,
   AudioWaveform,
@@ -602,9 +603,7 @@ function keyLabel(k: string) {
           <!-- About -->
           <template v-else>
             <div class="flex items-center gap-4">
-              <div class="size-14 rounded-xl bg-primary grid place-items-center text-primary-foreground">
-                <span class="i-lucide-audio-waveform text-2xl" />
-              </div>
+              <img :src="appIcon" alt="" width="56" height="56" class="size-14 shrink-0 object-contain">
               <div>
                 <div class="text-base font-semibold">
                   Fonicca

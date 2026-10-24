@@ -1,6 +1,6 @@
 // A fake editor session for /mock.html#editor: four bars of a 120 BPM loop
 // (kick on every beat, hats in between), so the bar grid has something to line up with.
-import type { ClipInfo, EditorState, Marker, SliceBy, Span } from '@/stores/editor'
+import type { AudioProcessing, ClipInfo, EditorState, Marker, SliceBy, Span } from '@/stores/editor'
 
 const RATE = 44100
 const BPM = 120
@@ -18,9 +18,25 @@ function level(frame: number) {
 let loop: EditorState['loop'] = null
 let clip: ClipInfo | null = null
 let markers: Marker[] = []
+let currentFrames = FRAMES
+let processed = false
+const capture = () => ({ frames: currentFrames, loop: loop && { ...loop }, markers: markers.map(m => ({ ...m })), processed })
+type Snapshot = ReturnType<typeof capture>
+const history: Snapshot[] = []
+const future: Snapshot[] = []
+function restore(s: Snapshot) {
+  currentFrames = s.frames
+  loop = s.loop
+  markers = s.markers
+  processed = s.processed
+}
+function remember() {
+  history.push(capture())
+  future.length = 0
+}
 
 function state(): EditorState {
-  return { sampleId: 1, frames: FRAMES, sampleRate: RATE, channels: 2, canUndo: false, canRedo: false, dirty: loop !== null || markers.length > 0, loop, markers }
+  return { sampleId: 1, frames: currentFrames, sampleRate: RATE, channels: 2, canUndo: history.length > 0, canRedo: future.length > 0, dirty: processed || loop !== null || markers.length > 0, loop, markers }
 }
 
 // Same packing as the backend: u32 mode, lanes, count, stride, then lane-major columns
@@ -73,15 +89,53 @@ export function editorCommand(cmd: string, args: any): unknown {
     case 'editor_open': return { state: state(), name: 'Drum Loop 120', ext: 'wav', path: '/Users/me/Projects/Sound/Loops/Drum Loop 120.wav', bpm: BPM }
     case 'editor_wave': return wave(args.start, args.end, args.columns, args.split)
     case 'editor_apply':
-      if (args.op.op === 'setLoop')
+      remember()
+      if (args.op.op === 'dcOffset')
+        processed = true
+      else if (args.op.op === 'setLoop')
         loop = { start: args.op.start, end: args.op.end }
       else if (args.op.op === 'clearLoop')
         loop = null
       // Sorted, one per frame (the last wins), inside the file: as the backend does.
       else if (args.op.op === 'setMarkers')
-        markers = [...new Map((args.op.markers as Marker[]).filter(m => m.frame < FRAMES).map(m => [m.frame, m])).values()].sort((a, b) => a.frame - b.frame)
+        markers = [...new Map((args.op.markers as Marker[]).filter(m => m.frame < currentFrames).map(m => [m.frame, m])).values()].sort((a, b) => a.frame - b.frame)
       return state()
-    case 'editor_undo': case 'editor_redo': return state()
+    case 'editor_undo': {
+      const previous = history.pop()
+      if (previous) {
+        future.push(capture())
+        restore(previous)
+      }
+      return state()
+    }
+    case 'editor_redo': {
+      const next = future.pop()
+      if (next) {
+        history.push(capture())
+        restore(next)
+      }
+      return state()
+    }
+    case 'editor_process': {
+      // The mock changes metadata only; actual DSP is exercised by Rust tests.
+      const processing = args.processing as AudioProcessing
+      remember()
+      processed = true
+      let end = args.end
+      if (processing.mode === 'stretch') {
+        const inserted = Math.round((args.end - args.start) * processing.ratio)
+        const map = (p: number) => p <= args.start ? p : p >= args.end
+          ? p + inserted - (args.end - args.start)
+          : args.start + Math.round((p - args.start) * processing.ratio)
+        loop = loop && { start: map(loop.start), end: map(loop.end) }
+        markers = markers.map(m => ({ ...m, frame: map(m.frame) }))
+        currentFrames += inserted - (args.end - args.start)
+        end = args.start + inserted
+      }
+      const result = { state: state(), start: args.start, end, loudness: processing.mode === 'lufs'
+        ? { before: -20, after: Math.min(-12, processing.target), gainDb: Math.min(8, processing.target + 20), limited: processing.target > -12 } : null }
+      return new Promise(resolve => setTimeout(() => resolve(result), 350))
+    }
     case 'editor_copy':
       clip = { frames: args.end - args.start, channels: 2, sampleRate: RATE }
       return clip

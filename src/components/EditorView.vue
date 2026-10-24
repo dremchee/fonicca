@@ -32,6 +32,7 @@ import { useLocalStorage, useResizeObserver } from '@vueuse/core'
 import { computed, nextTick, ref, shallowRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import EditorMinimap from '@/components/EditorMinimap.vue'
+import EditorProcessing from '@/components/EditorProcessing.vue'
 import LevelMeter from '@/components/LevelMeter.vue'
 import EditorSlicer from '@/components/EditorSlicer.vue'
 import FadeIcon from '@/components/icons/FadeIcon.vue'
@@ -1015,6 +1016,7 @@ const curves: { value: Curve, label: string }[] = [
         </Button>
       </Hint>
       <Separator orientation="vertical" class="mx-1 h-5" />
+      <EditorProcessing />
       <EditorSlicer v-model:preview="slicePreview" :beat-frames="beatFrames" :downbeat="downbeat" :zero="zeroSnap" />
       <Hint :text="savedRegions ? t('editor.regions.saveHint', { n: formatNumber(savedRegions) }, savedRegions) : t('editor.regions.none')">
         <Button variant="ghost" size="sm" class="px-2" :disabled="!savedRegions" :aria-label="t('editor.regions.save')" @click="editor.saveRegions()">
@@ -1122,6 +1124,9 @@ const curves: { value: Curve, label: string }[] = [
             </ContextMenuItem>
             <ContextMenuItem @select="editor.normalize()">
               {{ t('editor.toolbar.normalize') }}
+            </ContextMenuItem>
+            <ContextMenuItem @select="editor.removeDcOffset()">
+              {{ t('editor.processing.dcOffset') }}
             </ContextMenuItem>
             <ContextMenuItem @select="editor.reverse()">
               {{ t('editor.menu.reverse') }}
