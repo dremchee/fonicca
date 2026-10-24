@@ -12,6 +12,7 @@ import palette from './palette'
 import sync from './sync'
 import dialogs from './dialogs'
 import trackInfo from './trackInfo'
+import batch from './batch'
 
 export default {
   common,
@@ -27,4 +28,5 @@ export default {
   sync,
   dialogs,
   trackInfo,
+  batch,
 } satisfies typeof en

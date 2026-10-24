@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Sample } from '@/api'
-import { AudioLines, CircleMinus, FolderOpen, Info, Layers, Pencil, Play, Square, Star, Tag } from '@lucide/vue'
+import { AudioLines, CircleMinus, FolderOpen, Info, Layers, Pencil, Play, Square, Star, Tag, WandSparkles } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -15,6 +15,7 @@ import {
   ContextMenuSubTrigger,
 } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
+import { openBatch } from '@/composables/batch'
 import { openTrackInfo } from '@/composables/trackInfo'
 import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
@@ -91,6 +92,11 @@ async function submitNew() {
       <AudioLines />
       {{ t('list.menu.findSimilar') }}
       <ContextMenuShortcut>S</ContextMenuShortcut>
+    </ContextMenuItem>
+    <!-- The selection when the row is in it, otherwise this row. -->
+    <ContextMenuItem @select="runAfterClose(() => openBatch(library.selectedIds.has(sample.id) ? [...library.selectedIds] : [sample.id]))">
+      <WandSparkles />
+      <span class="truncate">{{ count > 1 ? `${t('batch.title', { n: count }, count)}…` : t('batch.action') }}</span>
     </ContextMenuItem>
     <ContextMenuSeparator />
     <ContextMenuGroup>

@@ -210,7 +210,7 @@ pub fn editor_save(state: State<'_, AppState>, window: Window, as_new: bool) -> 
 
 /// Rescans the library folder that holds `path` right away instead of waiting for
 /// the watcher. False when no library folder holds it.
-fn rescan_containing(state: &AppState, path: &Path) -> Result<bool> {
+pub(crate) fn rescan_containing(state: &AppState, path: &Path) -> Result<bool> {
     let sources: Vec<(i64, String)> = {
         let conn = state.db.lock().unwrap();
         let mut stmt = conn.prepare("SELECT id, path FROM sources")?;

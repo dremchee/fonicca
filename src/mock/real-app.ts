@@ -3,6 +3,7 @@ import type { DuplicateGroup, HiddenFile } from '@/api'
 import { emit } from '@tauri-apps/api/event'
 import { mockIPC } from '@tauri-apps/api/mocks'
 import { groups as fake } from './duplicates-data'
+import { batchCommand } from './batch'
 import { editorCommand } from './editor'
 
 const ROOT = '/Users/me/Projects/Sound/Source'
@@ -79,7 +80,7 @@ export function install() {
         const level = 0.08 + 0.95 * Math.exp(-beat * 6)
         return { peak: [level, level * 0.92], rms: [level * 0.45, level * 0.4] }
       }
-      default: return editorCommand(cmd, args) ?? null
+      default: return editorCommand(cmd, args) ?? batchCommand(cmd, args) ?? null
     }
   }, { shouldMockEvents: true })
 }

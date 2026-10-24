@@ -18,6 +18,7 @@ import {
   Star,
   Tag,
   Upload,
+  WandSparkles,
   X,
 } from '@lucide/vue'
 import { computed } from 'vue'
@@ -34,6 +35,7 @@ import {
 } from '@/components/ui/command'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { CATEGORIES, categoryLabel, folderName, kindLabel } from '@/format'
+import { openBatch } from '@/composables/batch'
 import { openTrackInfo } from '@/composables/trackInfo'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
@@ -118,6 +120,10 @@ function go(scope: Scope) {
             <CommandItem value="sample-similar" @select="run(() => library.findSimilar(focused!))">
               <Sparkles />
               {{ t('palette.findSimilar') }}
+            </CommandItem>
+            <CommandItem value="sample-batch" @select="run(() => openBatch(library.selectedIds.size ? [...library.selectedIds] : [focused!.id]), true)">
+              <WandSparkles />
+              {{ library.selectedIds.size > 1 ? `${t('batch.title', { n: library.selectedIds.size }, library.selectedIds.size)}…` : t('batch.action') }}
             </CommandItem>
           </CommandGroup>
 

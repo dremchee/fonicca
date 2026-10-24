@@ -1,6 +1,7 @@
 mod analysis;
 mod analyzer;
 mod audio;
+mod batch;
 mod category;
 mod clap;
 mod commands;
@@ -144,6 +145,9 @@ pub fn run() {
             editor_commands::editor_undo,
             editor_commands::editor_redo,
             editor_commands::editor_wave,
+            batch::batch_preview,
+            batch::batch_run,
+            batch::batch_cancel,
             editor_commands::editor_copy,
             editor_commands::editor_clipboard,
             editor_commands::editor_paste,
