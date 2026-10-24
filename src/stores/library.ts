@@ -531,6 +531,9 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   async function init() {
+    await listen<{ ids: number[] }>('stems:changed', async ({ payload }) => {
+      if (payload.ids.length) await Promise.all([loadSources(), loadTags(), loadCollections(), refresh({ keepSelection: true })])
+    })
     const initialSelectionRevision = selectionRevision
     await listen<AnalysisProgress>(ANALYSIS_PROGRESS_EVENT, ({ payload }) => {
       const { updated, ...status } = payload

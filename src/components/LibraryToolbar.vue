@@ -11,9 +11,11 @@ import { Kbd } from '@/components/ui/kbd'
 import { folderName, formatNumber } from '@/format'
 import { useLibraryStore } from '@/stores/library'
 import { openProjectWindow } from '@/composables/projectWindow'
+import { useStemsStore } from '@/stores/stems'
 
 const { t } = useI18n()
 const library = useLibraryStore()
+const stems = useStemsStore()
 const searchInput = useTemplateRef<ComponentPublicInstance>('searchInput')
 const searchElement = computed(() => searchInput.value?.$el as HTMLInputElement | undefined)
 const title = computed(() => {
@@ -66,6 +68,7 @@ defineExpose({ searchElement })
       <InputGroupAddon align="inline-end" class="search-shortcut"><Kbd>⌘F</Kbd></InputGroupAddon>
     </InputGroup>
     <Button variant="outline" size="sm" :title="t('project.openWindow')" @click="openProjectWindow()"><PanelsTopLeft />{{ t('project.title') }}</Button>
+    <Button variant="ghost" size="sm" :disabled="!library.focused && !stems.progress.stage" @click="stems.show(library.focused ?? undefined)">{{ t('stems.title') }}<span v-if="stems.progress.running"> · {{ Math.round(stems.progress.progress * 100) }}%</span></Button>
     <CollectionPicker />
   </header>
 </template>

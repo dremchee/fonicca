@@ -34,7 +34,7 @@ export function projectCommand(cmd: string, args: any): unknown {
     case 'project_sources': return args.paths.map((path: string) => ({ path, name: path.split('/').pop(), duration: 2 }))
     case 'project_levels': return active ? {peak:[0.4,0.3],rms:[0.2,0.15]} : null
 
-    case 'project_samples': return args.ids.map((id: number) => samples.find(s => s.id === id)).filter(Boolean)
+    case 'project_samples': return args.ids.map((id: number) => (JSON.parse(localStorage.getItem('mock.stem.results') ?? '[]') as typeof samples).find(s => s.id === id) ?? samples.find(s => s.id === id)).filter(Boolean)
     case 'project_wave': return { duration: args.path.includes('Kick') ? 0.5 : args.path.includes('Pad') ? 4 : 2, peaks: Array.from({ length: 512 }, (_, i) => 0.2 + 0.5 * Math.abs(Math.sin(i * 0.13)) * Math.exp(-(i % 64) / 30)) }
     case 'project_play': current = args.project; offset = args.start; began = performance.now(); active = true; return null
     case 'project_stop': active = false; return null

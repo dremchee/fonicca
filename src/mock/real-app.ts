@@ -7,6 +7,7 @@ import { batchCommand } from './batch'
 import { editorCommand } from './editor'
 import { spectrogram } from './spectrogram'
 import { projectCommand } from './project'
+import { stemsCommand } from './stems'
 
 const ROOT = '/Users/me/Projects/Sound/Source'
 let groups: DuplicateGroup[] = fake.map(g => ({
@@ -30,6 +31,8 @@ let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], 
 
 export function install() {
   mockIPC((cmd, args: any) => {
+    const stems = stemsCommand(cmd, args)
+    if (stems !== undefined) return stems
     const project = projectCommand(cmd, args)
     if (project !== undefined) return project
     switch (cmd) {

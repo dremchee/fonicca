@@ -20,6 +20,7 @@ import { openTrackInfo } from '@/composables/trackInfo'
 import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
+import { useStemsStore } from '@/stores/stems'
 import { openProjectWindow } from '@/composables/projectWindow'
 
 const props = defineProps<{ sample: Sample }>()
@@ -99,6 +100,7 @@ async function submitNew() {
       <WandSparkles />
       <span class="truncate">{{ count > 1 ? `${t('batch.title', { n: count }, count)}…` : t('batch.action') }}</span>
     </ContextMenuItem>
+    <ContextMenuItem @select="runAfterClose(() => useStemsStore().show(sample))"><Layers />{{ t('stems.action') }}</ContextMenuItem>
     <ContextMenuSeparator />
     <ContextMenuItem :disabled="count > 32" @select="runAfterClose(() => openProjectWindow(library.selectedIds.has(sample.id) ? [...library.selectedIds] : [sample.id]))">
       <Layers />{{ t('project.choose') }}

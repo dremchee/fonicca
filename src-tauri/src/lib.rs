@@ -18,6 +18,7 @@ mod player;
 mod project;
 mod scan;
 mod settings;
+mod stems;
 mod similar;
 mod sync;
 mod tags;
@@ -29,6 +30,7 @@ use rusqlite::Connection;
 use tauri::{Emitter, Manager};
 
 pub struct AppState {
+    pub stems: stems::Jobs,
     pub project: Mutex<project::Transport>,
     pub db: Mutex<Connection>,
     pub player: player::Player,
@@ -117,6 +119,7 @@ pub fn run() {
             let player = player::Player::new();
             let project_player = player.fork();
             app.manage(AppState {
+                stems: Default::default(),
                 project: Default::default(),
                 db: Mutex::new(conn),
                 player,
@@ -202,6 +205,9 @@ pub fn run() {
             commands::sound_model_status,
             commands::download_sound_model,
             project::project_play,
+            stems::stem_status,
+            stems::stem_start,
+            stems::stem_cancel,
             project::open_project_window,
             project::project_take_samples,
             project::project_sources,

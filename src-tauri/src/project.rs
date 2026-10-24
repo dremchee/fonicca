@@ -15,7 +15,7 @@ use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder
 
 pub const RATE: u32 = 48_000;
 const MAX_SECONDS: f64 = 600.0;
-const MAX_BYTES: usize = 256 * 1024 * 1024;
+const MAX_BYTES: usize = 1024 * 1024 * 1024;
 fn invalid(s: &str) -> Error {
     Error::Other(s.into())
 }
@@ -259,7 +259,7 @@ fn prepare(project: &Project, start: f64) -> Result<Mix> {
             * 4.0) as usize;
         if bytes + estimate > MAX_BYTES {
             return Err(invalid(
-                "project audio exceeds the 256 MiB memory limit; trim clips or use fewer sources",
+                "project audio exceeds the 1 GiB memory limit; trim clips or use fewer sources",
             ));
         }
         let mut pcm = audio::decode(Path::new(&path), seconds + 0.1)
@@ -277,7 +277,7 @@ fn prepare(project: &Project, start: f64) -> Result<Mix> {
         crate::batch::resample(&mut pcm, RATE)?;
         bytes += pcm.samples.len() * 4;
         if bytes > MAX_BYTES {
-            return Err(invalid("project audio exceeds the 256 MiB memory limit"));
+            return Err(invalid("project audio exceeds the 1 GiB memory limit"));
         }
         files.insert(path, Arc::new(pcm));
     }
