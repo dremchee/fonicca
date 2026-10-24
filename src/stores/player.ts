@@ -1,6 +1,6 @@
 import type { Adjust, Sample } from '@/api'
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { api } from '@/api'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -16,7 +16,12 @@ export const usePlayerStore = defineStore('player', () => {
   const error = ref<string | null>(null)
   /** Change applied to the sample playing now (tempo/key sync). */
   const adjust = ref<Adjust | null>(null)
-  let playing: Sample | null = null
+  // Kept across hot reloads, like the playing id, so the player stays on screen.
+  const playing = shallowRef<Sample | null>(import.meta.hot?.data.playing ?? null)
+  if (import.meta.hot)
+    watch(playing, s => (import.meta.hot!.data.playing = s), { immediate: true })
+  /** The sample playing now, so the player can keep showing it once it is no longer selected. */
+  const playingSample = computed(() => (playingId.value !== null && playing.value?.id === playingId.value ? playing.value : null))
   let frame = 0
 
   const syncTarget = computed(() => {
@@ -47,7 +52,7 @@ export const usePlayerStore = defineStore('player', () => {
     error.value = null
     try {
       adjust.value = await api.play(sample.id, start, syncTarget.value)
-      playing = sample
+      playing.value = sample
       playingId.value = sample.id
       position.value = start
       track()
@@ -56,6 +61,12 @@ export const usePlayerStore = defineStore('player', () => {
       playingId.value = null
       error.value = String(e)
     }
+  }
+
+  /** Applies a change made in the library to the playing sample's copy. */
+  function patchPlaying(ids: Set<number>, patch: (s: Sample) => Sample) {
+    if (playing.value && ids.has(playing.value.id))
+      playing.value = patch(playing.value)
   }
 
   async function stop() {
@@ -84,11 +95,11 @@ export const usePlayerStore = defineStore('player', () => {
 
   // Changing the project tempo/key restarts the playing sample where it was.
   watch(syncTarget, (next, prev) => {
-    if (JSON.stringify(next) !== JSON.stringify(prev) && playing && playingId.value === playing.id)
-      play(playing, position.value)
+    if (JSON.stringify(next) !== JSON.stringify(prev) && playingSample.value)
+      play(playingSample.value, position.value)
   })
 
-  return { playingId, position, autoplay, error, adjust, syncTarget, play, stop, toggle, seek }
+  return { playingId, playingSample, position, autoplay, error, adjust, syncTarget, play, stop, toggle, seek, patchPlaying }
 })
 
 if (import.meta.hot)

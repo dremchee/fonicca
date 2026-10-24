@@ -36,6 +36,8 @@ const settings = useSettingsStore()
 const duplicates = useDuplicatesStore()
 const paletteOpen = ref(false)
 const { query, total, focused, selectedIds } = storeToRefs(library)
+// The selected sample, or the one playing once nothing is selected.
+const shownSample = computed(() => focused.value ?? player.playingSample ?? undefined)
 const searchInput = useTemplateRef<ComponentPublicInstance>('searchInput')
 // InputGroupInput renders a bare <input> as its root.
 const search = computed(() => searchInput.value?.$el as HTMLInputElement | undefined)
@@ -182,11 +184,11 @@ onKeyStroke(',', (e) => {
             <ResizablePanel id="list" :order="1" :min-size="20" class="flex flex-col">
               <SampleList />
             </ResizablePanel>
-            <!-- The player only exists once a sample is selected. -->
-            <template v-if="focused">
+            <!-- The player exists while a sample is selected, or one is still playing. -->
+            <template v-if="shownSample">
               <ResizableHandle />
               <ResizablePanel id="player" :order="2" size-unit="px" :default-size="196" :min-size="150" :max-size="480">
-                <WaveformView :sample="focused" />
+                <WaveformView :sample="shownSample" />
               </ResizablePanel>
             </template>
           </ResizablePanelGroup>

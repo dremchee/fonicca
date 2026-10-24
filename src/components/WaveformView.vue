@@ -217,7 +217,7 @@ function onDragStart(e: DragEvent) {
       <!-- Actions on the sample, then playback options. -->
       <div class="shrink-0 flex items-center gap-0.5">
         <Hint :text="sample.favorite ? t('list.favorite.remove') : t('list.favorite.add')" shortcut="F">
-          <Button variant="ghost" size="icon-sm" @click="library.toggleFavorite()">
+          <Button variant="ghost" size="icon-sm" @click="library.toggleFavorite(sample)">
             <Star :class="sample.favorite ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground'" />
           </Button>
         </Hint>

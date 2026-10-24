@@ -7,6 +7,7 @@ import { toast } from 'vue-sonner'
 import { ANALYSIS_PROGRESS_EVENT, api, MODEL_DOWNLOAD_EVENT, SCAN_PROGRESS_EVENT, startFileDrag } from '@/api'
 import { formatNumber } from '@/format'
 import { t } from '@/i18n'
+import { usePlayerStore } from '@/stores/player'
 
 const PAGE_SIZE = 200
 
@@ -54,7 +55,11 @@ export const useLibraryStore = defineStore('library', () => {
 
   // Rows are fetched lazily in pages as the list scrolls. `generation` invalidates
   // in-flight requests when the filter changes.
-  const pages = shallowReactive(new Map<number, Sample[]>())
+  // Not store state, so a hot reload would drop the loaded rows (and with them the
+  // focused sample, until the list fetched its page again): kept in the HMR data.
+  const pages: Map<number, Sample[]> = import.meta.hot?.data.pages ?? shallowReactive(new Map<number, Sample[]>())
+  if (import.meta.hot)
+    import.meta.hot.data.pages = pages
   const pending = new Map<number, Promise<void>>()
   let generation = 0
 
@@ -296,6 +301,8 @@ export const useLibraryStore = defineStore('library', () => {
       if (rows.some(r => set.has(r.id)))
         pages.set(page, rows.map(r => (set.has(r.id) ? patch(r) : r)))
     }
+    // The player may be showing it after it left the selection.
+    usePlayerStore().patchPlaying(set, patch)
   }
 
   /** Whether a change to favorites/tags can move rows in or out of the current view. */
