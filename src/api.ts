@@ -1,4 +1,5 @@
 import type { Locale } from '@/i18n'
+import type { CustomTheme } from '@/themes'
 import { Channel, invoke } from '@tauri-apps/api/core'
 
 export interface Source {
@@ -84,6 +85,9 @@ export type Theme = 'system' | 'light' | 'dark'
 
 export interface Settings {
   theme: Theme
+  /** Colour theme id: built-in or one of `customThemes`. */
+  colorTheme: string
+  customThemes: CustomTheme[]
   /** Interface language. */
   language: Locale
   watchFolders: boolean
@@ -249,6 +253,8 @@ export const api = {
   getSettings: () => invoke<Settings>('get_settings'),
   updateSettings: (settings: Settings) => invoke<Settings>('update_settings', { settings }),
   appInfo: () => invoke<AppInfo>('app_info'),
+  exportTheme: (path: string, theme: CustomTheme) => invoke<void>('export_theme', { path, theme }),
+  importTheme: (path: string) => invoke<CustomTheme>('import_theme', { path }),
   duplicateCount: () => invoke<number>('duplicate_count'),
   duplicateGroups: () => invoke<DuplicateGroup[]>('duplicate_groups'),
   verifyDuplicates: () => invoke<void>('verify_duplicates'),

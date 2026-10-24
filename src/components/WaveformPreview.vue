@@ -40,7 +40,7 @@ function draw() {
   })
 }
 
-watch([size, () => settings.settings], draw, { deep: true })
+watch([size, () => settings.settings, () => settings.themeRevision], draw, { deep: true })
 </script>
 
 <template>

@@ -302,7 +302,7 @@ function draw() {
   }
 }
 
-watch([wave, () => editor.selection, () => editor.cursor, () => editor.playhead, width, height, vZoom, gridMode, bpm, downbeat, () => settings.settings], draw, { deep: true })
+watch([wave, () => editor.selection, () => editor.cursor, () => editor.playhead, width, height, vZoom, gridMode, bpm, downbeat, () => settings.settings, () => settings.themeRevision], draw, { deep: true })
 
 // --- Mouse ------------------------------------------------------------------
 

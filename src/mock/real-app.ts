@@ -20,7 +20,7 @@ let groups: DuplicateGroup[] = fake.map(g => ({
 }))
 let hidden: HiddenFile[] = []
 let preferred: string[] = []
-let settings: any = { theme: 'system', language: 'en', watchFolders: true, autoplay: true, volume: 1, analysisThreads: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' }
+let settings: any = { theme: 'system', colorTheme: 'samplette', customThemes: [], language: 'en', watchFolders: true, autoplay: true, volume: 1, analysisThreads: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' }
 
 export function install() {
   mockIPC((cmd, args: any) => {

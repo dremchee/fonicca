@@ -27,7 +27,9 @@ export default defineConfig({
     m => m.replace(/data-\[([\w-]+)=(\d[\w.-]*)\]/g, 'data-[$1="$2"]'),
   ],
   presets: [
-    presetWind4({ dark: 'media' }),
+    // Dark mode follows the `dark` class the colour theme sets on <html>, not the system alone:
+    // the theme editor previews a theme's other variant.
+    presetWind4({ dark: 'class' }),
     presetAnimations(),
     presetIcons({ scale: 1.1, extraProperties: { 'display': 'inline-block', 'vertical-align': 'middle' } }),
   ],

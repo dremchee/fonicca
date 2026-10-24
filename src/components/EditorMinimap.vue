@@ -100,7 +100,7 @@ function draw() {
 }
 
 watch(
-  [wave, size, () => props.viewStart, () => props.viewEnd, () => editor.selection, () => editor.cursor, () => editor.playhead, () => settings.settings],
+  [wave, size, () => props.viewStart, () => props.viewEnd, () => editor.selection, () => editor.cursor, () => editor.playhead, () => settings.settings, () => settings.themeRevision],
   draw,
   { deep: true },
 )

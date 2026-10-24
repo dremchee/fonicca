@@ -31,23 +31,22 @@
   -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #141418;
-    --foreground: #e8e8ee;
-    --card: #1b1b21;
-    --popover: #1b1b21;
-    --primary: #8b6dff;
-    --primary-soft: rgb(139 109 255 / 0.18);
-    --secondary: #26262e;
-    --muted: #26262e;
-    --muted-foreground: #8d8d9a;
-    --accent: #26262e;
-    --destructive: #ff5c77;
-    --border: #2c2c35;
-    --input: #2c2c35;
-    --wave: #5c5c6a;
-  }
+/* Defaults until the colour theme is applied (src/themes.ts sets these on <html>). */
+:root.dark {
+  --background: #141418;
+  --foreground: #e8e8ee;
+  --card: #1b1b21;
+  --popover: #1b1b21;
+  --primary: #8b6dff;
+  --primary-soft: rgb(139 109 255 / 0.18);
+  --secondary: #26262e;
+  --muted: #26262e;
+  --muted-foreground: #8d8d9a;
+  --accent: #26262e;
+  --destructive: #ff5c77;
+  --border: #2c2c35;
+  --input: #2c2c35;
+  --wave: #5c5c6a;
 }
 
 html,

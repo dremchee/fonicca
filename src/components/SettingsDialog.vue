@@ -6,6 +6,7 @@ import type { SettingsSection } from '@/stores/settings'
 import {
   AudioLines,
   AudioWaveform,
+  Palette,
   Cpu,
   Download,
   EyeOff,
@@ -32,6 +33,7 @@ import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { api } from '@/api'
 import Hint from '@/components/Hint.vue'
+import ThemesSettings from '@/components/ThemesSettings.vue'
 import WaveformPreview from '@/components/WaveformPreview.vue'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -60,6 +62,7 @@ const sections: { id: SettingsSection, icon: Component }[] = [
   { id: 'library', icon: Library },
   { id: 'playback', icon: AudioLines },
   { id: 'waveform', icon: AudioWaveform },
+  { id: 'themes', icon: Palette },
   { id: 'analysis', icon: Cpu },
   { id: 'shortcuts', icon: Keyboard },
   { id: 'about', icon: Info },
@@ -469,6 +472,8 @@ function keyLabel(k: string) {
           </template>
 
           <!-- Analysis -->
+          <ThemesSettings v-else-if="section === 'themes'" />
+
           <template v-else-if="section === 'analysis'">
             <section class="group-box">
               <div class="row">

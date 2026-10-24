@@ -167,7 +167,7 @@ function draw() {
   ctx.restore()
 }
 
-watch([wave, progress, () => settings.settings, width], draw, { deep: true })
+watch([wave, progress, () => settings.settings, () => settings.themeRevision, width], draw, { deep: true })
 onMounted(draw)
 
 function onSeek(e: MouseEvent) {

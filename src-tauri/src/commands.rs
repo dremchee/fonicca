@@ -550,3 +550,15 @@ pub fn preferred_folders(state: State<'_, AppState>) -> Result<Vec<String>> {
 pub fn set_preferred_folder(state: State<'_, AppState>, path: String, preferred: bool) -> Result<()> {
     duplicates::set_preferred_folder(&state.db.lock().unwrap(), &path, preferred)
 }
+
+/// Saves a theme to a file for sharing.
+#[tauri::command]
+pub fn export_theme(path: String, theme: settings::CustomTheme) -> Result<()> {
+    settings::write_theme_file(std::path::Path::new(&path), &theme)
+}
+
+/// Reads a shared theme file; the theme comes back with a placeholder id.
+#[tauri::command]
+pub fn import_theme(path: String) -> Result<settings::CustomTheme> {
+    settings::read_theme_file(std::path::Path::new(&path))
+}

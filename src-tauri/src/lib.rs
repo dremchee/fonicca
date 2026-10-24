@@ -185,6 +185,8 @@ pub fn run() {
             commands::update_settings,
             commands::app_info,
             commands::delete_sound_model,
+            commands::export_theme,
+            commands::import_theme,
             commands::duplicate_count,
             commands::duplicate_groups,
             commands::verify_duplicates,
