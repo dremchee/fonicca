@@ -427,8 +427,13 @@ const shownMarkers = computed(() => draggedMarkers.value ?? editor.state?.marker
 // Regions Save regions would write.
 const savedRegions = computed(() => editor.regions.filter(r => !r.skip).length)
 
+// Region number badges as last drawn, for hovering and clicking them.
+let badges: { start: number, end: number, x: number, w: number }[] = []
+const BADGE_H = 14
+
 function drawSlices(ctx: CanvasRenderingContext2D, w: number, h: number, color: (name: string) => string) {
   const regions = regionsOf(shownMarkers.value, frames.value)
+  badges = []
   ctx.fillStyle = color('--card')
   ctx.globalAlpha = 0.65
   for (const r of regions.filter(r => r.skip))
@@ -458,13 +463,27 @@ function drawSlices(ctx: CanvasRenderingContext2D, w: number, h: number, color: 
     if (r.skip)
       continue
     const label = String(n)
-    const lw = ctx.measureText(label).width + 6
+    const lw = Math.max(BADGE_H, ctx.measureText(label).width + 6)
     if (px - lastLabel < lw + 4)
       continue
     lastLabel = px
-    ctx.fillRect(px, RULER + 1, lw, 14)
+    badges.push({ start: r.start, end: r.end, x: px, w: lw })
+    ctx.fillRect(px, RULER + 1, lw, BADGE_H)
     ctx.fillStyle = color('--background')
-    ctx.fillText(label, px + 3, RULER + 12)
+    // Hovered: a play button.
+    if (hoverBadge.value === r.start) {
+      const cx = px + lw / 2
+      const cy = RULER + 1 + BADGE_H / 2
+      ctx.beginPath()
+      ctx.moveTo(cx - 2.5, cy - 4)
+      ctx.lineTo(cx + 4, cy)
+      ctx.lineTo(cx - 2.5, cy + 4)
+      ctx.closePath()
+      ctx.fill()
+    }
+    else {
+      ctx.fillText(label, px + (lw - ctx.measureText(label).width) / 2, RULER + 12)
+    }
   }
 
   if (slicePreview.value.length) {
@@ -485,6 +504,30 @@ function drawSlices(ctx: CanvasRenderingContext2D, w: number, h: number, color: 
   }
 }
 watch([slicePreview, shownMarkers, () => editor.state?.markers], draw)
+
+// A region's number badge turns into a play button under the pointer; a click plays
+// the region from its start (selecting it, as a click on the ruler does), every time,
+// like a sampler pad (so do the number keys, see onKeyDown). Space or the toolbar stops it.
+const hoverBadge = ref<number | null>(null)
+watch(hoverBadge, draw)
+
+function badgeAt(e: MouseEvent) {
+  const rect = canvas.value?.getBoundingClientRect()
+  if (!rect)
+    return undefined
+  const px = e.clientX - rect.left
+  const py = e.clientY - rect.top
+  if (py < RULER + 1 || py > RULER + 1 + BADGE_H)
+    return undefined
+  return badges.find(b => px >= b.x && px <= b.x + b.w)
+}
+
+function playRegion(badge: { start: number, end: number }) {
+  editor.stopPlayback()
+  editor.selection = { start: badge.start, end: badge.end }
+  editor.cursor = badge.start
+  editor.play()
+}
 
 // --- Mouse ------------------------------------------------------------------
 
@@ -665,6 +708,7 @@ function onContextMenu(e: MouseEvent) {
 }
 
 function onHover(e: MouseEvent) {
+  hoverBadge.value = badgeAt(e)?.start ?? null
   hoverFrame.value = frameAt(e.clientX)
   hoverEdge.value = edgeAt(e)
   hoverMarker.value = markerAt(e) >= 0
@@ -673,6 +717,11 @@ function onHover(e: MouseEvent) {
 function onMouseDown(e: MouseEvent) {
   if (e.button !== 0)
     return
+  const badge = badgeAt(e)
+  if (badge) {
+    playRegion(badge)
+    return
+  }
   // A marker's flag on the ruler drags it.
   const marker = markerAt(e)
   if (marker >= 0) {
@@ -789,6 +838,15 @@ function onKeyDown(e: KeyboardEvent) {
   if (e.key === ' ') {
     handled()
     editor.togglePlay()
+  }
+  // 1…9 play regions 1–9 like pads, ⇧1…⇧9 regions 10–18 (by key position, so any layout).
+  else if (!mod && !e.altKey && /^Digit[1-9]$/.test(e.code)) {
+    const n = Number(e.code.slice(5)) + (e.shiftKey ? 9 : 0)
+    const region = editor.regions.filter(r => !r.skip)[n - 1]
+    if (region) {
+      handled()
+      playRegion(region)
+    }
   }
   else if (mod && key === 'z') {
     handled()
@@ -1055,7 +1113,7 @@ const curves: { value: Curve, label: string }[] = [
             ref="canvas"
             tabindex="0"
             class="absolute inset-0 size-full outline-none"
-            :class="hoverEdge || hoverMarker ? 'cursor-ew-resize' : 'cursor-text'"
+            :class="hoverBadge !== null ? 'cursor-pointer' : hoverEdge || hoverMarker ? 'cursor-ew-resize' : 'cursor-text'"
             :aria-label="t('editor.waveform.label')"
             @mousedown="onMouseDown"
             @copy.prevent="editor.copy()"
@@ -1064,7 +1122,7 @@ const curves: { value: Curve, label: string }[] = [
             @dblclick="onDoubleClick"
             @contextmenu="onContextMenu"
             @mousemove="onHover"
-            @mouseleave="hoverEdge = null; hoverMarker = false; hoverFrame = null"
+            @mouseleave="hoverEdge = null; hoverMarker = false; hoverFrame = null; hoverBadge = null"
             @wheel="onWheel"
             @keydown="onKeyDown"
           />

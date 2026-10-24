@@ -104,6 +104,8 @@ export default {
     info: 'Edit track info (title, artist, cover…)',
     similar: 'Find similar sounds',
     verticalZoom: 'Vertical zoom in the editor',
+    playRegion: 'Play regions 1–9 in the editor',
+    playRegion10: 'Play regions 10–18 in the editor',
     palette: 'Command palette',
     search: 'Search',
     settings: 'Settings',

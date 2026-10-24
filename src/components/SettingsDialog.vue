@@ -200,6 +200,8 @@ const shortcuts: { keys: string[], labelKey: string }[] = [
   { keys: ['I'], labelKey: 'settings.shortcuts.info' },
   { keys: ['S'], labelKey: 'settings.shortcuts.similar' },
   { keys: ['⌥', 'scroll'], labelKey: 'settings.shortcuts.verticalZoom' },
+  { keys: ['1…9'], labelKey: 'settings.shortcuts.playRegion' },
+  { keys: ['⇧', '1…9'], labelKey: 'settings.shortcuts.playRegion10' },
   { keys: ['⌘', 'K'], labelKey: 'settings.shortcuts.palette' },
   { keys: ['⌘', 'F'], labelKey: 'settings.shortcuts.search' },
   { keys: ['⌘', ','], labelKey: 'settings.shortcuts.settings' },
