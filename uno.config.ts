@@ -11,6 +11,10 @@ export default defineConfig({
   // Also scan .ts: shadcn-vue keeps cva variants in components/ui/*/index.ts.
   content: {
     pipeline: { include: [/\.(vue|[jt]sx?|html)($|\?)/] },
+    // Scan all sources at dev-server start too, so the first CSS response is
+    // complete. Otherwise classes of components transformed after it arrive only
+    // over HMR, and a window that misses that update stays half-styled.
+    filesystem: ['src/**/*.{vue,ts}', 'index.html'],
   },
   // Tailwind v4 syntax that shadcn-vue components use but UnoCSS does not parse:
   // `origin-(--x)` → `origin-[var(--x)]`, `*:[svg]:x` → `[&>svg]:x`.
