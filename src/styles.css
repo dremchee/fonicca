@@ -61,6 +61,15 @@ body,
   border-color: var(--border);
 }
 
+/* Squircle corners wherever there is a border-radius (a no-op where unsupported). */
+@supports (corner-shape: squircle) {
+  *,
+  ::before,
+  ::after {
+    corner-shape: squircle;
+  }
+}
+
 /* Body text is denser still; controls take their size from rem. */
 body {
   font-size: 13px;
