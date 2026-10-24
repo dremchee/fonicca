@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import type { SliceBy, Span } from '@/stores/editor'
+import type { Marker, SliceBy, Span } from '@/stores/editor'
 import { Slice } from '@lucide/vue'
-import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { useLocalStorage, watchDebounced } from '@vueuse/core'
-import { computed, ref } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { toast } from 'vue-sonner'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -15,8 +13,9 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { formatNumber } from '@/format'
 import { useEditorStore } from '@/stores/editor'
 
-// Cuts the selection (or the whole file) into slices and saves them as new samples.
-// While open, the cuts are shown on the wave through `preview`.
+// Places slice markers over the selection (or the whole file): on the bar grid, at
+// hits, or around silence. While open, the markers it would place show on the wave
+// through `preview`; they can be edited afterwards, and Save regions saves them.
 const props = defineProps<{
   /** Frames per beat of the editor's bar grid; 0 without a tempo. */
   beatFrames: number
@@ -25,12 +24,13 @@ const props = defineProps<{
   /** Move cuts to zero crossings. */
   zero: boolean
 }>()
-const preview = defineModel<Span[]>('preview', { required: true })
+const preview = defineModel<Marker[]>('preview', { required: true })
 
 const { t } = useI18n()
 const editor = useEditorStore()
 const open = ref(false)
-const exporting = ref(false)
+// What the backend found for the current settings.
+const found = shallowRef<Span[]>([])
 
 type Mode = SliceBy['mode']
 const mode = useLocalStorage<Mode>('editor.slice.mode', 'transients')
@@ -54,6 +54,48 @@ const divisionLabel = (d: typeof divisions[number]) => (d.n ? t(d.label, { n: d.
 
 const target = computed(() => editor.selection ?? { start: 0, end: editor.state?.frames ?? 0 })
 
+/**
+ * Slices as markers: one at each slice start, and a skipped one where a slice ends
+ * before the next begins (the silence between). Without markers so far, what lies
+ * outside the target is skipped, so only the target's slices get saved.
+ */
+function asMarkers(spans: Span[], keepOutside: boolean): Marker[] {
+  const { start, end } = target.value
+  const frames = editor.state?.frames ?? 0
+  const out: Marker[] = []
+  if (spans.length && spans[0].start > start)
+    out.push({ frame: start, skip: true })
+  spans.forEach((s, i) => {
+    out.push({ frame: s.start, skip: false })
+    if ((spans[i + 1]?.start ?? end) > s.end)
+      out.push({ frame: s.end, skip: true })
+  })
+  if (!keepOutside) {
+    if (start > 0)
+      out.unshift({ frame: 0, skip: true })
+    if (end < frames)
+      out.push({ frame: end, skip: true })
+  }
+  else if (end < frames && !out.some(m => m.frame === end)) {
+    // What follows the target goes on as it was.
+    out.push({ frame: end, skip: editor.regions.find(r => end >= r.start && end < r.end)?.skip ?? false })
+  }
+  return out
+}
+
+/** Puts the found markers in: replacing those inside the target, or added to them. */
+function place(replace: boolean) {
+  const old = editor.state?.markers ?? []
+  const { start, end } = target.value
+  const kept = replace ? old.filter(m => m.frame < start || m.frame >= end) : old
+  const added = asMarkers(found.value, old.length > 0)
+  // The added markers win where both sit on one frame.
+  editor.setMarkers([...kept.filter(m => !added.some(a => a.frame === m.frame)), ...added])
+  open.value = false
+}
+
+const regionCount = computed(() => editor.regions.filter(r => !r.skip).length)
+
 const by = computed<SliceBy | null>(() => {
   switch (mode.value) {
     case 'grid':
@@ -71,13 +113,16 @@ watchDebounced(
   async () => {
     const req = ++request
     if (!open.value || !by.value || !editor.open) {
+      found.value = []
       preview.value = []
       return
     }
     try {
       const spans = await editor.slices(target.value.start, target.value.end, by.value, props.zero)
-      if (req === request)
-        preview.value = spans
+      if (req === request) {
+        found.value = spans
+        preview.value = asMarkers(spans, true)
+      }
     }
     catch (e) {
       console.error(e)
@@ -86,23 +131,6 @@ watchDebounced(
   { debounce: 120, deep: true },
 )
 
-async function exportSlices() {
-  exporting.value = true
-  try {
-    const r = await editor.exportSlices(preview.value)
-    toast.success(t('editor.slice.exported', { n: formatNumber(r.count) }, r.count), {
-      description: r.inLibrary ? undefined : t('editor.slice.notInLibrary'),
-      action: { label: t('editor.slice.reveal'), onClick: () => revealItemInDir(r.dir) },
-    })
-    open.value = false
-  }
-  catch (e) {
-    toast.error(String(e))
-  }
-  finally {
-    exporting.value = false
-  }
-}
 </script>
 
 <template>
@@ -187,13 +215,25 @@ async function exportSlices() {
             </label>
           </template>
 
-          <div class="flex flex-col gap-1.5">
-            <Button size="sm" :disabled="!preview.length || exporting" @click="exportSlices()">
-              {{ t('editor.slice.export', { n: formatNumber(preview.length) }, preview.length) }}
+          <div class="flex gap-2">
+            <Button size="sm" class="flex-1" :disabled="!found.length" @click="place(true)">
+              {{ t('editor.slice.place', { n: formatNumber(found.length) }, found.length) }}
             </Button>
-            <p class="text-xs text-muted-foreground text-center">
-              {{ t('editor.slice.where', { name: editor.sample?.name ?? '' }) }}
-            </p>
+            <Button v-if="editor.state?.markers.length" variant="outline" size="sm" :disabled="!found.length" @click="place(false)">
+              {{ t('editor.slice.add') }}
+            </Button>
+          </div>
+          <div class="-mx-4 -mb-4 px-4 py-3 border-t border-border bg-muted/40 text-xs text-muted-foreground flex flex-col gap-1">
+            <div class="flex items-center justify-between gap-2">
+              <span>{{ t('editor.slice.regions', { n: formatNumber(regionCount) }, regionCount) }}</span>
+              <Button
+                v-if="editor.state?.markers.length" variant="ghost" size="xs" class="-my-1 -mr-2 text-muted-foreground"
+                @click="editor.setMarkers([])"
+              >
+                {{ t('editor.slice.clear') }}
+              </Button>
+            </div>
+            <p>{{ t('editor.slice.help') }}</p>
           </div>
         </PopoverContent>
       </Popover>

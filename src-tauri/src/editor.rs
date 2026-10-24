@@ -10,9 +10,12 @@ use serde::{Deserialize, Serialize};
 use crate::audio::{self, Pcm};
 use crate::error::{Error, Result};
 
+pub mod clipboard;
 mod loops;
+mod markers;
 mod slices;
 pub use loops::{zero_crossing, Loop};
+pub use markers::{append_markers, Marker};
 pub use slices::{slices, SliceBy, Span};
 
 /// Files longer than this are not opened (the whole file is kept in memory).
@@ -58,6 +61,12 @@ pub enum Op {
     /// Loop points for samplers (the WAV's `smpl` chunk); the audio is untouched.
     SetLoop { start: usize, end: usize },
     ClearLoop,
+    /// Slice markers, all at once (cleaned up when applied); the audio is untouched.
+    SetMarkers { markers: Vec<Marker> },
+    /// Replace the range with other audio, interleaved in this buffer's format (paste;
+    /// `end == start` inserts). Built by the paste command, never sent by the page.
+    #[serde(skip)]
+    Replace { start: usize, end: usize, samples: std::sync::Arc<Vec<f32>> },
 }
 
 impl Op {
@@ -71,8 +80,9 @@ impl Op {
             | Op::Gain { start, end, .. }
             | Op::Normalize { start, end, .. }
             | Op::Reverse { start, end }
-            | Op::SetLoop { start, end } => (start, end),
-            Op::ClearLoop => (0, 0),
+            | Op::SetLoop { start, end }
+            | Op::Replace { start, end, .. } => (start, end),
+            Op::ClearLoop | Op::SetMarkers { .. } => (0, 0),
         }
     }
 }
@@ -90,7 +100,10 @@ pub fn apply(pcm: &mut Pcm, op: &Op) {
     let len = end - start;
 
     match *op {
-        Op::SetLoop { .. } | Op::ClearLoop => {}
+        Op::SetLoop { .. } | Op::ClearLoop | Op::SetMarkers { .. } => {}
+        Op::Replace { ref samples, .. } => {
+            pcm.samples.splice(start * ch..end * ch, samples.iter().copied());
+        }
         Op::Crop { .. } => {
             pcm.samples.truncate(end * ch);
             pcm.samples.drain(..start * ch);
@@ -140,6 +153,9 @@ pub struct Session {
     /// Loop points read from the file, and after the edits.
     original_loop: Option<Loop>,
     current_loop: Option<Loop>,
+    /// Slice markers read from the file, and after the edits.
+    original_markers: Vec<Marker>,
+    current_markers: Vec<Marker>,
     ops: Vec<Op>,
     redo: Vec<Op>,
     /// Ops at the last save, i.e. what is on disk.
@@ -160,6 +176,7 @@ pub struct State {
     pub dirty: bool,
     #[serde(rename = "loop")]
     pub loop_points: Option<Loop>,
+    pub markers: Vec<Marker>,
 }
 
 impl Session {
@@ -172,6 +189,7 @@ impl Session {
         let original_loop = loops::read_smpl_loop(path)
             .map(|l| Loop { start: l.start.min(frames), end: l.end.min(frames) })
             .filter(|l| l.end > l.start);
+        let original_markers = markers::normalized(markers::read_markers(path), frames);
         Ok(Self {
             sample_id,
             path: path.to_path_buf(),
@@ -180,6 +198,8 @@ impl Session {
             original: pcm,
             original_loop,
             current_loop: original_loop,
+            current_markers: original_markers.clone(),
+            original_markers,
             ops: Vec::new(),
             redo: Vec::new(),
             saved: Vec::new(),
@@ -197,7 +217,12 @@ impl Session {
             can_redo: !self.redo.is_empty(),
             dirty: self.ops != self.saved,
             loop_points: self.current_loop,
+            markers: self.current_markers.clone(),
         }
+    }
+
+    pub fn markers(&self) -> &[Marker] {
+        &self.current_markers
     }
 
     pub fn audio(&self) -> &Pcm {
@@ -209,7 +234,8 @@ impl Session {
     }
 
     fn apply_op(&mut self, op: &Op) {
-        self.current_loop = loops::moved_loop(self.current_loop, op, self.current.frames());
+        self.current_loop = loops::moved_loop(self.current_loop, op, self.current.frames(), self.current.channels);
+        self.current_markers = markers::moved_markers(&self.current_markers, op, self.current.frames(), self.current.channels);
         apply(&mut self.current, op);
     }
 
@@ -230,6 +256,7 @@ impl Session {
             sample_rate: self.original.sample_rate,
         };
         self.current_loop = self.original_loop;
+        self.current_markers = self.original_markers.clone();
         for op in std::mem::take(&mut self.ops) {
             self.apply_op(&op);
             self.ops.push(op);

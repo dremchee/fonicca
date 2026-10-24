@@ -16,9 +16,10 @@ pub struct Loop {
     pub end: usize,
 }
 
-/// Where the loop is after `op`, applied to a buffer of `frames` frames: cuts
-/// move it with the audio around it, and a loop cut down to nothing is gone.
-pub fn moved_loop(lp: Option<Loop>, op: &Op, frames: usize) -> Option<Loop> {
+/// Where the loop is after `op`, applied to a buffer of `frames` frames of
+/// `channels` channels: cuts and pastes move it with the audio around it, and a
+/// loop cut down to nothing is gone.
+pub fn moved_loop(lp: Option<Loop>, op: &Op, frames: usize, channels: usize) -> Option<Loop> {
     let (start, end) = op.range();
     let (start, end) = (start.min(frames), end.min(frames).max(start.min(frames)));
     let lp = match *op {
@@ -33,6 +34,21 @@ pub fn moved_loop(lp: Option<Loop>, op: &Op, frames: usize) -> Option<Loop> {
                     p
                 } else if p >= end {
                     p - (end - start)
+                } else {
+                    start
+                }
+            };
+            lp.map(|l| Loop { start: map(l.start), end: map(l.end) })
+        }
+        // Points after the replaced range shift by the size difference; points inside
+        // it go to its start.
+        Op::Replace { ref samples, .. } => {
+            let inserted = samples.len() / channels.max(1);
+            let map = |p: usize| {
+                if p <= start {
+                    p
+                } else if p >= end {
+                    p - (end - start) + inserted
                 } else {
                     start
                 }
@@ -79,8 +95,7 @@ pub fn zero_crossing(pcm: &Pcm, frame: usize, radius: usize) -> usize {
 
 /// Appends a `smpl` chunk with one forward loop and fixes up the RIFF size.
 pub fn append_smpl(path: &Path, lp: Loop, sample_rate: u32) -> Result<()> {
-    let words: [u32; 16] = [
-        60,                                 // size of what follows
+    let words: [u32; 15] = [
         0,                                  // manufacturer
         0,                                  // product
         1_000_000_000 / sample_rate.max(1), // sample period, ns
@@ -97,16 +112,20 @@ pub fn append_smpl(path: &Path, lp: Loop, sample_rate: u32) -> Result<()> {
         0,                                  // loop: fraction
         0,                                  // loop: play count, 0 = forever
     ];
-    let mut chunk = b"smpl".to_vec();
-    for w in words {
-        chunk.extend_from_slice(&w.to_le_bytes());
-    }
+    let data: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
+    append_chunk(path, b"smpl", &data)
+}
+
+/// Appends a chunk to a RIFF file and fixes up the RIFF size.
+pub fn append_chunk(path: &Path, id: &[u8; 4], data: &[u8]) -> Result<()> {
     let mut f = std::fs::OpenOptions::new().read(true).write(true).open(path)?;
     // Chunks start on even offsets.
     if f.seek(SeekFrom::End(0))? % 2 == 1 {
         f.write_all(&[0])?;
     }
-    f.write_all(&chunk)?;
+    f.write_all(id)?;
+    f.write_all(&(data.len() as u32).to_le_bytes())?;
+    f.write_all(data)?;
     let riff_size = (f.stream_position()? - 8) as u32;
     f.seek(SeekFrom::Start(4))?;
     f.write_all(&riff_size.to_le_bytes())?;
@@ -184,6 +203,37 @@ mod tests {
         assert_eq!(s.loop_points(), Some(Loop { start: 20, end: 60 }));
         s.redo();
         assert_eq!(s.loop_points(), Some(Loop { start: 10, end: 50 }));
+    }
+
+    #[test]
+    fn pastes_replace_audio_and_shift_the_loop() {
+        let lp = Some(Loop { start: 20, end: 40 });
+        let ten = std::sync::Arc::new(vec![0.0f32; 10]);
+        // Inserting 10 frames before the loop moves it by 10.
+        assert_eq!(
+            moved_loop(lp, &Op::Replace { start: 5, end: 5, samples: ten.clone() }, 100, 1),
+            Some(Loop { start: 30, end: 50 })
+        );
+        // In stereo the same 10 samples are 5 frames.
+        assert_eq!(
+            moved_loop(lp, &Op::Replace { start: 0, end: 0, samples: ten.clone() }, 100, 2),
+            Some(Loop { start: 25, end: 45 })
+        );
+        // Replacing 30..60 with 10 frames: the end, inside, goes to 30.
+        assert_eq!(moved_loop(lp, &Op::Replace { start: 30, end: 60, samples: ten }, 100, 1), Some(Loop { start: 20, end: 30 }));
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("a.wav");
+        write_wav(&path, &ramp(100), Some(16), None).unwrap();
+        let mut s = Session::open(1, &path, Some(16)).unwrap();
+        s.apply(Op::Replace { start: 10, end: 20, samples: std::sync::Arc::new(vec![0.5; 5]) });
+        assert_eq!(s.state().frames, 95);
+        assert_eq!(&s.audio().samples[9..16], &[s.audio().samples[9], 0.5, 0.5, 0.5, 0.5, 0.5, s.audio().samples[15]]);
+        assert!((s.audio().samples[15] - 0.021).abs() < 1e-3, "frame 20 follows the pasted part");
+        s.undo();
+        assert_eq!(s.state().frames, 100);
+        s.redo();
+        assert_eq!(s.state().frames, 95);
     }
 
     #[test]

@@ -1,11 +1,13 @@
 import type { Sample } from '@/api'
 import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { api } from '@/api'
 import { confirm } from '@/composables/confirm'
+import { formatNumber } from '@/format'
 import { t } from '@/i18n'
 import { parseWave } from '@/waveform'
 
@@ -19,6 +21,7 @@ export type EditOp
     | { op: 'normalize', start: number, end: number, peakDb: number }
     | { op: 'setLoop', start: number, end: number }
     | { op: 'clearLoop' }
+    | { op: 'setMarkers', markers: Marker[] }
 
 export interface EditorState {
   sampleId: number
@@ -30,6 +33,25 @@ export interface EditorState {
   dirty: boolean
   /** Loop points for samplers, saved in the WAV's `smpl` chunk. */
   loop: { start: number, end: number } | null
+  /** Slice markers, sorted; each starts a region, saved as cue points in the WAV. */
+  markers: Marker[]
+}
+
+/** Starts a region that runs to the next marker; `skip` leaves the region out when saving. */
+export interface Marker { frame: number, skip: boolean }
+
+/** A region between markers. */
+export interface Region { start: number, end: number, skip: boolean }
+
+/**
+ * Regions of a file of `frames` frames cut at `markers`: from the start of the file
+ * (when the first marker is later) to the end. None without markers.
+ */
+export function regionsOf(markers: Marker[], frames: number): Region[] {
+  if (!markers.length)
+    return []
+  const starts = markers[0].frame > 0 ? [{ frame: 0, skip: false }, ...markers] : markers
+  return starts.map((m, i) => ({ start: m.frame, end: starts[i + 1]?.frame ?? frames, skip: m.skip }))
 }
 
 /**
@@ -53,6 +75,9 @@ export type SliceBy
     | { mode: 'transients', sensitivity: number, minMs: number }
     | { mode: 'silence', thresholdDb: number, minSilenceMs: number }
 
+/** What the clipboard shared by the editor windows holds. */
+export interface ClipInfo { frames: number, channels: number, sampleRate: number }
+
 /** What an editor window shows about its file. */
 export interface EditedFile {
   id: number
@@ -73,6 +98,9 @@ const editorApi = {
   },
   slices: (start: number, end: number, by: SliceBy, zero: boolean) => invoke<Span[]>('editor_slices', { start, end, by, zero }),
   exportSlices: (spans: Span[]) => invoke<{ dir: string, count: number, inLibrary: boolean }>('editor_export_slices', { spans }),
+  copy: (start: number, end: number) => invoke<ClipInfo | null>('editor_copy', { start, end }),
+  clipboard: () => invoke<ClipInfo | null>('editor_clipboard'),
+  paste: (start: number, end: number) => invoke<{ state: EditorState, start: number, end: number }>('editor_paste', { start, end }),
   zeroSnap: (frames: number[], radius: number) => invoke<number[]>('editor_zero_snap', { frames, radius }),
   play: (start: number, end: number, looping: boolean) => invoke<void>('editor_play', { start, end, looping }),
   save: (asNew: boolean) =>
@@ -105,6 +133,8 @@ export const useEditorStore = defineStore('editor', () => {
   const playing = ref(false)
   const playhead = ref<number | null>(null)
   const curve = ref<Curve>('smooth')
+  /** The clipboard shared by all editor windows; re-read when this one gets focus. */
+  const clipboard = ref<ClipInfo | null>(null)
   let frame = 0
 
   const canOverwrite = computed(() => sample.value?.ext === 'wav')
@@ -137,6 +167,12 @@ export const useEditorStore = defineStore('editor', () => {
       if (title)
         win.setTitle(title)
     }, { immediate: true })
+
+    refreshClipboard()
+    await win.onFocusChanged(({ payload: focused }) => {
+      if (focused)
+        refreshClipboard()
+    })
 
     await win.onCloseRequested(async (event) => {
       if (state.value?.dirty) {
@@ -210,6 +246,51 @@ export const useEditorStore = defineStore('editor', () => {
     apply({ op: 'delete', ...s })
   }
 
+  async function refreshClipboard() {
+    try {
+      clipboard.value = await editorApi.clipboard()
+    }
+    catch (e) {
+      console.error(e)
+    }
+  }
+
+  async function copy() {
+    const s = selection.value
+    if (!s)
+      return
+    try {
+      clipboard.value = await editorApi.copy(s.start, s.end)
+    }
+    catch (e) {
+      toast.error(String(e))
+    }
+  }
+
+  async function cut() {
+    if (!selection.value)
+      return
+    await copy()
+    remove()
+  }
+
+  /** Pastes over the selection, or at the cursor; the pasted audio ends up selected. */
+  async function paste() {
+    if (!clipboard.value)
+      return
+    stopPlayback()
+    const s = selection.value ?? { start: cursor.value, end: cursor.value }
+    try {
+      const r = await editorApi.paste(s.start, s.end)
+      after(r.state)
+      selection.value = r.end > r.start ? { start: r.start, end: r.end } : null
+      cursor.value = r.start
+    }
+    catch (e) {
+      toast.error(String(e))
+    }
+  }
+
   function silence() {
     if (selection.value)
       apply({ op: 'silence', ...selection.value })
@@ -235,6 +316,30 @@ export const useEditorStore = defineStore('editor', () => {
 
   function reverse() {
     apply({ op: 'reverse', ...target() })
+  }
+
+  const regions = computed(() => regionsOf(state.value?.markers ?? [], state.value?.frames ?? 0))
+
+  /** Replaces the markers (one undoable edit); the backend sorts and cleans them up. */
+  function setMarkers(markers: Marker[]) {
+    return apply({ op: 'setMarkers', markers }, false)
+  }
+
+  /** Saves each region not skipped as a new sample, into a folder next to the file. */
+  async function saveRegions() {
+    const spans = regions.value.filter(r => !r.skip && r.end > r.start).map(({ start, end }) => ({ start, end }))
+    if (!spans.length)
+      return
+    try {
+      const r = await editorApi.exportSlices(spans)
+      toast.success(t('editor.regions.saved', { n: formatNumber(r.count) }, r.count), {
+        description: r.inLibrary ? undefined : t('editor.regions.notInLibrary'),
+        action: { label: t('editor.regions.reveal'), onClick: () => revealItemInDir(r.dir) },
+      })
+    }
+    catch (e) {
+      toast.error(String(e))
+    }
   }
 
   /** Loop points from the selection; without one, clears them. Playback goes on. */
@@ -337,6 +442,13 @@ export const useEditorStore = defineStore('editor', () => {
     normalize,
     reverse,
     toggleLoopPoints,
+    regions,
+    setMarkers,
+    saveRegions,
+    clipboard,
+    copy,
+    cut,
+    paste,
     zeroSnap: editorApi.zeroSnap,
     slices: editorApi.slices,
     exportSlices: editorApi.exportSlices,

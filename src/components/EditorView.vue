@@ -1,10 +1,14 @@
 <script setup lang="ts">
-import type { Curve, Span, Wave } from '@/stores/editor'
+import type { Curve, Marker, Wave } from '@/stores/editor'
 import {
   ArrowLeftRight,
   ArrowUpToLine,
+  ClipboardPaste,
+  Copy,
   Crop,
+  Eraser,
   FolderOpen,
+  FolderOutput,
   IterationCw,
   Magnet,
   Maximize2,
@@ -49,7 +53,7 @@ import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
 import { formatNumber, formatRate, shortPath } from '@/format'
 import { canvasContext, drawWave } from '@/waveform'
-import { useEditorStore } from '@/stores/editor'
+import { regionsOf, useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
 
 const { t } = useI18n()
@@ -74,7 +78,7 @@ const gridMode = useLocalStorage<GridMode>('editor.gridMode', 'beats')
 const snap = useLocalStorage('editor.snap', true)
 const zeroSnap = useLocalStorage('editor.zeroSnap', true)
 // Slices shown while the slicer is open.
-const slicePreview = ref<Span[]>([])
+const slicePreview = ref<Marker[]>([])
 // Tempo of the bar grid (from the sample, editable) and where bar 1 starts, in frames.
 const bpm = ref<number | null>(null)
 const downbeat = ref(0)
@@ -406,47 +410,72 @@ watchEffect(() => {
   label.style.transform = px > width.value - 72 ? 'translateX(calc(-100% - 4px))' : 'translateX(4px)'
 })
 
-// Slice preview: what no slice covers dimmed, a line and a number at each slice start
-// (numbers thinned out where they would overlap).
+// Slice markers and their regions: a line and a flag on the ruler at each marker,
+// skipped regions dimmed, the regions that will be saved numbered. While the slicer
+// is open, the markers it would place show dashed.
+const draggedMarkers = shallowRef<Marker[] | null>(null)
+const shownMarkers = computed(() => draggedMarkers.value ?? editor.state?.markers ?? [])
+// Regions Save regions would write.
+const savedRegions = computed(() => editor.regions.filter(r => !r.skip).length)
+
 function drawSlices(ctx: CanvasRenderingContext2D, w: number, h: number, color: (name: string) => string) {
-  const spans = slicePreview.value
-  if (!spans.length)
-    return
-  const target = editor.selection ?? { start: 0, end: frames.value }
+  const regions = regionsOf(shownMarkers.value, frames.value)
   ctx.fillStyle = color('--card')
   ctx.globalAlpha = 0.65
-  let covered = target.start
-  for (const s of [...spans, { start: target.end, end: target.end }]) {
-    if (s.start > covered)
-      ctx.fillRect(x(covered), RULER, x(s.start) - x(covered), h - RULER)
-    covered = Math.max(covered, s.end)
-  }
+  for (const r of regions.filter(r => r.skip))
+    ctx.fillRect(x(r.start), RULER, x(r.end) - x(r.start), h - RULER)
   ctx.globalAlpha = 1
+
   ctx.font = '600 10px system-ui, sans-serif'
+  let n = 0
   let lastLabel = -Infinity
-  spans.forEach((s, i) => {
-    const px = Math.round(x(s.start))
+  for (const r of regions) {
+    if (!r.skip)
+      n++
+    const px = Math.round(x(r.start))
     if (px < -40 || px > w)
-      return
+      continue
     ctx.fillStyle = color('--foreground')
-    ctx.fillRect(px, RULER, 1, h - RULER)
-    // A slice that stops before the next one starts: its end, fainter.
-    if ((spans[i + 1]?.start ?? target.end) > s.end) {
-      ctx.globalAlpha = 0.4
-      ctx.fillRect(Math.round(x(s.end)), RULER, 1, h - RULER)
-      ctx.globalAlpha = 1
+    // The start of the file is no marker of its own.
+    if (r.start > 0 || shownMarkers.value[0]?.frame === 0) {
+      ctx.fillRect(px, 0, 1, h)
+      ctx.beginPath()
+      ctx.moveTo(px, 0)
+      ctx.lineTo(px + 6, 3)
+      ctx.lineTo(px, 6)
+      ctx.closePath()
+      ctx.fill()
     }
-    const label = String(i + 1)
+    if (r.skip)
+      continue
+    const label = String(n)
     const lw = ctx.measureText(label).width + 6
     if (px - lastLabel < lw + 4)
-      return
+      continue
     lastLabel = px
     ctx.fillRect(px, RULER + 1, lw, 14)
     ctx.fillStyle = color('--background')
     ctx.fillText(label, px + 3, RULER + 12)
-  })
+  }
+
+  if (slicePreview.value.length) {
+    ctx.strokeStyle = color('--foreground')
+    ctx.globalAlpha = 0.6
+    ctx.setLineDash([4, 3])
+    ctx.beginPath()
+    for (const m of slicePreview.value) {
+      const px = Math.round(x(m.frame)) + 0.5
+      if (px >= 0 && px <= w) {
+        ctx.moveTo(px, RULER)
+        ctx.lineTo(px, h)
+      }
+    }
+    ctx.stroke()
+    ctx.setLineDash([])
+    ctx.globalAlpha = 1
+  }
 }
-watch(slicePreview, draw)
+watch([slicePreview, shownMarkers, () => editor.state?.markers], draw)
 
 // --- Mouse ------------------------------------------------------------------
 
@@ -503,15 +532,144 @@ function edgeAt(e: MouseEvent): 'start' | 'end' | null {
   return toStart < toEnd ? 'start' : 'end'
 }
 
+// --- Markers ----------------------------------------------------------------
+
+const hoverMarker = ref(false)
+
+/** The marker whose flag is under the pointer (on the ruler, within a few pixels), or -1. */
+function markerAt(e: MouseEvent) {
+  const rect = canvas.value?.getBoundingClientRect()
+  const markers = editor.state?.markers ?? []
+  if (!rect || e.clientY - rect.top >= RULER)
+    return -1
+  const px = e.clientX - rect.left
+  let best = -1
+  let bestDistance = EDGE_PX + 1
+  markers.forEach((m, i) => {
+    const d = Math.abs(px - x(m.frame))
+    if (d < bestDistance) {
+      best = i
+      bestDistance = d
+    }
+  })
+  return best
+}
+
+const onRuler = (e: MouseEvent) => e.clientY - canvas.value!.getBoundingClientRect().top < RULER
+
+/** Moves frames to zero crossings when that snapping is on (⌥ inverts it). */
+async function zeroSnapped(at: number[], e: MouseEvent | KeyboardEvent) {
+  if (zeroSnap.value === e.altKey)
+    return at
+  try {
+    return await editor.zeroSnap(at, Math.round(rate.value * 0.01))
+  }
+  catch {
+    return at
+  }
+}
+
+/** New markers split regions; each half keeps the region's skip. */
+function addMarkers(at: number[]) {
+  const markers = editor.state?.markers ?? []
+  const added = at
+    .filter(f => f > 0 && f < frames.value && !markers.some(m => m.frame === f))
+    .map(frame => ({ frame, skip: editor.regions.find(r => frame >= r.start && frame < r.end)?.skip ?? false }))
+  if (added.length)
+    editor.setMarkers([...markers, ...added])
+}
+
+function removeMarker(i: number) {
+  editor.setMarkers((editor.state?.markers ?? []).filter((_, j) => j !== i))
+}
+
+function toggleSkip(region: { start: number, skip: boolean }) {
+  const markers = editor.state?.markers ?? []
+  // The part before the first marker gets a marker of its own to carry the flag.
+  if (!markers.some(m => m.frame === region.start))
+    editor.setMarkers([{ frame: region.start, skip: !region.skip }, ...markers])
+  else
+    editor.setMarkers(markers.map(m => (m.frame === region.start ? { ...m, skip: !m.skip } : m)))
+}
+
+/** Drags marker `i` between its neighbours, snapping like the selection. */
+function dragMarker(e: MouseEvent, i: number) {
+  const markers = editor.state?.markers ?? []
+  const lo = i > 0 ? markers[i - 1].frame + 1 : 0
+  const hi = (markers[i + 1]?.frame ?? frames.value) - 1
+  const startX = e.clientX
+  let moved = false
+  let at = markers[i].frame
+  const place = (f: number) => markers.map((m, j) => (j === i ? { ...m, frame: f } : m))
+  const move = (ev: MouseEvent) => {
+    if (!moved && Math.abs(ev.clientX - startX) < 3)
+      return
+    moved = true
+    at = Math.min(hi, Math.max(lo, snapped(frameAt(ev.clientX), ev)))
+    draggedMarkers.value = place(at)
+  }
+  const up = async (ev: MouseEvent) => {
+    window.removeEventListener('mousemove', move)
+    window.removeEventListener('mouseup', up)
+    if (moved) {
+      const [f] = await zeroSnapped([at], ev)
+      await editor.setMarkers(place(Math.min(hi, Math.max(lo, f))))
+    }
+    draggedMarkers.value = null
+  }
+  window.addEventListener('mousemove', move)
+  window.addEventListener('mouseup', up)
+}
+
+async function onDoubleClick(e: MouseEvent) {
+  if (onRuler(e) && markerAt(e) < 0)
+    addMarkers(await zeroSnapped([snapped(frameAt(e.clientX), e)], e))
+}
+
+function onContextMenu(e: MouseEvent) {
+  const i = markerAt(e)
+  if (i >= 0) {
+    e.preventDefault()
+    removeMarker(i)
+  }
+}
+
+function onHover(e: MouseEvent) {
+  hoverFrame.value = frameAt(e.clientX)
+  hoverEdge.value = edgeAt(e)
+  hoverMarker.value = markerAt(e) >= 0
+}
+
 function onMouseDown(e: MouseEvent) {
   if (e.button !== 0)
     return
+  // A marker's flag on the ruler drags it.
+  const marker = markerAt(e)
+  if (marker >= 0) {
+    dragMarker(e, marker)
+    return
+  }
   // The loop band on the ruler selects the loop.
   const lp = editor.state?.loop
   if (lp && e.clientY - canvas.value!.getBoundingClientRect().top < RULER) {
     const f = frameAt(e.clientX)
     if (f >= lp.start && f <= lp.end) {
       selectLoop()
+      return
+    }
+  }
+  // A region on the ruler: a click selects it, ⌥-click skips it or takes it back.
+  if (editor.regions.length && onRuler(e)) {
+    const f = frameAt(e.clientX)
+    const region = editor.regions.find(r => f >= r.start && f < r.end)
+    if (region) {
+      if (e.altKey) {
+        toggleSkip(region)
+      }
+      else {
+        editor.selection = { start: region.start, end: region.end }
+        editor.cursor = region.start
+      }
       return
     }
   }
@@ -626,6 +784,10 @@ function onKeyDown(e: KeyboardEvent) {
   }
   else if (!mod && key === 'l') {
     editor.looping = !editor.looping
+  }
+  else if (!mod && (key === 'm' || key === 'ь')) {
+    const sel = editor.selection
+    addMarkers(sel ? [sel.start, sel.end] : [editor.cursor])
   }
   else if (!mod && key === 's') {
     snap.value = !snap.value
@@ -748,7 +910,22 @@ const curves: { value: Curve, label: string }[] = [
       </Hint>
       <Hint :text="t('editor.toolbar.deleteHint')" shortcut="⌫">
         <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.delete')" @click="editor.remove()">
+          <Eraser />
+        </Button>
+      </Hint>
+      <Hint :text="t('editor.toolbar.cutHint')" shortcut="⌘X">
+        <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.cut')" @click="editor.cut()">
           <Scissors />
+        </Button>
+      </Hint>
+      <Hint :text="t('editor.toolbar.copyHint')" shortcut="⌘C">
+        <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.copy')" @click="editor.copy()">
+          <Copy />
+        </Button>
+      </Hint>
+      <Hint :text="editor.selection ? t('editor.toolbar.pasteOverHint') : t('editor.toolbar.pasteHint')" shortcut="⌘V">
+        <Button variant="ghost" size="icon-sm" :disabled="!editor.clipboard" :aria-label="t('editor.toolbar.paste')" @click="editor.paste()">
+          <ClipboardPaste />
         </Button>
       </Hint>
       <Hint :text="t('editor.toolbar.silenceHint')">
@@ -808,6 +985,12 @@ const curves: { value: Curve, label: string }[] = [
       </Hint>
       <Separator orientation="vertical" class="mx-1 h-5" />
       <EditorSlicer v-model:preview="slicePreview" :beat-frames="beatFrames" :downbeat="downbeat" :zero="zeroSnap" />
+      <Hint :text="savedRegions ? t('editor.regions.saveHint', { n: formatNumber(savedRegions) }, savedRegions) : t('editor.regions.none')">
+        <Button variant="ghost" size="sm" class="px-2" :disabled="!savedRegions" :aria-label="t('editor.regions.save')" @click="editor.saveRegions()">
+          <FolderOutput />
+          <span v-if="savedRegions" class="tabular">{{ formatNumber(savedRegions) }}</span>
+        </Button>
+      </Hint>
       <!-- Tempo of the bar grid (and of snapping), next to the edits it lines up. -->
       <Hint :text="t('editor.toolbar.bpmHint')">
         <Input
@@ -835,15 +1018,21 @@ const curves: { value: Curve, label: string }[] = [
     <!-- The waveform, and the level meter at its right. -->
     <div class="flex-1 min-h-0 flex">
     <div ref="box" class="relative flex-1 min-w-0 bg-card">
+      <!-- Cut, copy and paste come as DOM events: the native Edit menu takes ⌘X/⌘C/⌘V before keydown. -->
       <canvas
         ref="canvas"
         tabindex="0"
         class="absolute inset-0 size-full outline-none"
-        :class="hoverEdge ? 'cursor-ew-resize' : 'cursor-text'"
+        :class="hoverEdge || hoverMarker ? 'cursor-ew-resize' : 'cursor-text'"
         :aria-label="t('editor.waveform.label')"
         @mousedown="onMouseDown"
-        @mousemove="hoverEdge = edgeAt($event); hoverFrame = frameAt($event.clientX)"
-        @mouseleave="hoverEdge = null; hoverFrame = null"
+        @copy.prevent="editor.copy()"
+        @cut.prevent="editor.cut()"
+        @paste.prevent="editor.paste()"
+        @dblclick="onDoubleClick"
+        @contextmenu="onContextMenu"
+        @mousemove="onHover"
+        @mouseleave="hoverEdge = null; hoverMarker = false; hoverFrame = null"
         @wheel="onWheel"
         @keydown="onKeyDown"
       />

@@ -115,6 +115,42 @@ pub fn editor_wave(
     })
 }
 
+/// Copies `[start, end)` to the clipboard shared by all editor windows.
+#[tauri::command]
+pub fn editor_copy(state: State<'_, AppState>, window: Window, start: usize, end: usize) -> Result<Option<editor::clipboard::ClipInfo>> {
+    with_session(&state, &window, |s| Ok(editor::clipboard::copy(s.audio(), start, end).then(editor::clipboard::info).flatten()))
+}
+
+#[tauri::command]
+pub fn editor_clipboard() -> Option<editor::clipboard::ClipInfo> {
+    editor::clipboard::info()
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Pasted {
+    state: EditorState,
+    /// Where the pasted audio is now.
+    start: usize,
+    end: usize,
+}
+
+/// Replaces `[start, end)` with the clipboard (inserts when they are equal), in
+/// this file's channel count and sample rate. One edit, undone as one.
+#[tauri::command]
+pub fn editor_paste(state: State<'_, AppState>, window: Window, start: usize, end: usize) -> Result<Pasted> {
+    with_session(&state, &window, |s| {
+        let pcm = s.audio();
+        let samples = editor::clipboard::take_as(pcm.channels, pcm.sample_rate)
+            .ok_or_else(|| Error::Other("the clipboard is empty".into()))?;
+        let frames = samples.len() / pcm.channels.max(1);
+        let start = start.min(pcm.frames());
+        let end = end.clamp(start, pcm.frames());
+        s.apply(Op::Replace { start, end, samples: std::sync::Arc::new(samples) });
+        Ok(Pasted { state: s.state(), start, end: start + frames })
+    })
+}
+
 /// Moves each frame to the nearest zero crossing within `radius` frames.
 #[tauri::command]
 pub fn editor_zero_snap(state: State<'_, AppState>, window: Window, frames: Vec<usize>, radius: usize) -> Result<Vec<usize>> {
@@ -157,6 +193,7 @@ pub fn editor_save(state: State<'_, AppState>, window: Window, as_new: bool) -> 
         // Through a temporary file so a failed write never truncates the target.
         let tmp = target.with_extension("wav.tmp");
         editor::write_wav(&tmp, s.audio(), s.bit_depth, s.loop_points())?;
+        editor::append_markers(&tmp, s.markers())?;
         std::fs::rename(&tmp, &target)?;
         if backup.is_some() {
             s.mark_saved();

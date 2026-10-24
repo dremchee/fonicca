@@ -1,6 +1,6 @@
 // A fake editor session for /mock.html#editor: four bars of a 120 BPM loop
 // (kick on every beat, hats in between), so the bar grid has something to line up with.
-import type { EditorState, SliceBy, Span } from '@/stores/editor'
+import type { ClipInfo, EditorState, Marker, SliceBy, Span } from '@/stores/editor'
 
 const RATE = 44100
 const BPM = 120
@@ -16,9 +16,11 @@ function level(frame: number) {
 }
 
 let loop: EditorState['loop'] = null
+let clip: ClipInfo | null = null
+let markers: Marker[] = []
 
 function state(): EditorState {
-  return { sampleId: 1, frames: FRAMES, sampleRate: RATE, channels: 2, canUndo: false, canRedo: false, dirty: loop !== null, loop }
+  return { sampleId: 1, frames: FRAMES, sampleRate: RATE, channels: 2, canUndo: false, canRedo: false, dirty: loop !== null || markers.length > 0, loop, markers }
 }
 
 // Same packing as the backend: u32 mode, lanes, count, stride, then lane-major columns
@@ -75,8 +77,17 @@ export function editorCommand(cmd: string, args: any): unknown {
         loop = { start: args.op.start, end: args.op.end }
       else if (args.op.op === 'clearLoop')
         loop = null
+      // Sorted, one per frame (the last wins), inside the file: as the backend does.
+      else if (args.op.op === 'setMarkers')
+        markers = [...new Map((args.op.markers as Marker[]).filter(m => m.frame < FRAMES).map(m => [m.frame, m])).values()].sort((a, b) => a.frame - b.frame)
       return state()
     case 'editor_undo': case 'editor_redo': return state()
+    case 'editor_copy':
+      clip = { frames: args.end - args.start, channels: 2, sampleRate: RATE }
+      return clip
+    case 'editor_clipboard': return clip
+    // The fake audio stays as it is; only the selection follows the paste.
+    case 'editor_paste': return { state: state(), start: args.start, end: args.start + (clip?.frames ?? 0) }
     case 'editor_slices': return slices(args.start, args.end, args.by)
     case 'editor_export_slices': return { dir: '/Users/me/Projects/Sound/Loops/Drum Loop 120 slices', count: args.spans.length, inLibrary: true }
     // Every beat starts on a zero crossing; snap to the nearest within reach.
