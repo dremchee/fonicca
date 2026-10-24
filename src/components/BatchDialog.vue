@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BatchDone, BatchProgress, Destination, Recipe } from '@/composables/batch'
+import type { BatchDone, BatchProgress, Destination } from '@/composables/batch'
 import type { Curve } from '@/stores/editor'
 import { listen } from '@tauri-apps/api/event'
 import { open as pickFolder } from '@tauri-apps/plugin-dialog'
@@ -9,6 +9,11 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { Button } from '@/components/ui/button'
+import BatchNormalizeStep from '@/components/BatchNormalizeStep.vue'
+import BatchLoudnessReport from '@/components/BatchLoudnessReport.vue'
+import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
+import type { BatchForm } from '@/batch-recipe'
+import { batchDefaults, batchRecipe, restoreBatchForm, validBatchForm } from '@/batch-recipe'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -20,42 +25,8 @@ const { t } = useI18n()
 
 // The dialog's settings: every step with its values, whether it is on or not, so
 // switching a step off and on again keeps them. Kept between runs.
-interface Form {
-  trim: boolean
-  thresholdDb: number
-  padMs: number
-  normalize: boolean
-  peakDb: number
-  fades: boolean
-  fadeInMs: number
-  fadeOutMs: number
-  curve: Curve
-  format: boolean
-  channels: string
-  sampleRate: string
-  bitDepth: string
-  rename: boolean
-  template: string
-}
-const defaults: Form = {
-  trim: true,
-  thresholdDb: -60,
-  padMs: 5,
-  normalize: false,
-  peakDb: -0.3,
-  fades: false,
-  fadeInMs: 0,
-  fadeOutMs: 10,
-  curve: 'smooth',
-  format: false,
-  channels: 'keep',
-  sampleRate: 'keep',
-  bitDepth: 'keep',
-  rename: false,
-  template: '{category}_{bpm}_{key}_{n}',
-}
-const form = useLocalStorage<Form>('batch.form', { ...defaults }, { mergeDefaults: true })
-const presets = useLocalStorage<{ name: string, form: Form }[]>('batch.presets', [])
+const form = useLocalStorage<BatchForm>('batch.form', { ...batchDefaults }, { mergeDefaults: true })
+const presets = useLocalStorage<{ name: string, form: BatchForm }[]>('batch.presets', [])
 const destination = useLocalStorage<Destination>('batch.destination', { mode: 'folder', path: '' })
 const preset = ref('')
 
@@ -74,29 +45,13 @@ const rates = ['44100', '48000', '88200', '96000']
 const tokens = ['name', 'n', 'category', 'bpm', 'key', 'kind']
 const tokenLabel = (token: string) => `{${token}}`
 
-function recipe(): Recipe {
-  const f = form.value
-  const opt = (v: string) => (f.format && v !== KEEP ? Number(v) : null)
-  return {
-    trim: f.trim ? { thresholdDb: f.thresholdDb, padMs: f.padMs } : null,
-    normalize: f.normalize ? f.peakDb : null,
-    fadeInMs: f.fades ? f.fadeInMs : null,
-    fadeOutMs: f.fades ? f.fadeOutMs : null,
-    curve: f.curve,
-    channels: opt(f.channels),
-    sampleRate: opt(f.sampleRate),
-    bitDepth: opt(f.bitDepth),
-    rename: f.rename && destination.value.mode === 'folder' ? f.template : null,
-  }
-}
-
 const inPlace = computed(() => destination.value.mode === 'inPlace')
 const folder = computed(() => (destination.value.mode === 'folder' ? destination.value.path : ''))
 const anyStep = computed(() => {
   const f = form.value
-  return f.trim || f.normalize || f.fades || f.format || (f.rename && !inPlace.value)
+  return f.trim || f.dcOffset || f.normalize || f.fades || f.format || (f.rename && !inPlace.value)
 })
-const canRun = computed(() => anyStep.value && (inPlace.value || folder.value !== ''))
+const canRun = computed(() => anyStep.value && validBatchForm(form.value) && (inPlace.value || folder.value !== ''))
 
 async function chooseFolder() {
   const path = await pickFolder({ directory: true, defaultPath: folder.value || undefined })
@@ -112,7 +67,7 @@ const presetName = ref('')
 function applyPreset(name: unknown) {
   const p = presets.value.find(p => p.name === name)
   if (p) {
-    form.value = { ...defaults, ...p.form }
+    form.value = restoreBatchForm(p.form)
     preset.value = p.name
   }
 }
@@ -135,7 +90,7 @@ function deletePreset() {
 // Editing the settings leaves the preset they came from.
 watch(form, () => {
   const p = presets.value.find(p => p.name === preset.value)
-  if (p && JSON.stringify({ ...defaults, ...p.form }) !== JSON.stringify(form.value))
+  if (p && JSON.stringify(restoreBatchForm(p.form)) !== JSON.stringify(form.value))
     preset.value = ''
 }, { deep: true })
 
@@ -176,6 +131,8 @@ const result = ref<BatchDone | null>(null)
 const unlisten: (() => void)[] = []
 
 async function run() {
+  if (!canRun.value || running.value)
+    return
   result.value = null
   progress.value = { done: 0, total: ids.value.length, name: '' }
   running.value = true
@@ -185,7 +142,7 @@ async function run() {
       result.value = e.payload
       finish()
     }))
-    await batchApi.run(ids.value, recipe(), destination.value)
+    await batchApi.run(ids.value, batchRecipe(form.value, inPlace.value), destination.value)
   }
   catch (e) {
     toast.error(String(e))
@@ -248,7 +205,7 @@ watch(batchFor, () => {
         </form>
       </div>
 
-      <div class="flex flex-col divide-y divide-border rounded-lg border border-border text-sm">
+      <fieldset :disabled="running" class="flex flex-col divide-y divide-border rounded-lg border border-border text-sm">
         <!-- Trim -->
         <section class="p-3 flex flex-col gap-3">
           <label class="flex items-center justify-between font-medium">
@@ -267,17 +224,18 @@ watch(batchFor, () => {
           </div>
         </section>
 
-        <!-- Normalize -->
-        <section class="p-3 flex flex-col gap-3">
-          <label class="flex items-center justify-between font-medium">
-            {{ t('batch.normalize.title') }}
-            <Switch v-model="form.normalize" />
-          </label>
-          <label v-if="form.normalize" class="flex flex-col gap-1 text-muted-foreground w-1/2 pr-1.5">
-            {{ t('batch.normalize.peak') }}
-            <div class="flex items-center gap-1.5"><Input v-model.number="form.peakDb" type="number" min="-24" max="0" step="0.1" class="h-8" /> {{ t('common.units.dB') }}</div>
-          </label>
+        <section class="p-3">
+          <Field orientation="horizontal">
+            <FieldLabel for="batch-dc-offset" class="font-medium">{{ t('batch.dcOffset.title') }}</FieldLabel>
+            <Switch id="batch-dc-offset" v-model="form.dcOffset" />
+          </Field>
+          <FieldDescription v-if="form.dcOffset" class="mt-2">{{ t('batch.dcOffset.hint') }}</FieldDescription>
         </section>
+
+        <BatchNormalizeStep
+          v-model:enabled="form.normalize" v-model:mode="form.normalizeMode" v-model:peak-db="form.peakDb"
+          v-model:target="form.targetLufs" v-model:ceiling="form.ceilingDb"
+        />
 
         <!-- Fades -->
         <section class="p-3 flex flex-col gap-3">
@@ -427,7 +385,7 @@ watch(batchFor, () => {
             {{ t('batch.destination.inPlaceHint') }}
           </p>
         </section>
-      </div>
+      </fieldset>
 
       <!-- Progress and result -->
       <div v-if="running && progress" class="flex flex-col gap-1.5 text-sm">
@@ -448,6 +406,7 @@ watch(batchFor, () => {
             {{ t('batch.done.reveal') }}
           </Button>
         </div>
+        <BatchLoudnessReport :reports="result.loudness ?? []" />
         <ul v-if="result.failed.length" class="max-h-24 overflow-y-auto text-xs text-muted-foreground">
           <li v-for="f in result.failed" :key="f.name" class="truncate" :title="f.error">
             {{ f.name }}: {{ f.error }}

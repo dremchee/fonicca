@@ -1,13 +1,17 @@
 export default {
   action: 'Process…',
   title: 'Process {n} sample | Process {n} samples',
-  description: 'Steps run in this order. The originals stay as they are unless you replace them.',
+  description: 'Trim, clean up and convert samples. Originals are kept unless you choose to replace them.',
   trim: {
     title: 'Trim silence',
     threshold: 'Silence below',
     pad: 'Keep around the sound',
   },
+  dcOffset: { title: 'Remove DC offset', hint: 'Centre each channel around zero before normalization and fades.' },
   normalize: {
+    mode: 'Normalization mode', byPeak: 'Peak', target: 'Target loudness', ceiling: 'Sample peak ceiling',
+    lufsHint: 'LUFS is applied after fades and conversion. Needs at least 400 ms of audible audio. The ceiling limits sample peaks, not true peaks.',
+
     title: 'Normalize',
     peak: 'Peak level',
   },
@@ -56,6 +60,10 @@ export default {
   close: 'Close',
   running: '{done} of {total}',
   done: {
+    loudness: 'LUFS: {n} file measured | LUFS: {n} files measured',
+    limitedCount: '{n} limited by peak ceiling | {n} limited by peak ceiling',
+    limited: 'Peak ceiling reached; target {target} LUFS',
+
     written: '{n} file written | {n} files written',
     failed: '{n} failed | {n} failed',
     cancelled: 'Stopped',

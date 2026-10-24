@@ -6,6 +6,8 @@ import { shallowRef } from 'vue'
 export interface Recipe {
   trim: { thresholdDb: number, padMs: number } | null
   normalize: number | null
+  lufs: { target: number, ceiling: number } | null
+  dcOffset: boolean
   fadeInMs: number | null
   fadeOutMs: number | null
   curve: Curve
@@ -18,8 +20,18 @@ export interface Recipe {
 export type Destination = { mode: 'folder', path: string } | { mode: 'inPlace' }
 
 export interface BatchProgress { done: number, total: number, name: string }
+export interface BatchLoudness {
+  name: string
+  path: string
+  target: number
+  before: number
+  after: number
+  gainDb: number
+  limited: boolean
+}
 export interface BatchDone {
   written: number
+  loudness: BatchLoudness[]
   failed: { name: string, error: string }[]
   cancelled: boolean
   dir: string | null

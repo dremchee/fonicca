@@ -91,39 +91,62 @@ pub fn render(
             })
         }
         Processing::Lufs { target, ceiling } => {
-            if !target.is_finite()
-                || !(-36.0..=-5.0).contains(&target)
-                || !ceiling.is_finite()
-                || !(-12.0..=0.0).contains(&ceiling)
-            {
-                return Err(invalid("target must be between -36 and -5 LUFS; sample peak ceiling between -12 and 0 dBFS"));
-            }
-            let before = integrated(&pcm)?;
-            let peak = pcm
-                .samples
-                .iter()
-                .fold(0.0f64, |m, s| m.max(s.abs() as f64));
-            let desired = target - before;
-            let gain_db = desired.min(ceiling - 20.0 * peak.log10());
-            let gain = 10f64.powf(gain_db / 20.0) as f32;
-            pcm.samples.iter_mut().for_each(|s| *s *= gain);
-            let after = integrated(&pcm)?;
+            let report = normalize_lufs(&mut pcm, target, ceiling)?;
             Ok(Rendered {
                 op: Op::Gain {
                     start,
                     end,
-                    db: gain_db as f32,
+                    db: report.gain_db as f32,
                 },
                 end,
-                loudness: Some(LoudnessReport {
-                    before,
-                    after,
-                    gain_db,
-                    limited: gain_db < desired - 0.01,
-                }),
+                loudness: Some(report),
             })
         }
     }
+}
+
+/// Shared by the editor and batch recipes.
+pub fn validate_lufs(target: f64, ceiling: f64) -> Result<()> {
+    if !target.is_finite()
+        || !(-36.0..=-5.0).contains(&target)
+        || !ceiling.is_finite()
+        || !(-12.0..=0.0).contains(&ceiling)
+    {
+        return Err(invalid(
+            "target must be between -36 and -5 LUFS; sample peak ceiling between -12 and 0 dBFS",
+        ));
+    }
+    Ok(())
+}
+
+/// Gain only, constrained by the sample peak ceiling; no limiter or compression.
+pub fn normalize_lufs(pcm: &mut Pcm, target: f64, ceiling: f64) -> Result<LoudnessReport> {
+    validate_lufs(target, ceiling)?;
+    if pcm.samples.iter().any(|s| !s.is_finite()) {
+        return Err(invalid("LUFS requires finite audio samples"));
+    }
+    let before = integrated(pcm)?;
+    let peak = pcm
+        .samples
+        .iter()
+        .fold(0.0f64, |m, s| m.max(s.abs() as f64));
+    let desired = target - before;
+    let gain_db = desired.min(ceiling - 20.0 * peak.log10()) as f32;
+    super::apply(
+        pcm,
+        &Op::Gain {
+            start: 0,
+            end: pcm.frames(),
+            db: gain_db,
+        },
+    );
+    let after = integrated(pcm)?;
+    Ok(LoudnessReport {
+        before,
+        after,
+        gain_db: gain_db as f64,
+        limited: (gain_db as f64) < desired - 0.01,
+    })
 }
 
 /// `exact` needs two output-latency windows. Pad short input with silence,
@@ -348,55 +371,65 @@ mod tests {
             channels: 1,
             sample_rate: 48000,
         };
-        assert!(render(
-            silent,
-            0,
-            48000,
-            Processing::Lufs {
-                target: -14.0,
-                ceiling: -0.3
-            }
-        )
-        .is_err());
-        assert!(render(
-            sine(0.1, 0.2),
-            0,
-            4800,
-            Processing::Lufs {
-                target: -14.0,
-                ceiling: -0.3
-            }
-        )
-        .is_err());
-        assert!(render(
-            sine(0.001, 0.2),
-            0,
-            48,
-            Processing::Stretch {
-                semitones: 0.0,
-                ratio: 2.0
-            }
-        )
-        .is_err());
-        for (semitones, ratio) in [(f64::NAN, 1.0), (25.0, 1.0), (0.0, 0.0), (0.0, 4.1)] {
-            assert!(render(
-                sine(0.01, 0.2),
+        assert!(
+            render(
+                silent,
                 0,
-                480,
-                Processing::Stretch { semitones, ratio }
+                48000,
+                Processing::Lufs {
+                    target: -14.0,
+                    ceiling: -0.3
+                }
             )
-            .is_err());
+            .is_err()
+        );
+        assert!(
+            render(
+                sine(0.1, 0.2),
+                0,
+                4800,
+                Processing::Lufs {
+                    target: -14.0,
+                    ceiling: -0.3
+                }
+            )
+            .is_err()
+        );
+        assert!(
+            render(
+                sine(0.001, 0.2),
+                0,
+                48,
+                Processing::Stretch {
+                    semitones: 0.0,
+                    ratio: 2.0
+                }
+            )
+            .is_err()
+        );
+        for (semitones, ratio) in [(f64::NAN, 1.0), (25.0, 1.0), (0.0, 0.0), (0.0, 4.1)] {
+            assert!(
+                render(
+                    sine(0.01, 0.2),
+                    0,
+                    480,
+                    Processing::Stretch { semitones, ratio }
+                )
+                .is_err()
+            );
         }
-        assert!(render(
-            sine(1.0, 0.2),
-            0,
-            48000 * 1200,
-            Processing::Stretch {
-                semitones: 0.0,
-                ratio: 2.0
-            }
-        )
-        .is_err());
+        assert!(
+            render(
+                sine(1.0, 0.2),
+                0,
+                48000 * 1200,
+                Processing::Stretch {
+                    semitones: 0.0,
+                    ratio: 2.0
+                }
+            )
+            .is_err()
+        );
     }
 
     #[test]

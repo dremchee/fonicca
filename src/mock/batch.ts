@@ -27,6 +27,11 @@ async function run(ids: number[], recipe: Recipe, destination: { mode: string, p
   await emit('batch:done', {
     written: ids.length - 1,
     failed: [{ name: fake(ids[0]).name, error: 'only WAV files can be replaced; save to a folder instead' }],
+    loudness: recipe.lufs ? ids.slice(1).map((id, i) => ({
+      name: fake(id).name, path: `${destination.path ?? '/mock'}/${fake(id).name}.wav`,
+      target: recipe.lufs!.target, before: -28, after: recipe.lufs!.target - (i === 0 ? 4 : 0),
+      gainDb: recipe.lufs!.target + 28 - (i === 0 ? 4 : 0), limited: i === 0,
+    })) : [],
     cancelled: false,
     dir: destination.mode === 'folder' ? destination.path : null,
   })

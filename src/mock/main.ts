@@ -11,6 +11,7 @@ import { i18n } from '../i18n'
 import ExportMock from './ExportMock.vue'
 import ThemesMock from './ThemesMock.vue'
 import { install } from './real-app'
+import { openBatch } from '@/composables/batch'
 import 'vue-sonner/style.css'
 import 'virtual:uno.css'
 import '../styles.css'
@@ -27,6 +28,10 @@ else if (location.hash === '#editor') {
   createApp(EditorWindow, { sampleId: 1 }).use(createPinia()).use(i18n).mount('#app')
 }
 else {
+  if (location.hash === '#batch')
+    mockWindows('main')
   install()
   createApp(App).use(createPinia()).use(i18n).mount('#app')
+  if (location.hash === '#batch')
+    openBatch([1, 2, 3])
 }
