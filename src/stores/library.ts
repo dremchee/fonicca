@@ -5,7 +5,7 @@ import { acceptHMRUpdate, defineStore } from 'pinia'
 import { StorageSerializers, useStorage } from '@vueuse/core'
 import type { LibrarySession } from '@/library-session'
 import { findSessionSampleIndex, parseLibrarySession, resolveSessionScope, sessionScope } from '@/library-session'
-import { computed, reactive, ref, shallowReactive, watch } from 'vue'
+import { computed, nextTick, reactive, ref, shallowReactive, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { ANALYSIS_PROGRESS_EVENT, api, MODEL_DOWNLOAD_EVENT, SCAN_PROGRESS_EVENT, startFileDrag } from '@/api'
 import { formatNumber } from '@/format'
@@ -42,6 +42,7 @@ export const useLibraryStore = defineStore('library', () => {
   let sessionReady = false
   let restoringSession = true
   let navigationRevision = 0
+  let selectionRevision = 0
   const scope = ref<Scope>({ kind: 'all' })
   const query = ref('')
   const kindFilter = ref<SampleKind | null>(null)
@@ -169,11 +170,11 @@ export const useLibraryStore = defineStore('library', () => {
       scope.value = scopeBeforeSimilar
   }
 
+  watch(filter, () => navigationRevision++, { flush: 'sync' })
   watch(filter, () => {
-    navigationRevision++
     if (!restoringSession)
       refresh()
-  }, { flush: 'sync' })
+  })
 
   function rememberSelection(sample: Sample, index: number) {
     const current = sessionScope(scope.value)
@@ -273,6 +274,7 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   async function clickRow(index: number, { shift = false, toggle = false } = {}) {
+    selectionRevision++
     const sample = sampleAt(index)
     if (!sample)
       return
@@ -296,6 +298,7 @@ export const useLibraryStore = defineStore('library', () => {
 
   /** Moves keyboard focus; with `extend` grows the selection from the anchor. */
   async function moveFocus(delta: number, extend = false) {
+    selectionRevision++
     if (total.value === 0)
       return
     const index = focusIndex.value < 0 ? 0 : Math.max(0, Math.min(total.value - 1, focusIndex.value + delta))
@@ -528,6 +531,7 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   async function init() {
+    const initialSelectionRevision = selectionRevision
     await listen<AnalysisProgress>(ANALYSIS_PROGRESS_EVENT, ({ payload }) => {
       const { updated, ...status } = payload
       analysis.value = status
@@ -557,7 +561,8 @@ export const useLibraryStore = defineStore('library', () => {
     })
     await Promise.all([loadSources(), loadTags(), loadCollections()])
     const saved = parseLibrarySession(lastSession.value)
-    const canRestore = navigationRevision === 0
+    const canRestore = navigationRevision === 0 && selectionRevision === initialSelectionRevision
+    let restoreSelection = false
     if (saved && canRestore) {
       let restored = resolveSessionScope(saved.scope, sources.value, tags.value, collections.value)
       if (restored.kind === 'source' && restored.path) {
@@ -571,24 +576,28 @@ export const useLibraryStore = defineStore('library', () => {
         }
       }
       // User navigation during folder loading takes precedence over the saved view.
-      if (navigationRevision === 0)
+      if (navigationRevision === 0 && selectionRevision === initialSelectionRevision) {
         scope.value = restored
+        restoreSelection = true
+      }
     }
     const restoreRevision = navigationRevision
+    const restoreSelectionRevision = selectionRevision
+    await nextTick()
     restoringSession = false
     const loading = refresh()
     const gen = generation
     await loading
     try {
-      if (saved?.sample && canRestore && navigationRevision === restoreRevision && gen === generation) {
+      if (saved?.sample && restoreSelection && navigationRevision === restoreRevision && selectionRevision === restoreSelectionRevision && gen === generation) {
         const currentFilter = filter.value
         const index = await findSessionSampleIndex(saved.sample, total.value, async (index) => {
           await ensureRange(index, index)
           return gen === generation ? sampleAt(index)?.id : undefined
         }, () => gen === generation ? api.sampleIds(currentFilter) : Promise.resolve([]))
-        if (index >= 0 && gen === generation) {
+        if (index >= 0 && gen === generation && navigationRevision === restoreRevision && selectionRevision === restoreSelectionRevision) {
           await ensureRange(index, index)
-          if (gen === generation && sampleAt(index)?.id === saved.sample.id)
+          if (gen === generation && navigationRevision === restoreRevision && selectionRevision === restoreSelectionRevision && sampleAt(index)?.id === saved.sample.id)
             await clickRow(index)
         }
       }
