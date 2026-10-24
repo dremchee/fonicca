@@ -87,12 +87,15 @@ function draw() {
   ctx.lineWidth = 1
   ctx.strokeRect(a + 0.5, 0.5, b - a - 1, h - 1)
 
-  // Same marks as the main view: cursor in the text colour, playhead amber.
+  // Same marks as the main view: a dim cursor in the text colour, the playhead in
+  // the brand colour.
   ctx.fillStyle = color('--foreground')
+  ctx.globalAlpha = 0.6
   ctx.fillRect(x(editor.cursor), 0, 1, h)
+  ctx.globalAlpha = 1
   if (editor.playhead !== null) {
-    ctx.fillStyle = '#f59e0b'
-    ctx.fillRect(x(editor.playhead), 0, 1, h)
+    ctx.fillStyle = color('--primary')
+    ctx.fillRect(x(editor.playhead), 0, 1.5, h)
   }
 }
 

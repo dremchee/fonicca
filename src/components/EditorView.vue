@@ -121,44 +121,77 @@ function draw() {
   const style = getComputedStyle(el)
   const color = (name: string) => style.getPropertyValue(name).trim()
   ctx.clearRect(0, 0, w, h)
-
-  // Selection.
-  const sel = editor.selection
-  if (sel) {
-    ctx.fillStyle = color('--primary-soft')
-    ctx.fillRect(x(sel.start), RULER, Math.max(1, x(sel.end) - x(sel.start)), h - RULER)
-  }
-
-  // Waveform, one lane per channel (or one mixed lane).
-  if (wave.value) {
-    const { waveStyle, waveScale, waveColors } = settings.settings
-    drawWave(ctx, wave.value, { top: RULER, width: w, height: h - RULER, dpr }, {
-      style: waveStyle,
-      scale: waveScale,
-      colors: waveColors,
-      zoom: vZoom.value,
-      color: color('--wave-strong'),
-      lineColor: color('--border'),
-    })
-  }
-
-  // Ruler.
-  ctx.fillStyle = color('--muted-foreground')
-  ctx.font = '10px system-ui, sans-serif'
   const step = tickStep(viewEnd.value - viewStart.value)
   const first = Math.ceil(viewStart.value / rate.value / step) * step
-  for (let t = first; t * rate.value <= viewEnd.value; t += step) {
+  const ticks: number[] = []
+  for (let t = first; t * rate.value <= viewEnd.value; t += step)
+    ticks.push(t)
+
+  // Faint grid under everything, one line per ruler tick.
+  ctx.fillStyle = color('--border')
+  ctx.globalAlpha = 0.5
+  for (const t of ticks)
+    ctx.fillRect(x(t * rate.value), RULER, 1 / dpr, h - RULER)
+  ctx.globalAlpha = 1
+
+  // Selection: a tint behind the wave and edges in the brand colour.
+  const sel = editor.selection
+  const selX = sel ? x(sel.start) : 0
+  const selW = sel ? Math.max(1, x(sel.end) - selX) : 0
+  if (sel) {
+    ctx.fillStyle = color('--primary-soft')
+    ctx.fillRect(selX, RULER, selW, h - RULER)
+  }
+
+  // Waveform, one lane per channel (or one mixed lane): toned down overall, the
+  // selected part drawn again in the full brand colour.
+  if (wave.value) {
+    const { waveStyle, waveScale, waveColors } = settings.settings
+    const area = { top: RULER, width: w, height: h - RULER, dpr }
+    const look = { style: waveStyle, scale: waveScale, colors: waveColors, zoom: vZoom.value, lineColor: color('--border') }
+    drawWave(ctx, wave.value, area, { ...look, color: color('--wave-strong') })
+    if (sel && waveColors === 'theme') {
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(selX, RULER, selW, h - RULER)
+      ctx.clip()
+      drawWave(ctx, wave.value, area, { ...look, color: color('--primary') })
+      ctx.restore()
+    }
+  }
+  if (sel) {
+    ctx.fillStyle = color('--primary')
+    ctx.fillRect(selX, RULER, 1, h - RULER)
+    ctx.fillRect(selX + selW - 1, RULER, 1, h - RULER)
+  }
+
+  // Ruler, set off from the wave by a line.
+  ctx.fillStyle = color('--muted-foreground')
+  ctx.font = '10px system-ui, sans-serif'
+  for (const t of ticks) {
     const px = x(t * rate.value)
     ctx.fillRect(px, RULER - 5, 1 / dpr, 5)
     ctx.fillText(formatTime(t, step < 1), px + 3, 11)
   }
+  ctx.fillStyle = color('--border')
+  ctx.fillRect(0, RULER, w, 1 / dpr)
 
-  // Cursor (text colour, the wave is the brand colour) and playhead (amber).
+  // Edit cursor: a thin line in the text colour. Playhead: the brand colour with a
+  // marker on the ruler, so the two are told apart at a glance.
   ctx.fillStyle = color('--foreground')
-  ctx.fillRect(x(editor.cursor), RULER, 1, h - RULER)
+  ctx.globalAlpha = 0.6
+  ctx.fillRect(Math.round(x(editor.cursor)), RULER, 1, h - RULER)
+  ctx.globalAlpha = 1
   if (editor.playhead !== null) {
-    ctx.fillStyle = '#f59e0b'
-    ctx.fillRect(x(editor.playhead), RULER, 1.5, h - RULER)
+    const px = x(editor.playhead)
+    ctx.fillStyle = color('--primary')
+    ctx.fillRect(px - 0.75, RULER, 1.5, h - RULER)
+    ctx.beginPath()
+    ctx.moveTo(px - 5, RULER - 7)
+    ctx.lineTo(px + 5, RULER - 7)
+    ctx.lineTo(px, RULER)
+    ctx.closePath()
+    ctx.fill()
   }
 }
 
