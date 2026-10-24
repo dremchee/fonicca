@@ -46,11 +46,12 @@ export interface EditedFile {
   name: string
   ext: string
   path: string
+  bpm: number | null
 }
 
 const editorApi = {
   openWindow: (id: number) => invoke<void>('open_editor_window', { id }),
-  open: (id: number) => invoke<{ state: EditorState, name: string, ext: string, path: string }>('editor_open', { id }),
+  open: (id: number) => invoke<{ state: EditorState, name: string, ext: string, path: string, bpm: number | null }>('editor_open', { id }),
   apply: (op: EditOp) => invoke<EditorState>('editor_apply', { op }),
   undo: () => invoke<EditorState>('editor_undo'),
   redo: () => invoke<EditorState>('editor_redo'),
@@ -102,7 +103,7 @@ export const useEditorStore = defineStore('editor', () => {
       await api.stop()
       const r = await editorApi.open(id)
       state.value = r.state
-      sample.value = { id, name: r.name, ext: r.ext, path: r.path }
+      sample.value = { id, name: r.name, ext: r.ext, path: r.path, bpm: r.bpm }
       revision.value++
     }
     catch (e) {

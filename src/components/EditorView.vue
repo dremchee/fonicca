@@ -4,6 +4,7 @@ import {
   ArrowLeftRight,
   Crop,
   FolderOpen,
+  Magnet,
   Maximize2,
   Play,
   Redo2,
@@ -24,9 +25,9 @@ import { useI18n } from 'vue-i18n'
 import EditorMinimap from '@/components/EditorMinimap.vue'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -55,8 +56,13 @@ const wave = shallowRef<Wave | null>(null)
 // Vertical zoom (⌥-scroll); 1 = full scale.
 const vZoom = ref(1)
 const RULER = 18
-// A per-window look preference, not worth a field in settings.json.
-const showGrid = useLocalStorage('editor.grid', true)
+// Per-window preferences, not worth fields in settings.json.
+type GridMode = 'beats' | 'time' | 'off'
+const gridMode = useLocalStorage<GridMode>('editor.gridMode', 'beats')
+const snap = useLocalStorage('editor.snap', true)
+// Tempo of the bar grid (from the sample, editable) and where bar 1 starts, in frames.
+const bpm = ref<number | null>(null)
+const downbeat = ref(0)
 
 // The View menu: the same waveform options as in settings, applied right away.
 type WaveKey = 'waveStyle' | 'waveScale' | 'waveChannels' | 'waveColors'
@@ -87,6 +93,8 @@ watch(() => editor.sample?.id, async (id) => {
   if (id == null)
     return
   fit()
+  bpm.value = editor.sample?.bpm ?? null
+  downbeat.value = 0
   await nextTick()
   canvas.value?.focus()
 })
@@ -136,6 +144,47 @@ function tickStep(span: number) {
   return steps.find(s => (s / seconds) * width.value >= 80) ?? 600
 }
 
+// --- Grid -------------------------------------------------------------------
+
+const beatFrames = computed(() => (bpm.value && bpm.value > 0 ? (60 / bpm.value) * rate.value : 0))
+// Bars and beats when the tempo is known, otherwise seconds. 4/4 assumed.
+const beatGrid = computed(() => gridMode.value === 'beats' && beatFrames.value > 0)
+const BEAT_STEPS = [1 / 8, 1 / 4, 1 / 2, 1, 4, 8, 16, 32, 64, 128, 256]
+const TIME_STEPS = [0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600]
+const MIN_LINE_PX = 12
+
+/** The finest grid step, in frames, that is at least `minPx` wide on screen. */
+function gridStep(minPx: number) {
+  const pxPerFrame = width.value / (viewEnd.value - viewStart.value)
+  const unit = beatGrid.value ? beatFrames.value : rate.value
+  const steps = beatGrid.value ? BEAT_STEPS : TIME_STEPS
+  return (steps.find(s => s * unit * pxPerFrame >= minPx) ?? steps.at(-1)!) * unit
+}
+
+const gridOrigin = () => (beatGrid.value ? downbeat.value : 0)
+
+/** Visible multiples of `step` from the grid origin. */
+function gridFrames(step: number) {
+  const origin = gridOrigin()
+  const out: number[] = []
+  for (let k = Math.ceil((viewStart.value - origin) / step); origin + k * step <= viewEnd.value; k++)
+    out.push(origin + k * step)
+  return out
+}
+
+const isMultiple = (value: number, of: number) => Math.abs(value / of - Math.round(value / of)) < 1e-6
+
+/** Snaps a frame to the nearest grid line (and to the end of the file) while snapping is on; ⌥ inverts it. */
+function snapped(frame: number, e: MouseEvent) {
+  if (gridMode.value === 'off' || snap.value === e.altKey)
+    return frame
+  const step = gridStep(MIN_LINE_PX)
+  const origin = gridOrigin()
+  const line = origin + Math.round((frame - origin) / step) * step
+  const nearEnd = Math.abs(frames.value - frame) < Math.abs(line - frame)
+  return Math.round(Math.min(frames.value, Math.max(0, nearEnd ? frames.value : line)))
+}
+
 function draw() {
   const el = canvas.value
   if (!el || width.value === 0)
@@ -155,15 +204,6 @@ function draw() {
   const ticks: number[] = []
   for (let t = first; t * rate.value <= viewEnd.value; t += step)
     ticks.push(t)
-
-  // Faint grid under everything, one line per ruler tick.
-  if (showGrid.value) {
-    ctx.fillStyle = color('--border')
-    ctx.globalAlpha = 0.5
-    for (const t of ticks)
-      ctx.fillRect(x(t * rate.value), RULER, 1 / dpr, h - RULER)
-    ctx.globalAlpha = 1
-  }
 
   // Waveform, one lane per channel (or one mixed lane), in the full brand colour.
   // The selection is the inverse: a brand-colour block with the wave in the canvas colour.
@@ -192,13 +232,42 @@ function draw() {
     ctx.fillRect(selX, RULER, selW, h - RULER)
   }
 
-  // Ruler, set off from the wave by a line.
+  // Grid over the wave, so it reads on the wave and the selection alike: bars
+  // strongest, then beats (or ruler ticks), then subdivisions.
+  if (gridMode.value !== 'off') {
+    ctx.fillStyle = color('--foreground')
+    for (const f of gridFrames(gridStep(MIN_LINE_PX))) {
+      const rel = f - gridOrigin()
+      const strength = beatGrid.value
+        ? isMultiple(rel, beatFrames.value * 4) ? 0.3 : isMultiple(rel, beatFrames.value) ? 0.16 : 0.07
+        : isMultiple(rel, step * rate.value) ? 0.16 : 0.07
+      ctx.globalAlpha = strength
+      ctx.fillRect(Math.round(x(f)), RULER, 1, h - RULER)
+    }
+    ctx.globalAlpha = 1
+  }
+
+  // Ruler, set off from the wave by a line: bar numbers ("3", "3.2") on the bar
+  // grid, otherwise time.
   ctx.fillStyle = color('--muted-foreground')
   ctx.font = '10px system-ui, sans-serif'
-  for (const t of ticks) {
-    const px = x(t * rate.value)
-    ctx.fillRect(px, RULER - 5, 1 / dpr, 5)
-    ctx.fillText(formatTime(t, step < 1), px + 3, 11)
+  if (beatGrid.value) {
+    const labelStep = gridStep(48)
+    for (const f of gridFrames(labelStep)) {
+      const beat = Math.round((f - downbeat.value) / beatFrames.value)
+      const bar = Math.floor(beat / 4) + 1
+      const inBar = ((beat % 4) + 4) % 4
+      const px = x(f)
+      ctx.fillRect(px, RULER - 5, 1 / dpr, 5)
+      ctx.fillText(inBar ? `${bar}.${inBar + 1}` : String(bar), px + 3, 11)
+    }
+  }
+  else {
+    for (const t of ticks) {
+      const px = x(t * rate.value)
+      ctx.fillRect(px, RULER - 5, 1 / dpr, 5)
+      ctx.fillText(formatTime(t, step < 1), px + 3, 11)
+    }
   }
   ctx.fillStyle = color('--border')
   ctx.fillRect(0, RULER, w, 1 / dpr)
@@ -225,7 +294,7 @@ function draw() {
   }
 }
 
-watch([wave, () => editor.selection, () => editor.cursor, () => editor.playhead, width, height, vZoom, showGrid, () => settings.settings], draw, { deep: true })
+watch([wave, () => editor.selection, () => editor.cursor, () => editor.playhead, width, height, vZoom, gridMode, bpm, downbeat, () => settings.settings], draw, { deep: true })
 
 // --- Mouse ------------------------------------------------------------------
 
@@ -238,21 +307,24 @@ function frameAt(clientX: number) {
 function onMouseDown(e: MouseEvent) {
   if (e.button !== 0)
     return
-  const anchor = e.shiftKey ? editor.cursor : frameAt(e.clientX)
+  const anchor = e.shiftKey ? editor.cursor : snapped(frameAt(e.clientX), e)
   const startX = e.clientX
   let dragged = false
   const move = (ev: MouseEvent) => {
     if (Math.abs(ev.clientX - startX) < 3 && !dragged)
       return
     dragged = true
-    const f = frameAt(ev.clientX)
+    const f = snapped(frameAt(ev.clientX), ev)
     editor.selection = f === anchor ? null : { start: Math.min(f, anchor), end: Math.max(f, anchor) }
   }
   const up = (ev: MouseEvent) => {
     window.removeEventListener('mousemove', move)
     window.removeEventListener('mouseup', up)
+    // The last mousemove may lag behind the release point.
+    if (dragged)
+      move(ev)
     if (!dragged) {
-      const f = frameAt(ev.clientX)
+      const f = snapped(frameAt(ev.clientX), ev)
       if (e.shiftKey && f !== anchor)
         editor.selection = { start: Math.min(f, anchor), end: Math.max(f, anchor) }
       else {
@@ -335,6 +407,9 @@ function onKeyDown(e: KeyboardEvent) {
   else if (!mod && key === 'l') {
     editor.looping = !editor.looping
   }
+  else if (!mod && key === 's') {
+    snap.value = !snap.value
+  }
   else if (!mod && (e.key === '=' || e.key === '+')) {
     zoom(0.5, editor.selection ? (editor.selection.start + editor.selection.end) / 2 : editor.cursor)
   }
@@ -346,6 +421,17 @@ function onKeyDown(e: KeyboardEvent) {
   }
 }
 
+// Cropping moves the selection start to 0; the bars move with the audio.
+function crop() {
+  if (editor.selection)
+    downbeat.value -= editor.selection.start
+  editor.crop()
+}
+
+function setBpm(value: string | number) {
+  const n = Number(value)
+  bpm.value = value !== '' && Number.isFinite(n) && n >= 20 && n <= 999 ? n : null
+}
 
 // --- Labels -----------------------------------------------------------------
 
@@ -422,7 +508,7 @@ const curves: { value: Curve, label: string }[] = [
       </Hint>
       <Separator orientation="vertical" class="mx-1 h-5" />
       <Hint :text="t('editor.toolbar.cropHint')">
-        <Button variant="ghost" size="sm" :disabled="!editor.selection" @click="editor.crop()">
+        <Button variant="ghost" size="sm" :disabled="!editor.selection" @click="crop()">
           <Crop /> {{ t('editor.toolbar.crop') }}
         </Button>
       </Hint>
@@ -475,6 +561,24 @@ const curves: { value: Curve, label: string }[] = [
         </Button>
       </Hint>
       <div class="ml-auto flex items-center gap-1">
+        <Hint :text="t('editor.toolbar.bpmHint')">
+          <Input
+            :model-value="bpm ?? ''"
+            type="number"
+            min="20"
+            max="999"
+            step="0.01"
+            :placeholder="t('editor.toolbar.bpm')"
+            :aria-label="t('editor.toolbar.bpm')"
+            class="h-7 w-20 text-xs tabular"
+            @update:model-value="setBpm"
+          />
+        </Hint>
+        <Hint :text="t('editor.toolbar.snapHint')" shortcut="S">
+          <Toggle v-model="snap" size="sm" :disabled="gridMode === 'off'" :aria-label="t('editor.toolbar.snap')">
+            <Magnet />
+          </Toggle>
+        </Hint>
         <DropdownMenu>
           <DropdownMenuTrigger as-child>
             <Button variant="ghost" size="sm" class="data-[state=open]:bg-accent">
@@ -494,9 +598,24 @@ const curves: { value: Curve, label: string }[] = [
               </DropdownMenuRadioGroup>
             </template>
             <DropdownMenuSeparator />
-            <DropdownMenuCheckboxItem v-model="showGrid" @select.prevent>
+            <DropdownMenuLabel class="text-xs text-muted-foreground font-normal">
               {{ t('editor.view.grid') }}
-            </DropdownMenuCheckboxItem>
+            </DropdownMenuLabel>
+            <DropdownMenuRadioGroup v-model="gridMode">
+              <DropdownMenuRadioItem value="beats" @select.prevent>
+                {{ t('editor.view.gridBeats') }}
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="time" @select.prevent>
+                {{ t('editor.view.gridTime') }}
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="off" @select.prevent>
+                {{ t('editor.view.gridOff') }}
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+            <DropdownMenuItem :disabled="!beatGrid" @select="downbeat = editor.cursor">
+              {{ t('editor.view.downbeat') }}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem :disabled="vZoom <= 1.01" @select="vZoom = 1">
               {{ t('editor.view.resetVZoom') }}
             </DropdownMenuItem>

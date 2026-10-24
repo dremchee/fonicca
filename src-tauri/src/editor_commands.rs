@@ -50,20 +50,22 @@ pub struct Opened {
     name: String,
     ext: String,
     path: String,
+    bpm: Option<f64>,
 }
 
 /// Loads the sample into this window's session.
 #[tauri::command]
 pub async fn editor_open(state: State<'_, AppState>, window: Window, id: i64) -> Result<Opened> {
-    let (path, name, ext, bit_depth): (String, String, String, Option<u32>) = state.db.lock().unwrap().query_row(
-        "SELECT path, name, ext, bit_depth FROM samples WHERE id = ?1",
-        [id],
-        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
-    )?;
+    let (path, name, ext, bit_depth, bpm): (String, String, String, Option<u32>, Option<f64>) =
+        state.db.lock().unwrap().query_row(
+            "SELECT path, name, ext, bit_depth, bpm FROM samples WHERE id = ?1",
+            [id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
+        )?;
     let session = Session::open(id, Path::new(&path), bit_depth)?;
     let s = session.state();
     state.editor.lock().unwrap().insert(window.label().to_string(), session);
-    Ok(Opened { state: s, name, ext, path })
+    Ok(Opened { state: s, name, ext, path, bpm })
 }
 
 /// Frees a window's session (also done when the window is destroyed).

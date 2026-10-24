@@ -3,6 +3,7 @@ import type { DuplicateGroup, HiddenFile } from '@/api'
 import { emit } from '@tauri-apps/api/event'
 import { mockIPC } from '@tauri-apps/api/mocks'
 import { groups as fake } from './duplicates-data'
+import { editorCommand } from './editor'
 
 const ROOT = '/Users/me/Projects/Sound/Source'
 let groups: DuplicateGroup[] = fake.map(g => ({
@@ -64,7 +65,7 @@ export function install() {
       case 'set_preferred_folder':
         preferred = args.preferred ? [args.path, ...preferred.filter(p => p !== args.path)] : preferred.filter(p => p !== args.path)
         return null
-      default: return null
+      default: return editorCommand(cmd, args) ?? null
     }
   }, { shouldMockEvents: true })
 }

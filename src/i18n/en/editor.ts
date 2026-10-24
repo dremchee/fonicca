@@ -44,9 +44,17 @@ export default {
     zoomIn: 'Zoom in (to the selection if any)',
     fit: 'Show everything',
     view: 'View',
+    bpm: 'BPM',
+    bpmHint: 'Tempo of the bar grid',
+    snap: 'Snap to grid',
+    snapHint: 'Snap to grid · hold ⌥ while dragging to override',
   },
   view: {
-    grid: 'Time grid',
+    grid: 'Grid',
+    gridBeats: 'Bars and beats',
+    gridTime: 'Time',
+    gridOff: 'Off',
+    downbeat: 'Bar 1 starts at the cursor',
     resetVZoom: 'Reset vertical zoom',
   },
   curves: {
