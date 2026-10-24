@@ -8,7 +8,12 @@ import { useSettingsStore } from '@/stores/settings'
 import { canvasContext, drawWave } from '@/waveform'
 
 // Whole file at a glance, with the visible range as a draggable window.
-const props = defineProps<{ viewStart: number, viewEnd: number }>()
+const props = defineProps<{
+  viewStart: number
+  viewEnd: number
+  /** Frame under the pointer in the waveform, marked here too. */
+  hoverFrame?: number | null
+}>()
 const emit = defineEmits<{
   view: [start: number, end: number]
   zoom: [factor: number, around: number]
@@ -94,7 +99,17 @@ watch(
 // nothing: a dim cursor and a full-strength playhead, both in the text colour.
 const cursorEl = ref<HTMLElement | null>(null)
 const playheadEl = ref<HTMLElement | null>(null)
+const hoverEl = ref<HTMLElement | null>(null)
 const at = (f: number) => `${(f / Math.max(1, frames())) * 100}%`
+watchEffect(() => {
+  const el = hoverEl.value
+  if (!el)
+    return
+  const f = props.hoverFrame ?? null
+  el.style.display = f === null ? 'none' : ''
+  if (f !== null)
+    el.style.left = at(f)
+})
 watchEffect(() => {
   if (cursorEl.value)
     cursorEl.value.style.left = at(editor.cursor)
@@ -156,6 +171,7 @@ function onWheel(e: WheelEvent) {
     />
     <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       <div ref="cursorEl" class="absolute inset-y-0 w-px bg-foreground/60" />
+      <div ref="hoverEl" class="absolute inset-y-0 w-px bg-foreground/35" style="display: none" />
       <div ref="playheadEl" class="absolute inset-y-0 w-[1.5px] bg-foreground" style="display: none" />
     </div>
   </div>

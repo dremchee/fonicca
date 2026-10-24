@@ -385,6 +385,27 @@ watchEffect(() => {
 })
 watch(() => editor.state?.loop, draw)
 
+// Under the pointer: a faint line and its time on the ruler (and a mark on the
+// minimap), moved through style like the cursor.
+const hoverFrame = shallowRef<number | null>(null)
+const hoverEl = ref<HTMLElement | null>(null)
+const hoverLabel = ref<HTMLElement | null>(null)
+watchEffect(() => {
+  const el = hoverEl.value
+  const label = hoverLabel.value
+  if (!el || !label)
+    return
+  const f = hoverFrame.value
+  el.style.display = f === null ? 'none' : ''
+  if (f === null)
+    return
+  const px = Math.round(x(f))
+  el.style.transform = `translateX(${px}px)`
+  label.textContent = formatTime(f / rate.value)
+  // Near the right edge the time goes to the left of the line.
+  label.style.transform = px > width.value - 72 ? 'translateX(calc(-100% - 4px))' : 'translateX(4px)'
+})
+
 // Slice preview: what no slice covers dimmed, a line and a number at each slice start
 // (numbers thinned out where they would overlap).
 function drawSlices(ctx: CanvasRenderingContext2D, w: number, h: number, color: (name: string) => string) {
@@ -806,6 +827,7 @@ const curves: { value: Curve, label: string }[] = [
     <EditorMinimap
       :view-start="viewStart"
       :view-end="viewEnd"
+      :hover-frame="hoverFrame"
       @view="(a, b) => { viewStart = a; viewEnd = b }"
       @zoom="zoom"
       @fit="fit()"
@@ -820,13 +842,17 @@ const curves: { value: Curve, label: string }[] = [
         :class="hoverEdge ? 'cursor-ew-resize' : 'cursor-text'"
         :aria-label="t('editor.waveform.label')"
         @mousedown="onMouseDown"
-        @mousemove="hoverEdge = edgeAt($event)"
-        @mouseleave="hoverEdge = null"
+        @mousemove="hoverEdge = edgeAt($event); hoverFrame = frameAt($event.clientX)"
+        @mouseleave="hoverEdge = null; hoverFrame = null"
         @wheel="onWheel"
         @keydown="onKeyDown"
       />
       <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
         <div ref="cursorEl" class="absolute left-0 bottom-0 w-px bg-foreground/60" :style="{ top: `${RULER}px` }" />
+        <div ref="hoverEl" class="absolute left-0 top-0 bottom-0" style="display: none">
+          <div class="absolute left-0 bottom-0 w-px bg-foreground/35" :style="{ top: `${RULER}px` }" />
+          <span ref="hoverLabel" class="absolute top-px px-1 rounded-sm bg-foreground text-background text-[10px] leading-4 tabular whitespace-nowrap" />
+        </div>
         <div ref="playheadEl" class="absolute left-0 top-0 bottom-0 text-foreground" style="display: none">
           <div class="absolute -left-px bottom-0 w-0.5 bg-current shadow-[0_0_0_1px_var(--card)]" :style="{ top: `${RULER}px` }" />
           <svg class="absolute -left-[5px]" :style="{ top: `${RULER - 7}px` }" width="10" height="7" viewBox="0 0 10 7">
