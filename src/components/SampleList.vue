@@ -25,6 +25,11 @@ const { total, focusIndex, selectedIds, scope } = storeToRefs(library)
 
 const similarTo = computed(() => (scope.value.kind === 'similar' ? scope.value : null))
 
+// Lets a tooltip wrap a long path at its slashes rather than inside a folder name.
+function breakablePath(path: string) {
+  return path.replaceAll('/', '/\u200B')
+}
+
 // What to say when the list is empty depends on why it is empty.
 const empty = computed(() => {
   if (!library.sources.length)
@@ -246,7 +251,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
                   </button>
                 </Hint>
                 <span class="flex items-center gap-2 min-w-0">
-                  <Hint :text="s.path" side="top">
+                  <Hint :text="breakablePath(s.path)" side="top">
                     <span class="truncate">{{ s.name }}</span>
                   </Hint>
                   <Hint v-if="s.similarity != null && s.id !== similarTo?.id" :text="t('list.similar.howSimilar')" side="top">
