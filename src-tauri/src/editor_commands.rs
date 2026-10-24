@@ -33,11 +33,13 @@ pub fn open_editor_window(app: AppHandle, state: State<'_, AppState>, id: i64) -
     let builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(format!("index.html?editor={id}").into()))
         .title(format!("{name} — Edit"))
         .inner_size(1100.0, 560.0)
-        .min_inner_size(640.0, 360.0);
+        .min_inner_size(640.0, 360.0)
+        .visible(false);
     // Same look as the main window: traffic lights over the app's own header.
     #[cfg(target_os = "macos")]
     let builder = builder.title_bar_style(tauri::TitleBarStyle::Overlay).hidden_title(true);
     builder.build()?;
+    crate::show_window_fallback(&app, &label);
     Ok(())
 }
 

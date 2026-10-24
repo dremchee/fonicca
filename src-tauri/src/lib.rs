@@ -42,6 +42,21 @@ pub struct AppState {
     pub watcher: watch::LibraryWatcher,
 }
 
+/// Windows start hidden and the page shows itself once styled, so there is no white
+/// flash. Should the page fail before that, show the window anyway after a moment.
+pub(crate) fn show_window_fallback(app: &tauri::AppHandle, label: &str) {
+    let app = app.clone();
+    let label = label.to_owned();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        if let Some(window) = app.get_webview_window(&label) {
+            if !window.is_visible().unwrap_or(true) {
+                let _ = window.show();
+            }
+        }
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -110,6 +125,7 @@ pub fn run() {
             });
             let state = app.state::<AppState>();
             commands::apply_settings(app.handle(), &state, None, &state.settings.get())?;
+            show_window_fallback(app.handle(), "main");
             Ok(())
         })
         .on_window_event(|window, event| {
