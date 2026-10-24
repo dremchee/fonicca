@@ -9,4 +9,5 @@ export default {
   integratedLoudness: 'Integrated loudness',
   clickToReveal: 'Click to show in Finder',
   wavePreview: 'Waveform preview',
+  cover: 'Cover art',
 }

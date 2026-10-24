@@ -17,6 +17,7 @@ mod scan;
 mod settings;
 mod similar;
 mod sync;
+mod tags;
 mod watch;
 
 use std::sync::{Arc, Mutex};
@@ -152,6 +153,8 @@ pub fn run() {
             commands::list_samples,
             commands::sample_ids,
             commands::sample_paths,
+            commands::sample_tags,
+            commands::sample_cover,
             commands::set_favorite,
             commands::list_tags,
             commands::tag_samples,

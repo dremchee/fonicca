@@ -7,6 +7,16 @@ export interface Source {
   sampleCount: number
 }
 
+/** Tags read from the file itself (ID3, Vorbis, MP4…); most samples have none. */
+export interface TrackTags {
+  title: string | null
+  artist: string | null
+  album: string | null
+  year: number | null
+  genre: string | null
+  hasCover: boolean
+}
+
 export interface Sample {
   id: number
   sourceId: number
@@ -197,6 +207,9 @@ export const api = {
     invoke<Sample[]>('list_samples', { filter, offset, limit }),
   sampleIds: (filter: SampleFilter) => invoke<number[]>('sample_ids', { filter }),
   samplePaths: (ids: number[]) => invoke<string[]>('sample_paths', { ids }),
+  sampleTags: (id: number) => invoke<TrackTags | null>('sample_tags', { id }),
+  /** Embedded cover art as image bytes, empty when there is none. */
+  sampleCover: (id: number) => invoke<ArrayBuffer>('sample_cover', { id }),
   setFavorite: (ids: number[], favorite: boolean) => invoke<void>('set_favorite', { ids, favorite }),
   listTags: () => invoke<Tag[]>('list_tags'),
   tagSamples: (ids: number[], name: string) => invoke<TagRef>('tag_samples', { ids, name }),

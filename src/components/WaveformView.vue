@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { Sample } from '@/api'
+import type { Sample, TrackTags } from '@/api'
 import type { Wave } from '@/stores/editor'
 import { FolderOpen, Pencil, Play, Square, Star, X } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { useResizeObserver } from '@vueuse/core'
-import { computed, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
 import Hint from '@/components/Hint.vue'
@@ -30,6 +30,47 @@ const settings = useSettingsStore()
 const selectionSize = computed(() => {
   const n = library.selectedIds.size
   return props.sample && (n > 1 || (n === 1 && !library.selectedIds.has(props.sample.id))) ? n : 1
+})
+
+// Tags and cover art from the file itself, for songs and tagged packs.
+const tags = shallowRef<TrackTags | null>(null)
+const coverUrl = ref<string | null>(null)
+let tagsRequest = 0
+
+function setCover(url: string | null) {
+  if (coverUrl.value)
+    URL.revokeObjectURL(coverUrl.value)
+  coverUrl.value = url
+}
+
+watch(() => props.sample?.id, async (id) => {
+  const req = ++tagsRequest
+  tags.value = null
+  setCover(null)
+  if (id == null)
+    return
+  try {
+    const found = await api.sampleTags(id)
+    if (req !== tagsRequest)
+      return
+    tags.value = found
+    if (found?.hasCover) {
+      const bytes = await api.sampleCover(id)
+      if (req === tagsRequest && bytes.byteLength)
+        setCover(URL.createObjectURL(new Blob([bytes])))
+    }
+  }
+  catch {
+    // A file whose tags cannot be read just shows without them.
+  }
+}, { immediate: true })
+
+onBeforeUnmount(() => setCover(null))
+
+const title = computed(() => tags.value?.title ?? props.sample?.name ?? '')
+const byline = computed(() => {
+  const g = tags.value
+  return g ? [g.artist, g.album, g.year, g.genre].filter(Boolean).join(' · ') : ''
 })
 
 const canvas = ref<HTMLCanvasElement | null>(null)
@@ -153,13 +194,22 @@ function onDragStart(e: DragEvent) {
         </Button>
       </Hint>
       <div
-        class="min-w-24 max-w-[45%] cursor-grab"
+        class="min-w-24 max-w-[45%] flex items-center gap-2.5 cursor-grab"
         draggable="true"
         :title="t('player.dragToDaw')"
         @dragstart="onDragStart"
       >
-        <div class="truncate font-medium">
-          {{ sample.name }}<span class="text-muted-foreground">.{{ sample.ext }}</span>
+        <img
+          v-if="coverUrl" :src="coverUrl" :alt="t('player.cover')" draggable="false"
+          class="size-8 shrink-0 rounded-sm object-cover ring-1 ring-border"
+        >
+        <div class="min-w-0">
+          <div class="truncate font-medium">
+            {{ title }}<span v-if="!tags?.title" class="text-muted-foreground">.{{ sample.ext }}</span>
+          </div>
+          <div v-if="byline" class="truncate text-[11px] text-muted-foreground">
+            {{ byline }}
+          </div>
         </div>
       </div>
       <Hint :text="sample.favorite ? t('list.favorite.remove') : t('list.favorite.add')" shortcut="F">

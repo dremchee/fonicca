@@ -200,6 +200,30 @@ pub fn import_user_data(state: State<'_, AppState>, path: String) -> Result<Impo
     library::import_user_data(&mut state.db.lock().unwrap(), &data)
 }
 
+fn sample_path(state: &AppState, id: i64) -> Result<String> {
+    Ok(state.db.lock().unwrap().query_row("SELECT path FROM samples WHERE id = ?1", [id], |r| r.get(0))?)
+}
+
+/// Title, artist, album, year and genre from the file's own tags; `None` for the many
+/// samples that have none.
+#[tauri::command]
+pub async fn sample_tags(state: State<'_, AppState>, id: i64) -> Result<Option<crate::tags::TrackTags>> {
+    let path = sample_path(&state, id)?;
+    tauri::async_runtime::spawn_blocking(move || crate::tags::read(std::path::Path::new(&path)))
+        .await
+        .map_err(|e| Error::Other(e.to_string()))
+}
+
+/// Embedded cover art as image bytes; empty when the file has none.
+#[tauri::command]
+pub async fn sample_cover(state: State<'_, AppState>, id: i64) -> Result<tauri::ipc::Response> {
+    let path = sample_path(&state, id)?;
+    let bytes = tauri::async_runtime::spawn_blocking(move || crate::tags::cover(std::path::Path::new(&path)))
+        .await
+        .map_err(|e| Error::Other(e.to_string()))?;
+    Ok(tauri::ipc::Response::new(bytes.unwrap_or_default()))
+}
+
 #[tauri::command]
 pub async fn sample_wave(
     state: State<'_, AppState>,

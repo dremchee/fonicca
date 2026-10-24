@@ -11,4 +11,5 @@ export default {
   integratedLoudness: 'Интегральная громкость',
   clickToReveal: 'Нажмите, чтобы показать в Finder',
   wavePreview: 'Предпросмотр формы волны',
+  cover: 'Обложка',
 } satisfies typeof en
