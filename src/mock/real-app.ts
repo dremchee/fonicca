@@ -55,7 +55,6 @@ export function install() {
         { id: 'clap', path: '/m/clap.onnx', installed: clapInstalled, downloading: clapDownloading, size: clapBytes, downloadSize: 34301667 },
         stemModelStorage('spleeter'),
         stemModelStorage('scnetLarge'),
-        stemModelStorage('htdemucsFt'),
       ]
       case 'delete_sound_model': clapInstalled = false; clapBytes = 0; return null
       case 'download_sound_model': {
@@ -73,7 +72,7 @@ export function install() {
       }
       case 'get_settings': return settings
       case 'update_settings': settings = args.settings; return settings
-      case 'app_info': return { version: '0.1.0', cores: 10, defaultThreads: 5, dbPath: '/db', dbSize: 1, modelsDir: '/m', modelsSize: clapBytes + stemModelStorage('spleeter').size + stemModelStorage('scnetLarge').size + stemModelStorage('htdemucsFt').size, settingsPath: '/s' }
+      case 'app_info': return { version: '0.1.0', cores: 10, defaultThreads: 5, dbPath: '/db', dbSize: 1, modelsDir: '/m', modelsSize: clapBytes + stemModelStorage('spleeter').size + stemModelStorage('scnetLarge').size, settingsPath: '/s' }
       case 'duplicate_count': return groups.length
       case 'duplicate_groups': return structuredClone(groups)
       case 'verify_duplicates':

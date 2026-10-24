@@ -1,4 +1,4 @@
-//! Pinned optional Spleeter, SCNet-large and HTDemucs FT model packs. Downloaded separately from the app.
+//! Pinned optional Spleeter and SCNet-large model packs. Downloaded separately from the app.
 use super::{Model, check, failure};
 use crate::error::Result;
 use sha2::{Digest, Sha256};
@@ -43,35 +43,10 @@ const SCNET_FILES: [Artifact; 1] = [Artifact {
     size: SCNET_TOTAL,
     hash: "b2dc586a1e0e6c0afe4915e9057ea29111397b7bbf589edc3d85de91de79cd72",
 }];
-pub const DEMUCS_TOTAL: u64 = 1265787812;
-const DEMUCS_REVISION: &str = "8616370ed541bc183dbe15fb0d54d5f49918f47e";
-const DEMUCS_FILES: [Artifact; 4] = [
-    Artifact {
-        name: "htdemucs_ft_bass.onnx",
-        size: 316446953,
-        hash: "2a74d9283fc2336fcc58d50f87a7080aff57aea372f65cfe3f0211ea1ff16182",
-    },
-    Artifact {
-        name: "htdemucs_ft_drums.onnx",
-        size: 316446953,
-        hash: "f76b68af36066e38885b369299b5032a861038f9b49da5aa6cf1c31cfa69cf27",
-    },
-    Artifact {
-        name: "htdemucs_ft_other.onnx",
-        size: 316446953,
-        hash: "90e11806c1bb558ca9d9c7e909d28a2854f7f217982e90482dbed6442513daad",
-    },
-    Artifact {
-        name: "htdemucs_ft_vocals.onnx",
-        size: 316446953,
-        hash: "8c5d5e2da1f27050240bb80236673307ee3b40d4b064066d9350f4d64bfd544d",
-    },
-];
 fn files(model: Model) -> &'static [Artifact] {
     match model {
         Model::Spleeter => &FILES,
         Model::ScnetLarge => &SCNET_FILES,
-        Model::HtdemucsFt => &DEMUCS_FILES,
     }
 }
 #[cfg(test)]
@@ -82,7 +57,6 @@ pub fn directory_for(root: &Path, model: Model) -> PathBuf {
     root.join(match model {
         Model::Spleeter => "spleeter4-v1",
         Model::ScnetLarge => "scnet-large-v1",
-        Model::HtdemucsFt => "htdemucs-ft-v1",
     })
 }
 #[cfg(test)]
@@ -98,7 +72,6 @@ pub fn total(model: Model) -> u64 {
     match model {
         Model::Spleeter => TOTAL,
         Model::ScnetLarge => SCNET_TOTAL,
-        Model::HtdemucsFt => DEMUCS_TOTAL,
     }
 }
 fn valid(path: &Path, f: &Artifact) -> bool {
@@ -148,7 +121,7 @@ pub fn ensure_for(
             dir.join("NOTICE.txt"),
             include_str!("../../../docs/licenses/spleeter-onnx-NOTICE.txt"),
         )?;
-    } else if model == Model::ScnetLarge {
+    } else {
         std::fs::write(
             dir.join("LICENSE-MIT.txt"),
             include_str!("../../../docs/licenses/scnet-MIT.txt"),
@@ -156,15 +129,6 @@ pub fn ensure_for(
         std::fs::write(
             dir.join("NOTICE.txt"),
             include_str!("../../../docs/licenses/scnet-NOTICE.txt"),
-        )?;
-    } else {
-        std::fs::write(
-            dir.join("LICENSE-code-MIT.txt"),
-            include_str!("../../../docs/licenses/demucs-MIT.txt"),
-        )?;
-        std::fs::write(
-            dir.join("NOTICE.txt"),
-            include_str!("../../../docs/licenses/demucs-NOTICE.txt"),
         )?;
     }
     let mut received = 0;
@@ -187,16 +151,10 @@ pub fn ensure_for(
                     "https://huggingface.co/audiojs/scnet-large/resolve/{SCNET_REVISION}/{}",
                     f.name
                 ),
-                Model::HtdemucsFt => format!(
-                    "https://huggingface.co/StemSplitio/htdemucs-ft-onnx/resolve/{DEMUCS_REVISION}/{}",
-                    f.name
-                ),
             };
             let response = ureq::get(&url)
                 .config()
-                .timeout_global(Some(std::time::Duration::from_secs(
-                    if model == Model::HtdemucsFt { 600 } else { 180 },
-                )))
+                .timeout_global(Some(std::time::Duration::from_secs(180)))
                 .build()
                 .call()
                 .map_err(failure)?;
@@ -244,7 +202,7 @@ mod tests {
             directory_for(root.path(), Model::Spleeter),
             directory_for(root.path(), Model::ScnetLarge)
         );
-        for model in [Model::Spleeter, Model::ScnetLarge, Model::HtdemucsFt] {
+        for model in Model::ALL {
             let dir = directory_for(root.path(), model);
             std::fs::create_dir_all(&dir).unwrap();
             assert!(!installed_for(root.path(), model));
@@ -267,32 +225,6 @@ mod tests {
             "\"scnetLarge\""
         );
         assert!(serde_json::from_str::<Model>("\"unknown\"").is_err());
-    }
-    #[test]
-    #[ignore = "requires downloaded DEMUCS_MODELS; verifies all hashes without downloading"]
-    fn downloaded_demucs_manifest_and_notices_are_verified() {
-        let cache = PathBuf::from(std::env::var("DEMUCS_MODELS").unwrap());
-        let root = tempfile::tempdir().unwrap();
-        let dir = directory_for(root.path(), Model::HtdemucsFt);
-        std::fs::create_dir_all(&dir).unwrap();
-        for artifact in &DEMUCS_FILES {
-            std::fs::hard_link(cache.join(artifact.name), dir.join(artifact.name)).unwrap();
-        }
-        let received = std::cell::Cell::new(0);
-        assert_eq!(
-            ensure_for(
-                root.path(),
-                Model::HtdemucsFt,
-                &AtomicBool::new(false),
-                |n| received.set(n)
-            )
-            .unwrap(),
-            dir
-        );
-        assert_eq!(received.get(), DEMUCS_TOTAL);
-        assert!(installed_for(root.path(), Model::HtdemucsFt));
-        assert!(dir.join("LICENSE-code-MIT.txt").is_file());
-        assert!(dir.join("NOTICE.txt").is_file());
     }
     #[test]
     fn checksum_rejects_corrupt_downloads_of_the_expected_size() {

@@ -10,7 +10,7 @@ const initial = (): StemProgress => ({ model: 'scnetLarge', running: false, stag
 export const useStemsStore = defineStore('stems', () => {
   const open = ref(false)
   const model = useLocalStorage<StemModel>('stems.model', 'scnetLarge')
-  if (model.value !== 'spleeter' && model.value !== 'scnetLarge' && model.value !== 'htdemucsFt') model.value = 'scnetLarge'
+  if (model.value !== 'spleeter' && model.value !== 'scnetLarge') model.value = 'scnetLarge'
   const sample = ref<Sample | null>(null)
   const progress = ref(initial())
   const ready = ref(false)
@@ -35,7 +35,7 @@ export const useStemsStore = defineStore('stems', () => {
     catch (e) { error.value = String(e) }
   }
   function setModel(value: unknown) {
-    if (starting.value || progress.value.running || (value !== 'spleeter' && value !== 'scnetLarge' && value !== 'htdemucsFt')) return
+    if (starting.value || progress.value.running || (value !== 'spleeter' && value !== 'scnetLarge')) return
     model.value = value
     void load()
   }

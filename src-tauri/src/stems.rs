@@ -1,6 +1,5 @@
 //! One cancellable local separation job. Results are published only when all
 //! stems have been written; a failed or cancelled job leaves the source intact.
-mod demucs;
 mod dsp;
 pub(crate) mod models;
 mod scnet;
@@ -34,15 +33,13 @@ pub enum Model {
     #[default]
     Spleeter,
     ScnetLarge,
-    HtdemucsFt,
 }
 impl Model {
-    pub const ALL: [Self; 3] = [Self::Spleeter, Self::ScnetLarge, Self::HtdemucsFt];
+    pub const ALL: [Self; 2] = [Self::Spleeter, Self::ScnetLarge];
     pub fn id(self) -> &'static str {
         match self {
             Self::Spleeter => "spleeter",
             Self::ScnetLarge => "scnetLarge",
-            Self::HtdemucsFt => "htdemucsFt",
         }
     }
 }
@@ -243,15 +240,7 @@ fn separate_to_folder_with_model(
             hound::WavWriter::create(working.path.join(format!("{n}.wav")), spec).map_err(failure)
         })
         .collect::<Result<Vec<_>>>()?;
-    if model == Model::HtdemucsFt {
-        let mut separator = demucs::Separator::load(model_dir)?;
-        separator.separate(&pcm, cancel, &progress, |index, block| {
-            for sample in block {
-                writers[index].write_sample(*sample).map_err(failure)?;
-            }
-            Ok(())
-        })?;
-    } else if model == Model::ScnetLarge {
+    if model == Model::ScnetLarge {
         let mut separator = scnet::Separator::load(model_dir)?;
         separator.separate(&pcm, cancel, &progress, |stems| {
             for (writer, stem) in writers.iter_mut().zip(stems) {
@@ -412,11 +401,6 @@ mod tests {
     #[ignore = "requires SCNET_MODELS and STEM_AUDIO; full file write and cancellation"]
     fn scnet_file_export_keeps_original_and_cleans_cancelled_work() {
         check_file_export(Model::ScnetLarge, "SCNET_MODELS")
-    }
-    #[test]
-    #[ignore = "requires DEMUCS_MODELS and STEM_AUDIO; full file write and cancellation"]
-    fn demucs_file_export_keeps_original_and_cleans_cancelled_work() {
-        check_file_export(Model::HtdemucsFt, "DEMUCS_MODELS")
     }
     fn check_file_export(model: Model, model_env: &str) {
         let dir = tempfile::tempdir().unwrap();

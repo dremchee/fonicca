@@ -160,7 +160,7 @@ mod tests {
     fn missing_models_have_zero_disk_usage() {
         let root = tempfile::tempdir().unwrap();
         let models = storage(root.path(), false, |_| false);
-        assert_eq!(models.len(), 4);
+        assert_eq!(models.len(), 3);
         assert!(models.iter().all(|m| !m.installed && m.size == 0 && m.download_size > 0));
     }
 

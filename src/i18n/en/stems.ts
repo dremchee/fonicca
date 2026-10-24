@@ -1,8 +1,8 @@
 export default {
   title: 'Stems', action: 'Separate into stems…', description: 'Separate a track locally into vocals, drums, bass and other instruments. The original stays unchanged.',
   model: 'Separation model',
-  models: { htdemucsFt: 'HTDemucs FT', scnetLarge: 'SCNet-large · Quality', spleeter: 'Spleeter · Fast' },
-  modelDescriptions: { htdemucsFt: 'Alternative separation into four stems. Requires a larger model download.', scnetLarge: 'For more detailed separation. Uses more memory and takes longer, especially on long tracks.', spleeter: 'Fast separation with lower resource use.' },
+  models: { scnetLarge: 'SCNet-large · Quality', spleeter: 'Spleeter · Fast' },
+  modelDescriptions: { scnetLarge: 'For more detailed separation. Uses more memory and takes longer, especially on long tracks.', spleeter: 'Fast separation with lower resource use.' },
   folder: 'Output folder', choose: 'Choose…', noFolder: 'Choose a folder for the four WAV files.',
   download: 'First run downloads the selected model ({size}). Audio stays on this computer.',
   ready: 'Model installed · local processing', limits: 'Mono or stereo, up to 10 minutes. Results are 44.1 kHz stereo WAV, 32-bit float.',
