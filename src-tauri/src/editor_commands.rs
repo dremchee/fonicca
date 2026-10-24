@@ -167,21 +167,81 @@ pub fn editor_save(state: State<'_, AppState>, window: Window, as_new: bool) -> 
             state: s.state(),
         })
     })?;
-    // Pick up the new or changed file right away instead of waiting for the watcher.
+    rescan_containing(&state, Path::new(&saved.path))?;
+    Ok(saved)
+}
+
+/// Rescans the library folder that holds `path` right away instead of waiting for
+/// the watcher. False when no library folder holds it.
+fn rescan_containing(state: &AppState, path: &Path) -> Result<bool> {
     let sources: Vec<(i64, String)> = {
         let conn = state.db.lock().unwrap();
         let mut stmt = conn.prepare("SELECT id, path FROM sources")?;
         let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?.collect::<rusqlite::Result<_>>()?;
         rows
     };
-    let saved_path = Path::new(&saved.path);
     let source = sources
         .into_iter()
-        .filter(|(_, root)| saved_path.starts_with(root))
+        .filter(|(_, root)| path.starts_with(root))
         .max_by_key(|(_, root)| root.len())
         .map(|(id, _)| id);
     if let Some(id) = source {
         state.scanner.request(id);
     }
-    Ok(saved)
+    Ok(source.is_some())
+}
+
+/// Slices of `[start, end)` of this window's audio (see `editor::slices`).
+#[tauri::command]
+pub fn editor_slices(
+    state: State<'_, AppState>,
+    window: Window,
+    start: usize,
+    end: usize,
+    by: editor::SliceBy,
+    zero: bool,
+) -> Result<Vec<editor::Span>> {
+    with_session(&state, &window, |s| Ok(editor::slices(s.audio(), start, end, by, zero)))
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportedSlices {
+    dir: String,
+    count: usize,
+    /// Whether the folder is inside the library, so the slices show up there.
+    in_library: bool,
+}
+
+/// Writes each slice as a WAV ("Kick 01.wav", …) into a new folder next to the
+/// file ("Kick slices"), at the file's bit depth, and adds them to the library.
+#[tauri::command]
+pub fn editor_export_slices(state: State<'_, AppState>, window: Window, spans: Vec<editor::Span>) -> Result<ExportedSlices> {
+    if spans.is_empty() {
+        return Err(Error::Other("nothing to export".into()));
+    }
+    let dir = with_session(&state, &window, |s| {
+        let parent = s.path.parent().unwrap_or(Path::new("."));
+        let stem = s.path.file_stem().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+        let dir = (1..)
+            .map(|n| parent.join(if n == 1 { format!("{stem} slices") } else { format!("{stem} slices {n}") }))
+            .find(|d| !d.exists())
+            .expect("some name is free");
+        std::fs::create_dir_all(&dir)?;
+        let audio = s.audio();
+        let ch = audio.channels.max(1);
+        let width = spans.len().to_string().len().max(2);
+        for (i, span) in spans.iter().enumerate() {
+            let (a, b) = (span.start.min(audio.frames()), span.end.min(audio.frames()));
+            let pcm = crate::audio::Pcm {
+                samples: audio.samples[a * ch..b.max(a) * ch].to_vec(),
+                channels: audio.channels,
+                sample_rate: audio.sample_rate,
+            };
+            editor::write_wav(&dir.join(format!("{stem} {:0width$}.wav", i + 1)), &pcm, s.bit_depth, None)?;
+        }
+        Ok(dir)
+    })?;
+    let in_library = rescan_containing(&state, &dir)?;
+    Ok(ExportedSlices { dir: dir.to_string_lossy().into_owned(), count: spans.len(), in_library })
 }

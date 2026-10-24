@@ -11,7 +11,9 @@ use crate::audio::{self, Pcm};
 use crate::error::{Error, Result};
 
 mod loops;
+mod slices;
 pub use loops::{zero_crossing, Loop};
+pub use slices::{slices, SliceBy, Span};
 
 /// Files longer than this are not opened (the whole file is kept in memory).
 const MAX_SECONDS: f64 = 20.0 * 60.0;

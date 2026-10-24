@@ -144,6 +144,8 @@ pub fn run() {
             editor_commands::editor_redo,
             editor_commands::editor_wave,
             editor_commands::editor_zero_snap,
+            editor_commands::editor_slices,
+            editor_commands::editor_export_slices,
             editor_commands::editor_play,
             editor_commands::editor_save,
             commands::list_sources,

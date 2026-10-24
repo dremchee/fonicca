@@ -1,6 +1,6 @@
 // A fake editor session for /mock.html#editor: four bars of a 120 BPM loop
 // (kick on every beat, hats in between), so the bar grid has something to line up with.
-import type { EditorState } from '@/stores/editor'
+import type { EditorState, SliceBy, Span } from '@/stores/editor'
 
 const RATE = 44100
 const BPM = 120
@@ -42,6 +42,28 @@ function wave(start: number, end: number, columns: number, split: boolean) {
   return buf
 }
 
+// Slices of the fake loop: grid lines, every kick and hat (hits), or each kick's
+// decay (silence), within [start, end).
+function slices(start: number, end: number, by: SliceBy): Span[] {
+  const cuts: number[] = []
+  const every = (step: number, origin = 0) => {
+    for (let f = origin + Math.ceil((start - origin) / step) * step; f < end; f += step)
+      cuts.push(Math.round(f))
+  }
+  if (by.mode === 'silence') {
+    const out: Span[] = []
+    for (let f = Math.ceil(start / BEAT) * BEAT; f < end; f += BEAT)
+      out.push({ start: Math.round(f), end: Math.min(end, Math.round(f + RATE * 0.3)) })
+    return out
+  }
+  if (by.mode === 'grid')
+    every(by.step, by.origin)
+  else
+    every(by.sensitivity > 0.6 ? BEAT / 2 : BEAT)
+  const points = [start, ...cuts.filter(c => c > start), end]
+  return points.slice(1).map((e, i) => ({ start: points[i], end: e }))
+}
+
 /** Editor commands for the mock backend; `undefined` for anything else. */
 export function editorCommand(cmd: string, args: any): unknown {
   switch (cmd) {
@@ -54,6 +76,8 @@ export function editorCommand(cmd: string, args: any): unknown {
         loop = null
       return state()
     case 'editor_undo': case 'editor_redo': return state()
+    case 'editor_slices': return slices(args.start, args.end, args.by)
+    case 'editor_export_slices': return { dir: '/Users/me/Projects/Sound/Loops/Drum Loop 120 slices', count: args.spans.length, inLibrary: true }
     // Every beat starts on a zero crossing; snap to the nearest within reach.
     case 'editor_zero_snap': return args.frames.map((f: number) => {
       const beat = Math.round(f / BEAT) * BEAT

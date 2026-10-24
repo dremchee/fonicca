@@ -44,6 +44,15 @@ export interface Wave {
   values: Float32Array
 }
 
+/** A slice, `[start, end)` frames. */
+export interface Span { start: number, end: number }
+
+/** How to cut into slices: on the bar grid, at attacks, or around silence. */
+export type SliceBy
+  = | { mode: 'grid', origin: number, step: number }
+    | { mode: 'transients', sensitivity: number, minMs: number }
+    | { mode: 'silence', thresholdDb: number, minSilenceMs: number }
+
 /** What an editor window shows about its file. */
 export interface EditedFile {
   id: number
@@ -62,6 +71,8 @@ const editorApi = {
   wave: async (start: number, end: number, columns: number, split: boolean, bands: boolean): Promise<Wave> => {
     return parseWave(await invoke<ArrayBuffer>('editor_wave', { start, end, columns, split, bands }))
   },
+  slices: (start: number, end: number, by: SliceBy, zero: boolean) => invoke<Span[]>('editor_slices', { start, end, by, zero }),
+  exportSlices: (spans: Span[]) => invoke<{ dir: string, count: number, inLibrary: boolean }>('editor_export_slices', { spans }),
   zeroSnap: (frames: number[], radius: number) => invoke<number[]>('editor_zero_snap', { frames, radius }),
   play: (start: number, end: number, looping: boolean) => invoke<void>('editor_play', { start, end, looping }),
   save: (asNew: boolean) =>
@@ -327,6 +338,8 @@ export const useEditorStore = defineStore('editor', () => {
     reverse,
     toggleLoopPoints,
     zeroSnap: editorApi.zeroSnap,
+    slices: editorApi.slices,
+    exportSlices: editorApi.exportSlices,
     play,
     stopPlayback,
     togglePlay,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Curve, Wave } from '@/stores/editor'
+import type { Curve, Span, Wave } from '@/stores/editor'
 import {
   ArrowLeftRight,
   ArrowUpToLine,
@@ -27,6 +27,7 @@ import { useLocalStorage, useResizeObserver } from '@vueuse/core'
 import { computed, nextTick, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import EditorMinimap from '@/components/EditorMinimap.vue'
+import EditorSlicer from '@/components/EditorSlicer.vue'
 import FadeIcon from '@/components/icons/FadeIcon.vue'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
@@ -71,6 +72,8 @@ type GridMode = 'beats' | 'time' | 'off'
 const gridMode = useLocalStorage<GridMode>('editor.gridMode', 'beats')
 const snap = useLocalStorage('editor.snap', true)
 const zeroSnap = useLocalStorage('editor.zeroSnap', true)
+// Slices shown while the slicer is open.
+const slicePreview = ref<Span[]>([])
 // Tempo of the bar grid (from the sample, editable) and where bar 1 starts, in frames.
 const bpm = ref<number | null>(null)
 const downbeat = ref(0)
@@ -303,6 +306,7 @@ function draw() {
     ctx.setLineDash([])
     ctx.globalAlpha = 1
   }
+  drawSlices(ctx, w, h, color)
 
   // Edit cursor: a thin dimmed line in the text colour. Playhead: the text colour at
   // full strength, 2 px over a canvas-coloured halo so it reads on the brand-coloured
@@ -328,6 +332,48 @@ function draw() {
 
 watch([wave, () => editor.selection, () => editor.cursor, () => editor.playhead, width, height, vZoom, gridMode, bpm, downbeat, () => settings.settings, () => settings.themeRevision], draw, { deep: true })
 watch(() => editor.state?.loop, draw)
+
+// Slice preview: what no slice covers dimmed, a line and a number at each slice start
+// (numbers thinned out where they would overlap).
+function drawSlices(ctx: CanvasRenderingContext2D, w: number, h: number, color: (name: string) => string) {
+  const spans = slicePreview.value
+  if (!spans.length)
+    return
+  const target = editor.selection ?? { start: 0, end: frames.value }
+  ctx.fillStyle = color('--card')
+  ctx.globalAlpha = 0.65
+  let covered = target.start
+  for (const s of [...spans, { start: target.end, end: target.end }]) {
+    if (s.start > covered)
+      ctx.fillRect(x(covered), RULER, x(s.start) - x(covered), h - RULER)
+    covered = Math.max(covered, s.end)
+  }
+  ctx.globalAlpha = 1
+  ctx.font = '600 10px system-ui, sans-serif'
+  let lastLabel = -Infinity
+  spans.forEach((s, i) => {
+    const px = Math.round(x(s.start))
+    if (px < -40 || px > w)
+      return
+    ctx.fillStyle = color('--foreground')
+    ctx.fillRect(px, RULER, 1, h - RULER)
+    // A slice that stops before the next one starts: its end, fainter.
+    if ((spans[i + 1]?.start ?? target.end) > s.end) {
+      ctx.globalAlpha = 0.4
+      ctx.fillRect(Math.round(x(s.end)), RULER, 1, h - RULER)
+      ctx.globalAlpha = 1
+    }
+    const label = String(i + 1)
+    const lw = ctx.measureText(label).width + 6
+    if (px - lastLabel < lw + 4)
+      return
+    lastLabel = px
+    ctx.fillRect(px, RULER + 1, lw, 14)
+    ctx.fillStyle = color('--background')
+    ctx.fillText(label, px + 3, RULER + 12)
+  })
+}
+watch(slicePreview, draw)
 
 // --- Mouse ------------------------------------------------------------------
 
@@ -687,6 +733,8 @@ const curves: { value: Curve, label: string }[] = [
           <ArrowLeftRight />
         </Button>
       </Hint>
+      <Separator orientation="vertical" class="mx-1 h-5" />
+      <EditorSlicer v-model:preview="slicePreview" :beat-frames="beatFrames" :downbeat="downbeat" :zero="zeroSnap" />
       <!-- Tempo of the bar grid (and of snapping), next to the edits it lines up. -->
       <Hint :text="t('editor.toolbar.bpmHint')">
         <Input
