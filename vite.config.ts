@@ -12,6 +12,12 @@ export default defineConfig(() => ({
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
+  // Pre-bundle the dependencies of both pages at startup. Otherwise opening
+  // mock.html (which imports @tauri-apps/api/mocks) makes Vite re-bundle while
+  // the app window is open, and its modules fail with "504 Outdated Optimize Dep".
+  optimizeDeps: {
+    entries: ['index.html', 'mock.html'],
+  },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
