@@ -1,0 +1,25 @@
+<!-- Source of the app icon: `pnpm tauri icon src-tauri/icons/app-icon.svg` makes the rest.
+     A 2x2 grid of pads, the one in play holding a waveform. Body on the macOS icon grid
+     (824 px of 1024, corner radius 185). -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7d5fff"/>
+      <stop offset="1" stop-color="#5a37ef"/>
+    </linearGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#body)"/>
+  <g fill="#fff" fill-opacity="0.2">
+    <rect x="540" y="196" width="288" height="288" rx="64"/>
+    <rect x="196" y="540" width="288" height="288" rx="64"/>
+    <rect x="540" y="540" width="288" height="288" rx="64"/>
+  </g>
+  <rect x="196" y="196" width="288" height="288" rx="64" fill="#fff"/>
+  <g fill="#6d4aff">
+    <rect x="229" y="305" width="30" height="70" rx="15"/>
+    <rect x="277" y="260" width="30" height="160" rx="15"/>
+    <rect x="325" y="235" width="30" height="210" rx="15"/>
+    <rect x="373" y="280" width="30" height="120" rx="15"/>
+    <rect x="421" y="310" width="30" height="60" rx="15"/>
+  </g>
+</svg>
