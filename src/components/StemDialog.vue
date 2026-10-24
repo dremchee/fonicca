@@ -6,6 +6,7 @@ import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { useLocalStorage } from '@vueuse/core'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { openProjectWindow } from '@/composables/projectWindow'
 import { shortPath } from '@/format'
@@ -29,7 +30,18 @@ async function edit(index: number) {
     <DialogContent class="sm:max-w-lg max-h-[90vh] overflow-y-auto">
       <DialogHeader><DialogTitle>{{ t('stems.title') }}</DialogTitle><DialogDescription>{{ t('stems.description') }}</DialogDescription></DialogHeader>
       <p v-if="stems.sample" class="text-sm font-medium truncate" :title="stems.sample.path">{{ stems.sample.name }}</p>
-      <p class="text-xs text-muted-foreground">{{ stems.ready ? t('stems.ready') : t('stems.download', { mb: Math.round(stems.bytes / 1000000) }) }}</p>
+      <div class="flex flex-col gap-2">
+        <label for="stem-model" class="text-xs font-medium">{{ t('stems.model') }}</label>
+        <Select :model-value="stems.model" :disabled="stems.progress.running || stems.starting" @update:model-value="stems.setModel">
+          <SelectTrigger id="stem-model"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="scnetLarge">{{ t('stems.models.scnetLarge') }}</SelectItem>
+            <SelectItem value="spleeter">{{ t('stems.models.spleeter') }}</SelectItem>
+          </SelectContent>
+        </Select>
+        <p class="text-xs text-muted-foreground">{{ t(`stems.modelDescriptions.${stems.model}`) }}</p>
+        <p class="text-xs text-muted-foreground">{{ stems.ready ? t('stems.ready') : t('stems.download', { mb: Math.round(stems.bytes / 1000000) }) }}</p>
+      </div>
       <div class="rounded-md border border-border p-3 flex flex-col gap-2">
         <span class="text-xs font-medium">{{ t('stems.folder') }}</span>
         <div class="flex items-center gap-2"><span class="min-w-0 flex-1 truncate text-xs text-muted-foreground" :title="folder">{{ folder ? shortPath(folder) : t('stems.noFolder') }}</span><Button size="sm" variant="outline" :disabled="stems.progress.running || stems.starting" @click="choose"><FolderOpen />{{ t('stems.choose') }}</Button></div>

@@ -1,5 +1,5 @@
-//! Pinned optional Spleeter model pack. Downloaded separately from the app.
-use super::{check, failure};
+//! Pinned optional Spleeter and SCNet-large model packs. Downloaded separately from the app.
+use super::{Model, check, failure};
 use crate::error::Result;
 use sha2::{Digest, Sha256};
 use std::{
@@ -16,34 +16,61 @@ struct Artifact {
 }
 const FILES: [Artifact; 4] = [
     Artifact {
-        name: "vocals",
+        name: "vocals.fp16.onnx",
         size: 19714141,
         hash: "db47148ab1c52709ce694893f532c91abfe3edc4d46238939570e036a22878ca",
     },
     Artifact {
-        name: "drums",
+        name: "drums.fp16.onnx",
         size: 19714140,
         hash: "7ae4002e5633634674f74dc3356d5875b0da894d59ce0f60e844bb8f9cb8aa92",
     },
     Artifact {
-        name: "bass",
+        name: "bass.fp16.onnx",
         size: 19714139,
         hash: "ba4c4949a27222492cca49859901a873b4b71461dc48c7c5a51f93d31eb11f55",
     },
     Artifact {
-        name: "other",
+        name: "other.fp16.onnx",
         size: 19714140,
         hash: "3cc59116cb7195946ab9596d8ca25984d09c0f8a70db8cf85d063132f97bc61d",
     },
 ];
+pub const SCNET_TOTAL: u64 = 45_082_486;
+const SCNET_REVISION: &str = "95f22d9e68f6cab78aef358f1a0de248d4edf805";
+const SCNET_FILES: [Artifact; 1] = [Artifact {
+    name: "scnet-large.int8.onnx",
+    size: SCNET_TOTAL,
+    hash: "b2dc586a1e0e6c0afe4915e9057ea29111397b7bbf589edc3d85de91de79cd72",
+}];
+fn files(model: Model) -> &'static [Artifact] {
+    match model {
+        Model::Spleeter => &FILES,
+        Model::ScnetLarge => &SCNET_FILES,
+    }
+}
 pub fn directory(root: &Path) -> PathBuf {
-    root.join("spleeter4-v1")
+    directory_for(root, Model::Spleeter)
+}
+pub fn directory_for(root: &Path, model: Model) -> PathBuf {
+    root.join(match model {
+        Model::Spleeter => "spleeter4-v1",
+        Model::ScnetLarge => "scnet-large-v1",
+    })
 }
 pub fn installed(root: &Path) -> bool {
-    FILES.iter().all(|f| {
-        std::fs::metadata(directory(root).join(format!("{}.fp16.onnx", f.name)))
-            .is_ok_and(|m| m.len() == f.size)
+    installed_for(root, Model::Spleeter)
+}
+pub fn installed_for(root: &Path, model: Model) -> bool {
+    files(model).iter().all(|f| {
+        std::fs::metadata(directory_for(root, model).join(f.name)).is_ok_and(|m| m.len() == f.size)
     })
+}
+pub fn total(model: Model) -> u64 {
+    match model {
+        Model::Spleeter => TOTAL,
+        Model::ScnetLarge => SCNET_TOTAL,
+    }
 }
 fn valid(path: &Path, f: &Artifact) -> bool {
     let Ok(mut file) = std::fs::File::open(path) else {
@@ -67,36 +94,62 @@ fn valid(path: &Path, f: &Artifact) -> bool {
         .collect::<String>()
         == f.hash
 }
+#[cfg(test)]
 pub fn ensure(root: &Path, cancel: &AtomicBool, progress: impl Fn(u64)) -> Result<PathBuf> {
-    let dir = directory(root);
+    ensure_for(root, Model::Spleeter, cancel, progress)
+}
+pub fn ensure_for(
+    root: &Path,
+    model: Model,
+    cancel: &AtomicBool,
+    progress: impl Fn(u64),
+) -> Result<PathBuf> {
+    let dir = directory_for(root, model);
     std::fs::create_dir_all(&dir)?;
-    std::fs::write(
-        dir.join("LICENSE-MIT.txt"),
-        include_str!("../../../docs/licenses/spleeter-MIT.txt"),
-    )?;
-    std::fs::write(
-        dir.join("LICENSE-Apache-2.0.txt"),
-        include_str!("../../../docs/licenses/spleeter-onnx-Apache-2.0.txt"),
-    )?;
-    std::fs::write(
-        dir.join("NOTICE.txt"),
-        include_str!("../../../docs/licenses/spleeter-onnx-NOTICE.txt"),
-    )?;
+    if model == Model::Spleeter {
+        std::fs::write(
+            dir.join("LICENSE-MIT.txt"),
+            include_str!("../../../docs/licenses/spleeter-MIT.txt"),
+        )?;
+        std::fs::write(
+            dir.join("LICENSE-Apache-2.0.txt"),
+            include_str!("../../../docs/licenses/spleeter-onnx-Apache-2.0.txt"),
+        )?;
+        std::fs::write(
+            dir.join("NOTICE.txt"),
+            include_str!("../../../docs/licenses/spleeter-onnx-NOTICE.txt"),
+        )?;
+    } else {
+        std::fs::write(
+            dir.join("LICENSE-MIT.txt"),
+            include_str!("../../../docs/licenses/scnet-MIT.txt"),
+        )?;
+        std::fs::write(
+            dir.join("NOTICE.txt"),
+            include_str!("../../../docs/licenses/scnet-NOTICE.txt"),
+        )?;
+    }
     let mut received = 0;
-    for f in FILES {
+    for f in files(model) {
         check(cancel)?;
-        let target = dir.join(format!("{}.fp16.onnx", f.name));
-        if valid(&target, &f) {
+        let target = dir.join(f.name);
+        if valid(&target, f) {
             received += f.size;
             progress(received);
             continue;
         }
         let partial = target.with_extension("part");
         let result = (|| {
-            let url = format!(
-                "https://huggingface.co/Best-Practice/spleeter-4stems-onnx/resolve/{REVISION}/{}.fp16.onnx",
-                f.name
-            );
+            let url = match model {
+                Model::Spleeter => format!(
+                    "https://huggingface.co/Best-Practice/spleeter-4stems-onnx/resolve/{REVISION}/{}",
+                    f.name
+                ),
+                Model::ScnetLarge => format!(
+                    "https://huggingface.co/audiojs/scnet-large/resolve/{SCNET_REVISION}/{}",
+                    f.name
+                ),
+            };
             let response = ureq::get(&url)
                 .config()
                 .timeout_global(Some(std::time::Duration::from_secs(180)))
@@ -122,7 +175,7 @@ pub fn ensure(root: &Path, cancel: &AtomicBool, progress: impl Fn(u64)) -> Resul
             }
             file.sync_all()?;
             drop(file);
-            if !valid(&partial, &f) {
+            if !valid(&partial, f) {
                 return Err(failure("model checksum mismatch"));
             }
             std::fs::rename(&partial, &target)?;
@@ -140,6 +193,37 @@ pub fn ensure(root: &Path, cancel: &AtomicBool, progress: impl Fn(u64)) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn packs_have_separate_storage_and_complete_manifests() {
+        let root = tempfile::tempdir().unwrap();
+        assert_ne!(
+            directory_for(root.path(), Model::Spleeter),
+            directory_for(root.path(), Model::ScnetLarge)
+        );
+        for model in [Model::Spleeter, Model::ScnetLarge] {
+            let dir = directory_for(root.path(), model);
+            std::fs::create_dir_all(&dir).unwrap();
+            assert!(!installed_for(root.path(), model));
+            for artifact in files(model) {
+                std::fs::File::create(dir.join(artifact.name))
+                    .unwrap()
+                    .set_len(artifact.size)
+                    .unwrap();
+            }
+            assert!(installed_for(root.path(), model));
+            assert_eq!(
+                files(model).iter().map(|f| f.size).sum::<u64>(),
+                total(model)
+            );
+            std::fs::remove_file(dir.join(files(model)[0].name)).unwrap();
+            assert!(!installed_for(root.path(), model));
+        }
+        assert_eq!(
+            serde_json::to_string(&Model::ScnetLarge).unwrap(),
+            "\"scnetLarge\""
+        );
+        assert!(serde_json::from_str::<Model>("\"unknown\"").is_err());
+    }
     #[test]
     fn checksum_rejects_corrupt_downloads_of_the_expected_size() {
         let dir = tempfile::tempdir().unwrap();
@@ -171,6 +255,25 @@ mod tests {
 mod network_tests {
     use super::*;
     #[test]
+    #[ignore = "downloads the pinned SCNet-large model; requires network"]
+    fn downloads_and_verifies_scnet_with_application_downloader() {
+        let root = tempfile::tempdir().unwrap();
+        let received = std::cell::Cell::new(0);
+        let dir = ensure_for(
+            root.path(),
+            Model::ScnetLarge,
+            &AtomicBool::new(false),
+            |n| received.set(n),
+        )
+        .unwrap();
+        assert_eq!(received.get(), SCNET_TOTAL);
+        assert!(installed_for(root.path(), Model::ScnetLarge));
+        assert!(!installed_for(root.path(), Model::Spleeter));
+        assert!(dir.join("LICENSE-MIT.txt").is_file());
+        assert!(dir.join("NOTICE.txt").is_file());
+        assert!(valid(&dir.join(SCNET_FILES[0].name), &SCNET_FILES[0]));
+    }
+    #[test]
     #[ignore = "downloads one pinned model; requires STEM_MODELS and network"]
     fn downloads_and_verifies_a_model_with_the_application_downloader() {
         let cache = PathBuf::from(std::env::var("STEM_MODELS").unwrap());
@@ -178,7 +281,7 @@ mod network_tests {
         let dir = directory(root.path());
         std::fs::create_dir_all(&dir).unwrap();
         for f in &FILES[1..] {
-            let name = format!("{}.fp16.onnx", f.name);
+            let name = f.name;
             std::fs::hard_link(cache.join(&name), dir.join(&name)).unwrap();
         }
         let progress = std::cell::Cell::new(0);
@@ -186,10 +289,6 @@ mod network_tests {
         assert!(installed(root.path()));
         assert_eq!(result, dir);
         assert_eq!(progress.get(), TOTAL);
-        assert!(
-            FILES
-                .iter()
-                .all(|f| valid(&dir.join(format!("{}.fp16.onnx", f.name)), f))
-        );
+        assert!(FILES.iter().all(|f| valid(&dir.join(f.name), f)));
     }
 }

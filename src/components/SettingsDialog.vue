@@ -36,6 +36,7 @@ import { toast } from 'vue-sonner'
 import { api } from '@/api'
 import Hint from '@/components/Hint.vue'
 import ThemesSettings from '@/components/ThemesSettings.vue'
+import ModelsSettings from '@/components/ModelsSettings.vue'
 import WaveformPreview from '@/components/WaveformPreview.vue'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -56,7 +57,7 @@ const { t } = useI18n()
 const store = useSettingsStore()
 const { settings, dialogOpen, section } = storeToRefs(store)
 const library = useLibraryStore()
-const { sources, scans, analysis, soundModel, modelDownload } = storeToRefs(library)
+const { sources, scans, analysis } = storeToRefs(library)
 const duplicates = useDuplicatesStore()
 
 const sections: { id: SettingsSection, icon: Component }[] = [
@@ -77,6 +78,10 @@ watch(dialogOpen, async (open) => {
   if (open)
     [info.value] = await Promise.all([api.appInfo(), duplicates.loadHidden()])
 })
+
+async function refreshInfo() {
+  info.value = await api.appInfo()
+}
 
 async function unhide(paths: string[] | null) {
   try {
@@ -133,34 +138,6 @@ const threads = computed({
   get: () => settings.value.analysisThreads == null ? 'auto' : String(settings.value.analysisThreads),
   set: (v: string) => store.update({ analysisThreads: v === 'auto' ? null : Number(v) }),
 })
-
-const modelState = computed(() => {
-  if (modelDownload.value && !modelDownload.value.done)
-    return 'downloading'
-  return soundModel.value?.installed ? 'installed' : 'missing'
-})
-const downloadRatio = computed(() => {
-  const d = modelDownload.value
-  return d?.total ? d.received / d.total : 0
-})
-
-async function deleteModel() {
-  const ok = await confirm({
-    title: t('settings.analysis.deleteTitle'),
-    description: t('settings.analysis.deleteDesc'),
-    action: t('common.actions.delete'),
-    destructive: true,
-  })
-  if (!ok)
-    return
-  try {
-    await library.deleteSoundModel()
-    info.value = await api.appInfo()
-  }
-  catch (e) {
-    toast.error(String(e))
-  }
-}
 
 type WaveKey = 'waveStyle' | 'waveScale' | 'waveChannels' | 'waveColors'
 const waveTargets = [
@@ -566,52 +543,7 @@ function keyLabel(k: string) {
               </div>
             </section>
 
-            <div v-if="soundModel" class="flex flex-col gap-2">
-              <h3 class="group-title">
-                {{ t('settings.analysis.soundModel') }}
-              </h3>
-              <section class="group-box">
-                <div class="row">
-                  <div class="row-text">
-                    <div class="row-title">
-                      {{ t('settings.analysis.clap') }}
-                    </div>
-                    <div class="row-desc tabular">
-                      <template v-if="modelState === 'installed'">
-                        {{ t('settings.analysis.installed', { size: formatSize(soundModel.size) }) }}
-                      </template>
-                      <template v-else-if="modelState === 'downloading'">
-                        {{ t('settings.analysis.downloading', { received: formatSize(modelDownload!.received), total: formatSize(modelDownload!.total || soundModel.size) }) }}
-                      </template>
-                      <template v-else>
-                        {{ t('settings.analysis.notInstalled', { size: formatSize(soundModel.size) }) }}
-                      </template>
-                    </div>
-                    <div v-if="modelState === 'downloading'" class="mt-2 h-1 rounded-full bg-muted overflow-hidden">
-                      <div class="h-full bg-primary transition-[width]" :style="{ width: `${downloadRatio * 100}%` }" />
-                    </div>
-                    <div v-if="modelDownload?.error" class="row-desc text-destructive">
-                      {{ modelDownload.error }}
-                    </div>
-                  </div>
-                  <div v-if="modelState === 'installed'" class="flex gap-0.5">
-                    <Hint v-if="info" :text="t('common.actions.showInFinder')">
-                      <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('common.actions.showInFinder')" @click="reveal(info.modelsDir)">
-                        <FolderOpen />
-                      </Button>
-                    </Hint>
-                    <Hint :text="t('settings.analysis.deleteModel')">
-                      <Button variant="ghost" size="icon-sm" class="text-muted-foreground hover:text-destructive" :aria-label="t('settings.analysis.deleteModel')" @click="deleteModel">
-                        <Trash2 />
-                      </Button>
-                    </Hint>
-                  </div>
-                  <Button v-else variant="outline" size="sm" :disabled="modelState === 'downloading'" @click="library.downloadSoundModel()">
-                    <Download /> {{ t('settings.analysis.download') }}
-                  </Button>
-                </div>
-              </section>
-            </div>
+            <ModelsSettings @changed="refreshInfo" />
           </template>
 
           <!-- Shortcuts -->

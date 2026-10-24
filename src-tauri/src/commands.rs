@@ -329,6 +329,16 @@ pub fn sound_model_status(state: State<'_, AppState>) -> SoundModelStatus {
     }
 }
 
+#[tauri::command]
+pub fn model_storage(state: State<'_, AppState>) -> Vec<crate::models::Storage> {
+    crate::models::storage(
+        &state.models_dir,
+        state.model_downloading.load(std::sync::atomic::Ordering::SeqCst),
+        state.stems.downloading(crate::stems::Model::Spleeter),
+        state.stems.downloading(crate::stems::Model::ScnetLarge),
+    )
+}
+
 /// Downloads the sound model in the background; progress and completion are
 /// reported through `model-download` events.
 #[tauri::command]
@@ -482,7 +492,7 @@ pub fn app_info(app: tauri::AppHandle, state: State<'_, AppState>) -> AppInfo {
         db_path: db_path.to_string_lossy().into_owned(),
         db_size: disk_size(db_path) + disk_size(&wal),
         models_dir: state.models_dir.to_string_lossy().into_owned(),
-        models_size: disk_size(&state.models_dir),
+        models_size: crate::models::disk_size(&state.models_dir),
         settings_path: state.settings.path().to_string_lossy().into_owned(),
     }
 }

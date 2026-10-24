@@ -30,6 +30,66 @@ pub fn is_installed(models_dir: &Path) -> bool {
     std::fs::metadata(model_path(models_dir)).is_ok_and(|m| m.len() == clap::MODEL_SIZE)
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Storage {
+    id: &'static str,
+    path: String,
+    installed: bool,
+    downloading: bool,
+    size: u64,
+    download_size: u64,
+}
+
+/// File lengths on disk, including partial downloads and notices. Do not follow
+/// symlinks: they can point outside the model folder or create a cycle.
+pub fn disk_size(path: &Path) -> u64 {
+    let Ok(metadata) = std::fs::symlink_metadata(path) else {
+        return 0;
+    };
+    if metadata.is_file() {
+        return metadata.len();
+    }
+    if !metadata.is_dir() {
+        return 0;
+    }
+    std::fs::read_dir(path).map_or(0, |entries| {
+        entries.flatten().map(|entry| disk_size(&entry.path())).sum()
+    })
+}
+
+pub fn storage(root: &Path, clap_downloading: bool, stems_downloading: bool, scnet_downloading: bool) -> Vec<Storage> {
+    let clap = model_path(root);
+    let spleeter = crate::stems::models::directory(root);
+    let scnet = crate::stems::models::directory_for(root, crate::stems::Model::ScnetLarge);
+    vec![
+        Storage {
+            id: "clap",
+            path: clap.to_string_lossy().into_owned(),
+            installed: is_installed(root),
+            downloading: clap_downloading,
+            size: disk_size(&clap) + disk_size(&clap.with_extension("part")),
+            download_size: clap::MODEL_SIZE,
+        },
+        Storage {
+            id: "spleeter",
+            path: spleeter.to_string_lossy().into_owned(),
+            installed: crate::stems::models::installed(root),
+            downloading: stems_downloading,
+            size: disk_size(&spleeter),
+            download_size: crate::stems::models::TOTAL,
+        },
+        Storage {
+            id: "scnetLarge",
+            path: scnet.to_string_lossy().into_owned(),
+            installed: crate::stems::models::installed_for(root, crate::stems::Model::ScnetLarge),
+            downloading: scnet_downloading,
+            size: disk_size(&scnet),
+            download_size: crate::stems::models::SCNET_TOTAL,
+        },
+    ]
+}
+
 /// Downloads the pinned model to a temporary file, verifies size and SHA-256,
 /// then moves it into place, so a partial download never looks installed.
 pub fn download(models_dir: &Path, on_progress: impl Fn(DownloadProgress)) -> Result<PathBuf> {
@@ -77,6 +137,54 @@ pub fn download(models_dir: &Path, on_progress: impl Fn(DownloadProgress)) -> Re
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn storage_counts_partial_downloads_without_marking_them_installed() {
+        let root = tempfile::tempdir().unwrap();
+        let clap = model_path(root.path());
+        std::fs::write(clap.with_extension("part"), [0; 7]).unwrap();
+        let spleeter = crate::stems::models::directory(root.path());
+        std::fs::create_dir_all(&spleeter).unwrap();
+        std::fs::write(spleeter.join("vocals.fp16.onnx"), [0; 11]).unwrap();
+        std::fs::write(spleeter.join("drums.fp16.part"), [0; 13]).unwrap();
+        std::fs::write(spleeter.join("NOTICE.txt"), [0; 3]).unwrap();
+        let models = storage(root.path(), true, false, false);
+        assert_eq!(models[0].size, 7);
+        assert!(models[0].downloading);
+        assert!(!models[0].installed);
+        assert_eq!(models[1].size, 27);
+        assert!(!models[1].installed);
+        assert!(!models[1].downloading);
+        assert_eq!(disk_size(root.path()), 34);
+
+        std::fs::remove_file(clap.with_extension("part")).unwrap();
+        File::create(&clap).unwrap().set_len(clap::MODEL_SIZE).unwrap();
+        let models = storage(root.path(), false, false, false);
+        assert!(models[0].installed);
+        assert_eq!(models[0].size, clap::MODEL_SIZE);
+        assert_eq!(disk_size(root.path()), clap::MODEL_SIZE + 27);
+    }
+
+    #[test]
+    fn missing_models_have_zero_disk_usage() {
+        let root = tempfile::tempdir().unwrap();
+        let models = storage(root.path(), false, false, false);
+        assert_eq!(models.len(), 3);
+        assert!(models.iter().all(|m| !m.installed && m.size == 0 && m.download_size > 0));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn disk_usage_does_not_follow_symlinks() {
+        let root = tempfile::tempdir().unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        std::fs::write(outside.path().join("unrelated"), [0; 31]).unwrap();
+        std::os::unix::fs::symlink(outside.path(), root.path().join("outside")).unwrap();
+        std::os::unix::fs::symlink(root.path(), root.path().join("cycle")).unwrap();
+        assert_eq!(disk_size(root.path()), 0);
+    }
+
     /// Network test: `cargo test -- --ignored --nocapture downloads_and_verifies`
     #[test]
     #[ignore]

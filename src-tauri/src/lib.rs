@@ -203,6 +203,7 @@ pub fn run() {
             commands::set_analysis_paused,
             commands::analysis_status,
             commands::sound_model_status,
+            commands::model_storage,
             commands::download_sound_model,
             project::project_play,
             stems::stem_status,

@@ -7,7 +7,7 @@ import { batchCommand } from './batch'
 import { editorCommand } from './editor'
 import { spectrogram } from './spectrogram'
 import { projectCommand } from './project'
-import { stemsCommand } from './stems'
+import { stemModelStorage, stemsCommand } from './stems'
 
 const ROOT = '/Users/me/Projects/Sound/Source'
 let groups: DuplicateGroup[] = fake.map(g => ({
@@ -27,6 +27,9 @@ let playStart: number | null = null
 let playFrom = 0
 let playLoaded = false
 let preferred: string[] = []
+let clapInstalled = location.hash === '#models'
+let clapBytes = clapInstalled ? 34301667 : 0
+let clapDownloading = false
 let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], language: 'en', watchFolders: true, autoplay: true, volume: 1, analysisThreads: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme', editorWaveform: { waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' } }
 
 export function install() {
@@ -47,10 +50,29 @@ export function install() {
       case 'count_samples': return 0
       case 'list_samples': case 'sample_ids': case 'list_tags': case 'list_collections': return []
       case 'analysis_status': return { pending: 0, pendingEmbeddings: 0, modelReady: false, paused: false, updated: [] }
-      case 'sound_model_status': return { installed: false, ready: false, downloading: false, size: 34301667 }
+      case 'sound_model_status': return { installed: clapInstalled, ready: clapInstalled, downloading: clapDownloading, size: 34301667 }
+      case 'model_storage': return [
+        { id: 'clap', path: '/m/clap.onnx', installed: clapInstalled, downloading: clapDownloading, size: clapBytes, downloadSize: 34301667 },
+        stemModelStorage('spleeter'),
+        stemModelStorage('scnetLarge'),
+      ]
+      case 'delete_sound_model': clapInstalled = false; clapBytes = 0; return null
+      case 'download_sound_model': {
+        if (clapDownloading) return null
+        clapDownloading = true
+        const tick = () => {
+          clapBytes = Math.min(34301667, clapBytes + 7000000)
+          clapInstalled = clapBytes === 34301667
+          clapDownloading = !clapInstalled
+          void emit('model-download', { received: clapBytes, total: 34301667, done: clapInstalled, error: null })
+          if (clapDownloading) setTimeout(tick, 400)
+        }
+        setTimeout(tick, 400)
+        return null
+      }
       case 'get_settings': return settings
       case 'update_settings': settings = args.settings; return settings
-      case 'app_info': return { version: '0.1.0', cores: 10, defaultThreads: 5, dbPath: '/db', dbSize: 1, modelsDir: '/m', modelsSize: 0, settingsPath: '/s' }
+      case 'app_info': return { version: '0.1.0', cores: 10, defaultThreads: 5, dbPath: '/db', dbSize: 1, modelsDir: '/m', modelsSize: clapBytes + stemModelStorage('spleeter').size + stemModelStorage('scnetLarge').size, settingsPath: '/s' }
       case 'duplicate_count': return groups.length
       case 'duplicate_groups': return structuredClone(groups)
       case 'verify_duplicates':

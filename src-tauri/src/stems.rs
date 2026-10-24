@@ -1,13 +1,14 @@
 //! One cancellable local separation job. Results are published only when all
 //! stems have been written; a failed or cancelled job leaves the source intact.
 mod dsp;
-mod models;
+pub(crate) mod models;
+mod scnet;
 use crate::{
     AppState,
     audio::{self, Pcm},
     error::{Error, Result},
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     path::{Path, PathBuf},
     sync::{
@@ -26,9 +27,17 @@ fn check(cancel: &AtomicBool) -> Result<()> {
         Ok(())
     }
 }
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Model {
+    #[default]
+    Spleeter,
+    ScnetLarge,
+}
 #[derive(Default, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Progress {
+    pub model: Model,
     pub running: bool,
     pub stage: String,
     pub progress: f64,
@@ -45,6 +54,11 @@ pub struct Jobs {
     status: Mutex<Progress>,
 }
 impl Jobs {
+    pub fn downloading(&self, model: Model) -> bool {
+        let status = self.status.lock().unwrap();
+        status.running && status.stage == "downloading" && status.model == model
+    }
+
     fn update(&self, stage: &str, progress: f64) {
         let mut s = self.status.lock().unwrap();
         s.stage = stage.into();
@@ -59,11 +73,17 @@ pub struct Status {
     download_bytes: u64,
 }
 #[tauri::command]
-pub fn stem_status(state: State<'_, AppState>) -> Status {
+pub fn stem_status(state: State<'_, AppState>, model: Option<Model>) -> Status {
+    let progress = state.stems.status.lock().unwrap().clone();
+    let model = if progress.running {
+        progress.model
+    } else {
+        model.unwrap_or_default()
+    };
     Status {
-        progress: state.stems.status.lock().unwrap().clone(),
-        model_ready: models::installed(&state.models_dir),
-        download_bytes: models::TOTAL,
+        progress,
+        model_ready: models::installed_for(&state.models_dir, model),
+        download_bytes: models::total(model),
     }
 }
 #[tauri::command]
@@ -76,7 +96,9 @@ pub fn stem_start(
     state: State<'_, AppState>,
     id: i64,
     folder: String,
+    model: Option<Model>,
 ) -> Result<()> {
+    let model = model.unwrap_or_default();
     let path: String =
         state
             .db
@@ -96,6 +118,7 @@ pub fn stem_start(
     }
     state.stems.cancel.store(false, Ordering::Relaxed);
     *state.stems.status.lock().unwrap() = Progress {
+        model,
         running: true,
         stage: "preparing".into(),
         name: Path::new(&path)
@@ -108,7 +131,7 @@ pub fn stem_start(
     std::thread::spawn(move || {
         let state = app.state::<AppState>();
         let jobs = &state.stems;
-        let result = run(&state, Path::new(&path), Path::new(&folder));
+        let result = run(&state, Path::new(&path), Path::new(&folder), model);
         let mut status = jobs.status.lock().unwrap();
         status.running = false;
         match result {
@@ -147,7 +170,18 @@ impl Drop for WorkingDir {
         }
     }
 }
+#[cfg(test)]
 fn separate_to_folder(
+    model_dir: &Path,
+    source: &Path,
+    parent: &Path,
+    cancel: &AtomicBool,
+    progress: impl Fn(f64),
+) -> Result<Vec<PathBuf>> {
+    separate_to_folder_with_model(Model::Spleeter, model_dir, source, parent, cancel, progress)
+}
+fn separate_to_folder_with_model(
+    model: Model,
     model_dir: &Path,
     source: &Path,
     parent: &Path,
@@ -167,7 +201,6 @@ fn separate_to_folder(
     }
     check(cancel)?;
     crate::batch::resample(&mut pcm, dsp::RATE)?;
-    let mut model = dsp::Separator::load(model_dir)?;
     check(cancel)?;
     let stem = source
         .file_stem()
@@ -198,38 +231,51 @@ fn separate_to_folder(
             hound::WavWriter::create(working.path.join(format!("{n}.wav")), spec).map_err(failure)
         })
         .collect::<Result<Vec<_>>>()?;
-    const BLOCK: usize = 8 * dsp::RATE as usize;
-    const CONTEXT: usize = dsp::RATE as usize;
-    let mut tails: Vec<Vec<f32>> = vec![Vec::new(); 4];
-    for start in (0..pcm.frames()).step_by(BLOCK) {
-        check(cancel)?;
-        let end = (start + BLOCK).min(pcm.frames());
-        let left = start.saturating_sub(CONTEXT);
-        let right = (end + CONTEXT).min(pcm.frames());
-        let block = Pcm {
-            samples: pcm.samples[left * pcm.channels..right * pcm.channels].to_vec(),
-            channels: pcm.channels,
-            sample_rate: dsp::RATE,
-        };
-        let stems = model.separate(&block, || check(cancel))?;
-        for (i, (writer, mut samples)) in writers.iter_mut().zip(stems).enumerate() {
-            let begin = (start - left) * 2;
-            let finish = (end - left) * 2;
-            let blend = (tails[i].len() / 2).min((end - start).min(4096));
-            for frame in 0..blend {
-                let weight = frame as f32 / blend as f32;
-                for ch in 0..2 {
-                    let at = frame * 2 + ch;
-                    samples[begin + at] =
-                        tails[i][at] * (1.0 - weight) + samples[begin + at] * weight;
+    if model == Model::ScnetLarge {
+        let mut separator = scnet::Separator::load(model_dir)?;
+        separator.separate(&pcm, cancel, &progress, |stems| {
+            for (writer, stem) in writers.iter_mut().zip(stems) {
+                for sample in stem {
+                    writer.write_sample(*sample).map_err(failure)?;
                 }
             }
-            for sample in &samples[begin..finish] {
-                writer.write_sample(*sample).map_err(failure)?;
+            Ok(())
+        })?;
+    } else {
+        let mut separator = dsp::Separator::load(model_dir)?;
+        const BLOCK: usize = 8 * dsp::RATE as usize;
+        const CONTEXT: usize = dsp::RATE as usize;
+        let mut tails: Vec<Vec<f32>> = vec![Vec::new(); 4];
+        for start in (0..pcm.frames()).step_by(BLOCK) {
+            check(cancel)?;
+            let end = (start + BLOCK).min(pcm.frames());
+            let left = start.saturating_sub(CONTEXT);
+            let right = (end + CONTEXT).min(pcm.frames());
+            let block = Pcm {
+                samples: pcm.samples[left * pcm.channels..right * pcm.channels].to_vec(),
+                channels: pcm.channels,
+                sample_rate: dsp::RATE,
+            };
+            let stems = separator.separate(&block, || check(cancel))?;
+            for (i, (writer, mut samples)) in writers.iter_mut().zip(stems).enumerate() {
+                let begin = (start - left) * 2;
+                let finish = (end - left) * 2;
+                let blend = (tails[i].len() / 2).min((end - start).min(4096));
+                for frame in 0..blend {
+                    let weight = frame as f32 / blend as f32;
+                    for ch in 0..2 {
+                        let at = frame * 2 + ch;
+                        samples[begin + at] =
+                            tails[i][at] * (1.0 - weight) + samples[begin + at] * weight;
+                    }
+                }
+                for sample in &samples[begin..finish] {
+                    writer.write_sample(*sample).map_err(failure)?;
+                }
+                tails[i] = samples[finish..((end - left + 4096).min(right - left)) * 2].to_vec();
             }
-            tails[i] = samples[finish..((end - left + 4096).min(right - left)) * 2].to_vec();
+            progress(end as f64 / pcm.frames() as f64);
         }
-        progress(end as f64 / pcm.frames() as f64);
     }
     for writer in writers {
         writer.finalize().map_err(failure)?;
@@ -258,16 +304,22 @@ fn separate_to_folder(
         .map(|n| target.join(format!("{n}.wav")))
         .collect())
 }
-fn run(state: &AppState, source: &Path, parent: &Path) -> Result<(Vec<String>, Vec<i64>)> {
+fn run(
+    state: &AppState,
+    source: &Path,
+    parent: &Path,
+    model: Model,
+) -> Result<(Vec<String>, Vec<i64>)> {
     let jobs = &state.stems;
     jobs.update("downloading", 0.0);
-    let model_dir = models::ensure(&state.models_dir, &jobs.cancel, |received| {
-        jobs.update("downloading", received as f64 / models::TOTAL as f64)
+    let model_dir = models::ensure_for(&state.models_dir, model, &jobs.cancel, |received| {
+        jobs.update("downloading", received as f64 / models::total(model) as f64)
     })?;
     jobs.update("separating", 0.0);
-    let paths = separate_to_folder(&model_dir, source, parent, &jobs.cancel, |p| {
-        jobs.update("separating", p)
-    })?;
+    let paths =
+        separate_to_folder_with_model(model, &model_dir, source, parent, &jobs.cancel, |p| {
+            jobs.update("separating", p)
+        })?;
     jobs.update("importing", 1.0);
     state.stems.status.lock().unwrap().paths = paths
         .iter()
@@ -336,6 +388,52 @@ fn import(state: &AppState, paths: &[PathBuf]) -> Result<Vec<i64>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    #[ignore = "requires SCNET_MODELS and STEM_AUDIO; full file write and cancellation"]
+    fn scnet_file_export_keeps_original_and_cleans_cancelled_work() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = PathBuf::from(std::env::var("STEM_AUDIO").unwrap());
+        let models = PathBuf::from(std::env::var("SCNET_MODELS").unwrap());
+        let original = std::fs::read(&source).unwrap();
+        let pcm = audio::decode(&source, 600.0).unwrap();
+        let start = std::time::Instant::now();
+        let paths = separate_to_folder_with_model(
+            Model::ScnetLarge,
+            &models,
+            &source,
+            dir.path(),
+            &AtomicBool::new(false),
+            |_| {},
+        )
+        .unwrap();
+        assert_eq!(paths.len(), 4);
+        for path in &paths {
+            let stem = audio::decode(path, 600.0).unwrap();
+            assert_eq!(stem.frames(), pcm.frames());
+            assert_eq!(stem.channels, 2);
+            assert_eq!(stem.sample_rate, dsp::RATE);
+            assert!(stem.samples.iter().all(|v| v.is_finite()));
+        }
+        eprintln!(
+            "SCNet file export {}s in {:?}",
+            pcm.frames() as f64 / pcm.sample_rate as f64,
+            start.elapsed()
+        );
+        let cancel = AtomicBool::new(false);
+        assert!(
+            separate_to_folder_with_model(
+                Model::ScnetLarge,
+                &models,
+                &source,
+                dir.path(),
+                &cancel,
+                |_| cancel.store(true, Ordering::Relaxed)
+            )
+            .is_err()
+        );
+        assert_eq!(std::fs::read(source).unwrap(), original);
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+    }
     #[test]
     fn cancelled_processing_does_not_create_output_files() {
         let dir = tempfile::tempdir().unwrap();

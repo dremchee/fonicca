@@ -1,0 +1,110 @@
+[
+  {
+    "track": "Cristina Vane - So Easy",
+    "spleeter_wall_s": 0.74605125002563,
+    "scnet": {
+      "model": "SCNet-large INT8",
+      "load_s": 0.24628283304627985,
+      "inference_s": 13.394745207973756,
+      "total_s": 13.81501537503209,
+      "audio_s": 6.8034467120181406,
+      "peak_rss_bytes": 3186475008,
+      "rms": {
+        "drums": 0.07420027208065946,
+        "bass": 0.024707940485384636,
+        "other": 0.036977637462627465,
+        "vocals": 0.05042338295883037
+      }
+    },
+    "si_sdr_db": {
+      "vocals": {
+        "spleeter": 13.147237988637988,
+        "scnet-large": 18.00940981865527
+      },
+      "drums": {
+        "spleeter": 10.352657683433717,
+        "scnet-large": 16.40860140718174
+      },
+      "bass": {
+        "spleeter": -2.6788428397362374,
+        "scnet-large": 2.600246681363039
+      },
+      "other": {
+        "spleeter": 0.9259934125492375,
+        "scnet-large": 3.751372487510063
+      }
+    }
+  },
+  {
+    "track": "Louis Cressy Band - Good Time",
+    "spleeter_wall_s": 0.7329195420024917,
+    "scnet": {
+      "model": "SCNet-large INT8",
+      "load_s": 0.23621183296199888,
+      "inference_s": 11.318877832964063,
+      "total_s": 11.752353915944695,
+      "audio_s": 6.8034467120181406,
+      "peak_rss_bytes": 3783933952,
+      "rms": {
+        "drums": 0.06515406491899824,
+        "bass": 0.05106043583138108,
+        "other": 0.07950743360569677,
+        "vocals": 0.05792352180611051
+      }
+    },
+    "si_sdr_db": {
+      "vocals": {
+        "spleeter": 5.199571646978601,
+        "scnet-large": 11.083532882018048
+      },
+      "drums": {
+        "spleeter": 5.434345877664947,
+        "scnet-large": 9.16934415867258
+      },
+      "bass": {
+        "spleeter": 3.643575915482007,
+        "scnet-large": 9.849985930072538
+      },
+      "other": {
+        "spleeter": 5.4978170554729475,
+        "scnet-large": 9.000037101794197
+      }
+    }
+  },
+  {
+    "track": "Secretariat - Borderline",
+    "spleeter_wall_s": 0.7460760000394657,
+    "scnet": {
+      "model": "SCNet-large INT8",
+      "load_s": 0.23413808294571936,
+      "inference_s": 10.692816292052157,
+      "total_s": 11.357810707995668,
+      "audio_s": 6.8034467120181406,
+      "peak_rss_bytes": 4075601920,
+      "rms": {
+        "drums": 0.035783299268635375,
+        "bass": 0.04100594100651635,
+        "other": 0.0898844898493413,
+        "vocals": 0.07950134650361905
+      }
+    },
+    "si_sdr_db": {
+      "vocals": {
+        "spleeter": 5.748003251601043,
+        "scnet-large": 10.213022536409486
+      },
+      "drums": {
+        "spleeter": 0.40917531275974883,
+        "scnet-large": 5.127298277114756
+      },
+      "bass": {
+        "spleeter": 1.2614099875049314,
+        "scnet-large": 6.779745177167409
+      },
+      "other": {
+        "spleeter": 3.996059740192469,
+        "scnet-large": 8.987736304617629
+      }
+    }
+  }
+]

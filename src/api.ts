@@ -79,6 +79,18 @@ export interface SoundModelStatus {
   size: number
 }
 
+export type StemModel = 'spleeter' | 'scnetLarge'
+
+export interface ModelStorage {
+  id: 'clap' | StemModel
+  path: string
+  installed: boolean
+  downloading: boolean
+  /** Actual file sizes, including incomplete downloads and notices. */
+  size: number
+  downloadSize: number
+}
+
 export interface DownloadProgress {
   received: number
   total: number
@@ -265,6 +277,7 @@ export const api = {
   setAnalysisPaused: (paused: boolean) => invoke<void>('set_analysis_paused', { paused }),
   analysisStatus: () => invoke<AnalysisProgress>('analysis_status'),
   soundModelStatus: () => invoke<SoundModelStatus>('sound_model_status'),
+  modelStorage: () => invoke<ModelStorage[]>('model_storage'),
   downloadSoundModel: () => invoke<void>('download_sound_model'),
   deleteSoundModel: () => invoke<void>('delete_sound_model'),
   getSettings: () => invoke<Settings>('get_settings'),

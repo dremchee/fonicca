@@ -90,6 +90,19 @@ export default {
     deleteTitle: 'Delete the sound model?',
     deleteDesc: 'Categories already found by sound stay. Samples added later get categories from their names only, until you download the model again.',
   },
+  models: {
+    title: 'Models',
+    total: '{size} on disk',
+    loading: 'Checking downloaded models…',
+    installed: 'Installed · {size} on disk',
+    missing: 'Not installed · {size} to download',
+    incomplete: 'Incomplete download · {size} on disk · {total} required',
+    downloading: 'Downloading · {size} of {total}',
+    onSeparation: 'Downloads automatically the first time you separate stems.',
+    clap: { name: 'CLAP audio encoder', description: 'Categorizes samples by sound and finds similar samples.' },
+    spleeter: { name: 'Spleeter · 4 stems', description: 'Vocals, drums, bass and other · ONNX FP16' },
+    scnetLarge: { name: 'SCNet-large · 4 stems', description: 'Detailed stem separation · ONNX · INT8 stored weights' },
+  },
   shortcuts: {
     keys: {
       space: 'Space',
