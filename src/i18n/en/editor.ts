@@ -88,6 +88,7 @@ export default {
     selection: 'Selection {range}',
     loop: 'Loop {range}',
     selectLoop: 'Select the loop',
+    reveal: 'Click to show in Finder',
     vZoom: 'Vertical zoom (⌥-scroll). Click to reset.',
   },
   slice: {
@@ -111,7 +112,6 @@ export default {
     regions: '{n} region to save | {n} regions to save',
     clear: 'Clear markers',
     help: 'M or a double-click on the ruler adds a marker. Drag a flag to move it, right-click it for more. Click a region on the ruler to select it, ⌥-click to skip it.',
-    reveal: 'Show in Finder',
   },
   menu: {
     pasteOver: 'Paste over the selection',

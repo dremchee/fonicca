@@ -160,8 +160,9 @@ pub struct NameFields {
 }
 
 /// Fills a template: `{name}`, `{n}` (position, zero-padded to the batch size),
-/// `{category}`, `{bpm}`, `{key}`, `{kind}`. Unknown values leave no trace: the
-/// separators around them collapse. Characters a file name can't hold go.
+/// `{category}`, `{bpm}`, `{key}`, `{kind}`. An unknown value takes one separator
+/// next to it along, so no doubled or dangling ones are left; the rest of the
+/// name stays as written. Characters a file name can't hold go.
 pub fn render_name(template: &str, f: &NameFields, n: usize, total: usize) -> String {
     let width = total.to_string().len().max(2);
     let value = |token: &str| -> Option<String> {
@@ -174,31 +175,44 @@ pub fn render_name(template: &str, f: &NameFields, n: usize, total: usize) -> St
             "kind" => f.kind.clone(),
             _ => None,
         }
+        .filter(|v| !v.is_empty())
     };
+    let is_sep = |c: char| matches!(c, '_' | '-' | ' ' | '.');
     let mut out = String::new();
+    // Separators the template put right before the current position (only the
+    // template's own, never a value's), and whether the next ones should go.
+    let mut trailing_seps = 0;
+    let mut drop_next_seps = false;
     let mut rest = template;
+    let literal = |out: &mut String, text: &str, trailing: &mut usize, drop: &mut bool| {
+        let text = if std::mem::take(drop) { text.trim_start_matches(is_sep) } else { text };
+        out.push_str(text);
+        *trailing = text.chars().rev().take_while(|&c| is_sep(c)).count();
+    };
     while let Some(open) = rest.find('{') {
-        out.push_str(&rest[..open]);
-        let Some(close) = rest[open..].find('}') else {
-            out.push_str(&rest[open..]);
-            rest = "";
-            break;
-        };
-        out.push_str(&value(&rest[open + 1..open + close]).unwrap_or_default());
+        let Some(close) = rest[open..].find('}') else { break };
+        literal(&mut out, &rest[..open], &mut trailing_seps, &mut drop_next_seps);
+        match value(&rest[open + 1..open + close]) {
+            Some(v) => {
+                out.push_str(&v);
+                trailing_seps = 0;
+            }
+            // An empty value takes the separator before it, or at the start of the
+            // name the one after.
+            None if trailing_seps > 0 => {
+                for _ in 0..trailing_seps {
+                    out.pop();
+                }
+                trailing_seps = 0;
+            }
+            None if out.chars().all(is_sep) => drop_next_seps = true,
+            None => {}
+        }
         rest = &rest[open + close + 1..];
     }
-    out.push_str(rest);
-    let cleaned: String = out.chars().filter(|c| !matches!(c, '/' | '\\' | ':' | '\0')).collect();
-    // Separators left doubled or dangling by empty values.
-    let mut collapsed = String::new();
-    for c in cleaned.trim().chars() {
-        let sep = matches!(c, '_' | '-' | ' ' | '.');
-        if sep && collapsed.chars().last().is_some_and(|p| matches!(p, '_' | '-' | ' ' | '.')) {
-            continue;
-        }
-        collapsed.push(c);
-    }
-    let name = collapsed.trim_matches(|c| matches!(c, '_' | '-' | ' ' | '.')).to_string();
+    literal(&mut out, rest, &mut trailing_seps, &mut drop_next_seps);
+    let name: String = out.chars().filter(|c| !matches!(c, '/' | '\\' | ':' | '\0')).collect();
+    let name = name.trim().to_string();
     if name.is_empty() { f.name.clone() } else { name }
 }
 
@@ -222,9 +236,9 @@ struct Item {
     fields: NameFields,
 }
 
-fn items(state: &AppState, ids: &[i64]) -> Result<Vec<Item>> {
-    let conn = state.db.lock().unwrap();
-    let mut stmt = conn.prepare("SELECT path, name, ext, bit_depth, bpm, key, category, kind FROM samples WHERE id = ?1")?;
+fn items(conn: &rusqlite::Connection, ids: &[i64]) -> Result<Vec<Item>> {
+    let mut stmt =
+        conn.prepare("SELECT path, name, ext, bit_depth, bpm, musical_key, category, kind FROM samples WHERE id = ?1")?;
     let mut out = Vec::with_capacity(ids.len());
     for &id in ids {
         let item = stmt.query_row([id], |r| {
@@ -275,7 +289,7 @@ struct Done {
 /// File names the template gives the first `ids`, for the dialog's preview.
 #[tauri::command]
 pub fn batch_preview(state: State<'_, AppState>, ids: Vec<i64>, template: String, total: usize) -> Result<Vec<String>> {
-    Ok(items(&state, &ids)?.iter().enumerate().map(|(i, it)| render_name(&template, &it.fields, i + 1, total)).collect())
+    Ok(items(&state.db.lock().unwrap(), &ids)?.iter().enumerate().map(|(i, it)| render_name(&template, &it.fields, i + 1, total)).collect())
 }
 
 /// Starts processing; progress and the result come as events.
@@ -285,7 +299,7 @@ pub fn batch_run(app: AppHandle, state: State<'_, AppState>, ids: Vec<i64>, reci
         return Err(Error::Other("a batch is already running".into()));
     }
     CANCEL.store(false, Ordering::SeqCst);
-    let items = match items(&state, &ids) {
+    let items = match items(&state.db.lock().unwrap(), &ids) {
         Ok(i) => i,
         Err(e) => {
             RUNNING.store(false, Ordering::SeqCst);
@@ -469,6 +483,10 @@ mod tests {
         // Nothing left: the original name. Path characters go.
         assert_eq!(render_name("{bpm}", &bare, 1, 5), "Pad");
         assert_eq!(render_name("a/b:{name}", &bare, 1, 5), "abPad");
+        // The name's own spaces and dots stay.
+        let dotted = NameFields { name: "06. Mandrill fills".into(), ..Default::default() };
+        assert_eq!(render_name("{name}_{n}", &dotted, 1, 3), "06. Mandrill fills_01");
+        assert_eq!(render_name("{key}_{name}", &dotted, 1, 3), "06. Mandrill fills");
         // Unknown tokens vanish, an unclosed brace stays literal.
         assert_eq!(render_name("{name}{oops}_x{", &bare, 1, 5), "Pad_x{");
     }
@@ -508,6 +526,24 @@ mod tests {
         // Anything but WAV can't be replaced.
         let mp3 = Item { ext: "mp3".into(), ..item };
         assert!(process_one(&mp3, 1, 1, &trimmed, None, &backups, 8, &taken).is_err());
+    }
+
+    #[test]
+    fn reads_names_from_the_library() {
+        let mut conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrate(&mut conn).unwrap();
+        conn.execute("INSERT INTO sources (id, path, added_at) VALUES (1, '/lib', 0)", []).unwrap();
+        conn.execute(
+            "INSERT INTO samples (id, source_id, path, name, ext, size, mtime, bit_depth, bpm, musical_key, category, kind)
+             VALUES (7, 1, '/lib/Kick.wav', 'Kick', 'wav', 0, 0, 24, 120.0, 'A minor', 'kick', 'oneshot')",
+            [],
+        )
+        .unwrap();
+        // Unknown ids are left out.
+        let found = items(&conn, &[7, 99]).unwrap();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].bit_depth, Some(24));
+        assert_eq!(render_name("{category}_{bpm}_{key}_{kind}", &found[0].fields, 1, 1), "kick_120_Aminor_oneshot");
     }
 
     #[test]

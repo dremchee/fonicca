@@ -343,11 +343,11 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   /** Loop points from the selection; without one, clears them. Playback goes on. */
-  function toggleLoopPoints() {
+  async function toggleLoopPoints() {
     if (selection.value)
-      apply({ op: 'setLoop', ...selection.value }, false)
+      await apply({ op: 'setLoop', ...selection.value }, false)
     else if (state.value?.loop)
-      apply({ op: 'clearLoop' }, false)
+      await apply({ op: 'clearLoop' }, false)
   }
 
   // --- Playback ------------------------------------------------------------
