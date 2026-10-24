@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Sample } from '@/api'
 import type { Wave } from '@/stores/editor'
-import { Pencil, Play, Square, Star, X } from '@lucide/vue'
+import { FolderOpen, Pencil, Play, Square, Star, X } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { useResizeObserver } from '@vueuse/core'
 import { computed, onMounted, ref, shallowRef, watch } from 'vue'
@@ -224,11 +224,12 @@ function onDragStart(e: DragEvent) {
         <span>{{ formatSize(sample.size) }}</span>
       </div>
       <button
-        class="min-w-0 max-w-[50%] truncate hover:text-foreground hover:underline"
+        class="group min-w-0 max-w-[50%] flex items-center gap-1.5 hover:text-foreground"
         :title="`${sample.path}\n${t('player.clickToReveal')}`"
         @click="revealItemInDir(sample.path)"
       >
-        {{ shortPath(sample.path) }}
+        <FolderOpen class="size-3.5 shrink-0" />
+        <span class="truncate group-hover:underline">{{ shortPath(sample.path) }}</span>
       </button>
     </div>
     <div v-if="player.error" class="px-3 pb-2 text-destructive text-xs truncate">

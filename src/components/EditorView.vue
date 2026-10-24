@@ -3,6 +3,7 @@ import type { Curve, Wave } from '@/stores/editor'
 import {
   ArrowLeftRight,
   Crop,
+  FolderOpen,
   Maximize2,
   Play,
   Redo2,
@@ -499,11 +500,12 @@ const curves: { value: Curve, label: string }[] = [
       </button>
       <span v-if="status.selection" class="shrink-0">{{ t('editor.status.selection', { range: status.selection }) }}</span>
       <button
-        class="min-w-0 flex-1 truncate text-right hover:text-foreground hover:underline"
+        class="group min-w-0 flex-1 flex items-center justify-end gap-1.5 hover:text-foreground"
         :title="`${editor.sample?.path}\n${t('editor.status.reveal')}`"
         @click="editor.sample && revealItemInDir(editor.sample.path)"
       >
-        {{ editor.sample ? shortPath(editor.sample.path) : '' }}
+        <FolderOpen class="size-3.5 shrink-0" />
+        <span class="truncate group-hover:underline">{{ editor.sample ? shortPath(editor.sample.path) : '' }}</span>
       </button>
       <span class="shrink-0">{{ status.length }} · {{ formatRate(rate) }} · {{ editor.state?.channels === 1 ? t('common.channels.mono') : t('common.channels.stereo') }}</span>
     </footer>
