@@ -464,6 +464,7 @@ button.stem-toggle:hover {
   filter: brightness(0.95);
 }
 .row.playing {
+  --sample-progress-color: var(--primary-foreground);
   z-index: 1;
   background: var(--primary);
   color: var(--primary-foreground);
