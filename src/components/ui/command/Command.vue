@@ -66,9 +66,8 @@ function filterItems() {
   filterState.filtered.count = itemCount
 }
 
-watch(() => filterState.search, () => {
-  filterItems()
-})
+// Async results register after the query changes; refilter when items arrive.
+watch([() => filterState.search, allItems, allGroups], filterItems, { deep: true })
 
 provideCommandContext({
   allItems,

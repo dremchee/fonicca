@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useTagColors } from '@/composables/tagColors'
-import type { SampleKind } from '@/api'
+import type { Sample, SampleKind } from '@/api'
 import type { Scope } from '@/stores/library'
 import {
   AudioWaveform,
+  Copy,
   Download,
   Folder,
   FolderPlus,
@@ -21,7 +22,11 @@ import {
   WandSparkles,
   X,
 } from '@lucide/vue'
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { toast } from 'vue-sonner'
+import PaletteSearchResults from '@/components/PaletteSearchResults.vue'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { useDuplicatesStore } from '@/stores/duplicates'
 import { useI18n } from 'vue-i18n'
 import {
   Command,
@@ -48,6 +53,36 @@ const { tagStyle } = useTagColors()
 const library = useLibraryStore()
 const player = usePlayerStore()
 const settings = useSettingsStore()
+const duplicates = useDuplicatesStore()
+const query = ref('')
+const mode = ref<'all' | 'tracks' | 'duplicates' | 'commands'>('all')
+const resultState = ref({ loading: false, count: 0, error: false })
+watch(open, () => { query.value = ''; mode.value = 'all' })
+
+async function openSample(sample: Sample) {
+  open.value = false
+  try {
+    if (await library.revealSample(sample))
+      await player.play(sample)
+  }
+  catch (e) { toast.error(String(e)) }
+}
+function showTracks(text: string) {
+  run(() => {
+    library.scope = { kind: 'all' }
+    library.clearAnalysisFilters()
+    library.query = text
+  })
+}
+function showDuplicates(text: string, groupKey?: string, copyId?: number) {
+  run(() => {
+    duplicates.query = text
+    duplicates.selected.clear()
+    if (groupKey) duplicates.selected.add(groupKey)
+    duplicates.focusedId = copyId ?? null
+    library.scope = { kind: 'duplicates' }
+  })
+}
 
 const kinds: SampleKind[] = ['oneshot', 'loop', 'long']
 const focused = computed(() => library.focused)
@@ -75,7 +110,7 @@ function onCloseAutoFocus(e: Event) {
 }
 
 function go(scope: Scope) {
-  run(() => (library.scope = scope))
+  run(() => { library.query = ''; library.scope = scope })
 }
 </script>
 
@@ -83,7 +118,7 @@ function go(scope: Scope) {
   <Dialog v-model:open="open">
     <DialogContent
       :show-close-button="false"
-      class="top-[18%] translate-y-0 overflow-hidden p-0 sm:max-w-lg"
+      class="top-[18%] translate-y-0 overflow-hidden p-0 sm:max-w-xl"
       @close-auto-focus="onCloseAutoFocus"
     >
       <DialogTitle class="sr-only">
@@ -93,9 +128,20 @@ function go(scope: Scope) {
         {{ t('palette.description') }}
       </DialogDescription>
       <Command>
-        <CommandInput :placeholder="t('palette.placeholder')" />
+        <CommandInput :placeholder="t('palette.placeholder')" :aria-label="t('palette.title')" @input="query = ($event.target as HTMLInputElement).value" />
+        <div class="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+          <ToggleGroup :model-value="mode" type="single" size="sm" :aria-label="t('palette.searchMode')" @update:model-value="value => { if (value === 'all' || value === 'tracks' || value === 'duplicates' || value === 'commands') mode = value }">
+            <ToggleGroupItem v-for="tab in ['all', 'tracks', 'duplicates', 'commands'] as const" :key="tab" :value="tab">{{ t(`palette.modes.${tab}`) }}</ToggleGroupItem>
+          </ToggleGroup>
+          <ToggleGroup v-if="mode === 'duplicates'" :model-value="duplicates.view" type="single" size="sm" class="ml-auto" :aria-label="t('palette.duplicateView')" @update:model-value="value => { if (value === 'groups' || value === 'files') duplicates.view = value }">
+            <ToggleGroupItem value="groups">{{ t('palette.grouped') }}</ToggleGroupItem>
+            <ToggleGroupItem value="files">{{ t('palette.files') }}</ToggleGroupItem>
+          </ToggleGroup>
+        </div>
         <CommandList class="max-h-[min(360px,60vh)]">
-          <CommandEmpty>{{ t('palette.empty') }}</CommandEmpty>
+          <CommandEmpty v-if="!resultState.loading && !resultState.count && !resultState.error">{{ t('palette.empty') }}</CommandEmpty>
+          <PaletteSearchResults :open="open" :query="query" :mode="mode" :duplicate-view="duplicates.view" @state="resultState = $event" @sample="openSample" @library="showTracks" @duplicates="showDuplicates" />
+          <template v-if="mode === 'all' || mode === 'commands'">
 
           <CommandGroup v-if="focused" :heading="t('palette.groups.sample')">
             <CommandItem value="sample-play" @select="run(() => player.toggle(focused!))">
@@ -131,6 +177,9 @@ function go(scope: Scope) {
           <CommandGroup :heading="t('palette.groups.goTo')">
             <CommandItem value="go-all" @select="go({ kind: 'all' })">
               <Library /> {{ t('palette.allSamples') }}
+            </CommandItem>
+            <CommandItem value="go-duplicates" @select="showDuplicates('')">
+              <Copy /> {{ t('palette.modes.duplicates') }}
             </CommandItem>
             <CommandItem value="go-favorites" @select="go({ kind: 'favorites' })">
               <Star /> {{ t('palette.favorites') }}
@@ -194,7 +243,11 @@ function go(scope: Scope) {
               <CommandShortcut>⌘,</CommandShortcut>
             </CommandItem>
           </CommandGroup>
+          </template>
         </CommandList>
+        <div class="flex items-center gap-4 border-t px-3 py-2 text-[11px] text-muted-foreground">
+          <span>↑ ↓ {{ t('palette.navigate') }}</span><span>↵ {{ t('palette.openResult') }}</span><span class="ml-auto">Esc {{ t('palette.close') }}</span>
+        </div>
       </Command>
     </DialogContent>
   </Dialog>

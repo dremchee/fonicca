@@ -206,6 +206,32 @@ export const useLibraryStore = defineStore('library', () => {
     finally { expanding = false }
   }
 
+  /** Reveal a global search result without relying on the current folder or filters. */
+  async function revealSample(sample: Sample) {
+    scope.value = { kind: 'all' }
+    clearAnalysisFilters()
+    query.value = sample.name
+    if (sample.stemParentId != null)
+      expandedStems.add(sample.stemParentId)
+    const navigation = navigationRevision
+    await nextTick()
+    if (navigation !== navigationRevision)
+      return false
+    await refresh()
+    if (navigation !== navigationRevision)
+      return false
+    const gen = generation
+    const ids = await api.sampleIds(filter.value)
+    const index = ids.indexOf(sample.id)
+    if (index < 0 || gen !== generation)
+      return false
+    await ensureRange(index, index)
+    if (gen !== generation || sampleAt(index)?.id !== sample.id)
+      return false
+    await clickRow(index)
+    return true
+  }
+
   function rememberSelection(sample: Sample, index: number) {
     const current = sessionScope(scope.value)
     if (sessionReady && current)
@@ -694,6 +720,7 @@ export const useLibraryStore = defineStore('library', () => {
     ensureRange,
     refresh,
     clickRow,
+    revealSample,
     moveFocus,
     selectAll,
     dragSamples,

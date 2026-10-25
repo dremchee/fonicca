@@ -4,13 +4,13 @@ import type { HTMLAttributes } from "vue"
 import { reactiveOmit, useCurrentElement } from "@vueuse/core"
 import { cn } from "cn"
 import { ListboxItem, useForwardPropsEmits, useId } from "reka-ui"
-import { computed, onMounted, onUnmounted, ref } from "vue"
+import { computed, onMounted, onUnmounted, ref, watch } from "vue"
 import { useCommand, useCommandGroup } from "."
 
-const props = defineProps<ListboxItemProps & { class?: HTMLAttributes["class"] }>()
+const props = defineProps<ListboxItemProps & { class?: HTMLAttributes["class"]; keywords?: string[] }>()
 const emits = defineEmits<ListboxItemEmits>()
 
-const delegatedProps = reactiveOmit(props, "class")
+const delegatedProps = reactiveOmit(props, "class", "keywords")
 
 const forwarded = useForwardPropsEmits(delegatedProps, emits)
 
@@ -42,7 +42,7 @@ onMounted(() => {
     return
 
   // textValue to perform filter
-  allItems.value.set(id, currentElement.value.textContent ?? (props.value?.toString() ?? ""))
+  allItems.value.set(id, `${currentElement.value.textContent ?? props.value?.toString() ?? ""} ${(props.keywords ?? []).join(' ')}`)
 
   const groupId = groupContext?.id
   if (groupId) {
@@ -54,6 +54,10 @@ onMounted(() => {
     }
   }
 })
+watch(() => props.keywords, () => {
+  if (currentElement.value instanceof HTMLElement)
+    allItems.value.set(id, `${currentElement.value.textContent ?? ''} ${(props.keywords ?? []).join(' ')}`)
+}, { deep: true, flush: 'post' })
 onUnmounted(() => {
   allItems.value.delete(id)
 })

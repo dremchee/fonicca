@@ -158,7 +158,7 @@ onKeyStroke(',', (e) => {
       <ResizablePanel id="main" :order="2" as="main" size-unit="px" :min-size="520" class="min-w-0 flex flex-col">
         <DuplicatesView v-if="inDuplicates" />
         <template v-else>
-          <LibraryToolbar ref="toolbar" />
+          <LibraryToolbar ref="toolbar" @open-search="paletteOpen = true" />
           <FilterBar />
           <ResizablePanelGroup direction="vertical" auto-save-id="fonicca-layout-rows" class="min-h-0 flex-1">
             <ResizablePanel id="list" :order="1" :min-size="20" class="flex flex-col">

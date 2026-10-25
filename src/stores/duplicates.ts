@@ -2,7 +2,8 @@ import type { DuplicateAction, DuplicateCopy, DuplicateGroup, HiddenFile, Resolv
 import { listen } from '@tauri-apps/api/event'
 import { useStorage } from '@vueuse/core'
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { matchingDuplicateGroups } from '@/duplicate-search'
 import { api, DUPLICATES_VERIFIED_EVENT, SCAN_PROGRESS_EVENT } from '@/api'
 import { useLibraryStore } from '@/stores/library'
 
@@ -15,6 +16,9 @@ export const useDuplicatesStore = defineStore('duplicates', () => {
   const count = ref(0)
   const groups = ref<DuplicateGroup[]>([])
   const loading = ref(false)
+  const query = ref('')
+  const view = useStorage<'groups' | 'files'>('fonicca-duplicates-view', 'groups')
+  const filteredGroups = computed(() => matchingDuplicateGroups(groups.value, query.value))
   /** Groups that turned out different once their files were hashed whole. */
   const falseMatches = ref(0)
   const rule = useStorage<KeepRule>('fonicca-duplicates-rule', 'shortest')
@@ -25,6 +29,7 @@ export const useDuplicatesStore = defineStore('duplicates', () => {
   const selected = reactive(new Set<string>())
   const focusedId = ref<number | null>(null)
   const hidden = ref<HiddenFile[]>([])
+  watch(query, () => { selected.clear(); focusedId.value = null }, { flush: 'sync' })
 
   const verifying = computed(() => groups.value.filter(g => !g.verified).length)
 
@@ -45,7 +50,7 @@ export const useDuplicatesStore = defineStore('duplicates', () => {
   }
 
   /** Groups an action applies to: the selection, or all of them. */
-  const targets = computed(() => selected.size ? groups.value.filter(g => selected.has(g.key)) : groups.value)
+  const targets = computed(() => selected.size ? filteredGroups.value.filter(g => selected.has(g.key)) : filteredGroups.value)
   const extras = computed(() => targets.value.flatMap((g) => {
     const keep = keepOf(g)
     return g.copies.filter(c => c.id !== keep.id)
@@ -154,6 +159,9 @@ export const useDuplicatesStore = defineStore('duplicates', () => {
 
   return {
     count,
+    query,
+    view,
+    filteredGroups,
     groups,
     loading,
     falseMatches,

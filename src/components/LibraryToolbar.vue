@@ -1,20 +1,30 @@
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
-import { Globe, Search } from '@lucide/vue'
+import { Globe, Search, SlidersHorizontal } from '@lucide/vue'
+import { useEventListener } from '@vueuse/core'
 import { computed, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
-import CollectionPicker from '@/components/CollectionPicker.vue'
 import Hint from '@/components/Hint.vue'
-import { Button } from '@/components/ui/button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
-import { Kbd } from '@/components/ui/kbd'
+import { Button } from '@/components/ui/button'
 import { folderName, formatNumber } from '@/format'
 import { useLibraryStore } from '@/stores/library'
 
+const emit = defineEmits<{ openSearch: [] }>()
 const { t } = useI18n()
 const library = useLibraryStore()
 const searchInput = useTemplateRef<ComponentPublicInstance>('searchInput')
+const searchGroup = useTemplateRef<ComponentPublicInstance>('searchGroup')
 const searchElement = computed(() => searchInput.value?.$el as HTMLInputElement | undefined)
+// Native draggable regions may consume the click without moving DOM focus.
+// Blur on pointer-down before that happens, while preserving clicks inside the field.
+useEventListener(document, 'pointerdown', (event) => {
+  const input = searchElement.value
+  const group = searchGroup.value?.$el as HTMLElement | undefined
+  if (input === document.activeElement && group && !event.composedPath().includes(group))
+    input.blur()
+}, { capture: true })
+
 const title = computed(() => {
   const scope = library.scope
   switch (scope.kind) {
@@ -39,6 +49,12 @@ function searchEverywhere() {
   searchElement.value?.focus()
 }
 
+function openAdvancedSearch() {
+  // The dialog restores the element focused before it opens.
+  searchElement.value?.focus({ preventScroll: true })
+  emit('openSearch')
+}
+
 defineExpose({ searchElement })
 </script>
 
@@ -52,29 +68,28 @@ defineExpose({ searchElement })
         <template v-if="library.isScanning"> · {{ t('list.search.scanning') }}</template>
       </div>
     </div>
-    <InputGroup class="search-group flex-1 max-w-sm min-w-0">
-      <InputGroupAddon><Search /></InputGroupAddon>
-      <InputGroupInput ref="searchInput" v-model="library.query" type="search" :placeholder="searchLabel" :aria-label="searchLabel" :title="searchLabel" />
-      <InputGroupAddon v-if="library.scope.kind !== 'all'" align="inline-end">
+    <InputGroup ref="searchGroup" class="search-group flex-1 max-w-sm min-w-0">
+      <InputGroupAddon class="py-0">
         <Hint :text="t('list.search.entireLibrary')">
-          <Button variant="ghost" size="icon-xs" :aria-label="t('list.search.entireLibrary')" @click="searchEverywhere">
-            <Globe />
-          </Button>
+          <Button
+            variant="ghost" size="icon-sm" :aria-label="t('list.search.entireLibrary')"
+            :aria-pressed="library.scope.kind === 'all'"
+            @mousedown.prevent @click="searchEverywhere"
+          ><component :is="library.scope.kind === 'all' ? Search : Globe" class="size-[14px]" /></Button>
         </Hint>
       </InputGroupAddon>
-      <InputGroupAddon align="inline-end" class="search-shortcut"><Kbd>⌘F</Kbd></InputGroupAddon>
+      <InputGroupInput ref="searchInput" v-model="library.query" type="search" :placeholder="searchLabel" :aria-label="searchLabel" :title="searchLabel" />
+      <InputGroupAddon align="inline-end" class="py-0">
+        <Hint :text="t('palette.title')" shortcut="⌘K">
+          <Button variant="ghost" size="icon-sm" :aria-label="t('palette.title')" aria-haspopup="dialog" @mousedown.prevent @click="openAdvancedSearch"><SlidersHorizontal class="size-[14px]" /></Button>
+        </Hint>
+      </InputGroupAddon>
     </InputGroup>
-    <CollectionPicker />
   </header>
 </template>
 
 <style scoped>
 .library-toolbar {
   container-type: inline-size;
-}
-@container (max-width: 650px) {
-  .search-shortcut {
-    display: none;
-  }
 }
 </style>

@@ -20,6 +20,8 @@ import {
 } from '@/components/ui/context-menu'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
+import { Input } from '@/components/ui/input'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { confirm } from '@/composables/confirm'
 import { folderName, formatDate, formatDuration, formatNumber, formatSize } from '@/format'
 import { useDuplicatesStore } from '@/stores/duplicates'
@@ -28,18 +30,24 @@ import { usePlayerStore } from '@/stores/player'
 
 const { t } = useI18n()
 const dup = useDuplicatesStore()
-const { groups, loading, falseMatches, rule, preferred, selected, focusedId, verifying, extras, trashable } = storeToRefs(dup)
+const { loading, falseMatches, rule, preferred, selected, focusedId, verifying, extras, trashable } = storeToRefs(dup)
+const groups = computed(() => dup.filteredGroups)
 const library = useLibraryStore()
 const player = usePlayerStore()
 
-onMounted(() => dup.load())
+onMounted(async () => {
+  await dup.load()
+  const index = rows.value.findIndex(row => row.kind === 'copy' && row.c.id === focusedId.value)
+  if (index >= 0)
+    virtualizer.value.scrollToIndex(index, { align: 'auto' })
+})
 
 const GROUP_HEIGHT = 36
 const COPY_HEIGHT = 32
 
 type Row = { kind: 'group', g: DuplicateGroup } | { kind: 'copy', g: DuplicateGroup, c: DuplicateCopy }
 const rows = computed<Row[]>(() => groups.value.flatMap(g => [
-  { kind: 'group' as const, g },
+  ...(dup.view === 'groups' ? [{ kind: 'group' as const, g }] : []),
   ...g.copies.map(c => ({ kind: 'copy' as const, g, c })),
 ]))
 
@@ -248,6 +256,13 @@ onKeyStroke(' ', (e) => {
       </span>
     </header>
 
+    <div class="shrink-0 flex items-center gap-3 border-b border-border px-4 py-2">
+      <Input v-model="dup.query" type="search" class="h-8 min-w-0 flex-1" :placeholder="t('palette.searchDuplicates')" :aria-label="t('palette.searchDuplicates')" />
+      <ToggleGroup :model-value="dup.view" type="single" variant="outline" size="sm" :aria-label="t('palette.duplicateView')" @update:model-value="value => { if (value === 'groups' || value === 'files') dup.view = value }">
+        <ToggleGroupItem value="groups">{{ t('palette.grouped') }}</ToggleGroupItem>
+        <ToggleGroupItem value="files">{{ t('palette.files') }}</ToggleGroupItem>
+      </ToggleGroup>
+    </div>
     <div v-if="groups.length" class="shrink-0 px-4 py-2 flex flex-wrap items-center gap-2 border-b border-border">
       <label class="flex items-center gap-2 mr-2">
         <Checkbox :model-value="allSelected ? true : selected.size ? 'indeterminate' : false" :aria-label="t('duplicates.selectAll')" @update:model-value="toggleAll" />
@@ -300,7 +315,7 @@ onKeyStroke(' ', (e) => {
             </div>
             <div v-else class="flex flex-col items-center gap-2">
               <CircleCheck class="size-6 text-primary" />
-              {{ t('duplicates.empty') }}
+              {{ t(dup.query.trim() ? 'palette.empty' : 'duplicates.empty') }}
             </div>
           </div>
           <div v-else class="relative w-full" :style="{ height: `${virtualizer.getTotalSize()}px` }">
