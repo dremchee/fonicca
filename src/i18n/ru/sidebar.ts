@@ -17,6 +17,9 @@ export default {
   newCollection: 'Новая коллекция',
   collectionName: 'Название коллекции',
   deleteCollection: 'Удалить коллекцию',
+  tagColor: 'Цвет тега «{name}»',
+  newTag: 'Новый тег',
+  tagName: 'Название тега',
   deleteTag: 'Удалить тег',
   empty: {
     folders: 'Добавьте папку с семплами, чтобы начать. Файлы остаются на своих местах — Fonicca только индексирует их.',

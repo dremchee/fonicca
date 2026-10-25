@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { tagColorStyle } from '@/tag-colors'
+import { useTagColors } from '@/composables/tagColors'
 import type { TagRef } from '@/api'
 import { Check, Plus } from '@lucide/vue'
 import { ListboxItem } from 'reka-ui'
@@ -23,6 +23,7 @@ import { useLibraryStore } from '@/stores/library'
 const props = defineProps<{ assigned: TagRef[], count: number }>()
 
 const { t } = useI18n()
+const { tagStyle } = useTagColors()
 const library = useLibraryStore()
 const open = ref(false)
 const query = ref('')
@@ -71,7 +72,7 @@ async function add(name: string) {
               </CommandEmpty>
               <CommandGroup v-if="available.length">
                 <CommandItem v-for="tag in available" :key="tag.id" :value="tag.name" @select="add(tag.name)">
-                  <span class="tag-dot size-2.5 shrink-0 rounded-full" :style="tagColorStyle(tag.name)" aria-hidden="true" />
+                  <span class="tag-dot shrink-0" :style="tagStyle(tag)" aria-hidden="true" />
                   {{ tag.name }}
                   <span class="ml-auto text-xs text-muted-foreground tabular">{{ formatNumber(tag.sampleCount) }}</span>
                 </CommandItem>
@@ -88,7 +89,7 @@ async function add(name: string) {
               </ListboxItem>
               <CommandGroup v-if="assigned.length" :heading="t('sidebar.tagPicker.assigned')">
                 <CommandItem v-for="tag in assigned" :key="tag.id" :value="`on:${tag.name}`" disabled>
-                  <Check /> <span class="tag-color rounded px-1" :style="tagColorStyle(tag.name)">{{ tag.name }}</span>
+                  <Check /> <span class="tag-color rounded px-1" :style="tagStyle(tag)">{{ tag.name }}</span>
                 </CommandItem>
               </CommandGroup>
             </CommandList>

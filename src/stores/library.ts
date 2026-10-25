@@ -1,3 +1,4 @@
+import { useTagColors } from '@/composables/tagColors'
 import type { AnalysisProgress, Collection, DownloadProgress, Sample, SampleFilter, SampleKind, ScanProgress, SoundModelStatus, Source, SourceFolder, Tag } from '@/api'
 import { listen } from '@tauri-apps/api/event'
 import { open, save } from '@tauri-apps/plugin-dialog'
@@ -32,6 +33,7 @@ export type Scope
     | { kind: 'duplicates' }
 
 export const useLibraryStore = defineStore('library', () => {
+  const tagColors = useTagColors()
   const sources = ref<Source[]>([])
   const sourceFolders = shallowReactive(new Map<number, SourceFolder[]>())
   const tags = ref<Tag[]>([])
@@ -400,6 +402,13 @@ export const useLibraryStore = defineStore('library', () => {
     tags.value = await api.listTags()
   }
 
+  async function createTag(name: string) {
+    if (!name.trim())
+      return
+    await api.tagSamples([], name.trim())
+    await loadTags()
+  }
+
   async function addTag(name: string) {
     const ids = targetIds()
     if (!ids.length || !name.trim())
@@ -427,6 +436,7 @@ export const useLibraryStore = defineStore('library', () => {
 
   async function deleteTag(id: number) {
     await api.deleteTag(id)
+    tagColors.setColor(id)
     if (scope.value.kind === 'tag' && scope.value.id === id)
       scope.value = { kind: 'all' }
     await Promise.all([loadTags(), refresh({ keepSelection: true })])
@@ -691,6 +701,7 @@ export const useLibraryStore = defineStore('library', () => {
     exitSimilar,
     toggleFavorite,
     addTag,
+    createTag,
     removeTag,
     renameTag,
     deleteTag,

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { tagColorStyle } from '@/tag-colors'
+import { useTagColors } from '@/composables/tagColors'
 import type { Sample, TrackTags } from '@/api'
 import { Info } from '@lucide/vue'
 import { HoverCardContent, HoverCardPortal, HoverCardRoot, HoverCardTrigger } from 'reka-ui'
@@ -18,6 +18,7 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const { tagStyle } = useTagColors()
 const hovered = ref(false)
 const open = computed({
   get: () => hovered.value && !trackInfoFor.value,
@@ -82,7 +83,7 @@ const details = computed(() => {
               </div>
             </dl>
             <div v-if="sample.tags.length" class="mt-3 flex flex-wrap gap-1">
-              <Badge v-for="tag in sample.tags" :key="tag.id" variant="secondary" :style="tagColorStyle(tag.name)" class="tag-color max-w-full whitespace-normal [overflow-wrap:anywhere]">{{ tag.name }}</Badge>
+              <Badge v-for="tag in sample.tags" :key="tag.id" variant="secondary" :style="tagStyle(tag)" class="tag-color max-w-full whitespace-normal [overflow-wrap:anywhere]">{{ tag.name }}</Badge>
             </div>
             <p class="mt-3 text-[11px] text-muted-foreground [overflow-wrap:anywhere]">{{ sample.path }}</p>
           </div>

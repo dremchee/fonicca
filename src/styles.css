@@ -114,5 +114,13 @@ textarea,
 }
 .text-tag-ink { color: var(--tag-light-ink); }
 .dark .text-tag-ink { color: var(--tag-dark-ink); }
-.tag-dot { background: var(--tag-light-ink); }
-.dark .tag-dot { background: var(--tag-dark-ink); }
+.tag-dot {
+  display: block;
+  width: 10px;
+  height: 10px;
+  flex: none;
+  background: var(--tag-marker, var(--tag-light-ink));
+  border-radius: 0;
+  clip-path: circle(5px at 5px 5px);
+}
+.dark .tag-dot { background: var(--tag-marker, var(--tag-dark-ink)); }

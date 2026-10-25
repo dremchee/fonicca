@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { tagColorStyle } from '@/tag-colors'
+import { useTagColors } from '@/composables/tagColors'
 import type { SampleKind } from '@/api'
 import type { Scope } from '@/stores/library'
 import {
@@ -44,6 +44,7 @@ import { useSettingsStore } from '@/stores/settings'
 const open = defineModel<boolean>('open', { required: true })
 
 const { t } = useI18n()
+const { tagStyle } = useTagColors()
 const library = useLibraryStore()
 const player = usePlayerStore()
 const settings = useSettingsStore()
@@ -147,7 +148,7 @@ function go(scope: Scope) {
               </CommandShortcut>
             </CommandItem>
             <CommandItem v-for="tag in library.tags" :key="`t${tag.id}`" :value="`go-tag-${tag.id}`" @select="go({ kind: 'tag', id: tag.id })">
-              <Tag class="text-tag-ink" :style="tagColorStyle(tag.name)" /> {{ tag.name }}
+              <span class="tag-dot shrink-0" :style="tagStyle(tag)" aria-hidden="true" /> {{ tag.name }}
               <CommandShortcut class="tracking-normal">
                 {{ t('palette.tag') }}
               </CommandShortcut>

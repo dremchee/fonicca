@@ -23,3 +23,15 @@ test('every automatic color remains readable in light and dark modes', () => {
     }
   }
 })
+
+test('custom colors preserve the chosen marker and readable badge contrast', () => {
+  for (const color of ['#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff', '#8277dd']) {
+    const style = tagColorStyle('Drums', color)
+    assert.equal(style['--tag-marker'], color)
+    for (const mode of ['light', 'dark'] as const) {
+      const values = [luminance(style[`--tag-${mode}-bg`]), luminance(style[`--tag-${mode}-ink`])].sort((a, b) => a - b)
+      assert.ok((values[1] + 0.05) / (values[0] + 0.05) >= 4.5, `${color} / ${mode}`)
+    }
+  }
+  assert.deepEqual(tagColorStyle('Drums', 'invalid'), tagColorStyle('Drums'))
+})

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { tagColorStyle } from '@/tag-colors'
+import { useTagColors } from '@/composables/tagColors'
 import type { Sample } from '@/api'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { AudioLines, ChevronRight, FolderPlus, Layers, SearchX, Sparkles, Star, Tag, X } from '@lucide/vue'
@@ -29,6 +29,7 @@ import { usePlayerStore } from '@/stores/player'
 const ROW_HEIGHT = 32
 
 const { t } = useI18n()
+const { tagStyle } = useTagColors()
 const library = useLibraryStore()
 const player = usePlayerStore()
 const stems = useStemsStore()
@@ -298,7 +299,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
                     </span>
                     <template v-for="column in visibleColumns" :key="column.id">
                       <span v-if="column.id === 'tags'" class="flex gap-1 overflow-hidden">
-                        <span v-for="tag in s.tags" :key="tag.id" class="chip tag-color" :style="tagColorStyle(tag.name)">{{ tag.name }}</span>
+                        <span v-for="tag in s.tags" :key="tag.id" class="chip tag-color" :style="tagStyle(tag)">{{ tag.name }}</span>
                       </span>
                       <Hint v-else-if="column.id === 'category'" :text="categoryHint(s.categorySource, s.categoryConfidence)" side="top">
                         <span class="truncate text-xs" :class="s.categorySource === 'audio' ? 'text-muted-foreground' : ''">{{ s.category ? categoryLabel(s.category) : '' }}</span>

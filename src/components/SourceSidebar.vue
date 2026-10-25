@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { tagColorStyle } from '@/tag-colors'
+import TagColorPicker from '@/components/TagColorPicker.vue'
 import type { Scope } from '@/stores/library'
 import { ChevronRight, FolderOpen, FolderPlus, Pencil, Plus, RefreshCw, Settings, Trash2, X } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { storeToRefs } from 'pinia'
+import { useStorage } from '@vueuse/core'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
@@ -29,6 +31,8 @@ const settings = useSettingsStore()
 const duplicates = useDuplicatesStore()
 const { sources, tags, collections, scope, scans } = storeToRefs(library)
 
+const sections = useStorage('fonicca-sidebar-sections', { folders: true, collections: true, tags: true }, undefined, { mergeDefaults: true })
+
 type Editable = 'tag' | 'collection'
 
 const editing = ref<{ kind: Editable, id: number } | null>(null)
@@ -37,6 +41,9 @@ const editInput = ref<HTMLInputElement[]>([])
 const creatingCollection = ref(false)
 const newCollection = ref('')
 const newCollectionInput = ref<HTMLInputElement | null>(null)
+const creatingTag = ref(false)
+const newTag = ref('')
+const newTagInput = ref<HTMLInputElement | null>(null)
 const expandedSources = ref(new Set<number>())
 const loadingSources = ref(new Set<number>())
 
@@ -120,10 +127,42 @@ function onRenameKeydown(e: KeyboardEvent) {
 }
 
 async function startCreateCollection() {
+  sections.value.collections = true
   creatingCollection.value = true
   newCollection.value = ''
   await nextTick()
   newCollectionInput.value?.focus()
+}
+
+async function startCreateTag() {
+  sections.value.tags = true
+  creatingTag.value = true
+  newTag.value = ''
+  await nextTick()
+  newTagInput.value?.focus()
+}
+
+async function commitCreateTag() {
+  if (!creatingTag.value)
+    return
+  const name = newTag.value.trim()
+  creatingTag.value = false
+  if (!name)
+    return
+  try {
+    await library.createTag(name)
+  }
+  catch (e) {
+    toast.error(String(e))
+  }
+}
+
+function onCreateTagKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter')
+    commitCreateTag()
+  else if (e.key === 'Escape')
+    creatingTag.value = false
+  e.stopPropagation()
 }
 
 async function commitCreateCollection() {
@@ -239,6 +278,10 @@ async function confirmDeleteTag(id: number) {
   const tag = tags.value.find(x => x.id === id)
   if (!tag)
     return
+  if (tag.sampleCount === 0) {
+    await library.deleteTag(id)
+    return
+  }
   const ok = await confirm({
     title: t('sidebar.confirmDeleteTag.title', { name: tag.name }),
     description: t('sidebar.confirmDeleteTag.description', { n: formatNumber(tag.sampleCount) }, tag.sampleCount),
@@ -290,160 +333,188 @@ async function confirmDeleteTag(id: number) {
           </button>
 
           <h3 class="section">
-            {{ t('sidebar.folders') }}
+            <button type="button" class="section-toggle" :aria-expanded="sections.folders" @click="sections.folders = !sections.folders">
+              <ChevronRight class="size-3 shrink-0 transition-transform" :class="{ 'rotate-90': sections.folders }" />
+              {{ t('sidebar.folders') }}
+            </button>
           </h3>
-          <template v-for="s in sources" :key="s.id">
-            <div
-              class="row group" :class="{ active: isActive({ kind: 'source', id: s.id }) }"
-              :data-menu="`source:${s.id}`"
-              @click="scope = { kind: 'source', id: s.id }"
-            >
-              <button
-                v-if="!library.sourceFolders.has(s.id) || library.sourceFolders.get(s.id)?.length"
-                class="grid size-4 shrink-0 place-items-center rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                :aria-expanded="expandedSources.has(s.id)" :aria-busy="loadingSources.has(s.id)"
-                :aria-label="t(expandedSources.has(s.id) ? 'sidebar.collapseFolder' : 'sidebar.expandFolder', { name: folderName(s.path) })"
-                @click.stop="toggleSource(s.id)"
+          <template v-if="sections.folders">
+            <template v-for="s in sources" :key="s.id">
+              <div
+                class="row group" :class="{ active: isActive({ kind: 'source', id: s.id }) }"
+                :data-menu="`source:${s.id}`"
+                @click="scope = { kind: 'source', id: s.id }"
               >
-                <ChevronRight class="size-3 transition-transform" :class="{ 'rotate-90': expandedSources.has(s.id) }" />
-              </button>
-              <span v-else class="size-4 shrink-0" />
-              <span class="i-lucide-folder shrink-0" />
-              <Hint :text="s.path" side="right">
                 <button
-                  class="min-w-0 flex-1 truncate rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  :aria-current="isActive({ kind: 'source', id: s.id }) ? 'page' : undefined"
-                  @click.stop="scope = { kind: 'source', id: s.id }"
+                  v-if="!library.sourceFolders.has(s.id) || library.sourceFolders.get(s.id)?.length"
+                  class="grid size-4 shrink-0 place-items-center rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  :aria-expanded="expandedSources.has(s.id)" :aria-busy="loadingSources.has(s.id)"
+                  :aria-label="t(expandedSources.has(s.id) ? 'sidebar.collapseFolder' : 'sidebar.expandFolder', { name: folderName(s.path) })"
+                  @click.stop="toggleSource(s.id)"
                 >
-                  {{ folderName(s.path) }}
+                  <ChevronRight class="size-3 transition-transform" :class="{ 'rotate-90': expandedSources.has(s.id) }" />
                 </button>
-              </Hint>
-              <span v-if="progressLabel(s.id)" class="text-[11px] text-primary tabular">{{ progressLabel(s.id) }}</span>
-              <template v-else>
-                <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ formatNumber(s.sampleCount) }}</span>
-                <span class="hidden group-hover:flex gap-0.5">
-                  <Hint :text="t('sidebar.rescan')">
-                    <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('sidebar.rescan')" @click.stop="library.rescanSource(s.id)">
-                      <RefreshCw />
-                    </Button>
-                  </Hint>
-                  <Hint :text="t('sidebar.removeFromLibrary')">
-                    <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" :aria-label="t('sidebar.removeFromLibrary')" @click.stop="confirmRemoveSource(s.id)">
-                      <X />
-                    </Button>
-                  </Hint>
-                </span>
-              </template>
-            </div>
-            <SourceDirectories
-              v-if="expandedSources.has(s.id)" :source-id="s.id" :root-path="s.path"
-              :folders="library.sourceFolders.get(s.id) ?? []"
-            />
-          </template>
-          <p v-if="!sources.length" class="px-2 py-2 text-muted-foreground text-xs leading-relaxed">
-            {{ t('sidebar.empty.folders') }}
-          </p>
+                <span v-else class="size-4 shrink-0" />
+                <span class="i-lucide-folder shrink-0" />
+                <Hint :text="s.path" side="right">
+                  <button
+                    class="min-w-0 flex-1 truncate rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    :aria-current="isActive({ kind: 'source', id: s.id }) ? 'page' : undefined"
+                    @click.stop="scope = { kind: 'source', id: s.id }"
+                  >
+                    {{ folderName(s.path) }}
+                  </button>
+                </Hint>
+                <span v-if="progressLabel(s.id)" class="text-[11px] text-primary tabular">{{ progressLabel(s.id) }}</span>
+                <template v-else>
+                  <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ formatNumber(s.sampleCount) }}</span>
+                  <span class="hidden group-hover:flex gap-0.5">
+                    <Hint :text="t('sidebar.rescan')">
+                      <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('sidebar.rescan')" @click.stop="library.rescanSource(s.id)">
+                        <RefreshCw />
+                      </Button>
+                    </Hint>
+                    <Hint :text="t('sidebar.removeFromLibrary')">
+                      <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" :aria-label="t('sidebar.removeFromLibrary')" @click.stop="confirmRemoveSource(s.id)">
+                        <X />
+                      </Button>
+                    </Hint>
+                  </span>
+                </template>
+              </div>
+              <SourceDirectories
+                v-if="expandedSources.has(s.id)" :source-id="s.id" :root-path="s.path"
+                :folders="library.sourceFolders.get(s.id) ?? []"
+              />
+            </template>
+            <p v-if="!sources.length" class="px-2 py-2 text-muted-foreground text-xs leading-relaxed">
+              {{ t('sidebar.empty.folders') }}
+            </p>
 
+          </template>
           <h3 class="section flex items-center justify-between">
-            {{ t('sidebar.collections') }}
+            <button type="button" class="section-toggle" :aria-expanded="sections.collections" @click="sections.collections = !sections.collections">
+              <ChevronRight class="size-3 shrink-0 transition-transform" :class="{ 'rotate-90': sections.collections }" />
+              {{ t('sidebar.collections') }}
+            </button>
             <Hint :text="t('sidebar.newCollection')">
               <Button variant="ghost" size="icon-xs" class="text-muted-foreground -my-1" :aria-label="t('sidebar.newCollection')" @click="startCreateCollection">
                 <Plus />
               </Button>
             </Hint>
           </h3>
-          <div
-            v-for="c in collections" :key="c.id"
-            class="row group" :class="{ active: isActive({ kind: 'collection', id: c.id }) }"
-            :data-menu="`collection:${c.id}`"
-            @click="scope = { kind: 'collection', id: c.id }"
-            @dblclick="startRename('collection', c.id, c.name)"
-          >
-            <span class="i-lucide-layers shrink-0" />
-            <input
-              v-if="isEditing('collection', c.id)"
-              ref="editInput"
-              v-model="editName"
-              class="flex-1 min-w-0 h-5 px-1 -mx-1 rounded bg-background outline-none border border-primary"
-              @click.stop
-              @keydown="onRenameKeydown"
-              @blur="commitRename"
+          <template v-if="sections.collections">
+            <div
+              v-for="c in collections" :key="c.id"
+              class="row group" :class="{ active: isActive({ kind: 'collection', id: c.id }) }"
+              :data-menu="`collection:${c.id}`"
+              @click="scope = { kind: 'collection', id: c.id }"
+              @dblclick="startRename('collection', c.id, c.name)"
             >
-            <template v-else>
-              <span class="flex-1 truncate">{{ c.name }}</span>
-              <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ formatNumber(c.sampleCount) }}</span>
-              <span class="hidden group-hover:flex gap-0.5">
-                <Hint :text="t('common.actions.rename')">
-                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('common.actions.rename')" @click.stop="startRename('collection', c.id, c.name)">
-                    <Pencil />
-                  </Button>
-                </Hint>
-                <Hint :text="t('sidebar.deleteCollection')">
-                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" :aria-label="t('sidebar.deleteCollection')" @click.stop="confirmDeleteCollection(c.id)">
-                    <X />
-                  </Button>
-                </Hint>
-              </span>
-            </template>
-          </div>
-          <div v-if="creatingCollection" class="row">
-            <span class="i-lucide-layers shrink-0" />
-            <input
-              ref="newCollectionInput"
-              v-model="newCollection"
-              :placeholder="t('sidebar.collectionName')"
-              class="flex-1 min-w-0 h-5 px-1 -mx-1 rounded bg-background outline-none border border-primary placeholder:text-muted-foreground"
-              @keydown="onCreateKeydown"
-              @blur="commitCreateCollection"
-            >
-          </div>
-          <div v-else-if="!collections.length" class="px-2 py-2 flex flex-col items-start gap-2">
-            <p class="text-muted-foreground text-xs leading-relaxed">{{ t('sidebar.empty.collections') }}</p>
-            <Button variant="outline" size="sm" class="max-w-full" @click="startCreateCollection">
-              <Plus /> <span class="truncate">{{ t('sidebar.newCollection') }}</span>
-            </Button>
-          </div>
-
-          <h3 class="section">
-            {{ t('sidebar.tags') }}
+              <span class="i-lucide-layers shrink-0" />
+              <input
+                v-if="isEditing('collection', c.id)"
+                ref="editInput"
+                v-model="editName"
+                class="flex-1 min-w-0 h-5 px-1 -mx-1 rounded bg-background outline-none border border-primary"
+                @click.stop
+                @keydown="onRenameKeydown"
+                @blur="commitRename"
+              >
+              <template v-else>
+                <span class="flex-1 truncate">{{ c.name }}</span>
+                <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ formatNumber(c.sampleCount) }}</span>
+                <span class="hidden group-hover:flex gap-0.5">
+                  <Hint :text="t('common.actions.rename')">
+                    <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('common.actions.rename')" @click.stop="startRename('collection', c.id, c.name)">
+                      <Pencil />
+                    </Button>
+                  </Hint>
+                  <Hint :text="t('sidebar.deleteCollection')">
+                    <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" :aria-label="t('sidebar.deleteCollection')" @click.stop="confirmDeleteCollection(c.id)">
+                      <X />
+                    </Button>
+                  </Hint>
+                </span>
+              </template>
+            </div>
+            <div v-if="creatingCollection" class="row">
+              <span class="i-lucide-layers shrink-0" />
+              <input
+                ref="newCollectionInput"
+                v-model="newCollection"
+                :placeholder="t('sidebar.collectionName')"
+                class="flex-1 min-w-0 h-5 px-1 -mx-1 rounded bg-background outline-none border border-primary placeholder:text-muted-foreground"
+                @keydown="onCreateKeydown"
+                @blur="commitCreateCollection"
+              >
+            </div>
+            <div v-else-if="!collections.length" class="px-2 py-2 flex flex-col items-start gap-2">
+              <p class="text-muted-foreground text-xs leading-relaxed">{{ t('sidebar.empty.collections') }}</p>
+              <Button variant="outline" size="sm" class="max-w-full" @click="startCreateCollection">
+                <Plus /> <span class="truncate">{{ t('sidebar.newCollection') }}</span>
+              </Button>
+            </div>
+          </template>
+          <h3 class="section flex items-center justify-between">
+            <button type="button" class="section-toggle" :aria-expanded="sections.tags" @click="sections.tags = !sections.tags">
+              <ChevronRight class="size-3 shrink-0 transition-transform" :class="{ 'rotate-90': sections.tags }" />
+              {{ t('sidebar.tags') }}
+            </button>
+            <Hint :text="t('sidebar.newTag')">
+              <Button variant="ghost" size="icon-xs" class="text-muted-foreground -my-1" :aria-label="t('sidebar.newTag')" @click="startCreateTag">
+                <Plus />
+              </Button>
+            </Hint>
           </h3>
-          <div
-            v-for="tag in tags" :key="tag.id"
-            class="row group" :class="{ active: isActive({ kind: 'tag', id: tag.id }) }"
-            :data-menu="`tag:${tag.id}`"
-            @click="scope = { kind: 'tag', id: tag.id }"
-            @dblclick="startRename('tag', tag.id, tag.name)"
-          >
-            <span class="i-lucide-tag text-tag-ink shrink-0" :style="tagColorStyle(tag.name)" />
-            <input
-              v-if="isEditing('tag', tag.id)"
-              ref="editInput"
-              v-model="editName"
-              class="flex-1 min-w-0 h-5 px-1 -mx-1 rounded bg-background outline-none border border-primary"
-              @click.stop
-              @keydown="onRenameKeydown"
-              @blur="commitRename"
+          <template v-if="sections.tags">
+            <div
+              v-for="tag in tags" :key="tag.id"
+              class="row group" :class="{ active: isActive({ kind: 'tag', id: tag.id }) }"
+              :data-menu="`tag:${tag.id}`"
+              @click="scope = { kind: 'tag', id: tag.id }"
+              @dblclick="startRename('tag', tag.id, tag.name)"
             >
-            <template v-else>
-              <span class="flex-1 truncate">{{ tag.name }}</span>
-              <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ formatNumber(tag.sampleCount) }}</span>
-              <span class="hidden group-hover:flex gap-0.5">
-                <Hint :text="t('common.actions.rename')">
-                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('common.actions.rename')" @click.stop="startRename('tag', tag.id, tag.name)">
-                    <Pencil />
-                  </Button>
-                </Hint>
-                <Hint :text="t('sidebar.deleteTag')">
-                  <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" :aria-label="t('sidebar.deleteTag')" @click.stop="confirmDeleteTag(tag.id)">
-                    <X />
-                  </Button>
-                </Hint>
-              </span>
-            </template>
-          </div>
-          <p v-if="!tags.length" class="px-2 py-2 text-muted-foreground text-xs leading-relaxed">
-            {{ t('sidebar.empty.tags') }}
-          </p>
+              <TagColorPicker :tag="tag" />
+              <input
+                v-if="isEditing('tag', tag.id)"
+                ref="editInput"
+                v-model="editName"
+                class="flex-1 min-w-0 h-5 px-1 -mx-1 rounded bg-background outline-none border border-primary"
+                @click.stop
+                @keydown="onRenameKeydown"
+                @blur="commitRename"
+              >
+              <template v-else>
+                <span class="flex-1 truncate">{{ tag.name }}</span>
+                <span class="text-[11px] text-muted-foreground tabular group-hover:hidden">{{ formatNumber(tag.sampleCount) }}</span>
+                <span class="hidden group-hover:flex gap-0.5">
+                  <Hint :text="t('common.actions.rename')">
+                    <Button variant="ghost" size="icon-xs" class="text-muted-foreground" :aria-label="t('common.actions.rename')" @click.stop="startRename('tag', tag.id, tag.name)">
+                      <Pencil />
+                    </Button>
+                  </Hint>
+                  <Hint :text="t('sidebar.deleteTag')">
+                    <Button variant="ghost" size="icon-xs" class="text-muted-foreground hover:text-destructive" :aria-label="t('sidebar.deleteTag')" @click.stop="confirmDeleteTag(tag.id)">
+                      <X />
+                    </Button>
+                  </Hint>
+                </span>
+              </template>
+            </div>
+            <div v-if="creatingTag" class="row">
+              <span class="tag-dot mx-0.5 shrink-0" :style="tagColorStyle(newTag)" />
+              <input
+                ref="newTagInput" v-model="newTag"
+                :placeholder="t('sidebar.tagName')" :aria-label="t('sidebar.tagName')"
+                class="flex-1 min-w-0 h-5 px-1 -mx-1 rounded bg-background outline-none border border-primary placeholder:text-muted-foreground"
+                @keydown="onCreateTagKeydown" @blur="commitCreateTag"
+              >
+            </div>
+            <p v-if="!tags.length && !creatingTag" class="px-2 py-2 text-muted-foreground text-xs leading-relaxed">
+              {{ t('sidebar.empty.tags') }}
+            </p>
+          </template>
         </nav>
       </ContextMenuTrigger>
       <ContextMenuContent class="w-52" @close-auto-focus="onCloseAutoFocus">
@@ -479,6 +550,25 @@ async function confirmDeleteTag(id: number) {
 </template>
 
 <style scoped>
+.section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font: inherit;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  border-radius: 4px;
+}
+.section-toggle:hover {
+  color: var(--foreground);
+}
+.section-toggle:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
 .section {
   margin: 12px 8px 4px;
   font-size: 11px;

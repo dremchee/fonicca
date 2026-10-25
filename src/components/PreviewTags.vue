@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { tagColorStyle } from '@/tag-colors'
+import { useTagColors } from '@/composables/tagColors'
 import type { TagRef } from '@/api'
 import { X } from '@lucide/vue'
 import { useResizeObserver } from '@vueuse/core'
@@ -14,6 +14,7 @@ import { visibleTagCount } from '@/tag-overflow'
 
 const props = defineProps<{ tags: TagRef[], count: number }>()
 const { t } = useI18n()
+const { tagStyle } = useTagColors()
 const library = useLibraryStore()
 const box = ref<HTMLElement | null>(null)
 const measuring = ref<HTMLElement | null>(null)
@@ -46,13 +47,13 @@ watch(() => props.tags, async () => { await nextTick(); measure() }, { deep: tru
   <div ref="box" class="relative shrink-0 max-w-[40%] min-w-0 flex items-center gap-1" :style="{ width: `${naturalWidth}px` }">
     <div class="absolute invisible pointer-events-none size-0 overflow-hidden" aria-hidden="true" inert>
       <div ref="measuring" class="flex w-max items-center gap-1">
-        <Badge v-for="tag in tags" :key="tag.id" data-tag-measure variant="secondary" :style="tagColorStyle(tag.name)" class="tag-color h-5 shrink-0 pr-1 text-[11px]">
+        <Badge v-for="tag in tags" :key="tag.id" data-tag-measure variant="secondary" :style="tagStyle(tag)" class="tag-color h-5 shrink-0 pr-1 text-[11px]">
           {{ tag.name }} <span class="inline-flex"><X class="size-3" /></span>
         </Badge>
         <Button data-counter-measure variant="ghost" size="xs" class="h-5 px-1.5 text-[11px]" tabindex="-1">+{{ tags.length }}</Button>
       </div>
     </div>
-    <Badge v-for="tag in tags.slice(0, visible)" :key="tag.id" variant="secondary" :style="tagColorStyle(tag.name)" class="tag-color h-5 shrink-0 pr-1 text-[11px]">
+    <Badge v-for="tag in tags.slice(0, visible)" :key="tag.id" variant="secondary" :style="tagStyle(tag)" class="tag-color h-5 shrink-0 pr-1 text-[11px]">
       {{ tag.name }}
       <button class="rounded-full opacity-60 hover:opacity-100 focus-visible:opacity-100 outline-none focus-visible:ring-2 focus-visible:ring-ring/50" :aria-label="t('player.removeTag', { name: tag.name })" @click="library.removeTag(tag.id)">
         <X class="size-3" />
@@ -64,7 +65,7 @@ watch(() => props.tags, async () => { await nextTick(); measure() }, { deep: tru
       </PopoverTrigger>
       <PopoverContent align="start" class="w-64 max-h-64 overflow-y-auto p-3" :aria-label="t('player.hiddenTags', { n: hidden.length })">
         <div class="flex flex-wrap gap-1">
-          <Badge v-for="tag in hidden" :key="tag.id" variant="secondary" :style="tagColorStyle(tag.name)" class="tag-color max-w-full h-5 pr-1 text-[11px]">
+          <Badge v-for="tag in hidden" :key="tag.id" variant="secondary" :style="tagStyle(tag)" class="tag-color max-w-full h-5 pr-1 text-[11px]">
             <span class="truncate">{{ tag.name }}</span>
             <button class="shrink-0 rounded-full opacity-60 hover:opacity-100 focus-visible:opacity-100 outline-none focus-visible:ring-2 focus-visible:ring-ring/50" :aria-label="t('player.removeTag', { name: tag.name })" @click="library.removeTag(tag.id)"><X class="size-3" /></button>
           </Badge>

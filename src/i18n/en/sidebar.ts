@@ -15,6 +15,9 @@ export default {
   newCollection: 'New collection',
   collectionName: 'Collection name',
   deleteCollection: 'Delete collection',
+  tagColor: 'Color for “{name}”',
+  newTag: 'New tag',
+  tagName: 'Tag name',
   deleteTag: 'Delete tag',
   empty: {
     folders: 'Add a folder with samples to start. Files stay where they are — Fonicca only indexes them.',
