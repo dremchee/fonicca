@@ -3,7 +3,7 @@ import type { WaveArea, WaveLook } from './waveform'
 import { drawWave as drawCanvasWave } from './waveform'
 import { drawGlWave, releaseWaveRenderer } from './waveform-gl'
 
-export { canvasContext, demoWave, parseWave } from './waveform'
+export { canvasContext, demoWave, risingWave, parseWave } from './waveform'
 
 /** WebGL geometry with Canvas overlays; fallback for unavailable/lost contexts. */
 export function drawWave(ctx: CanvasRenderingContext2D, data: Wave, area: WaveArea, look: WaveLook) {

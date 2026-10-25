@@ -210,3 +210,24 @@ export function demoWave(columns: number, split: boolean): Wave {
   }
   return { samples: false, lanes, count: columns, stride, values }
 }
+
+/** Abstract crescendo for loading; independent of the file being decoded. */
+export function risingWave(columns: number, split: boolean): Wave {
+  const lanes = split ? 2 : 1
+  const stride = 6
+  const values = new Float32Array(lanes * columns * stride)
+  for (let lane = 0; lane < lanes; lane++) {
+    for (let c = 0; c < columns; c++) {
+      const x = c / Math.max(1, columns - 1)
+      const peak = (0.04 + 0.86 * x ** 1.25) * (0.94 + 0.06 * Math.sin(x * 70 + lane * 0.7))
+      const i = (lane * columns + c) * stride
+      values[i] = -peak
+      values[i + 1] = peak
+      values[i + 2] = peak * 0.6
+      values[i + 3] = peak * 0.6
+      values[i + 4] = peak * 0.3
+      values[i + 5] = peak * 0.1
+    }
+  }
+  return { samples: false, lanes, count: columns, stride, values }
+}

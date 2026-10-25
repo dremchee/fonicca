@@ -12,6 +12,7 @@ import LevelMeter from '@/components/LevelMeter.vue'
 import ProjectSync from '@/components/ProjectSync.vue'
 import SampleInfoHover from '@/components/SampleInfoHover.vue'
 import PreviewTags from '@/components/PreviewTags.vue'
+import WaveformPreview from '@/components/WaveformPreview.vue'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -300,9 +301,9 @@ function onDragStart(e: DragEvent) {
     </div>
     <p :id="seekHintId" class="sr-only">{{ t('player.seekHint') }}</p>
     <div class="preview-signal flex flex-1 min-h-0 gap-2 mx-3">
-      <div ref="box" class="seek-surface relative flex-1 min-w-0 rounded-md bg-background overflow-hidden cursor-pointer">
-        <canvas ref="canvas" class="absolute inset-0 size-full" />
-        <canvas ref="playedCanvas" class="absolute inset-0 size-full" aria-hidden="true" />
+      <div :aria-busy="loading" ref="box" class="seek-surface relative flex-1 min-w-0 rounded-md bg-background overflow-hidden cursor-pointer">
+        <canvas ref="canvas" class="wave-canvas absolute inset-0 size-full" :class="{ ready: wave && !loading }" />
+        <canvas ref="playedCanvas" class="wave-canvas absolute inset-0 size-full" :class="{ ready: wave && !loading }" aria-hidden="true" />
         <div ref="dimEl" class="pointer-events-none absolute inset-y-0 right-0 bg-background/50" style="display: none" />
         <div
           v-if="player.playingId === sample.id || seekPreview !== null"
@@ -318,8 +319,9 @@ function onDragStart(e: DragEvent) {
           @change="commitSeek(Number(($event.target as HTMLInputElement).value))"
           @keydown="onSeekKeydown" @pointercancel="seekPreview = null"
         >
-        <div v-if="loading" class="pointer-events-none absolute inset-0 grid place-items-center text-muted-foreground text-xs">
-          {{ t('player.readingWaveform') }}
+        <div v-if="loading" class="wave-placeholder pointer-events-none absolute inset-0" role="status" :aria-label="t('player.readingWaveform')">
+          <WaveformPreview pattern="rising" :options="settings.settings" class="placeholder-preview absolute inset-0" aria-hidden="true" />
+          <span class="sr-only">{{ t('player.readingWaveform') }}</span>
         </div>
         <div v-else-if="error" class="pointer-events-none absolute inset-0 grid place-items-center text-destructive text-xs px-4 text-center">
           {{ error }}
@@ -372,6 +374,34 @@ function onDragStart(e: DragEvent) {
 </template>
 
 <style scoped>
+.wave-canvas {
+  opacity: 0;
+}
+.wave-canvas.ready {
+  opacity: 1;
+  animation: wave-reveal 180ms ease-out;
+}
+.placeholder-preview {
+  height: 100%;
+  opacity: 0.24;
+  transform-origin: center;
+  animation: placeholder-pulse 1100ms ease-in-out infinite alternate;
+}
+@keyframes placeholder-pulse {
+  from { transform: scaleY(0.55); opacity: 0.16; }
+  to { transform: scaleY(1); opacity: 0.34; }
+}
+@keyframes wave-reveal {
+  from { opacity: 0; transform: scaleY(0.96); }
+  to { opacity: 1; transform: scaleY(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .placeholder-preview,
+  .wave-canvas.ready {
+    animation: none;
+  }
+}
+
 .player-panel {
   container-type: inline-size;
 }
