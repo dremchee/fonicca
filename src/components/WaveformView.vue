@@ -24,7 +24,9 @@ import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
-import { canvasContext, drawWave, parseWave } from '@/waveform'
+import { canvasContext, drawWave, parseWave } from '@/waveform-renderer'
+import { useWaveRenderer } from '@/waveform-gl'
+import { waveformLook } from '@/waveform-settings'
 
 const props = defineProps<{ sample: Sample | undefined }>()
 
@@ -79,7 +81,9 @@ const byline = computed(() => {
 })
 
 const canvas = ref<HTMLCanvasElement | null>(null)
+useWaveRenderer(canvas)
 const playedCanvas = ref<HTMLCanvasElement | null>(null)
+useWaveRenderer(playedCanvas)
 const dimEl = ref<HTMLElement | null>(null)
 const box = ref<HTMLElement | null>(null)
 const width = ref(0)
@@ -159,12 +163,12 @@ function draw() {
 
   const style = getComputedStyle(el)
   const color = (name: string) => style.getPropertyValue(name).trim()
-  const { waveStyle, waveScale, waveColors } = settings.settings
-  const look = { style: waveStyle, scale: waveScale, colors: waveColors, zoom: 1, color: color('--wave'), lineColor: color('--border') }
+  const { waveColors } = settings.settings
+  const look = { ...waveformLook(settings.settings), zoom: 1, color: color('--wave'), lineColor: color('--border') }
   const area = { top: 0, width: w, height: h, dpr }
   drawWave(ctx, data, area, look)
   if (waveColors !== 'frequency')
-    drawWave(playedCtx, data, area, { ...look, color: color('--wave-played') })
+    drawWave(playedCtx, data, area, { ...look, color: color('--wave-played'), channelColors: [null, null] })
 }
 
 watch([wave, () => settings.settings, () => settings.themeRevision, width, height], draw, { deep: true })

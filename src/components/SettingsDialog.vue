@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
-import type { AppInfo, Settings, Theme } from '@/api'
+import type { AppInfo, Theme, WaveformSettings } from '@/api'
 import type { Locale } from '@/i18n'
 import type { SettingsSection } from '@/stores/settings'
 import appIcon from '../../src-tauri/icons/128x128.png'
@@ -37,7 +37,7 @@ import { api } from '@/api'
 import Hint from '@/components/Hint.vue'
 import ThemesSettings from '@/components/ThemesSettings.vue'
 import ModelsSettings from '@/components/ModelsSettings.vue'
-import WaveformPreview from '@/components/WaveformPreview.vue'
+import WaveformControls from '@/components/WaveformControls.vue'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Kbd, KbdGroup } from '@/components/ui/kbd'
@@ -53,6 +53,7 @@ import { useDuplicatesStore } from '@/stores/duplicates'
 import { useLibraryStore } from '@/stores/library'
 import { useSettingsStore } from '@/stores/settings'
 
+const props = withDefaults(defineProps<{ waveTarget?: 'preview' | 'editor' }>(), { waveTarget: 'preview' })
 const { t } = useI18n()
 const store = useSettingsStore()
 const { settings, dialogOpen, section } = storeToRefs(store)
@@ -139,7 +140,6 @@ const threads = computed({
   set: (v: string) => store.update({ analysisThreads: v === 'auto' ? null : Number(v) }),
 })
 
-type WaveKey = 'waveStyle' | 'waveScale' | 'waveChannels' | 'waveColors'
 const waveTargets = [
   { value: 'preview', labelKey: 'settings.waveform.previewTab' },
   { value: 'editor', labelKey: 'settings.waveform.editorTab' },
@@ -149,40 +149,12 @@ function waveSettings(target: 'preview' | 'editor') {
   return target === 'editor' ? settings.value.editorWaveform : settings.value
 }
 
-function setWaveOption(target: 'preview' | 'editor', key: WaveKey, value: unknown) {
-  if (typeof value !== 'string' || !waveOptions.find(opt => opt.key === key)?.choices.some(c => c.value === value))
-    return
+function setWaveOptions(target: 'preview' | 'editor', patch: Partial<WaveformSettings>) {
   if (target === 'editor')
-    store.update({ editorWaveform: { ...settings.value.editorWaveform, [key]: value } })
+    store.update({ editorWaveform: { ...settings.value.editorWaveform, ...patch } })
   else
-    store.update({ [key]: value })
+    store.update(patch)
 }
-const waveOptions: { key: WaveKey, titleKey: string, descKey: string, choices: { value: Settings[WaveKey], labelKey: string }[] }[] = [
-  {
-    key: 'waveStyle',
-    titleKey: 'settings.waveform.style',
-    descKey: 'settings.waveform.styleDesc',
-    choices: [{ value: 'peaks', labelKey: 'settings.waveform.peaks' }, { value: 'peaksRms', labelKey: 'settings.waveform.peaksRms' }, { value: 'bars', labelKey: 'settings.waveform.bars' }],
-  },
-  {
-    key: 'waveScale',
-    titleKey: 'settings.waveform.scale',
-    descKey: 'settings.waveform.scaleDesc',
-    choices: [{ value: 'linear', labelKey: 'settings.waveform.linear' }, { value: 'db', labelKey: 'settings.waveform.db' }],
-  },
-  {
-    key: 'waveChannels',
-    titleKey: 'settings.waveform.channels',
-    descKey: 'settings.waveform.channelsDesc',
-    choices: [{ value: 'split', labelKey: 'settings.waveform.split' }, { value: 'mix', labelKey: 'settings.waveform.mix' }],
-  },
-  {
-    key: 'waveColors',
-    titleKey: 'settings.waveform.colors',
-    descKey: 'settings.waveform.colorsDesc',
-    choices: [{ value: 'theme', labelKey: 'settings.waveform.theme' }, { value: 'frequency', labelKey: 'settings.waveform.frequency' }],
-  },
-]
 
 const shortcuts: { keys: string[], labelKey: string }[] = [
   { keys: ['↑', '↓'], labelKey: 'settings.shortcuts.moveFocus' },
@@ -438,7 +410,7 @@ function keyLabel(k: string) {
 
           <!-- Waveform -->
           <template v-else-if="section === 'waveform'">
-            <TabsRoot default-value="preview" class="flex flex-col gap-4">
+            <TabsRoot :default-value="props.waveTarget" class="flex flex-col gap-4">
               <TabsList class="inline-flex h-9 w-fit items-center rounded-md bg-muted p-1 text-muted-foreground" :aria-label="t('settings.nav.waveform')">
                 <TabsTrigger
                   v-for="target in waveTargets" :key="target.value" :value="target.value"
@@ -448,35 +420,7 @@ function keyLabel(k: string) {
                 </TabsTrigger>
               </TabsList>
               <TabsContent v-for="target in waveTargets" :key="target.value" :value="target.value" class="flex flex-col gap-4 outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=inactive]:hidden">
-                <section class="group-box">
-                  <div v-for="opt in waveOptions" :key="opt.key" class="row">
-                    <div class="row-text">
-                      <div class="row-title">
-                        {{ t(opt.titleKey) }}
-                      </div>
-                      <div class="row-desc">
-                        {{ t(opt.descKey) }}
-                      </div>
-                    </div>
-                    <ToggleGroup
-                      :model-value="waveSettings(target.value)[opt.key]"
-                      type="single"
-                      variant="outline"
-                      size="sm"
-                      @update:model-value="setWaveOption(target.value, opt.key, $event)"
-                    >
-                      <ToggleGroupItem v-for="c in opt.choices" :key="c.value" :value="c.value">
-                        {{ t(c.labelKey) }}
-                      </ToggleGroupItem>
-                    </ToggleGroup>
-                  </div>
-                </section>
-                <section class="group-box p-3 grid gap-2">
-                  <div class="text-xs text-muted-foreground">
-                    {{ t('settings.waveform.preview') }}
-                  </div>
-                  <WaveformPreview :options="waveSettings(target.value)" />
-                </section>
+                <WaveformControls :target="target.value" :options="waveSettings(target.value)" @change="setWaveOptions(target.value, $event)" />
               </TabsContent>
             </TabsRoot>
           </template>

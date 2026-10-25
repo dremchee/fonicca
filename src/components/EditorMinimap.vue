@@ -5,7 +5,9 @@ import { ref, shallowRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
-import { canvasContext, drawWave } from '@/waveform'
+import { canvasContext, drawWave } from '@/waveform-renderer'
+import { useWaveRenderer } from '@/waveform-gl'
+import { waveformLook } from '@/waveform-settings'
 
 // Whole file at a glance, with the visible range as a draggable window.
 const props = defineProps<{
@@ -25,6 +27,7 @@ const editor = useEditorStore()
 const settings = useSettingsStore()
 const box = ref<HTMLElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
+useWaveRenderer(canvas)
 const size = ref({ width: 0, height: 0 })
 const wave = shallowRef<Wave | null>(null)
 
@@ -68,9 +71,8 @@ function draw() {
   }
   const s = settings.settings.editorWaveform
   drawWave(ctx, wave.value, { top: 0, width: w, height: h, dpr }, {
+    ...waveformLook(s),
     style: s.waveStyle === 'bars' ? 'peaks' : s.waveStyle,
-    scale: s.waveScale,
-    colors: s.waveColors,
     zoom: 1,
     color: color('--wave'),
     lineColor: 'transparent',

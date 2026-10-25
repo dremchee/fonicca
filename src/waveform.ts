@@ -1,10 +1,20 @@
 import type { WaveStyle } from '@/api'
 import type { Wave } from '@/stores/editor'
+import { barCornerRadius, waveBars } from './waveform-bars.ts'
 
 /** Range shown by the dB scale, from silence to full scale. */
 const DB_RANGE = 60
 
 export interface WaveLook {
+  density?: 'off' | 'gaussian' | 'laplace' | 'flat'
+  peakOpacity?: number
+  rmsOpacity?: number
+  thickness?: number
+  barWidth?: number
+  barGap?: number
+  barRadius?: number
+  dbRange?: number
+  channelColors?: [string | null, string | null]
   style: WaveStyle
   scale: 'linear' | 'db'
   colors: 'theme' | 'frequency'
@@ -52,12 +62,13 @@ export function canvasContext(el: HTMLCanvasElement, width: number, height: numb
 }
 
 /** Amplitude (−1…1) to lane height fraction, with vertical zoom and dB scale. */
-export function waveLevel(v: number, look: Pick<WaveLook, 'scale' | 'zoom'>) {
+export function waveLevel(v: number, look: Pick<WaveLook, 'scale' | 'zoom' | 'dbRange'>) {
   const z = Math.max(-1, Math.min(1, v * look.zoom))
   if (look.scale !== 'db')
     return z
-  const db = 20 * Math.log10(Math.abs(z) + 1e-9)
-  return Math.sign(z) * Math.max(0, (db + DB_RANGE) / DB_RANGE)
+  const range = look.dbRange ?? DB_RANGE
+  const db = 20 * Math.log10(Math.max(Math.abs(z), 1e-9))
+  return Math.sign(z) * Math.max(0, (db + range) / range)
 }
 
 /** Low/mid/high band energy as an RGB colour (red bass, green mids, blue highs). */
@@ -72,6 +83,7 @@ export function drawWave(ctx: CanvasRenderingContext2D, data: Wave, area: WaveAr
   const { top: areaTop, width: w, dpr } = area
   const laneH = area.height / data.lanes
   for (let lane = 0; lane < data.lanes; lane++) {
+    const laneColor = look.colors === 'theme' ? look.channelColors?.[lane] ?? look.color : look.color
     const mid = areaTop + laneH * lane + laneH / 2
     const amp = (laneH / 2) * 0.92
     const level = (v: number) => waveLevel(v, look)
@@ -83,9 +95,9 @@ export function drawWave(ctx: CanvasRenderingContext2D, data: Wave, area: WaveAr
       // Zoomed in to single samples: a line through them, dots when there is room.
       const step = w / Math.max(1, data.count)
       const px = (i: number) => (i + 0.5) * step
-      ctx.strokeStyle = look.color
+      ctx.strokeStyle = laneColor
       // Thick enough to read as the wave itself, not a hairline over the lane.
-      ctx.lineWidth = 2
+      ctx.lineWidth = look.thickness ?? 2
       ctx.lineJoin = 'round'
       ctx.lineCap = 'round'
       ctx.beginPath()
@@ -93,39 +105,34 @@ export function drawWave(ctx: CanvasRenderingContext2D, data: Wave, area: WaveAr
         i ? ctx.lineTo(px(i), y(at(i, 0))) : ctx.moveTo(px(i), y(at(i, 0)))
       ctx.stroke()
       if (step >= 6) {
-        ctx.fillStyle = look.color
+        ctx.fillStyle = laneColor
         for (let i = 0; i < data.count; i++)
           ctx.fillRect(px(i) - 2, y(at(i, 0)) - 2, 4, 4)
       }
     }
     else {
       const colW = w / data.count
-      const fill = (i: number) => (look.colors === 'frequency' ? bandColor(at(i, 3), at(i, 4), at(i, 5)) : look.color)
+      const fill = (i: number) => (look.colors === 'frequency' ? bandColor(at(i, 3), at(i, 4), at(i, 5)) : laneColor)
       if (look.style === 'bars') {
-        // Bars 3 px wide with 1 px gaps, height from the loudest column under each.
-        const per = Math.max(1, Math.round(4 / colW))
-        for (let i = 0; i < data.count; i += per) {
-          let peak = 0
-          let pick = i
-          for (let j = i; j < Math.min(i + per, data.count); j++) {
-            const p = Math.max(Math.abs(at(j, 0)), Math.abs(at(j, 1)))
-            if (p >= peak) {
-              peak = p
-              pick = j
-            }
+        for (const bar of waveBars(data, lane, w, dpr, { width: look.barWidth, gap: look.barGap })) {
+          const half = Math.max(1 / dpr, Math.abs(level(bar.peak)) * amp)
+          ctx.fillStyle = fill(bar.index)
+          const radius = barCornerRadius(bar.width, half * 2, look.barRadius ?? 0)
+          if (radius > 0) {
+            ctx.beginPath()
+            ctx.roundRect(bar.x, mid - half, bar.width, half * 2, radius)
+            ctx.fill()
           }
-          const half = Math.max(1, Math.abs(level(peak)) * amp)
-          ctx.fillStyle = fill(pick)
-          ctx.beginPath()
-          ctx.roundRect(i * colW, mid - half, Math.max(1, per * colW - 1), half * 2, 1.5)
-          ctx.fill()
+          else {
+            ctx.fillRect(bar.x, mid - half, bar.width, half * 2)
+          }
         }
       }
       else {
         // Peaks dimmed around a full-strength RMS body (or full strength alone). Zoomed
         // in, a column spans few frames: each one reaches over to its neighbour so the
         // wave stays one stroke, and gets a little thickness so it is not a hairline.
-        ctx.globalAlpha = look.style === 'peaksRms' ? 0.4 : 1
+        ctx.globalAlpha = look.style === 'peaksRms' ? look.peakOpacity ?? 0.4 : 1
         const pad = 0.75
         // Narrow columns also widen a little, so steep slopes get the same thickness.
         const padX = colW < 2 ? 0.75 : 0
@@ -146,6 +153,7 @@ export function drawWave(ctx: CanvasRenderingContext2D, data: Wave, area: WaveAr
         }
         ctx.globalAlpha = 1
         if (look.style === 'peaksRms') {
+          ctx.globalAlpha = look.rmsOpacity ?? 1
           for (let i = 0; i < data.count; i++) {
             const r = at(i, 2)
             const top = y(r)
@@ -155,8 +163,10 @@ export function drawWave(ctx: CanvasRenderingContext2D, data: Wave, area: WaveAr
         }
       }
     }
+    ctx.globalAlpha = 1
     ctx.fillStyle = look.lineColor
-    ctx.fillRect(0, mid, w, 1 / dpr)
+    if (look.style !== 'bars' || data.samples)
+      ctx.fillRect(0, mid, w, 1 / dpr)
     if (lane > 0)
       ctx.fillRect(0, areaTop + laneH * lane, w, 1)
   }

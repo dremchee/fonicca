@@ -105,6 +105,15 @@ export interface WaveformSettings {
   waveChannels: 'mix' | 'split'
   waveScale: 'linear' | 'db'
   waveColors: 'theme' | 'frequency'
+  waveDensity: 'off' | 'gaussian' | 'laplace' | 'flat'
+  wavePeakOpacity: number
+  waveRmsOpacity: number
+  waveThickness: number
+  waveBarWidth: number
+  waveBarGap: number
+  waveBarRadius: number
+  waveDbRange: number
+  waveChannelColors: [string | null, string | null]
 }
 
 export interface Settings extends WaveformSettings {

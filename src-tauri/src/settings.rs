@@ -119,6 +119,28 @@ pub enum WaveColors {
     Frequency,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum WaveDensity { Off, Gaussian, Laplace, Flat }
+
+fn sanitize_wave_appearance(peak: &mut f32, rms: &mut f32, thickness: &mut f32, range: &mut u16, colors: &mut [Option<String>; 2]) {
+    *peak = if peak.is_finite() { peak.clamp(0.0, 1.0) } else { 0.4 };
+    *rms = if rms.is_finite() { rms.clamp(0.0, 1.0) } else { 1.0 };
+    *thickness = if thickness.is_finite() { thickness.clamp(1.0, 3.0) } else { 2.0 };
+    if ![40, 60, 90].contains(range) { *range = 60; }
+    for color in colors {
+        if color.as_ref().is_some_and(|s| s.len() != 7 || !s.starts_with('#') || !s.as_bytes()[1..].iter().all(u8::is_ascii_hexdigit)) {
+            *color = None;
+        }
+    }
+}
+
+fn sanitize_bar_appearance(width: &mut f32, gap: &mut f32, radius: &mut f32) {
+    *width = if width.is_finite() { width.clamp(1.0, 8.0) } else { 2.0 };
+    *gap = if gap.is_finite() { gap.clamp(0.0, 6.0) } else { 1.0 };
+    *radius = if radius.is_finite() { radius.clamp(0.0, 1.0) } else { 0.0 };
+}
+
 /// Independent drawing options for an editor window.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -127,12 +149,24 @@ pub struct WaveformSettings {
     pub wave_channels: WaveChannels,
     pub wave_scale: WaveScale,
     pub wave_colors: WaveColors,
+    pub wave_density: WaveDensity,
+    pub wave_peak_opacity: f32,
+    pub wave_rms_opacity: f32,
+    pub wave_thickness: f32,
+    pub wave_bar_width: f32,
+    pub wave_bar_gap: f32,
+    pub wave_bar_radius: f32,
+    pub wave_db_range: u16,
+    pub wave_channel_colors: [Option<String>; 2],
 }
 
 impl Default for WaveformSettings {
     fn default() -> Self {
         Self { wave_style: WaveStyle::PeaksRms, wave_channels: WaveChannels::Split,
-            wave_scale: WaveScale::Linear, wave_colors: WaveColors::Theme }
+            wave_scale: WaveScale::Linear, wave_colors: WaveColors::Theme,
+            wave_density: WaveDensity::Off, wave_peak_opacity: 0.4, wave_rms_opacity: 1.0,
+            wave_bar_width: 2.0, wave_bar_gap: 1.0, wave_bar_radius: 0.0,
+            wave_thickness: 2.0, wave_db_range: 60, wave_channel_colors: [None, None] }
     }
 }
 
@@ -162,6 +196,15 @@ pub struct Settings {
     pub wave_channels: WaveChannels,
     pub wave_scale: WaveScale,
     pub wave_colors: WaveColors,
+    pub wave_density: WaveDensity,
+    pub wave_peak_opacity: f32,
+    pub wave_rms_opacity: f32,
+    pub wave_thickness: f32,
+    pub wave_bar_width: f32,
+    pub wave_bar_gap: f32,
+    pub wave_bar_radius: f32,
+    pub wave_db_range: u16,
+    pub wave_channel_colors: [Option<String>; 2],
     pub editor_waveform: WaveformSettings,
 }
 
@@ -183,6 +226,9 @@ impl Default for Settings {
             wave_channels: WaveChannels::Split,
             wave_scale: WaveScale::Linear,
             wave_colors: WaveColors::Theme,
+            wave_density: WaveDensity::Off, wave_peak_opacity: 0.4, wave_rms_opacity: 1.0,
+            wave_bar_width: 2.0, wave_bar_gap: 1.0, wave_bar_radius: 0.0,
+            wave_thickness: 2.0, wave_db_range: 60, wave_channel_colors: [None, None],
             editor_waveform: WaveformSettings::default(),
         }
     }
@@ -191,6 +237,11 @@ impl Default for Settings {
 impl Settings {
     /// Clamps values a hand-edited file or a buggy caller could put out of range.
     fn sanitized(mut self) -> Self {
+        sanitize_wave_appearance(&mut self.wave_peak_opacity, &mut self.wave_rms_opacity, &mut self.wave_thickness, &mut self.wave_db_range, &mut self.wave_channel_colors);
+        sanitize_bar_appearance(&mut self.wave_bar_width, &mut self.wave_bar_gap, &mut self.wave_bar_radius);
+        let editor = &mut self.editor_waveform;
+        sanitize_bar_appearance(&mut editor.wave_bar_width, &mut editor.wave_bar_gap, &mut editor.wave_bar_radius);
+        sanitize_wave_appearance(&mut editor.wave_peak_opacity, &mut editor.wave_rms_opacity, &mut editor.wave_thickness, &mut editor.wave_db_range, &mut editor.wave_channel_colors);
         self.volume = if self.volume.is_finite() { self.volume.clamp(0.0, 1.0) } else { 1.0 };
         self.analysis_threads = self.analysis_threads.map(|n| n.clamp(1, cores()));
         self.project_bpm = self.project_bpm.filter(|b| b.is_finite()).map(|b| b.clamp(20.0, 400.0));
@@ -386,6 +437,7 @@ mod tests {
         assert_eq!(settings.editor_waveform, WaveformSettings {
             wave_style: WaveStyle::Bars, wave_channels: WaveChannels::Mix,
             wave_scale: WaveScale::Db, wave_colors: WaveColors::Frequency,
+            ..WaveformSettings::default()
         });
         settings.editor_waveform.wave_style = WaveStyle::Peaks;
         settings.editor_waveform.wave_channels = WaveChannels::Split;
@@ -402,4 +454,55 @@ mod tests {
         assert_eq!(settings.wave_colors, WaveColors::Theme);
         assert_eq!(settings.editor_waveform.wave_colors, WaveColors::Frequency);
     }
+    #[test]
+    fn waveform_appearance_roundtrips_and_clamps_independent_profiles() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        let store = SettingsStore::load(path.clone());
+        let mut settings = store.get();
+        settings.wave_density = WaveDensity::Gaussian;
+        settings.wave_peak_opacity = 0.7;
+        settings.wave_rms_opacity = 0.8;
+        settings.wave_channel_colors = [Some("#12aBcD".into()), None];
+        settings.editor_waveform.wave_density = WaveDensity::Laplace;
+        settings.editor_waveform.wave_peak_opacity = -1.0;
+        settings.editor_waveform.wave_rms_opacity = 2.0;
+        settings.editor_waveform.wave_thickness = 100.0;
+        settings.editor_waveform.wave_db_range = 90;
+        settings.editor_waveform.wave_channel_colors = [Some("invalid".into()), Some("#987654".into())];
+        store.replace(settings).unwrap();
+        let saved = SettingsStore::load(path).get();
+        assert_eq!(saved.wave_density, WaveDensity::Gaussian);
+        assert_eq!((saved.wave_peak_opacity, saved.wave_rms_opacity), (0.7, 0.8));
+        assert_eq!(saved.wave_channel_colors[0].as_deref(), Some("#12aBcD"));
+        let editor = saved.editor_waveform;
+        assert_eq!(editor.wave_density, WaveDensity::Laplace);
+        assert_eq!((editor.wave_peak_opacity, editor.wave_rms_opacity), (0.0, 1.0));
+        assert_eq!((editor.wave_thickness, editor.wave_db_range), (3.0, 90));
+        assert_eq!(editor.wave_channel_colors, [None, Some("#987654".into())]);
+        let invalid = Settings { wave_db_range: 12, wave_thickness: f32::NAN, ..Settings::default() }.sanitized();
+        assert_eq!((invalid.wave_db_range, invalid.wave_thickness), (60, 2.0));
+    }
+
+    #[test]
+    fn bar_options_default_and_persist_independently() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        std::fs::write(&path, r#"{"waveStyle":"bars"}"#).unwrap();
+        let store = SettingsStore::load(path.clone());
+        let mut settings = store.get();
+        assert_eq!((settings.wave_bar_width, settings.wave_bar_gap, settings.wave_bar_radius), (2.0, 1.0, 0.0));
+        settings.wave_bar_width = 5.5;
+        settings.wave_bar_gap = 0.0;
+        settings.wave_bar_radius = 0.75;
+        settings.editor_waveform.wave_bar_width = 99.0;
+        settings.editor_waveform.wave_bar_gap = -1.0;
+        settings.editor_waveform.wave_bar_radius = 2.0;
+        store.replace(settings).unwrap();
+        let settings = SettingsStore::load(path).get();
+        assert_eq!((settings.wave_bar_width, settings.wave_bar_gap, settings.wave_bar_radius), (5.5, 0.0, 0.75));
+        let editor = settings.editor_waveform;
+        assert_eq!((editor.wave_bar_width, editor.wave_bar_gap, editor.wave_bar_radius), (8.0, 0.0, 1.0));
+    }
+
 }

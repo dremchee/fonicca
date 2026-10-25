@@ -43,6 +43,19 @@ function state(): EditorState {
 // of i16 fractions of full scale.
 function wave(start: number, end: number, columns: number, split: boolean) {
   const lanes = split ? 2 : 1
+  const count = Math.max(0, Math.floor(end) - Math.floor(start))
+  if (count <= columns) {
+    const buf = new ArrayBuffer(16 + lanes * count * 2)
+    new Uint32Array(buf, 0, 4).set([1, lanes, count, 1])
+    const values = new Int16Array(buf, 16)
+    for (let lane = 0; lane < lanes; lane++) {
+      for (let i = 0; i < count; i++) {
+        const frame = Math.floor(start) + i
+        values[lane * count + i] = Math.round(level(frame) * Math.sin(frame * 2 * Math.PI * (110 + lane * 5) / RATE) * 32767)
+      }
+    }
+    return buf
+  }
   const stride = 6
   const buf = new ArrayBuffer(16 + lanes * columns * stride * 2)
   new Uint32Array(buf, 0, 4).set([0, lanes, columns, stride])
@@ -87,6 +100,7 @@ function slices(start: number, end: number, by: SliceBy): Span[] {
 export function editorCommand(cmd: string, args: any): unknown {
   switch (cmd) {
     case 'editor_open': return { state: state(), name: 'Drum Loop 120', ext: 'wav', path: '/Users/me/Projects/Sound/Loops/Drum Loop 120.wav', bpm: BPM }
+    case 'sample_wave': return wave(0, FRAMES, args.columns, args.split)
     case 'editor_wave': return wave(args.start, args.end, args.columns, args.split)
     case 'editor_apply':
       remember()

@@ -7,6 +7,7 @@ import { computed, ref, shallowRef, watch, watchEffect } from 'vue'
 import { toast } from 'vue-sonner'
 import { api } from '@/api'
 import { setLocale } from '@/i18n'
+import { waveformSettings } from '@/waveform-settings'
 import { applyPalette, DEFAULT_THEME, findTheme } from '@/themes'
 
 export type SettingsSection = 'general' | 'library' | 'playback' | 'waveform' | 'themes' | 'analysis' | 'shortcuts' | 'about'
@@ -24,11 +25,8 @@ const DEFAULTS: Settings = {
   syncEnabled: false,
   projectBpm: null,
   projectKey: null,
-  waveStyle: 'peaksRms',
-  waveChannels: 'split',
-  waveScale: 'linear',
-  waveColors: 'theme',
-  editorWaveform: { waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' },
+  ...waveformSettings(),
+  editorWaveform: waveformSettings(),
 }
 
 export const useSettingsStore = defineStore('settings', () => {
@@ -54,10 +52,11 @@ export const useSettingsStore = defineStore('settings', () => {
   })
 
   async function init() {
-    settings.value = await api.getSettings()
+    const loaded = await api.getSettings()
+    settings.value = { ...loaded, ...waveformSettings(loaded), editorWaveform: waveformSettings(loaded.editorWaveform) }
     // Changes made in another window (e.g. the main one while an editor is open).
     await listen<Settings>('settings-changed', ({ payload }) => {
-      settings.value = payload
+      settings.value = { ...payload, ...waveformSettings(payload), editorWaveform: waveformSettings(payload.editorWaveform) }
     })
   }
 
@@ -66,7 +65,8 @@ export const useSettingsStore = defineStore('settings', () => {
     const prev = settings.value
     settings.value = { ...prev, ...patch }
     try {
-      settings.value = await api.updateSettings(settings.value)
+      const saved = await api.updateSettings(settings.value)
+      settings.value = { ...saved, ...waveformSettings(saved), editorWaveform: waveformSettings(saved.editorWaveform) }
     }
     catch (e) {
       settings.value = prev

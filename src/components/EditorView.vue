@@ -69,7 +69,9 @@ import { MIN_LINE_PX, useEditorGrid } from '@/composables/editor/grid'
 import { useEditorViewport } from '@/composables/editor/viewport'
 import { useFrameDraw } from '@/composables/editor/frameDraw'
 import { formatNumber, formatRate, shortPath } from '@/format'
-import { canvasContext, drawWave } from '@/waveform'
+import { canvasContext, drawWave } from '@/waveform-renderer'
+import { useWaveRenderer } from '@/waveform-gl'
+import { waveformLook } from '@/waveform-settings'
 import { regionsOf, useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -79,6 +81,7 @@ const settings = useSettingsStore()
 
 const box = ref<HTMLElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
+useWaveRenderer(canvas)
 const width = ref(0)
 const height = ref(0)
 const wave = shallowRef<Wave | null>(null)
@@ -260,8 +263,7 @@ function draw() {
     ctx.restore()
   }
   else if (wave.value) {
-    const { waveStyle, waveScale, waveColors } = settings.settings.editorWaveform
-    const look = { style: waveStyle, scale: waveScale, colors: waveColors, zoom: vZoom.value, lineColor: color('--border'), color: color('--wave-strong') }
+    const look = { ...waveformLook(settings.settings.editorWaveform), zoom: vZoom.value, lineColor: color('--border'), color: color('--wave-strong') }
     // The wave covers its own range (see readWave), placed under the view.
     const data = wave.value
     const left = x(waveRange.start)
@@ -286,7 +288,7 @@ function draw() {
       ctx.fillStyle = color('--primary')
       ctx.fillRect(selX, RULER, selW, h - RULER)
       // Frequency colours stay as they are; the theme colour flips to the canvas colour.
-      placed({ ...look, color: color('--card'), lineColor: color('--card') })
+      placed({ ...look, color: color('--card'), lineColor: color('--card'), channelColors: [null, null] })
       ctx.restore()
     }
   }
@@ -1310,6 +1312,9 @@ const curves: { value: Curve, label: string }[] = [
                   {{ t('editor.view.zeroSnap') }}
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem @select="settings.openDialog('waveform')">
+                  {{ t('settings.waveform.moreSettings') }}
+                </DropdownMenuItem>
                 <DropdownMenuItem :disabled="vZoom <= 1.01" @select="vZoom = 1">
                   {{ t('editor.view.resetVZoom') }}
                 </DropdownMenuItem>

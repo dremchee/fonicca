@@ -4,14 +4,17 @@ import { useResizeObserver } from '@vueuse/core'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useSettingsStore } from '@/stores/settings'
-import { demoWave, drawWave } from '@/waveform'
+import { demoWave, drawWave } from '@/waveform-renderer'
+import { useWaveRenderer } from '@/waveform-gl'
+import { waveformLook } from '@/waveform-settings'
 
 // Live preview of the waveform settings on a made-up groove.
 const { t } = useI18n()
-const props = defineProps<{ options: WaveformSettings }>()
+const props = defineProps<{ options: WaveformSettings, accent?: boolean }>()
 const settings = useSettingsStore()
 const box = ref<HTMLElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
+useWaveRenderer(canvas)
 const size = ref({ width: 0, height: 0 })
 
 useResizeObserver(box, (entries) => {
@@ -33,16 +36,14 @@ function draw() {
   const s = props.options
   const style = getComputedStyle(el)
   drawWave(ctx, demoWave(Math.round(width * dpr), s.waveChannels === 'split'), { top: 0, width, height, dpr }, {
-    style: s.waveStyle,
-    scale: s.waveScale,
-    colors: s.waveColors,
+    ...waveformLook(s),
     zoom: 1,
-    color: style.getPropertyValue('--wave-strong').trim(),
+    color: style.getPropertyValue(props.accent ? '--wave-strong' : '--wave').trim(),
     lineColor: style.getPropertyValue('--border').trim(),
   })
 }
 
-watch([size, () => props.options, () => settings.themeRevision], draw, { deep: true })
+watch([size, () => props.options, () => props.accent, () => settings.themeRevision], draw, { deep: true })
 </script>
 
 <template>
