@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
 
 // A peak meter like a DAW's master: per channel, RMS solid and peak translucent
-// above it, a peak-hold line, and a clip light that stays on until clicked.
+// above it, a fading peak-hold line, and an automatically clearing clip light.
 const props = defineProps<{
   /** Something is playing: poll the levels. When it stops, the bars fall back. */
   active: boolean
@@ -16,9 +16,10 @@ const { t } = useI18n()
 const FLOOR = -70
 /** dB per second the bars fall when the level drops. */
 const FALL = 26
-/** Peak hold: how long it stays, then how fast it falls. */
+/** Peak markers hold briefly, then fade; clipping clears after the same interval. */
 const HOLD_MS = 1200
-const HOLD_FALL = 14
+const HOLD_FADE_MS = 600
+const CLIP_HOLD_MS = 1800
 
 /**
  * Meter deflection 0..1 for a level in dBFS, after IEC 60268-18 (digital peak
@@ -48,13 +49,17 @@ function iec(db: number) {
 const toDb = (lin: number) => lin > 0 ? Math.max(FLOOR, 20 * Math.log10(lin)) : FLOOR
 const pct = (db: number) => `${iec(db) * 100}%`
 
-interface Channel { peak: number, rms: number, hold: number, holdAt: number }
-const channels = reactive<Channel[]>([0, 1].map(() => ({ peak: FLOOR, rms: FLOOR, hold: FLOOR, holdAt: 0 })))
+interface Channel { peak: number, rms: number, hold: number, holdAt: number, holdOpacity: number }
+const channels = reactive<Channel[]>([0, 1].map(() => ({ peak: FLOOR, rms: FLOOR, hold: FLOOR, holdAt: 0, holdOpacity: 0 })))
 const clipped = ref(false)
+let clippedAt = 0
 
 const ticks = [0, -3, -6, -9, -12, -18, -24, -36, -48]
-// Colour zones on the bar: the accent, amber from -6 dB, red from -1 dB.
-const barGradient = `linear-gradient(to top, var(--primary) 0%, var(--primary) ${pct(-6)}, #e5a93a ${pct(-6)}, #e5a93a ${pct(-1)}, var(--destructive) ${pct(-1)})`
+// Fixed dB zones: green, yellow from -6 dB, red from -1 dB.
+const meterColor = (db: number) => db >= -1 ? '#ef4444' : db >= -6 ? '#eab308' : '#22c55e'
+const gradient = (direction: string) => `linear-gradient(${direction}, #22c55e 0%, #22c55e ${pct(-6)}, #eab308 ${pct(-6)}, #eab308 ${pct(-1)}, #ef4444 ${pct(-1)})`
+const barGradient = gradient('to top')
+const horizontalGradient = gradient('to right')
 
 let frame = 0
 let last = performance.now()
@@ -84,8 +89,10 @@ async function tick(now: number) {
     // Mono feeds both bars.
     const peakLin = next ? next.peak[Math.min(i, next.peak.length - 1)] ?? 0 : 0
     const rmsLin = next ? next.rms[Math.min(i, next.rms.length - 1)] ?? 0 : 0
-    if (peakLin >= 0.999)
+    if (peakLin >= 0.999) {
       clipped.value = true
+      clippedAt = now
+    }
     const peak = toDb(peakLin)
     const rms = toDb(rmsLin)
     ch.peak = Math.max(peak, ch.peak - FALL * dt)
@@ -94,13 +101,15 @@ async function tick(now: number) {
       ch.hold = peak
       ch.holdAt = now
     }
-    else if (now - ch.holdAt > HOLD_MS) {
-      ch.hold = Math.max(FLOOR, ch.hold - HOLD_FALL * dt)
-    }
-    moving ||= ch.peak > FLOOR || ch.hold > FLOOR
+    ch.holdOpacity = Math.max(0, 1 - Math.max(0, now - ch.holdAt - HOLD_MS) / HOLD_FADE_MS)
+    if (ch.holdOpacity === 0)
+      ch.hold = FLOOR
+    moving ||= ch.peak > FLOOR || (ch.hold > FLOOR && ch.holdOpacity > 0)
   })
-  // Keep animating while playing or while the bars are still falling back.
-  frame = props.active || moving ? requestAnimationFrame(tick) : 0
+  if (clipped.value && now - clippedAt >= CLIP_HOLD_MS)
+    clipped.value = false
+  // Keep animating until the bars and held indicators have cleared.
+  frame = props.active || moving || clipped.value ? requestAnimationFrame(tick) : 0
 }
 
 function start() {
@@ -122,15 +131,15 @@ onBeforeUnmount(() => {
 
 <template>
   <button
-    v-if="horizontal" class="horizontal-meter" :class="{ clipped }"
+    v-if="horizontal" class="horizontal-meter" :class="{ clipped }" :style="{ '--meter-gradient': horizontalGradient }"
     :aria-label="`${t('player.meter.title')}. ${t(clipped ? 'player.meter.clip' : 'player.meter.noClip')}`"
     :aria-pressed="clipped" :title="`${t('player.meter.title')} · ${t(clipped ? 'player.meter.clip' : 'player.meter.noClip')}`"
     @click="clipped = false"
   >
     <span v-for="(ch, i) in channels" :key="i" class="horizontal-lane" aria-hidden="true">
-      <span class="horizontal-peak" :style="{ width: pct(ch.peak) }" />
-      <span class="horizontal-rms" :style="{ width: pct(ch.rms) }" />
-      <span v-if="ch.hold > FLOOR" class="horizontal-hold" :style="{ left: `min(${pct(ch.hold)}, calc(100% - 1px))` }" />
+      <span class="horizontal-peak" :style="{ clipPath: `inset(0 calc(100% - ${pct(ch.peak)}) 0 0)` }" />
+      <span class="horizontal-rms" :style="{ clipPath: `inset(0 calc(100% - ${pct(ch.rms)}) 0 0)` }" />
+      <span v-if="ch.hold > FLOOR" class="horizontal-hold" :style="{ left: `min(${pct(ch.hold)}, calc(100% - 1px))`, opacity: ch.holdOpacity, background: meterColor(ch.hold) }" />
     </span>
     <span class="horizontal-clip" aria-hidden="true" />
   </button>
@@ -159,7 +168,7 @@ onBeforeUnmount(() => {
         <div class="cover" :style="{ height: `calc(100% - ${pct(ch.peak)})` }" />
         <div class="cover dim" :style="{ bottom: pct(ch.rms), height: `max(0%, calc(${pct(ch.peak)} - ${pct(ch.rms)}))` }" />
         <div v-for="db in ticks" :key="db" class="tick" :style="{ bottom: pct(db) }" />
-        <div v-if="ch.hold > FLOOR" class="hold" :style="{ bottom: pct(ch.hold) }" />
+        <div v-if="ch.hold > FLOOR" class="hold" :style="{ bottom: pct(ch.hold), opacity: ch.holdOpacity, background: meterColor(ch.hold) }" />
       </div>
     </div>
 
@@ -194,12 +203,11 @@ onBeforeUnmount(() => {
 .horizontal-peak,
 .horizontal-rms {
   position: absolute;
-  inset-block: 0;
-  left: 0;
-  background: var(--foreground);
+  inset: 0;
+  background: var(--meter-gradient);
 }
-.horizontal-peak { opacity: 0.25; }
-.horizontal-rms { opacity: 0.8; }
+.horizontal-peak { opacity: 0.35; }
+.horizontal-rms { opacity: 1; }
 .horizontal-hold {
   position: absolute;
   inset-block: 0;
