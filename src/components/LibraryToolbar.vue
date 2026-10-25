@@ -10,11 +10,9 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Kbd } from '@/components/ui/kbd'
 import { folderName, formatNumber } from '@/format'
 import { useLibraryStore } from '@/stores/library'
-import { useStemsStore } from '@/stores/stems'
 
 const { t } = useI18n()
 const library = useLibraryStore()
-const stems = useStemsStore()
 const searchInput = useTemplateRef<ComponentPublicInstance>('searchInput')
 const searchElement = computed(() => searchInput.value?.$el as HTMLInputElement | undefined)
 const title = computed(() => {
@@ -66,7 +64,6 @@ defineExpose({ searchElement })
       </InputGroupAddon>
       <InputGroupAddon align="inline-end" class="search-shortcut"><Kbd>⌘F</Kbd></InputGroupAddon>
     </InputGroup>
-    <Button variant="ghost" size="sm" :disabled="!library.focused && !stems.progress.stage" @click="stems.show(library.focused ?? undefined)">{{ t('stems.title') }}<span v-if="stems.progress.running"> · {{ Math.round(stems.progress.progress * 100) }}%</span></Button>
     <CollectionPicker />
   </header>
 </template>

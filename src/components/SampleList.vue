@@ -26,7 +26,7 @@ import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 
-const ROW_HEIGHT = 32
+const ROW_HEIGHT = 36
 
 const { t } = useI18n()
 const { tagStyle } = useTagColors()
@@ -110,7 +110,11 @@ const items = computed(() => virtualizer.value.getVirtualItems())
 const rows = computed(() => items.value.map((item) => {
   const sample = library.sampleAt(item.index)
   const stemChild = sample?.stemParentId != null && library.expandedStems.has(sample.stemParentId)
-  return { item, sample, stemChild }
+  const next = library.sampleAt(item.index + 1)
+  const groupStart = !!sample && library.expandedStems.has(sample.id) && next?.stemParentId === sample.id
+  const groupEnd = stemChild && next?.stemParentId !== sample?.stemParentId
+  const grouped = groupStart || stemChild
+  return { item, sample, stemChild, groupStart, groupEnd, grouped }
 }))
 
 // A scope change may keep the same row count and virtual range while clearing pages.
@@ -253,7 +257,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
               </Empty>
 
               <div v-else class="relative w-full" :style="{ height: `${virtualizer.getTotalSize()}px` }">
-                <template v-for="{ item, sample: s, stemChild } in rows" :key="item.index">
+                <template v-for="{ item, sample: s, stemChild, groupStart, groupEnd, grouped } in rows" :key="item.index">
                   <div
                     v-if="s"
                     class="row grid items-center px-3 absolute inset-x-0 tabular"
@@ -263,8 +267,11 @@ function onDragStart(e: DragEvent, sample: Sample) {
                       playing: player.isPlaying(s.id),
                       'stem-parent': library.expandedStems.has(s.id),
                       'stem-child': stemChild,
+                      grouped,
+                      'group-start': groupStart,
+                      'group-end': groupEnd,
                     }"
-                    :style="{ height: `${item.size}px`, transform: `translateY(${item.start}px)` }"
+                    :style="{ height: `${item.size - 4}px`, transform: `translateY(${item.start + 2}px)` }"
                     :data-index="item.index"
                     draggable="true"
                     @mousedown="onMouseDown($event, item.index, s)"
@@ -272,11 +279,11 @@ function onDragStart(e: DragEvent, sample: Sample) {
                     @dblclick="onDoubleClick(item.index)"
                     @dragstart="onDragStart($event, s)"
                   >
-                    <span class="grid place-items-center">
+                    <span class="track-icon grid place-items-center">
                       <span v-if="player.isPlaying(s.id)" class="i-lucide-volume-2 text-primary text-xs" aria-hidden="true" />
                       <CategoryIcon v-else :category="s.category" :stem="s.stemKind" class="size-3.5 text-muted-foreground" />
                     </span>
-                    <span class="relative flex items-center gap-2 min-w-0 h-full" :class="{ 'pl-5': stemChild }">
+                    <span class="track-name flex items-center gap-2 min-w-0 h-full">
                       <Hint :text="breakablePath(s.path)" side="top">
                         <span class="truncate">{{ s.stemKind ? t(`stems.instruments.${s.stemKind}`) : s.name }}</span>
                       </Hint>
@@ -333,7 +340,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
                   <div
                     v-else
                     class="row grid items-center px-3 absolute inset-x-0"
-                    :style="{ height: `${item.size}px`, transform: `translateY(${item.start}px)` }"
+                    :style="{ height: `${item.size - 4}px`, transform: `translateY(${item.start + 2}px)` }"
                   >
                     <span />
                     <span class="h-2.5 w-40 rounded bg-muted" />
@@ -362,6 +369,38 @@ function onDragStart(e: DragEvent, sample: Sample) {
   grid-template-columns: var(--sample-columns);
   column-gap: 12px;
 }
+.row {
+  inset-inline: 6px;
+  padding-inline: calc(0.75rem - 6px);
+  border-radius: 6px;
+  isolation: isolate;
+}
+.row.grouped {
+  border-radius: 0;
+}
+.row.grouped::before {
+  content: '';
+  position: absolute;
+  inset: -2px 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: inherit;
+  pointer-events: none;
+}
+.row.group-start::before {
+  top: 0;
+}
+.row.group-end::before {
+  bottom: 0;
+}
+.row.group-start {
+  border-start-start-radius: 6px;
+  border-start-end-radius: 6px;
+}
+.row.group-end {
+  border-end-start-radius: 6px;
+  border-end-end-radius: 6px;
+}
 .column-guide {
   position: relative;
 }
@@ -378,6 +417,12 @@ function onDragStart(e: DragEvent, sample: Sample) {
 }
 .header {
   flex-shrink: 0;
+}
+.stem-child .track-icon {
+  transform: translateX(12px);
+}
+.stem-child .track-name {
+  padding-left: 12px;
 }
 .row.stem-parent,
 .row.stem-child {
@@ -419,6 +464,7 @@ button.stem-toggle:hover {
   filter: brightness(0.95);
 }
 .row.playing {
+  z-index: 1;
   background: var(--primary);
   color: var(--primary-foreground);
 }

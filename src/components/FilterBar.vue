@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AcceptableValue } from 'reka-ui'
 import type { SampleKind } from '@/api'
-import { Check, ChevronDown, Download, Pause, Play } from '@lucide/vue'
+import { ChevronDown, Download, Pause, Play } from '@lucide/vue'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -241,9 +241,6 @@ function parseBpm(e: Event): number | null {
           </Button>
         </Hint>
       </template>
-      <span v-else-if="!modelDownload" class="flex items-center gap-1.5">
-        <Check class="size-4" /> {{ t('filters.analyzed') }}
-      </span>
     </div>
   </div>
 </template>
