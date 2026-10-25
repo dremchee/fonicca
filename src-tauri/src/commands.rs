@@ -450,7 +450,6 @@ pub fn apply_settings(app: &tauri::AppHandle, state: &AppState, prev: Option<&Se
     }
     if prev.is_none_or(|p| p.volume != next.volume) {
         state.player.set_volume(next.volume);
-        state.project_player.set_volume(next.volume);
     }
     if prev.is_none_or(|p| p.analysis_threads != next.analysis_threads) {
         state.analyzer.set_threads(next.analysis_threads.unwrap_or_else(settings::default_threads))?;

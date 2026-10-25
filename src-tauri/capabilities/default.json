@@ -1,11 +1,10 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the library, editor and project windows",
+  "description": "Capability for the library and editor windows",
   "windows": [
     "main",
-    "editor-*",
-    "project"
+    "editor-*"
   ],
   "permissions": [
     "core:default",

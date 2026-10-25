@@ -37,6 +37,7 @@ import { api } from '@/api'
 import Hint from '@/components/Hint.vue'
 import ThemesSettings from '@/components/ThemesSettings.vue'
 import ModelsSettings from '@/components/ModelsSettings.vue'
+import StemStorageSettings from '@/components/StemStorageSettings.vue'
 import WaveformControls from '@/components/WaveformControls.vue'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
@@ -487,6 +488,7 @@ function keyLabel(k: string) {
               </div>
             </section>
 
+            <StemStorageSettings />
             <ModelsSettings @changed="refreshInfo" />
           </template>
 

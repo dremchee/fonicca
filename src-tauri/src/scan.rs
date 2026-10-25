@@ -79,7 +79,7 @@ fn run(db_path: &Path, source_id: i64, on_progress: &(impl Fn(ScanProgress) + Sy
 
     let mut seen: HashSet<i64> = HashSet::new();
     let mut changed: Vec<Candidate> = Vec::new();
-    for entry in WalkDir::new(&root).follow_links(false).into_iter().filter_map(|e| e.ok()) {
+    for entry in WalkDir::new(&root).follow_links(false).into_iter().filter_entry(|entry| !entry.file_name().to_string_lossy().starts_with(".fonicca-stems-")).filter_map(|e| e.ok()) {
         if !entry.file_type().is_file() || !audio::is_audio_file(entry.path()) {
             continue;
         }

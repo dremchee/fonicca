@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
-import { Globe, PanelsTopLeft, Search } from '@lucide/vue'
+import { Globe, Search } from '@lucide/vue'
 import { computed, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import CollectionPicker from '@/components/CollectionPicker.vue'
@@ -10,7 +10,6 @@ import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/in
 import { Kbd } from '@/components/ui/kbd'
 import { folderName, formatNumber } from '@/format'
 import { useLibraryStore } from '@/stores/library'
-import { openProjectWindow } from '@/composables/projectWindow'
 import { useStemsStore } from '@/stores/stems'
 
 const { t } = useI18n()
@@ -67,7 +66,6 @@ defineExpose({ searchElement })
       </InputGroupAddon>
       <InputGroupAddon align="inline-end" class="search-shortcut"><Kbd>⌘F</Kbd></InputGroupAddon>
     </InputGroup>
-    <Button variant="outline" size="sm" :title="t('project.openWindow')" @click="openProjectWindow()"><PanelsTopLeft />{{ t('project.title') }}</Button>
     <Button variant="ghost" size="sm" :disabled="!library.focused && !stems.progress.stage" @click="stems.show(library.focused ?? undefined)">{{ t('stems.title') }}<span v-if="stems.progress.running"> · {{ Math.round(stems.progress.progress * 100) }}%</span></Button>
     <CollectionPicker />
   </header>

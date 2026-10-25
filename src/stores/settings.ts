@@ -22,6 +22,7 @@ const DEFAULTS: Settings = {
   autoplay: true,
   volume: 1,
   analysisThreads: null,
+  stemsFolder: null,
   syncEnabled: false,
   projectBpm: null,
   projectKey: null,

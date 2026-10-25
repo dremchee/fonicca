@@ -187,6 +187,8 @@ pub struct Settings {
     pub volume: f32,
     /// Analysis threads; `None` picks half the cores.
     pub analysis_threads: Option<usize>,
+    /// None saves stems beside the original.
+    pub stems_folder: Option<String>,
     /// Preview loops in the project tempo and tonal samples in the project key.
     pub sync_enabled: bool,
     pub project_bpm: Option<f64>,
@@ -219,6 +221,7 @@ impl Default for Settings {
             autoplay: true,
             volume: 1.0,
             analysis_threads: None,
+            stems_folder: None,
             sync_enabled: false,
             project_bpm: None,
             project_key: None,
@@ -237,6 +240,7 @@ impl Default for Settings {
 impl Settings {
     /// Clamps values a hand-edited file or a buggy caller could put out of range.
     fn sanitized(mut self) -> Self {
+        self.stems_folder = self.stems_folder.filter(|p| Path::new(p).is_absolute());
         sanitize_wave_appearance(&mut self.wave_peak_opacity, &mut self.wave_rms_opacity, &mut self.wave_thickness, &mut self.wave_db_range, &mut self.wave_channel_colors);
         sanitize_bar_appearance(&mut self.wave_bar_width, &mut self.wave_bar_gap, &mut self.wave_bar_radius);
         let editor = &mut self.editor_waveform;
@@ -503,6 +507,24 @@ mod tests {
         assert_eq!((settings.wave_bar_width, settings.wave_bar_gap, settings.wave_bar_radius), (5.5, 0.0, 0.75));
         let editor = settings.editor_waveform;
         assert_eq!((editor.wave_bar_width, editor.wave_bar_gap, editor.wave_bar_radius), (8.0, 0.0, 1.0));
+    }
+
+    #[test]
+    fn stem_output_folder_defaults_to_original_and_persists_custom_location() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        std::fs::write(&path, "{}").unwrap();
+        let store = SettingsStore::load(path.clone());
+        assert!(store.get().stems_folder.is_none());
+        let mut settings = store.get();
+        settings.stems_folder = Some(dir.path().to_string_lossy().into_owned());
+        store.replace(settings).unwrap();
+        let store = SettingsStore::load(path);
+        assert_eq!(store.get().stems_folder.as_deref(),dir.path().to_str());
+        let mut settings = store.get();
+        settings.stems_folder = None;
+        store.replace(settings).unwrap();
+        assert!(store.get().stems_folder.is_none());
     }
 
 }

@@ -47,15 +47,6 @@ impl Timing {
 }
 
 impl Player {
-    /// Independent transport on the same output device, for the project window.
-    pub fn fork(&self) -> Self {
-        Self {
-            mixer: self.mixer.clone(), current: Mutex::new(None),
-            volume: Mutex::new(*self.volume.lock().unwrap()),
-            timing: Mutex::new(Timing::PLAIN), meter: Arc::default(),
-        }
-    }
-
     pub fn new() -> Self {
         let (tx, rx) = mpsc::channel();
         std::thread::Builder::new()
@@ -160,17 +151,6 @@ impl Player {
         Ok(())
     }
 
-    /// A complete arrangement is one source, so clips share one sample clock.
-    pub fn play_project(&self, source: crate::project::Mix, start: f64) -> Result<()> {
-        let mixer = self.mixer.as_ref().ok_or_else(|| Error::Audio("no output device".into()))?;
-        let player = RodioPlayer::connect_new(mixer);
-        player.set_volume(*self.volume.lock().unwrap());
-        player.append(Metered::new(source, Arc::clone(&self.meter)));
-        *self.timing.lock().unwrap() = Timing { offset: start, ..Timing::PLAIN };
-        *self.current.lock().unwrap() = Some(player);
-        Ok(())
-    }
-
     /// Preview volume, 0..=1; also applies to the sound playing now.
     pub fn set_volume(&self, volume: f32) {
         *self.volume.lock().unwrap() = volume;
@@ -267,22 +247,5 @@ mod tests {
         assert_eq!(player.position(), None);
         assert_eq!(player.pause(), None);
         assert!(!player.resume());
-    }
-}
-
-#[cfg(test)]
-mod project_tests {
-    use super::*;
-    #[test]
-    fn forked_project_transport_stops_without_touching_the_library_transport() {
-        let (mixer,mut output)=rodio::mixer::mixer(std::num::NonZero::new(1).unwrap(),std::num::NonZero::new(48000).unwrap());
-        let player=Player {mixer:Some(mixer),current:Mutex::new(None),volume:Mutex::new(1.0),timing:Mutex::new(Timing::PLAIN),meter:Arc::default()};
-        let project=player.fork();
-        let pcm=crate::audio::Pcm {samples:vec![0.25;48000],channels:1,sample_rate:48000};
-        player.play_buffer(&pcm,0,48000,false).unwrap();project.play_buffer(&pcm,24000,48000,false).unwrap();
-        for _ in 0..4800 {output.next();}
-        assert!(player.position().unwrap()<0.5);assert!(project.position().unwrap()>=0.5);
-        project.stop();assert!(project.position().is_none());assert!(player.position().is_some());
-        player.stop();
     }
 }

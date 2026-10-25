@@ -33,6 +33,9 @@ export interface TagEdit {
 }
 
 export interface Sample {
+  stemParentId?: number | null
+  stemKind?: 'vocals' | 'drums' | 'bass' | 'other' | null
+  stemCount?: number
   id: number
   sourceId: number
   path: string
@@ -130,6 +133,7 @@ export interface Settings extends WaveformSettings {
   volume: number
   /** Analysis threads; null picks half the cores. */
   analysisThreads: number | null
+  stemsFolder: string | null
   /** Preview loops in the project tempo and tonal samples in the project key. */
   syncEnabled: boolean
   projectBpm: number | null
@@ -227,6 +231,8 @@ export interface ScanProgress {
 }
 
 export interface SampleFilter {
+  groupStems?: boolean
+  expandedStems?: number[]
   query?: string
   sourceId?: number | null
   directory?: string | null

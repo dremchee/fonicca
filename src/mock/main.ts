@@ -7,7 +7,6 @@ import { createPinia } from 'pinia'
 import { createApp } from 'vue'
 import App from '../App.vue'
 import EditorWindow from '../EditorWindow.vue'
-import ProjectWindow from '../ProjectWindow.vue'
 import { i18n } from '../i18n'
 import ExportMock from './ExportMock.vue'
 import ThemesMock from './ThemesMock.vue'
@@ -27,11 +26,6 @@ else if (location.hash === '#editor') {
   mockWindows('editor-1')
   install()
   createApp(EditorWindow, { sampleId: 1 }).use(createPinia()).use(i18n).mount('#app')
-}
-else if (location.hash === '#project') {
-  mockWindows('project')
-  install()
-  createApp(ProjectWindow).use(createPinia()).use(i18n).mount('#app')
 }
 else {
   mockWindows('main')

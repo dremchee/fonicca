@@ -1,5 +1,14 @@
 import type en from '../en/stems'
 export default {
+  badge: "Стемы · {n}",
+  expand: "Показать стемы: {name}",
+  collapse: "Скрыть стемы: {name}",
+  folderSettings: "Настройки…",
+  storageTitle: "Папка для стемов",
+  storageDescription: "Новые стемы раскрываются под исходным треком в библиотеке независимо от папки сохранения. Уже созданные файлы остаются на своих местах.",
+  besideOriginal: "Рядом с исходным треком",
+  useOriginalFolder: "Рядом с исходником",
+
   title: 'Стемы', action: 'Разделить на стемы…', description: 'Локальное разделение трека на вокал, барабаны, бас и остальные инструменты. Исходник сохраняется.',
   model: 'Модель разделения',
   models: { scnetXlIhf: 'SCNet XL IHF · Качество', scnetLarge: 'SCNet-large · Баланс', spleeter: 'Spleeter · Быстро' },
@@ -8,7 +17,7 @@ export default {
   download: 'При первом запуске загрузится выбранная модель ({size}). Аудио остаётся на этом компьютере.',
   ready: 'Модель установлена · локальная обработка', limits: 'Моно или стерео, до 10 минут. Результат — стерео WAV 44,1 кГц, 32-bit float.',
   start: 'Разделить', downloadStart: 'Скачать модель и разделить', stop: 'Остановить', stopping: 'Остановка после текущего этапа…',
-  close: 'Закрыть', openProject: 'Открыть в мультитреке', reveal: 'Показать в Finder', edit: 'Открыть в редакторе',
+  close: 'Закрыть', reveal: 'Показать в Finder', edit: 'Открыть в редакторе',
   stages: { preparing: 'Подготовка звука…', downloading: 'Загрузка модели…', separating: 'Разделение на стемы…', importing: 'Добавление в библиотеку…', done: 'Стемы добавлены в библиотеку', cancelled: 'Остановлено', failed: 'Не удалось разделить трек' },
   instruments: { vocals: 'Вокал', drums: 'Барабаны', bass: 'Бас', other: 'Остальное' },
 } satisfies typeof en

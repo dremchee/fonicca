@@ -4,9 +4,9 @@ import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref } from 'vue'
-export interface StemProgress { model: StemModel, running: boolean, stage: string, progress: number, error: string | null, cancelled: boolean, paths: string[], ids: number[], name: string }
+export interface StemProgress { model: StemModel, sourceId: number | null, running: boolean, stage: string, progress: number, error: string | null, cancelled: boolean, paths: string[], ids: number[], name: string }
 interface Status { progress: StemProgress, modelReady: boolean, downloadBytes: number }
-const initial = (): StemProgress => ({ model: 'scnetXlIhf', running: false, stage: '', progress: 0, error: null, cancelled: false, paths: [], ids: [], name: '' })
+const initial = (): StemProgress => ({ model: 'scnetXlIhf', sourceId: null, running: false, stage: '', progress: 0, error: null, cancelled: false, paths: [], ids: [], name: '' })
 export const useStemsStore = defineStore('stems', () => {
   const open = ref(false)
   const model = useLocalStorage<StemModel>('stems.model', 'scnetXlIhf')
@@ -46,10 +46,10 @@ export const useStemsStore = defineStore('stems', () => {
     await load()
   }
   function show(selected?: Sample) { if (selected) sample.value = selected; error.value = ''; open.value = true; void load() }
-  async function start(folder: string) {
+  async function start() {
     if (!sample.value || starting.value || progress.value.running) return
     starting.value = true; error.value = ''
-    try { await invoke('stem_start', { id: sample.value.id, folder, model: model.value }); await load() }
+    try { await invoke('stem_start', { id: sample.value.id, model: model.value }); await load() }
     catch (e) { error.value = String(e) }
     finally { starting.value = false }
   }

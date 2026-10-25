@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Sample } from '@/api'
 import { useVirtualizer } from '@tanstack/vue-virtual'
-import { AudioLines, FolderPlus, Layers, SearchX, Sparkles, Star, Tag, X } from '@lucide/vue'
+import { AudioLines, ChevronRight, FolderPlus, Layers, SearchX, Sparkles, Star, Tag, X } from '@lucide/vue'
 import { onKeyStroke, useEventListener, useStorage } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
@@ -9,6 +9,9 @@ import { useI18n } from 'vue-i18n'
 import { categoryHint, categoryLabel, formatBpm, formatDuration, kindLabel, sourceHint } from '@/format'
 import Hint from '@/components/Hint.vue'
 import SampleContextMenu from '@/components/SampleContextMenu.vue'
+import SampleStemProgress from '@/components/SampleStemProgress.vue'
+import { activeStemProgress } from '@/stem-progress'
+import { useStemsStore } from '@/stores/stems'
 import SampleColumnsMenu from '@/components/SampleColumnsMenu.vue'
 import SampleColumnHeader from '@/components/SampleColumnHeader.vue'
 import { useSampleColumnWidths } from '@/composables/sampleColumnWidths'
@@ -25,6 +28,8 @@ const ROW_HEIGHT = 32
 const { t } = useI18n()
 const library = useLibraryStore()
 const player = usePlayerStore()
+const stems = useStemsStore()
+const stemProgress = computed(() => activeStemProgress(stems.progress))
 const { total, focusIndex, selectedIds, scope } = storeToRefs(library)
 
 // Keep the former full/compact preference when upgrading to individual columns.
@@ -177,7 +182,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
 </script>
 
 <template>
-  <div class="sample-list flex-1 min-h-0 flex flex-col">
+  <div class="sample-list flex-1 min-w-0 min-h-0 flex flex-col">
     <div v-if="similarTo" class="h-9 shrink-0 px-3 flex items-center gap-2 border-b border-border bg-primary-soft text-sm">
       <AudioLines class="size-4 text-primary" />
       <span class="truncate">{{ t('list.similar.soundsLike') }} <span class="font-medium">{{ similarTo.name }}</span></span>
@@ -188,9 +193,9 @@ function onDragStart(e: DragEvent, sample: Sample) {
         </Button>
       </Hint>
     </div>
-    <div class="table-viewport flex-1 min-h-0 overflow-x-auto">
-      <div class="table-content relative flex flex-col h-full" :style="tableStyle">
-        <div class="header grid items-center px-3 h-8 border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
+    <div class="table-viewport flex-1 min-w-0 min-h-0 overflow-x-auto">
+      <div class="table-content relative flex flex-col h-full" :style="total > 0 ? tableStyle : undefined">
+        <div v-if="total > 0" class="header grid items-center px-3 h-8 border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
           <span />
           <SampleColumnHeader
             :label="t('list.columns.name')" :min-width="sampleColumnLimits('name').min" :max-width="sampleColumnLimits('name').max"
@@ -255,15 +260,27 @@ function onDragStart(e: DragEvent, sample: Sample) {
                     @dragstart="onDragStart($event, s)"
                   >
                     <span class="grid place-items-center">
-                      <span v-if="player.isPlaying(s.id)" class="i-lucide-volume-2 text-primary text-xs" />
+                      <span v-if="player.isPlaying(s.id)" class="i-lucide-volume-2 text-primary text-xs" aria-hidden="true" />
                     </span>
-                    <span class="flex items-center gap-2 min-w-0">
+                    <span class="flex items-center gap-2 min-w-0" :class="{ 'pl-5': s.stemParentId }">
                       <Hint :text="breakablePath(s.path)" side="top">
-                        <span class="truncate">{{ s.name }}</span>
+                        <span class="truncate">{{ s.stemKind ? t(`stems.instruments.${s.stemKind}`) : s.name }}</span>
                       </Hint>
+                      <SampleStemProgress v-if="stemProgress?.sourceId === s.id" :progress="stemProgress" :name="s.name" />
                       <Hint v-if="s.similarity != null && s.id !== similarTo?.id" :text="t('list.similar.howSimilar')" side="top">
                         <span class="shrink-0 text-[11px] text-primary">{{ Math.round(Math.max(0, s.similarity) * 100) }}%</span>
                       </Hint>
+                      <button
+                        v-if="s.stemCount && !similarTo" type="button"
+                        class="stem-toggle ml-auto shrink-0 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        :aria-label="t(library.expandedStems.has(s.id) ? 'stems.collapse' : 'stems.expand', { name: s.name })"
+                        :aria-expanded="library.expandedStems.has(s.id)"
+                        @mousedown.stop @dblclick.stop @click.stop="library.toggleStems(s, item.index)"
+                      >
+                        {{ t('stems.badge', { n: s.stemCount }) }}
+                        <ChevronRight class="size-3 transition-transform" :class="{ 'rotate-90': library.expandedStems.has(s.id) }" />
+                      </button>
+                      <span v-else-if="s.stemCount" class="stem-toggle ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px]">{{ t('stems.badge', { n: s.stemCount }) }}</span>
                     </span>
                     <template v-for="column in visibleColumns" :key="column.id">
                       <span v-if="column.id === 'tags'" class="flex gap-1 overflow-hidden">
@@ -312,7 +329,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
           </ContextMenuTrigger>
           <SampleContextMenu v-if="menuSample" :sample="menuSample" @close="menuOpen = false" />
         </ContextMenu>
-        <div class="column-guides pointer-events-none absolute inset-0 grid px-3" aria-hidden="true">
+        <div v-if="total > 0" class="column-guides pointer-events-none absolute inset-0 grid px-3" aria-hidden="true">
           <span />
           <span class="column-guide" :class="{ active: resizingColumn === 'name' }" />
           <span v-for="column in visibleColumns" :key="column.id" class="column-guide" :class="{ active: resizingColumn === column.id }" />
@@ -385,5 +402,12 @@ function onDragStart(e: DragEvent, sample: Sample) {
 }
 .row.playing > span:nth-child(2) {
   color: var(--primary);
+}
+.stem-toggle {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+button.stem-toggle:hover {
+  filter: brightness(0.95);
 }
 </style>

@@ -2,14 +2,12 @@
 import { onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
-import { invoke } from '@tauri-apps/api/core'
 
 // A peak meter like a DAW's master: per channel, RMS solid and peak translucent
 // above it, a peak-hold line, and a clip light that stays on until clicked.
 const props = defineProps<{
   /** Something is playing: poll the levels. When it stops, the bars fall back. */
   active: boolean
-  project?: boolean
   horizontal?: boolean
 }>()
 
@@ -70,7 +68,7 @@ async function tick(now: number) {
   if (props.active && !pending) {
     pending = true
     try {
-      next = props.project ? await invoke<Awaited<ReturnType<typeof api.playbackLevels>>>('project_levels') : await api.playbackLevels()
+      next = await api.playbackLevels()
     }
     catch {
       next = null

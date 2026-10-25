@@ -27,6 +27,8 @@ pub struct Filter {
     pub category: Option<String>,
     /// Show samples that sound like this one, most similar first.
     pub similar_to: Option<i64>,
+    pub group_stems: bool,
+    pub expanded_stems: Vec<i64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -63,6 +65,9 @@ pub struct Sample {
     pub category_confidence: Option<f64>,
     /// Cosine similarity to the sample in `Filter::similar_to`.
     pub similarity: Option<f32>,
+    pub stem_parent_id: Option<i64>,
+    pub stem_kind: Option<String>,
+    pub stem_count: i64,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -193,6 +198,21 @@ fn source(f: &Filter, ranking: Option<&Ranking>) -> (String, Vec<Box<dyn ToSql>>
             all.extend(args);
             (format!("FROM samples s JOIN json_each(?) r ON r.value = s.id {filter}"), all, "ORDER BY r.key")
         }
+        None if f.group_stems => {
+            let mut args = args;
+            args.push(Box::new(serde_json::to_string(&f.expanded_stems).unwrap()));
+            let from = format!("FROM (
+              WITH matching AS (SELECT s.id FROM samples s {filter}),
+              roots AS (SELECT DISTINCT coalesce(l.parent_id,m.id) id FROM matching m
+                LEFT JOIN sample_stems l ON l.child_id=m.id),
+              visible AS (SELECT id,id root_id,-1 position FROM roots UNION ALL
+                SELECT l.child_id,l.parent_id,l.position FROM sample_stems l
+                JOIN roots r ON r.id=l.parent_id
+                WHERE l.parent_id IN (SELECT value FROM json_each(?)))
+              SELECT * FROM visible
+            ) v JOIN samples s ON s.id=v.id JOIN samples parent ON parent.id=v.root_id");
+            (from,args,"ORDER BY parent.name COLLATE NOCASE, parent.path, v.position, s.name COLLATE NOCASE, s.path")
+        }
         None => (format!("FROM samples s {filter}"), args, "ORDER BY s.name COLLATE NOCASE, s.path"),
     }
 }
@@ -231,7 +251,10 @@ pub fn list_ranked(
                  WHERE st.sample_id = s.id),
                 s.kind, s.bpm, s.bpm_source, s.musical_key, s.key_source, s.peak_db, s.lufs,
                 s.analysis_version IS NOT NULL,
-                s.category, s.category_source, s.category_confidence
+                s.category, s.category_source, s.category_confidence,
+                (SELECT parent_id FROM sample_stems WHERE child_id=s.id),
+                (SELECT kind FROM sample_stems WHERE child_id=s.id),
+                (SELECT count(*) FROM sample_stems WHERE parent_id=s.id)
          {from} {order} LIMIT ? OFFSET ?"
     ))?;
     let rows = stmt
@@ -262,6 +285,9 @@ pub fn list_ranked(
                 category_source: r.get(21)?,
                 category_confidence: r.get(22)?,
                 similarity: None,
+                stem_parent_id: r.get(23)?,
+                stem_kind: r.get(24)?,
+                stem_count: r.get(25)?,
             })
         })?
         .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -631,6 +657,35 @@ mod tests {
             .unwrap();
         }
         conn
+    }
+
+    #[test]
+    fn stem_groups_paginate_filter_and_select_in_visible_order() {
+        let conn = setup();
+        for (id, kind, position) in [(10, "vocals", 0), (11, "drums", 1)] {
+            conn.execute("INSERT INTO samples(id,source_id,path,name,ext,size,mtime,favorite) VALUES(?1,1,?2,?3,'wav',0,0,1)",
+                params![id,format!("/elsewhere/Kick Hard - {kind}.wav"),kind]).unwrap();
+            conn.execute("INSERT INTO sample_stems(child_id,parent_id,kind,position) VALUES(?1,1,?2,?3)",params![id,kind,position]).unwrap();
+        }
+        let mut filter = Filter { group_stems: true, ..Default::default() };
+        assert_eq!(count(&conn, &filter).unwrap(), 4);
+        let parent = list(&conn, &filter, 0, 20).unwrap().into_iter().find(|s| s.id==1).unwrap();
+        assert_eq!(parent.stem_count, 2);
+        filter.expanded_stems = vec![1];
+        let visible = ids(&conn, &filter).unwrap();
+        let index = visible.iter().position(|id| *id==1).unwrap();
+        assert_eq!(&visible[index..index+3], &[1,10,11]);
+        assert_eq!(count(&conn, &filter).unwrap(), 6);
+        let page = list(&conn, &filter, index as i64+1, 1).unwrap();
+        assert_eq!((page[0].id,page[0].stem_parent_id,page[0].stem_kind.as_deref()),(10,Some(1),Some("vocals")));
+        filter.query = Some("vocals".into());
+        assert_eq!(ids(&conn, &filter).unwrap(), vec![1,10,11]);
+        filter.expanded_stems.clear();
+        assert_eq!(ids(&conn, &filter).unwrap(), vec![1]);
+        filter.query = None; filter.favorites = true;
+        assert_eq!(ids(&conn, &filter).unwrap(), vec![1]);
+        conn.execute("DELETE FROM samples WHERE id=1",[]).unwrap();
+        assert_eq!(ids(&conn, &filter).unwrap(), vec![11,10]);
     }
 
     fn search(conn: &Connection, q: &str) -> Vec<i64> {

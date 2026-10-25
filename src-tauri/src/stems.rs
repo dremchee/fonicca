@@ -49,6 +49,8 @@ impl Model {
 #[serde(rename_all = "camelCase")]
 pub struct Progress {
     pub model: Model,
+    /// Stable source identity, independent of the current library selection.
+    pub source_id: Option<i64>,
     pub running: bool,
     pub stage: String,
     pub progress: f64,
@@ -106,17 +108,21 @@ pub fn stem_start(
     app: AppHandle,
     state: State<'_, AppState>,
     id: i64,
-    folder: String,
     model: Option<Model>,
 ) -> Result<()> {
     let model = model.unwrap_or_default();
+    if state.db.lock().unwrap().query_row("SELECT EXISTS(SELECT 1 FROM sample_stems WHERE child_id=?1)", [id], |r| r.get::<_, bool>(0))? {
+        return Err(failure("select the original track to separate stems"));
+    }
     let path: String =
         state
             .db
             .lock()
             .unwrap()
             .query_row("SELECT path FROM samples WHERE id=?1", [id], |r| r.get(0))?;
-    if !Path::new(&folder).is_dir() {
+    let folder = state.settings.get().stems_folder.map(PathBuf::from)
+        .unwrap_or_else(|| Path::new(&path).parent().unwrap_or(Path::new(".")).to_owned());
+    if !folder.is_dir() {
         return Err(failure("choose an output folder"));
     }
     if state
@@ -130,6 +136,7 @@ pub fn stem_start(
     state.stems.cancel.store(false, Ordering::Relaxed);
     *state.stems.status.lock().unwrap() = Progress {
         model,
+        source_id: Some(id),
         running: true,
         stage: "preparing".into(),
         name: Path::new(&path)
@@ -142,7 +149,7 @@ pub fn stem_start(
     std::thread::spawn(move || {
         let state = app.state::<AppState>();
         let jobs = &state.stems;
-        let result = run(&state, Path::new(&path), Path::new(&folder), model);
+        let result = run(&state, Path::new(&path), &folder, model);
         let mut status = jobs.status.lock().unwrap();
         status.running = false;
         match result {
@@ -226,7 +233,7 @@ fn separate_to_folder_with_model(
         .as_nanos();
     let working_path = parent.join(format!(".fonicca-stems-{stamp}"));
     std::fs::create_dir(&working_path)?;
-    let mut working = WorkingDir {
+    let working = WorkingDir {
         path: working_path,
         published: false,
     };
@@ -292,29 +299,40 @@ fn separate_to_folder_with_model(
         writer.finalize().map_err(failure)?;
     }
     check(cancel)?;
-    let mut target = parent.join(format!("{stem} stems"));
-    let mut index = 2;
-    loop {
-        match std::fs::create_dir(&target) {
-            Ok(()) => break,
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
-                target = parent.join(format!("{stem} stems {index}"));
-                index += 1;
+    publish_stems(&working.path, parent, &stem)
+}
+
+/// Publish beside the original (or into the configured directory), never
+/// replacing an existing file. A collision chooses a new suffix for the set.
+fn publish_stems(working: &Path, parent: &Path, name: &str) -> Result<Vec<PathBuf>> {
+    for version in 1.. {
+        let suffix = if version == 1 { String::new() } else { format!(" {version}") };
+        let paths: Vec<_> = dsp::NAMES.iter()
+            .map(|kind| parent.join(format!("{name} - {kind}{suffix}.wav"))).collect();
+        let mut published = Vec::new();
+        let result: std::io::Result<()> = (|| {
+            for (kind, target) in dsp::NAMES.iter().zip(&paths) {
+                // create_new is supported on removable drives too. Never claim
+                // or clean up a destination that belonged to another process.
+                let mut output = std::fs::OpenOptions::new().write(true).create_new(true).open(target)?;
+                published.push(target.clone());
+                let mut input = std::fs::File::open(working.join(format!("{kind}.wav")))?;
+                std::io::copy(&mut input, &mut output)?;
+                output.sync_all()?;
             }
-            Err(e) => return Err(e.into()),
+            Ok(())
+        })();
+        match result {
+            Ok(()) => return Ok(paths),
+            Err(e) => {
+                for path in published { let _ = std::fs::remove_file(path); }
+                if e.kind() != std::io::ErrorKind::AlreadyExists { return Err(e.into()); }
+            }
         }
     }
-    // Destination is reserved as an empty directory; a non-empty destination is never replaced.
-    if let Err(e) = std::fs::rename(&working.path, &target) {
-        let _ = std::fs::remove_dir(&target);
-        return Err(e.into());
-    }
-    working.published = true;
-    Ok(dsp::NAMES
-        .iter()
-        .map(|n| target.join(format!("{n}.wav")))
-        .collect())
+    unreachable!()
 }
+
 fn run(
     state: &AppState,
     source: &Path,
@@ -337,6 +355,9 @@ fn run(
         .map(|p| p.to_string_lossy().into_owned())
         .collect();
     let ids = import(state, &paths)?;
+    let conn = crate::db::open(&state.db_path)?;
+    let parent_id: i64 = conn.query_row("SELECT id FROM samples WHERE path=?1", [source.to_string_lossy().as_ref()], |r| r.get(0))?;
+    link_stems(&conn, parent_id, &ids)?;
     Ok((
         paths
             .iter()
@@ -344,6 +365,16 @@ fn run(
             .collect(),
         ids,
     ))
+}
+fn link_stems(conn: &rusqlite::Connection, parent_id: i64, ids: &[i64]) -> Result<()> {
+    let tx = conn.unchecked_transaction()?;
+    for (position, (id, kind)) in ids.iter().zip(dsp::NAMES).enumerate() {
+        tx.execute("INSERT INTO sample_stems(child_id,parent_id,kind,position) VALUES(?1,?2,?3,?4)
+          ON CONFLICT(child_id) DO UPDATE SET parent_id=excluded.parent_id,kind=excluded.kind,position=excluded.position",
+          rusqlite::params![id,parent_id,kind,position as i64])?;
+    }
+    tx.commit()?;
+    Ok(())
 }
 fn import_files(db_path: &Path, paths: &[PathBuf]) -> Result<(i64, Vec<i64>)> {
     let folder = paths[0]
@@ -400,6 +431,45 @@ fn import(state: &AppState, paths: &[PathBuf]) -> Result<Vec<i64>> {
 mod tests {
     use super::*;
     #[test]
+    fn progress_keeps_source_identity_across_stages() {
+        let jobs = Jobs::default();
+        *jobs.status.lock().unwrap() = Progress { source_id: Some(42), running: true, ..Default::default() };
+        for stage in ["downloading", "separating", "importing"] {
+            jobs.update(stage, 0.45);
+            let status = jobs.status.lock().unwrap();
+            assert_eq!(status.source_id, Some(42));
+            let json = serde_json::to_value(&*status).unwrap();
+            assert_eq!(json["sourceId"], 42);
+        }
+    }
+    #[test]
+    fn flat_stem_files_are_published_without_overwriting_an_existing_set() {
+        let dir = tempfile::tempdir().unwrap();
+        let work = tempfile::tempdir().unwrap();
+        for name in dsp::NAMES { std::fs::write(work.path().join(format!("{name}.wav")), name).unwrap(); }
+        let existing = dir.path().join("Song - drums.wav");
+        std::fs::write(&existing, "keep me").unwrap();
+        let paths = publish_stems(work.path(), dir.path(), "Song").unwrap();
+        assert_eq!(std::fs::read_to_string(existing).unwrap(), "keep me");
+        assert!(!dir.path().join("Song - vocals.wav").exists());
+        for (path, kind) in paths.iter().zip(dsp::NAMES) {
+            assert_eq!(path.parent(), Some(dir.path()));
+            assert_eq!(path.file_name().unwrap().to_str().unwrap(), format!("Song - {kind} 2.wav"));
+            assert_eq!(std::fs::read_to_string(path).unwrap(), kind);
+        }
+    }
+
+    #[test]
+    fn failed_publication_removes_only_its_own_partial_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let work = tempfile::tempdir().unwrap();
+        std::fs::write(work.path().join("vocals.wav"), "vocals").unwrap();
+        std::fs::write(dir.path().join("original.wav"), "source").unwrap();
+        assert!(publish_stems(work.path(), dir.path(), "Song").is_err());
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+        assert_eq!(std::fs::read_to_string(dir.path().join("original.wav")).unwrap(), "source");
+    }
+    #[test]
     #[ignore = "requires SCNET_MODELS and STEM_AUDIO; full file write and cancellation"]
     fn scnet_file_export_keeps_original_and_cleans_cancelled_work() {
         check_file_export(Model::ScnetLarge, "SCNET_MODELS")
@@ -445,7 +515,7 @@ mod tests {
             .is_err()
         );
         assert_eq!(std::fs::read(source).unwrap(), original);
-        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 4);
     }
     #[test]
     fn cancelled_processing_does_not_create_output_files() {
@@ -538,7 +608,7 @@ mod tests {
             .is_err()
         );
         assert_eq!(std::fs::read(source).unwrap(), bytes);
-        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 4);
     }
 }
 
@@ -573,6 +643,17 @@ mod import_tests {
         let (_, again) = import_files(&db_path, &paths).unwrap();
         assert_eq!(ids, again);
         let conn = crate::db::open(&db_path).unwrap();
+        let source_id: i64 = conn.query_row("SELECT source_id FROM samples WHERE id=?1",[ids[0]],|r|r.get(0)).unwrap();
+        conn.execute("INSERT INTO samples(source_id,path,name,ext,size,mtime) VALUES(?1,'/original/song.wav','song','wav',0,0)",[source_id]).unwrap();
+        let parent_id = conn.last_insert_rowid();
+        link_stems(&conn, parent_id, &ids).unwrap();
+        drop(conn);
+        let conn = crate::db::open(&db_path).unwrap();
+        let grouped = crate::library::Filter { group_stems: true, expanded_stems: vec![parent_id], ..Default::default() };
+        let rows = crate::library::list(&conn, &grouped, 0, 10).unwrap();
+        assert_eq!(rows.len(), 5);
+        assert_eq!(rows[0].stem_count, 4);
+        assert!(rows[1..].iter().all(|s| s.stem_parent_id==Some(parent_id)));
         assert_eq!(
             conn.query_row("SELECT COUNT(*) FROM sources", [], |r| r.get::<_, i64>(0))
                 .unwrap(),

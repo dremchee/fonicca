@@ -229,6 +229,37 @@ pub const MIGRATIONS: &[&str] = &[r#"
         path     TEXT PRIMARY KEY,
         added_at INTEGER NOT NULL
     );
+"#, r#"
+    CREATE TABLE sample_stems (
+        child_id INTEGER PRIMARY KEY REFERENCES samples(id) ON DELETE CASCADE,
+        parent_id INTEGER NOT NULL REFERENCES samples(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL CHECK(kind IN ('vocals','drums','bass','other')),
+        position INTEGER NOT NULL,
+        CHECK(child_id <> parent_id)
+    );
+    CREATE INDEX sample_stems_parent ON sample_stems(parent_id, position);
+    -- Only recover unambiguous original names from legacy '<name> stems' folders.
+    INSERT OR IGNORE INTO sample_stems(child_id, parent_id, kind, position)
+    WITH legacy AS (
+      SELECT s.id, substr(t.name,6) kind,
+        rtrim(substr(s.path,1,length(s.path)-length(s.name)-length(s.ext)-1),'/') dir
+      FROM samples s JOIN sample_tags st ON st.sample_id=s.id JOIN tags t ON t.id=st.tag_id
+      WHERE t.name IN ('stem:vocals','stem:drums','stem:bass','stem:other')
+    ), folders AS (
+      SELECT *, substr(dir,length(rtrim(dir,replace(dir,'/','')))+1) folder FROM legacy
+    ), candidates AS (
+      SELECT f.id child_id, p.id parent_id, f.kind,
+        COUNT(*) OVER(PARTITION BY f.id) matches
+      FROM folders f JOIN samples p ON p.id<>f.id AND (
+        f.folder=p.name||' stems' OR (
+          substr(f.folder,1,length(p.name)+7)=p.name||' stems ' AND
+          length(substr(f.folder,length(p.name)+8))>0 AND
+          substr(f.folder,length(p.name)+8) NOT GLOB '*[^0-9]*'))
+      WHERE NOT EXISTS(SELECT 1 FROM sample_tags st JOIN tags t ON t.id=st.tag_id
+        WHERE st.sample_id=p.id AND t.name IN ('stem:vocals','stem:drums','stem:bass','stem:other'))
+    )
+    SELECT child_id,parent_id,kind,CASE kind WHEN 'vocals' THEN 0 WHEN 'drums' THEN 1 WHEN 'bass' THEN 2 ELSE 3 END
+    FROM candidates WHERE matches=1;
 "#];
 
 /// How long user data of removed files is kept for possible reattachment.
@@ -262,4 +293,28 @@ pub fn migrate(conn: &mut Connection) -> Result<()> {
         tx.commit()?;
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod stem_migration_tests {
+    use super::*;
+    #[test]
+    fn old_stem_folders_are_recovered_only_for_unambiguous_originals() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("PRAGMA foreign_keys=ON").unwrap();
+        for sql in &MIGRATIONS[..MIGRATIONS.len()-1] { conn.execute_batch(sql).unwrap(); }
+        conn.pragma_update(None,"user_version",(MIGRATIONS.len()-1) as i64).unwrap();
+        conn.execute("INSERT INTO sources(id,path,added_at) VALUES(1,'/lib',0)",[]).unwrap();
+        for (id,path,name) in [(1,"/lib/Song.wav","Song"),(2,"/exports/Song stems/vocals.wav","vocals"),
+            (3,"/exports/Song stems 2/bass.wav","bass"),(4,"/lib/Ambiguous.wav","Ambiguous"),
+            (5,"/other/Ambiguous.wav","Ambiguous"),(6,"/exports/Ambiguous stems/vocals.wav","vocals")] {
+            conn.execute("INSERT INTO samples(id,source_id,path,name,ext,size,mtime) VALUES(?1,1,?2,?3,'wav',0,0)",rusqlite::params![id,path,name]).unwrap();
+        }
+        conn.execute_batch("INSERT INTO tags(id,name) VALUES(1,'stem:vocals'),(2,'stem:bass'); INSERT INTO sample_tags VALUES(2,1),(3,2),(6,1);").unwrap();
+        migrate(&mut conn).unwrap();
+        assert_eq!(conn.query_row("SELECT count(*) FROM sample_stems",[],|r|r.get::<_,i64>(0)).unwrap(),2);
+        assert_eq!(conn.query_row("SELECT parent_id FROM sample_stems WHERE child_id=3",[],|r|r.get::<_,i64>(0)).unwrap(),1);
+        assert_eq!(conn.query_row("SELECT count(*) FROM samples",[],|r|r.get::<_,i64>(0)).unwrap(),6);
+        migrate(&mut conn).unwrap();
+    }
 }

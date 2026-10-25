@@ -53,6 +53,7 @@ export const useLibraryStore = defineStore('library', () => {
   const analysis = ref({ pending: 0, pendingEmbeddings: 0, modelReady: false, paused: false })
   const soundModel = ref<SoundModelStatus | null>(null)
   const modelDownload = ref<DownloadProgress | null>(null)
+  const expandedStems = reactive(new Set<number>())
   const total = ref(0)
   const scans = reactive(new Map<number, ScanProgress>())
 
@@ -77,6 +78,8 @@ export const useLibraryStore = defineStore('library', () => {
   const filter = computed<SampleFilter>(() => {
     const s = scope.value
     return {
+      groupStems: s.kind !== 'similar',
+      expandedStems: [...expandedStems],
       query: query.value,
       sourceId: s.kind === 'source' ? s.id : null,
       directory: s.kind === 'source' ? s.path ?? null : null,
@@ -171,10 +174,35 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   watch(filter, () => navigationRevision++, { flush: 'sync' })
-  watch(filter, () => {
-    if (!restoringSession)
-      refresh()
-  })
+  watch(filter, (next, previous) => {
+    // Expansion reloads below while preserving selection and keyboard focus.
+    if (JSON.stringify({ ...next, expandedStems: [] }) === JSON.stringify({ ...previous, expandedStems: [] })) return
+    if (!restoringSession) refresh()
+  }, { flush: 'sync' })
+
+  let expanding = false
+  async function toggleStems(sample: Sample, index: number) {
+    if (expanding || !sample.stemCount || scope.value.kind === 'similar') return
+    expanding = true
+    const collapse = expandedStems.has(sample.id)
+    const previousFocus = focused.value
+    const previousIndex = focusIndex.value
+    if (collapse) expandedStems.delete(sample.id)
+    else expandedStems.add(sample.id)
+    try {
+      await refresh({ keepSelection: true })
+      let next = previousIndex
+      if (collapse && previousFocus?.stemParentId === sample.id) {
+        next = index
+        selectedIds.clear(); selectedIds.add(sample.id)
+      }
+      else if (previousIndex > index) next += (collapse ? -1 : 1) * sample.stemCount
+      focusIndex.value = Math.max(-1, Math.min(next, total.value - 1))
+      anchorIndex.value = focusIndex.value
+      if (focusIndex.value >= 0) await ensureRange(focusIndex.value, focusIndex.value)
+    }
+    finally { expanding = false }
+  }
 
   function rememberSelection(sample: Sample, index: number) {
     const current = sessionScope(scope.value)
@@ -618,6 +646,7 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   return {
+    expandedStems, toggleStems,
     sources,
     sourceFolders,
     loadSourceFolders,

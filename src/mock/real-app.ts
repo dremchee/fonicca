@@ -6,7 +6,6 @@ import { groups as fake } from './duplicates-data'
 import { batchCommand } from './batch'
 import { editorCommand } from './editor'
 import { spectrogram } from './spectrogram'
-import { projectCommand } from './project'
 import { stemModelStorage, stemsCommand } from './stems'
 
 const ROOT = '/Users/me/Projects/Sound/Source'
@@ -30,14 +29,12 @@ let preferred: string[] = []
 let clapInstalled = location.hash === '#models'
 let clapBytes = clapInstalled ? 34301667 : 0
 let clapDownloading = false
-let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], language: 'en', watchFolders: true, autoplay: true, volume: 1, analysisThreads: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme', editorWaveform: { waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' } }
+let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], language: 'en', watchFolders: true, autoplay: true, volume: 1, analysisThreads: null, stemsFolder: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme', editorWaveform: { waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' } }
 
 export function install() {
   mockIPC((cmd, args: any) => {
-    const stems = stemsCommand(cmd, args)
+    const stems = stemsCommand(cmd, args, settings.stemsFolder)
     if (stems !== undefined) return stems
-    const project = projectCommand(cmd, args)
-    if (project !== undefined) return project
     switch (cmd) {
       case 'editor_spectrogram': return new Promise(resolve => setTimeout(() => resolve(spectrogram(args.start, args.end, args.columns)), 80))
       case 'list_sources': return [{ id: 1, path: ROOT, sampleCount: 32187 }]

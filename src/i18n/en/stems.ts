@@ -1,4 +1,13 @@
 export default {
+  badge: "Stems · {n}",
+  expand: "Show stems for {name}",
+  collapse: "Hide stems for {name}",
+  folderSettings: "Settings…",
+  storageTitle: "Stem storage",
+  storageDescription: "New stems appear under their original track in the library, wherever they are saved. Existing files stay in their current location.",
+  besideOriginal: "Beside the original track",
+  useOriginalFolder: "Use original folder",
+
   title: 'Stems', action: 'Separate into stems…', description: 'Separate a track locally into vocals, drums, bass and other instruments. The original stays unchanged.',
   model: 'Separation model',
   models: { scnetXlIhf: 'SCNet XL IHF · Quality', scnetLarge: 'SCNet-large · Balanced', spleeter: 'Spleeter · Fast' },
@@ -7,7 +16,7 @@ export default {
   download: 'First run downloads the selected model ({size}). Audio stays on this computer.',
   ready: 'Model installed · local processing', limits: 'Mono or stereo, up to 10 minutes. Results are 44.1 kHz stereo WAV, 32-bit float.',
   start: 'Separate', downloadStart: 'Download model and separate', stop: 'Stop', stopping: 'Stopping after the current step…',
-  close: 'Close', openProject: 'Open in multitrack', reveal: 'Show in Finder', edit: 'Open in editor',
+  close: 'Close', reveal: 'Show in Finder', edit: 'Open in editor',
   stages: { preparing: 'Preparing audio…', downloading: 'Downloading model…', separating: 'Separating stems…', importing: 'Adding to library…', done: 'Stems added to the library', cancelled: 'Stopped', failed: 'Separation failed' },
   instruments: { vocals: 'Vocals', drums: 'Drums', bass: 'Bass', other: 'Other' },
 }
