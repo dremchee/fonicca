@@ -132,7 +132,7 @@ export default {
     spleeter: { name: 'Spleeter · 4 стема', description: 'Вокал, ударные, бас и остальное · ONNX FP16' },
     scnetLarge: { name: 'SCNet-large · 4 стема', description: 'Детальное разделение на стемы · ONNX · веса INT8' },
     scnetXlIhf: { name: 'SCNet XL IHF · 4 стема', description: 'Детальное разделение на стемы · ONNX FP32' },
-    apollo: { name: 'Apollo · восстановление', description: 'Только для сравнения на слух; при разделении стемов в приложении не используется.' },
+    apollo: { name: 'Apollo · восстановление', description: 'Восстанавливает музыку после сжатия. Результат — отдельная WAV-копия.' },
   },
   shortcuts: {
     keys: {

@@ -130,7 +130,7 @@ export default {
     spleeter: { name: 'Spleeter · 4 stems', description: 'Vocals, drums, bass and other · ONNX FP16' },
     scnetLarge: { name: 'SCNet-large · 4 stems', description: 'Detailed stem separation · ONNX · INT8 stored weights' },
     scnetXlIhf: { name: 'SCNet XL IHF · 4 stems', description: 'Detailed stem separation · ONNX FP32' },
-    apollo: { name: 'Apollo · restoration', description: 'Listening comparison only; not used when separating stems in the app.' },
+    apollo: { name: 'Apollo · restoration', description: 'Restores music after lossy compression. Saves a separate WAV copy.' },
   },
   shortcuts: {
     keys: {

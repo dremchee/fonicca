@@ -5,6 +5,8 @@ import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BatchDialog from '@/components/BatchDialog.vue'
 import StemDialog from '@/components/StemDialog.vue'
+import ApolloDialog from '@/components/ApolloDialog.vue'
+import { useApolloStore } from '@/stores/apollo'
 import { useStemsStore } from '@/stores/stems'
 import CommandPalette from '@/components/CommandPalette.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -39,7 +41,7 @@ const shownSample = computed(() => focused.value ?? player.playingSample ?? unde
 const toolbar = useTemplateRef<InstanceType<typeof LibraryToolbar>>('toolbar')
 const search = computed(() => toolbar.value?.searchElement)
 
-onMounted(() => Promise.all([settings.init(), library.init(), duplicates.init(), useStemsStore().init()]))
+onMounted(() => Promise.all([settings.init(), library.init(), duplicates.init(), useStemsStore().init(), useApolloStore().init()]))
 
 // The native menu is rebuilt whenever the language changes.
 watch(locale, () => installAppMenu(() => settings.openDialog()).catch(console.error), { immediate: true })
@@ -175,6 +177,7 @@ onKeyStroke(',', (e) => {
     <TrackInfoDialog />
     <BatchDialog />
     <StemDialog />
+    <ApolloDialog />
     <CommandPalette v-model:open="paletteOpen" />
     <ConfirmDialog />
     <Toaster theme="system" position="bottom-right" />

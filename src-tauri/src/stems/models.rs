@@ -340,3 +340,104 @@ mod network_tests {
         assert!(FILES.iter().all(|f| valid(&dir.join(f.name), f)));
     }
 }
+
+pub const APOLLO_TOTAL: u64 = 66_541_845;
+const APOLLO_FILES: [Artifact; 1] = [Artifact {
+    name: "pytorch_model.bin",
+    size: APOLLO_TOTAL,
+    hash: "99d9af7f1ff20e63c393035513a655392818d66b4d7fc23d658175c1f15e8d76",
+}];
+pub fn ensure_apollo(root: &Path, cancel: &AtomicBool, progress: impl Fn(u64)) -> Result<PathBuf> {
+    let dir = root.join("apollo-v1");
+    std::fs::create_dir_all(&dir)?;
+    std::fs::write(
+        dir.join("LICENSE.txt"),
+        include_str!("../../../docs/licenses/apollo-BY-SA-4.0.txt"),
+    )?;
+    std::fs::write(
+        dir.join("NOTICE.txt"),
+        include_str!("../../../docs/licenses/apollo-NOTICE.txt"),
+    )?;
+    let dir = ensure_pack(
+        &dir,
+        &APOLLO_FILES,
+        |name| {
+            format!(
+                "https://huggingface.co/JusperLee/Apollo/resolve/c68bd80fdd9c0d93d2f4a833cb154624f660a561/{name}"
+            )
+        },
+        cancel,
+        progress,
+    )?;
+    let graph = dir.join("apollo.onnx");
+    if std::fs::read(&graph).ok().as_deref() != Some(crate::apollo::GRAPH) {
+        let partial = graph.with_extension("part");
+        std::fs::write(&partial, crate::apollo::GRAPH)?;
+        std::fs::rename(&partial, &graph)?;
+    }
+    Ok(dir)
+}
+pub fn apollo_installed(root: &Path) -> bool {
+    std::fs::metadata(root.join("apollo-v1/pytorch_model.bin"))
+        .is_ok_and(|m| m.len() == APOLLO_TOTAL)
+}
+
+
+fn ensure_pack(
+    dir: &Path,
+    artifacts: &[Artifact],
+    url: impl Fn(&str) -> String,
+    cancel: &AtomicBool,
+    progress: impl Fn(u64),
+) -> Result<PathBuf> {
+    let mut received = 0;
+    for f in artifacts {
+        check(cancel)?;
+        let target = dir.join(f.name);
+        if valid(&target, f) {
+            received += f.size;
+            progress(received);
+            continue;
+        }
+        let partial = target.with_extension("part");
+        let result = (|| {
+            let url = url(f.name);
+            let response = ureq::get(&url)
+                .config()
+                .timeout_global(Some(std::time::Duration::from_secs(600)))
+                .build()
+                .call()
+                .map_err(failure)?;
+            let mut reader = response.into_body().into_reader();
+            let mut file = std::fs::File::create(&partial)?;
+            let mut bytes = 0;
+            let mut buf = [0u8; 262144];
+            loop {
+                check(cancel)?;
+                let n = reader.read(&mut buf)?;
+                if n == 0 {
+                    break;
+                }
+                bytes += n as u64;
+                if bytes > f.size {
+                    return Err(failure("model download exceeds expected size"));
+                }
+                file.write_all(&buf[..n])?;
+                progress(received + bytes);
+            }
+            file.sync_all()?;
+            drop(file);
+            if !valid(&partial, f) {
+                return Err(failure("model checksum mismatch"));
+            }
+            std::fs::rename(&partial, &target)?;
+            Ok(())
+        })();
+        if result.is_err() {
+            let _ = std::fs::remove_file(&partial);
+        }
+        result?;
+        received += f.size;
+    }
+    Ok(dir.to_path_buf())
+}

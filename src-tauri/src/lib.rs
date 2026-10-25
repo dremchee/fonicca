@@ -1,3 +1,4 @@
+mod apollo;
 mod analysis;
 mod analyzer;
 mod audio;
@@ -29,6 +30,8 @@ use rusqlite::Connection;
 use tauri::{Emitter, Manager};
 
 pub struct AppState {
+    pub apollo: apollo::Jobs,
+    pub model_operations: models::Operations,
     pub stems: stems::Jobs,
     pub db: Mutex<Connection>,
     pub player: player::Player,
@@ -115,6 +118,8 @@ pub fn run() {
             }
             let player = player::Player::new();
             app.manage(AppState {
+                apollo: Default::default(),
+                model_operations: Default::default(),
                 stems: Default::default(),
                 db: Mutex::new(conn),
                 player,
@@ -196,6 +201,9 @@ pub fn run() {
             commands::sound_model_status,
             commands::model_storage,
             commands::download_sound_model,
+            apollo::apollo_status,
+            apollo::apollo_start,
+            apollo::apollo_cancel,
             stems::stem_status,
             stems::stem_start,
             stems::stem_cancel,

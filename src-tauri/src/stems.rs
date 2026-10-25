@@ -125,6 +125,8 @@ pub fn stem_start(
     if !folder.is_dir() {
         return Err(failure("choose an output folder"));
     }
+    let model_lease = state.model_operations.acquire(model.id(), crate::models::Operation::Using)?;
+    let processing_lease = state.model_operations.acquire("audio-processing", crate::models::Operation::Using)?;
     if state
         .stems
         .running
@@ -147,6 +149,7 @@ pub fn stem_start(
         ..Default::default()
     };
     std::thread::spawn(move || {
+        let (_model_lease, _processing_lease) = (model_lease, processing_lease);
         let state = app.state::<AppState>();
         let jobs = &state.stems;
         let result = run(&state, Path::new(&path), &folder, model);

@@ -21,6 +21,7 @@ import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useStemsStore } from '@/stores/stems'
+import { useApolloStore } from '@/stores/apollo'
 
 const props = defineProps<{ sample: Sample }>()
 const emit = defineEmits<{ close: [] }>()
@@ -100,6 +101,7 @@ async function submitNew() {
       <span class="truncate">{{ count > 1 ? `${t('batch.title', { n: count }, count)}…` : t('batch.action') }}</span>
     </ContextMenuItem>
     <ContextMenuItem @select="runAfterClose(() => useStemsStore().show(sample))"><Layers />{{ t('stems.action') }}</ContextMenuItem>
+    <ContextMenuItem @select="runAfterClose(() => useApolloStore().show(sample))"><WandSparkles />{{ t('apollo.action') }}</ContextMenuItem>
     <ContextMenuSeparator />
     <ContextMenuGroup>
       <ContextMenuItem @select="library.toggleFavorite(sample)">

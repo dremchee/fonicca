@@ -14,6 +14,7 @@ import dialogs from './dialogs'
 import trackInfo from './trackInfo'
 import batch from './batch'
 import stems from './stems'
+import apollo from './apollo'
 
 export default {
   common,
@@ -31,4 +32,5 @@ export default {
   trackInfo,
   batch,
   stems,
+  apollo,
 } satisfies typeof en

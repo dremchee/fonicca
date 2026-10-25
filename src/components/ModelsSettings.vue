@@ -49,7 +49,7 @@ function status(model: ModelStorage) {
   if (model.downloading)
     return t('settings.models.downloading', { size: formatSize(model.size), total: formatSize(model.downloadSize) })
   if (model.installed)
-    return t(model.id === 'apollo' ? 'settings.models.comparisonReady' : 'settings.models.installed', { size: formatSize(model.size) })
+    return t('settings.models.installed', { size: formatSize(model.size) })
   if (model.size > 0)
     return t('settings.models.incomplete', { size: formatSize(model.size), total: formatSize(model.downloadSize) })
   return t('settings.models.missing', { size: formatSize(model.downloadSize) })

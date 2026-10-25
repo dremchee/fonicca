@@ -6,7 +6,10 @@ import { groups as fake } from './duplicates-data'
 import { batchCommand } from './batch'
 import { editorCommand } from './editor'
 import { spectrogram } from './spectrogram'
+import { apolloCommand } from './apollo'
 import { stemModelStorage, stemsCommand } from './stems'
+
+let apolloInstalled = true
 
 const ROOT = '/Users/me/Projects/Sound/Source'
 let groups: DuplicateGroup[] = fake.map(g => ({
@@ -33,6 +36,8 @@ let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], 
 
 export function install() {
   mockIPC((cmd, args: any) => {
+    const restored = apolloCommand(cmd, args, apolloInstalled, () => { apolloInstalled = true })
+    if (restored !== undefined) return restored
     const stems = stemsCommand(cmd, args, settings.stemsFolder)
     if (stems !== undefined) return stems
     switch (cmd) {

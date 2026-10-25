@@ -1,6 +1,7 @@
 # Apollo after SCNet XL IHF
 
-Local experiment, 25 October 2026. This does not add Apollo to the application.
+Local experiment, 25 October 2026. This comparison preceded the separate
+[whole-track Apollo integration](apollo-integration.md).
 
 Apollo's official model was applied to the existing SCNet XL IHF outputs from
 the same three MUSDB18 test previews used in `scnet-xl-ihf-comparison.md`:

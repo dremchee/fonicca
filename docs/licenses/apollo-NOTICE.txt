@@ -1,0 +1,13 @@
+Apollo: Band-sequence Modeling for High-Quality Audio Restoration
+Authors: Kai Li and Yi Luo.
+https://github.com/JusperLee/Apollo
+Source revision: e84bcacc59d5455f05d86a5c97dd4aeb3c14dbb6
+Official checkpoint: JusperLee/Apollo, revision c68bd80fdd9c0d93d2f4a833cb154624f660a561
+https://huggingface.co/JusperLee/Apollo
+Checkpoint SHA-256: 99d9af7f1ff20e63c393035513a655392818d66b4d7fc23d658175c1f15e8d76
+License: Creative Commons Attribution-ShareAlike 4.0 International; see LICENSE.txt.
+
+Fonicca's FP32 ONNX spectral graph is derived from the pinned Apollo source.
+Its learned initializers reference byte ranges in the original official checkpoint;
+no replacement or newly trained checkpoint is claimed. External Hann STFT/iSTFT,
+overlap-add with context and safe WAV output are implemented by Fonicca.

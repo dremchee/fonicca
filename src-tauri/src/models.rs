@@ -10,6 +10,28 @@ use sha2::{Digest, Sha256};
 use crate::clap;
 use crate::error::{Error, Result};
 
+/// A lease covers the whole operation, including the transition from preparing
+/// to inference. A stale UI snapshot cannot delete files while they are in use.
+#[derive(Clone, Default)]
+pub struct Operations(std::sync::Arc<std::sync::Mutex<std::collections::HashMap<&'static str, Operation>>>);
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Operation { Using, Downloading, Deleting }
+pub struct Lease { operations: Operations, id: &'static str }
+impl Operations {
+    pub fn acquire(&self, id: &'static str, operation: Operation) -> Result<Lease> {
+        let mut active = self.0.lock().unwrap();
+        if active.contains_key(id) {
+            return Err(Error::Other("model is in use or being downloaded; try again after it finishes".into()));
+        }
+        active.insert(id, operation);
+        Ok(Lease { operations: self.clone(), id })
+    }
+    pub fn state(&self, id: &str) -> Option<Operation> { self.0.lock().unwrap().get(id).copied() }
+}
+impl Drop for Lease {
+    fn drop(&mut self) { self.operations.0.lock().unwrap().remove(self.id); }
+}
+
 pub const DOWNLOAD_EVENT: &str = "model-download";
 
 #[derive(Debug, Clone, Serialize)]
@@ -77,8 +99,7 @@ pub fn storage(root: &Path, clap_downloading: bool, downloading: impl Fn(crate::
             download_size: crate::stems::models::total(model),
         }
     }));
-    // Apollo is currently used only by the listening experiment. Show its
-    // downloaded weights without advertising it as an available separator.
+    // Apollo restores whole tracks and stores its optional weights separately.
     let apollo_dir = root.join("apollo-v1");
     let apollo_size = disk_size(&apollo_dir);
     if apollo_size > 0 {

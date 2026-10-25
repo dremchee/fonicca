@@ -12,6 +12,7 @@ import SampleContextMenu from '@/components/SampleContextMenu.vue'
 import SampleStemProgress from '@/components/SampleStemProgress.vue'
 import { activeStemProgress } from '@/stem-progress'
 import { useStemsStore } from '@/stores/stems'
+import { useApolloStore } from '@/stores/apollo'
 import SampleColumnsMenu from '@/components/SampleColumnsMenu.vue'
 import SampleColumnHeader from '@/components/SampleColumnHeader.vue'
 import { useSampleColumnWidths } from '@/composables/sampleColumnWidths'
@@ -28,6 +29,8 @@ const ROW_HEIGHT = 32
 const { t } = useI18n()
 const library = useLibraryStore()
 const player = usePlayerStore()
+const apollo = useApolloStore()
+const apolloProgress = computed(() => activeStemProgress(apollo.progress))
 const stems = useStemsStore()
 const stemProgress = computed(() => activeStemProgress(stems.progress))
 const { total, focusIndex, selectedIds, scope } = storeToRefs(library)
@@ -267,6 +270,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
                         <span class="truncate">{{ s.stemKind ? t(`stems.instruments.${s.stemKind}`) : s.name }}</span>
                       </Hint>
                       <SampleStemProgress v-if="stemProgress?.sourceId === s.id" :progress="stemProgress" :name="s.name" />
+                      <SampleStemProgress v-if="apolloProgress?.sourceId === s.id" :progress="apolloProgress" :name="s.name" namespace="apollo" />
                       <Hint v-if="s.similarity != null && s.id !== similarTo?.id" :text="t('list.similar.howSimilar')" side="top">
                         <span class="shrink-0 text-[11px] text-primary">{{ Math.round(Math.max(0, s.similarity) * 100) }}%</span>
                       </Hint>
