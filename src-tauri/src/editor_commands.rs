@@ -20,6 +20,19 @@ fn with_session<T>(state: &AppState, window: &Window, f: impl FnOnce(&mut Sessio
     f(session)
 }
 
+/// Snapshot edited audio for transcription; inference never holds the editor lock.
+pub(crate) fn transcription_audio(state: &AppState, window: &Window, range: editor::Span) -> Result<crate::audio::Pcm> {
+    with_session(state, window, |session| {
+        let pcm = session.audio();
+        if range.start >= range.end || range.end > pcm.frames()
+            || (range.end-range.start) as f64 / pcm.sample_rate as f64 > 600.0 {
+            return Err(Error::Other("select a non-empty fragment up to 10 minutes".into()));
+        }
+        Ok(crate::audio::Pcm { samples: pcm.samples[range.start * pcm.channels..range.end * pcm.channels].to_vec(),
+            channels: pcm.channels, sample_rate: pcm.sample_rate })
+    })
+}
+
 /// Opens (or brings to front) the editor window for a sample.
 #[tauri::command]
 pub fn open_editor_window(app: AppHandle, state: State<'_, AppState>, id: i64) -> Result<()> {

@@ -31,6 +31,36 @@ impl Operations {
 impl Drop for Lease {
     fn drop(&mut self) { self.operations.0.lock().unwrap().remove(self.id); }
 }
+/// Only the named optional packs are supported by the generic settings actions.
+#[derive(Clone, Copy)]
+pub enum OptionalModel { Stem(crate::stems::Model), Apollo, BasicPitch }
+impl OptionalModel {
+    pub fn id(self) -> &'static str {
+        match self { Self::Stem(model) => model.id(), Self::Apollo => "apollo", Self::BasicPitch => "basicPitch" }
+    }
+    pub fn ensure(self, root: &Path, cancel: &std::sync::atomic::AtomicBool, progress: impl Fn(u64)) -> Result<PathBuf> {
+        match self {
+            Self::Stem(model) => crate::stems::models::ensure_for(root, model, cancel, progress),
+            Self::Apollo => crate::stems::models::ensure_apollo(root, cancel, progress),
+            Self::BasicPitch => crate::stems::models::ensure_basic_pitch(root, cancel, progress),
+        }
+    }
+    pub fn remove(self, root: &Path) -> Result<()> {
+        match self {
+            Self::Stem(model) => crate::stems::models::remove_pack(root, Some(model)),
+            Self::Apollo => crate::stems::models::remove_pack(root, None),
+            Self::BasicPitch => crate::stems::models::remove_basic_pitch(root),
+        }
+    }
+}
+pub fn optional_model(id: &str) -> Result<OptionalModel> {
+    match id {
+        "apollo" => Ok(OptionalModel::Apollo),
+        "basicPitch" => Ok(OptionalModel::BasicPitch),
+        _ => crate::stems::Model::ALL.into_iter().find(|m| m.id() == id)
+            .map(OptionalModel::Stem).ok_or_else(|| Error::Other("unknown optional model".into())),
+    }
+}
 
 pub const DOWNLOAD_EVENT: &str = "model-download";
 
@@ -55,10 +85,11 @@ pub fn is_installed(models_dir: &Path) -> bool {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Storage {
-    id: &'static str,
+    pub(crate) id: &'static str,
     path: String,
     installed: bool,
-    downloading: bool,
+    pub(crate) downloading: bool,
+    pub(crate) busy: bool,
     size: u64,
     download_size: u64,
 }
@@ -87,6 +118,7 @@ pub fn storage(root: &Path, clap_downloading: bool, downloading: impl Fn(crate::
         path: clap.to_string_lossy().into_owned(),
         installed: is_installed(root),
         downloading: clap_downloading,
+        busy: clap_downloading,
         size: disk_size(&clap) + disk_size(&clap.with_extension("part")),
         download_size: clap::MODEL_SIZE,
     }];
@@ -95,25 +127,33 @@ pub fn storage(root: &Path, clap_downloading: bool, downloading: impl Fn(crate::
         Storage {
             id: model.id(), path: dir.to_string_lossy().into_owned(),
             installed: crate::stems::models::installed_for(root, model),
-            downloading: downloading(model), size: disk_size(&dir),
+            downloading: downloading(model), busy: false, size: disk_size(&dir),
             download_size: crate::stems::models::total(model),
         }
     }));
-    // Apollo restores whole tracks and stores its optional weights separately.
+    // Whole-track restoration uses a separate Apollo model pack.
     let apollo_dir = root.join("apollo-v1");
     let apollo_size = disk_size(&apollo_dir);
-    if apollo_size > 0 {
-        const APOLLO_SIZE: u64 = 66_541_845;
+    {
+        const APOLLO_SIZE: u64 = crate::stems::models::APOLLO_TOTAL;
         entries.push(Storage {
             id: "apollo",
             path: apollo_dir.to_string_lossy().into_owned(),
             installed: std::fs::metadata(apollo_dir.join("pytorch_model.bin"))
                 .is_ok_and(|m| m.len() == APOLLO_SIZE),
             downloading: false,
+            busy: false,
             size: apollo_size,
             download_size: APOLLO_SIZE,
         });
     }
+    let pitch = crate::stems::models::basic_pitch_directory(root);
+    entries.push(Storage {
+        id: "basicPitch", path: pitch.to_string_lossy().into_owned(),
+        installed: crate::stems::models::basic_pitch_installed(root),
+        downloading: false, busy: false, size: disk_size(&pitch),
+        download_size: crate::stems::models::BASIC_PITCH_TOTAL,
+    });
     entries
 }
 
@@ -167,6 +207,25 @@ mod tests {
     use super::*;
 
     #[test]
+    fn model_leases_prevent_download_delete_and_inference_races() {
+        let operations = Operations::default();
+        let using = operations.acquire("htdemucs", Operation::Using).unwrap();
+        assert!(operations.acquire("htdemucs", Operation::Deleting).is_err());
+        assert!(operations.acquire("htdemucs", Operation::Downloading).is_err());
+        let other = operations.acquire("apollo", Operation::Downloading).unwrap();
+        drop(using);
+        let delete = operations.acquire("htdemucs", Operation::Deleting).unwrap();
+        assert!(operations.acquire("htdemucs", Operation::Using).is_err());
+        drop(delete);
+        drop(other);
+        assert!(operations.state("htdemucs").is_none());
+        assert!(operations.state("apollo").is_none());
+        for id in ["../htdemucs", "/tmp/model", "unknown", "clap"] { assert!(optional_model(id).is_err()); }
+        assert!(matches!(optional_model("htdemucs").unwrap(), OptionalModel::Stem(_)));
+        assert!(matches!(optional_model("apollo").unwrap(), OptionalModel::Apollo));
+        assert!(matches!(optional_model("basicPitch").unwrap(), OptionalModel::BasicPitch));
+    }
+    #[test]
     fn storage_counts_partial_downloads_without_marking_them_installed() {
         let root = tempfile::tempdir().unwrap();
         let clap = model_path(root.path());
@@ -197,7 +256,7 @@ mod tests {
     fn missing_models_have_zero_disk_usage() {
         let root = tempfile::tempdir().unwrap();
         let models = storage(root.path(), false, |_| false);
-        assert_eq!(models.len(), 4);
+        assert_eq!(models.len(), 7);
         assert!(models.iter().all(|m| !m.installed && m.size == 0 && m.download_size > 0));
     }
 
@@ -220,7 +279,7 @@ mod tests {
         assert_eq!(model.download_size, 66_541_845);
         assert!(!model.downloading);
         std::fs::remove_file(weights).unwrap();
-        assert!(!storage(root.path(), false, |_| false).iter().any(|m| m.id == "apollo"));
+        assert!(!storage(root.path(), false, |_| false).iter().find(|m| m.id == "apollo").unwrap().installed);
     }
 
     #[cfg(unix)]

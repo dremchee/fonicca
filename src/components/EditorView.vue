@@ -13,6 +13,7 @@ import {
   IterationCw,
   Magnet,
   Maximize2,
+  Music,
   Play,
   Redo2,
   Repeat,
@@ -74,6 +75,7 @@ import { useWaveRenderer } from '@/waveform-gl'
 import { waveformLook } from '@/waveform-settings'
 import { regionsOf, useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
+import { useBasicPitchStore } from '@/stores/basicPitch'
 
 const { t } = useI18n()
 const editor = useEditorStore()
@@ -103,6 +105,11 @@ const slicePreview = ref<Marker[]>([])
 // Tempo of the bar grid (from the sample, editable) and where bar 1 starts, in frames.
 const bpm = ref<number | null>(null)
 const downbeat = ref(0)
+function exportMidi() {
+  if (!editor.sample || !editor.state?.frames) return
+  useBasicPitchStore().show(editor.sample, editor.selection ?? { start: 0, end: editor.state.frames }, !!editor.selection, bpm.value)
+}
+
 
 // The View menu changes the editor profile only; library preview has its own options.
 type WaveKey = 'waveStyle' | 'waveScale' | 'waveChannels' | 'waveColors'
@@ -1051,6 +1058,11 @@ const curves: { value: Curve, label: string }[] = [
       </Hint>
       <Separator orientation="vertical" class="mx-1 h-5" />
       <EditorProcessing />
+      <Hint :text="t('basicPitch.action')">
+        <Button variant="ghost" size="sm" class="px-2" :disabled="!editor.sample || !frames || editor.processing" :aria-label="t('basicPitch.action')" @click="exportMidi">
+          <Music /> MIDI
+        </Button>
+      </Hint>
       <EditorSlicer v-model:preview="slicePreview" :beat-frames="beatFrames" :downbeat="downbeat" :zero="zeroSnap" />
       <Hint :text="savedRegions ? t('editor.regions.saveHint', { n: formatNumber(savedRegions) }, savedRegions) : t('editor.regions.none')">
         <Button variant="ghost" size="sm" class="px-2" :disabled="!savedRegions" :aria-label="t('editor.regions.save')" @click="editor.saveRegions()">

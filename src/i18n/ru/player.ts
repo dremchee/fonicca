@@ -1,6 +1,7 @@
 import type en from '../en/player'
 
 export default {
+  hiddenTags: 'Скрытые теги: {n}',
   seek: 'Позиция воспроизведения',
   seekHint: 'Стрелки — перемотка, Shift — больший шаг, Home и End — начало и конец. Пробел — играть или приостановить.',
   position: '{elapsed} из {duration}',

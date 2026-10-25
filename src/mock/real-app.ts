@@ -1,16 +1,17 @@
 // The real App on a fake backend (mockIPC), to click through the UI in a browser.
-import type { DuplicateGroup, HiddenFile } from '@/api'
+import type { DuplicateGroup, HiddenFile, StemModel } from '@/api'
 import { emit } from '@tauri-apps/api/event'
 import { mockIPC } from '@tauri-apps/api/mocks'
 import { groups as fake } from './duplicates-data'
 import { batchCommand } from './batch'
 import { editorCommand } from './editor'
 import { spectrogram } from './spectrogram'
-import { apolloCommand } from './apollo'
-import { stemModelStorage, stemsCommand } from './stems'
+import { apolloBusy, apolloCommand } from './apollo'
+import { basicPitchCommand, basicPitchStorage, deleteBasicPitchModel, downloadBasicPitchModel } from './basicPitch'
+import { stemModelStorage, stemsCommand, deleteStemModel, downloadStemModel } from './stems'
 
 let apolloInstalled = true
-
+let apolloProgress: number | null = null
 const ROOT = '/Users/me/Projects/Sound/Source'
 let groups: DuplicateGroup[] = fake.map(g => ({
   key: `${g.id.toString(16)}:${g.size}`,
@@ -36,6 +37,8 @@ let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], 
 
 export function install() {
   mockIPC((cmd, args: any) => {
+    const midi = basicPitchCommand(cmd, args)
+    if (midi !== undefined) return midi
     const restored = apolloCommand(cmd, args, apolloInstalled, () => { apolloInstalled = true })
     if (restored !== undefined) return restored
     const stems = stemsCommand(cmd, args, settings.stemsFolder)
@@ -54,12 +57,30 @@ export function install() {
       case 'analysis_status': return { pending: 0, pendingEmbeddings: 0, modelReady: false, paused: false, updated: [] }
       case 'sound_model_status': return { installed: clapInstalled, ready: clapInstalled, downloading: clapDownloading, size: 34301667 }
       case 'model_storage': return [
-        { id: 'clap', path: '/m/clap.onnx', installed: clapInstalled, downloading: clapDownloading, size: clapBytes, downloadSize: 34301667 },
+        { id: 'clap', path: '/m/clap.onnx', installed: clapInstalled, downloading: clapDownloading, busy: clapDownloading, size: clapBytes, downloadSize: 34301667 },
         stemModelStorage('spleeter'),
         stemModelStorage('scnetLarge'),
         stemModelStorage('scnetXlIhf'),
-        { id: 'apollo', path: '/m/apollo-v1', installed: true, downloading: false, size: 66541845, downloadSize: 66541845 },
+        stemModelStorage('htdemucs'),
+        basicPitchStorage(),
+        { id: 'apollo', path: '/m/apollo-v1', installed: apolloInstalled, downloading: apolloProgress != null, busy: apolloProgress != null || apolloBusy(), size: apolloInstalled ? 66541845 : Math.round((apolloProgress ?? 0) * 66541845), downloadSize: 66541845 },
       ]
+      case 'delete_model':
+        if (args.id === 'basicPitch') { deleteBasicPitchModel(); return null }
+        if (args.id === 'apollo') { apolloInstalled = false; return null }
+        deleteStemModel(args.id as StemModel); return null
+      case 'download_model':
+        if (args.id === 'basicPitch') return downloadBasicPitchModel()
+        if (args.id !== 'apollo') return downloadStemModel(args.id as StemModel)
+        apolloProgress = 0
+        return new Promise<void>(resolve => {
+          const tick = () => {
+            apolloProgress = Math.min(1, (apolloProgress ?? 0) + 0.2)
+            if (apolloProgress < 1) setTimeout(tick, 400)
+            else { apolloInstalled = true; apolloProgress = null; resolve() }
+          }
+          setTimeout(tick, 400)
+        })
       case 'delete_sound_model': clapInstalled = false; clapBytes = 0; return null
       case 'download_sound_model': {
         if (clapDownloading) return null
@@ -76,7 +97,7 @@ export function install() {
       }
       case 'get_settings': return settings
       case 'update_settings': settings = args.settings; return settings
-      case 'app_info': return { version: '0.1.0', cores: 10, defaultThreads: 5, dbPath: '/db', dbSize: 1, modelsDir: '/m', modelsSize: clapBytes + stemModelStorage('spleeter').size + stemModelStorage('scnetLarge').size + stemModelStorage('scnetXlIhf').size + 66541845, settingsPath: '/s' }
+      case 'app_info': return { version: '0.1.0', cores: 10, defaultThreads: 5, dbPath: '/db', dbSize: 1, modelsDir: '/m', modelsSize: clapBytes + stemModelStorage('spleeter').size + stemModelStorage('scnetLarge').size + stemModelStorage('scnetXlIhf').size + stemModelStorage('htdemucs').size + basicPitchStorage().size + 66541845, settingsPath: '/s' }
       case 'duplicate_count': return groups.length
       case 'duplicate_groups': return structuredClone(groups)
       case 'verify_duplicates':

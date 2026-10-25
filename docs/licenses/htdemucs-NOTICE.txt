@@ -1,0 +1,29 @@
+HTDemucs — pretrained research model
+Original architecture, weights and inference code: facebookresearch/demucs;
+maintained by Alexandre Defossez at https://github.com/adefossez/demucs.
+Copyright (c) Meta Platforms, Inc. and affiliates.
+Code license: MIT, see LICENSE-code-MIT.txt.
+
+Original author statement about pretrained weights:
+https://github.com/facebookresearch/demucs/issues/327
+"The model weights are not covered by the MIT license, and are provided only
+for scientific purposes." (Alexandre Defossez, 2022-05-23)
+
+The ONNX model card's MIT tag does not supersede this restriction.
+Local research/comparison only; commercial redistribution or release needs
+separate permission for the pretrained weights.
+
+ONNX export and packaging: StemSplit, https://huggingface.co/StemSplitio/htdemucs-onnx
+Pinned revision: d54ed9eb60e258ea82131c6ee14578628816456a.
+File: htdemucs.onnx, 316446953 bytes, FP32.
+SHA-256: 68d0bf16428ef66e692cdff8a9ccf28f1ef3f69440d57e58605a4cc55fcc5e74.
+
+Single standard HTDemucs network, not the four-network fine-tuned ensemble.
+FL Studio's installed engine refers to Demucs, but the exact architecture
+version and checkpoint used by FL Studio have not been identified.
+
+Fonicca framing follows demucs.apply.apply_model and TensorChunk: centred
+padding with adjacent track context, positive triangular overlap-add,
+25% overlap, no random shifts. Whole-track normalization is removed after
+inference; DC is not reintroduced into every stem, matching Fonicca's other
+normalized separation pipeline. All four stems share one inference per window.

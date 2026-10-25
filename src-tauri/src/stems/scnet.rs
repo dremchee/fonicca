@@ -111,7 +111,24 @@ impl Separator {
             Model::ScnetXlIhf => "scnet_xl_wide_v5_fp32.onnx",
             _ => return Err(failure("unsupported SCNet variant")),
         };
-        let threads = std::thread::available_parallelism().map_or(2, |n| n.get().min(4));
+        // XL benefits from up to six performance cores on Apple silicon.
+        // Avoid scheduling extra workers on efficiency cores on smaller Macs.
+        let max_threads = if model == Model::ScnetXlIhf
+            && cfg!(all(target_os = "macos", target_arch = "aarch64"))
+        {
+            std::process::Command::new("/usr/sbin/sysctl")
+                .args(["-n", "hw.perflevel0.physicalcpu"])
+                .output()
+                .ok()
+                .filter(|output| output.status.success())
+                .and_then(|output| String::from_utf8(output.stdout).ok())
+                .and_then(|cores| cores.trim().parse::<usize>().ok())
+                .unwrap_or(4)
+                .clamp(1, 6)
+        } else {
+            4
+        };
+        let threads = std::thread::available_parallelism().map_or(2, |n| n.get().min(max_threads));
         let mut builder = Session::builder()
             .map_err(failure)?
             .with_optimization_level(GraphOptimizationLevel::Level3)
@@ -120,6 +137,8 @@ impl Separator {
             .map_err(failure)?;
         if model == Model::ScnetXlIhf {
             builder = builder
+                .with_intra_op_spinning(false)
+                .map_err(failure)?
                 .with_execution_providers([ort::ep::CPU::default()
                     .with_arena_allocator(false)
                     .build()])

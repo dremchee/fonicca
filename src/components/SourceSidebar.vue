@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tagColorStyle } from '@/tag-colors'
 import type { Scope } from '@/stores/library'
 import { ChevronRight, FolderOpen, FolderPlus, Pencil, Plus, RefreshCw, Settings, Trash2, X } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
@@ -250,9 +251,9 @@ async function confirmDeleteTag(id: number) {
 </script>
 
 <template>
-  <aside class="h-full flex flex-col bg-card">
+  <aside class="h-full min-h-0 flex flex-col overflow-hidden bg-card">
     <!-- Left part of this bar sits under the macOS traffic lights (overlay title bar). -->
-    <div class="h-11 px-3 flex items-center justify-end gap-0.5" data-tauri-drag-region>
+    <div class="h-11 shrink-0 px-3 flex items-center justify-end gap-0.5" data-tauri-drag-region>
       <Hint :text="t('sidebar.addFolders')">
         <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('sidebar.addFolders')" @click="library.addSources()">
           <FolderPlus />
@@ -267,7 +268,7 @@ async function confirmDeleteTag(id: number) {
 
     <ContextMenu>
       <ContextMenuTrigger as-child>
-        <nav class="flex-1 overflow-y-auto px-2 pb-2 flex flex-col gap-px" @contextmenu="onContextMenu">
+        <nav class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2 flex flex-col gap-px [&>*]:shrink-0" @contextmenu="onContextMenu">
           <button class="row" :class="{ active: isActive({ kind: 'all' }) }" @click="scope = { kind: 'all' }">
             <span class="i-lucide-library shrink-0" />
             <span class="flex-1 truncate">{{ t('sidebar.allSamples') }}</span>
@@ -413,7 +414,7 @@ async function confirmDeleteTag(id: number) {
             @click="scope = { kind: 'tag', id: tag.id }"
             @dblclick="startRename('tag', tag.id, tag.name)"
           >
-            <span class="i-lucide-tag shrink-0" />
+            <span class="i-lucide-tag text-tag-ink shrink-0" :style="tagColorStyle(tag.name)" />
             <input
               v-if="isEditing('tag', tag.id)"
               ref="editInput"

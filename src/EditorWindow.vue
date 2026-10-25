@@ -2,6 +2,8 @@
 import { onMounted } from 'vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EditorView from '@/components/EditorView.vue'
+import BasicPitchDialog from '@/components/BasicPitchDialog.vue'
+import { useBasicPitchStore } from '@/stores/basicPitch'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -14,12 +16,13 @@ const props = defineProps<{ sampleId: number }>()
 const editor = useEditorStore()
 const settings = useSettingsStore()
 
-onMounted(() => Promise.all([settings.init(), editor.init(props.sampleId)]))
+onMounted(() => Promise.all([settings.init(), editor.init(props.sampleId), useBasicPitchStore().init()]))
 </script>
 
 <template>
   <TooltipProvider :delay-duration="500" :skip-delay-duration="300">
     <EditorView />
+    <BasicPitchDialog />
     <SettingsDialog wave-target="editor" />
     <ConfirmDialog />
     <Toaster theme="system" position="bottom-right" />

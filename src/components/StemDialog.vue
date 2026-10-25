@@ -34,6 +34,7 @@ async function edit(index: number) {
           <SelectContent>
             <SelectItem value="scnetXlIhf">{{ t('stems.models.scnetXlIhf') }}</SelectItem>
             <SelectItem value="scnetLarge">{{ t('stems.models.scnetLarge') }}</SelectItem>
+            <SelectItem value="htdemucs">{{ t('stems.models.htdemucs') }}</SelectItem>
             <SelectItem value="spleeter">{{ t('stems.models.spleeter') }}</SelectItem>
           </SelectContent>
         </Select>

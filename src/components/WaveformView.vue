@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Sample, TrackTags } from '@/api'
 import type { Wave } from '@/stores/editor'
-import { FolderOpen, Pencil, Pause, Play, Star, Volume2, X } from '@lucide/vue'
+import { FolderOpen, Pencil, Pause, Play, Star, Volume2 } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { useResizeObserver } from '@vueuse/core'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useId, watch, watchEffect } from 'vue'
@@ -11,8 +11,7 @@ import Hint from '@/components/Hint.vue'
 import LevelMeter from '@/components/LevelMeter.vue'
 import ProjectSync from '@/components/ProjectSync.vue'
 import SampleInfoHover from '@/components/SampleInfoHover.vue'
-import TagPicker from '@/components/TagPicker.vue'
-import { Badge } from '@/components/ui/badge'
+import PreviewTags from '@/components/PreviewTags.vue'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -330,22 +329,7 @@ function onDragStart(e: DragEvent) {
     <!-- Status bar. One line tall: fields that do not fit wrap onto the hidden second line
          and drop out whole, least important (the last ones) first. -->
     <div class="h-8 shrink-0 px-4 flex items-center gap-3 text-xs text-muted-foreground tabular">
-      <!-- The sample's own tags and the picker to add more; badges that do not fit drop out. -->
-      <div class="shrink-0 max-w-[40%] min-w-0 flex items-center gap-1">
-        <div v-if="sample.tags.length" class="min-w-0 h-5 flex flex-wrap items-center gap-1 overflow-hidden">
-          <Badge v-for="tag in sample.tags" :key="tag.id" variant="secondary" class="h-5 pr-1 text-[11px]">
-            {{ tag.name }}
-            <button
-              class="rounded-full opacity-60 hover:opacity-100 focus-visible:opacity-100 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-              :aria-label="t('player.removeTag', { name: tag.name })"
-              @click="library.removeTag(tag.id)"
-            >
-              <X class="size-3" />
-            </button>
-          </Badge>
-        </div>
-        <TagPicker :assigned="sample.tags" :count="selectionSize" />
-      </div>
+      <PreviewTags :tags="sample.tags" :count="selectionSize" />
       <div class="min-w-0 flex-1 h-8 flex flex-wrap items-center gap-x-3 leading-8 overflow-hidden">
         <span v-if="sample.category" :title="categoryHint(sample.categorySource, sample.categoryConfidence)">{{ categoryLabel(sample.category) }}</span>
         <span v-if="sample.kind">{{ kindLabel(sample.kind) }}</span>

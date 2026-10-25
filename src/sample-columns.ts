@@ -28,12 +28,29 @@ export function boundedSampleColumnWidth(id: ResizableSampleColumnId, width: num
   return Math.round(Math.min(limits.max, Math.max(limits.min, Number.isFinite(width) ? width : fallback)))
 }
 
-export function sampleTableLayout(columns: readonly typeof SAMPLE_COLUMNS[number][], widths: SampleColumnWidths) {
+export function sampleTableLayout(columns: readonly typeof SAMPLE_COLUMNS[number][], widths: SampleColumnWidths, viewportWidth?: number) {
   const fixedName = widths.name != null && Number.isFinite(widths.name)
-  const nameWidth = fixedName ? boundedSampleColumnWidth('name', widths.name!) : 220
+  let nameWidth = fixedName ? boundedSampleColumnWidth('name', widths.name!) : 220
   const sizes = columns.map(c => boundedSampleColumnWidth(c.id, widths[c.id] ?? c.width))
+  // Playback keeps one compact slot; disclosure is absolute in the left padding.
+  const overhead = 16 + 28 + 24 + (columns.length + 2) * 12
+  if (viewportWidth != null && Number.isFinite(viewportWidth) && viewportWidth > 0) {
+    let overflow = Math.max(0, overhead + nameWidth + sizes.reduce((sum, size) => sum + size, 0) - Math.floor(viewportWidth))
+    // Prefer keeping metadata readable by using excess name space first.
+    const fromName = Math.min(overflow, nameWidth - sampleColumnLimits('name').min)
+    nameWidth -= fromName
+    overflow -= fromName
+    const capacity = sizes.map((size, i) => size - sampleColumnLimits(columns[i].id).min)
+    let remaining = capacity.reduce((sum, size) => sum + size, 0)
+    for (let i = 0; i < sizes.length && overflow > 0 && remaining > 0; i++) {
+      const reduction = Math.min(capacity[i], Math.ceil(overflow * capacity[i] / remaining))
+      sizes[i] -= reduction
+      overflow -= reduction
+      remaining -= capacity[i]
+    }
+  }
   return {
-    '--sample-columns': `16px ${fixedName ? `${nameWidth}px` : 'minmax(220px, 1fr)'} ${sizes.map(w => `${w}px`).join(' ')} ${fixedName ? 'minmax(28px, 1fr)' : '28px'}`,
-    minWidth: `${16 + nameWidth + 28 + 24 + sizes.reduce((sum, width) => sum + width, 0) + (columns.length + 2) * 12}px`,
+    '--sample-columns': `16px ${fixedName ? `${nameWidth}px` : `minmax(${nameWidth}px, 1fr)`} ${sizes.map(w => `${w}px`).join(' ')} ${fixedName ? 'minmax(28px, 1fr)' : '28px'}`,
+    minWidth: `${overhead + nameWidth + sizes.reduce((sum, width) => sum + width, 0)}px`,
   }
 }

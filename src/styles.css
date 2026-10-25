@@ -18,7 +18,7 @@
   --border: #e1e1e8;
   --input: #e1e1e8;
   --ring: var(--primary);
-  --radius: 0.5rem;
+  --radius: 0.75rem;
   --wave: #8b8b99;
   /* Editor waveform: the brand colour; the selection shows it inverted. */
   --wave-strong: var(--primary);
@@ -100,3 +100,19 @@ textarea,
 .tabular {
   font-variant-numeric: tabular-nums;
 }
+
+/* Stable tag identity across badges, pickers and the sidebar. */
+.tag-color {
+  background: var(--tag-light-bg);
+  color: var(--tag-light-ink);
+  border-color: color-mix(in srgb, var(--tag-light-ink) 20%, transparent);
+}
+.dark .tag-color {
+  background: var(--tag-dark-bg);
+  color: var(--tag-dark-ink);
+  border-color: color-mix(in srgb, var(--tag-dark-ink) 20%, transparent);
+}
+.text-tag-ink { color: var(--tag-light-ink); }
+.dark .text-tag-ink { color: var(--tag-dark-ink); }
+.tag-dot { background: var(--tag-light-ink); }
+.dark .tag-dot { background: var(--tag-dark-ink); }

@@ -3,7 +3,8 @@ import type { Component } from 'vue'
 import type { AppInfo, Theme, WaveformSettings } from '@/api'
 import type { Locale } from '@/i18n'
 import type { SettingsSection } from '@/stores/settings'
-import appIcon from '../../src-tauri/icons/128x128.png'
+import darkAppIcon from '../../src-tauri/icons/128x128-dark.png'
+import lightAppIcon from '../../src-tauri/icons/128x128-light.png'
 import {
   AudioLines,
   AudioWaveform,
@@ -58,6 +59,7 @@ const props = withDefaults(defineProps<{ waveTarget?: 'preview' | 'editor' }>(),
 const { t } = useI18n()
 const store = useSettingsStore()
 const { settings, dialogOpen, section } = storeToRefs(store)
+const appIcon = computed(() => store.mode === 'dark' ? darkAppIcon : lightAppIcon)
 const library = useLibraryStore()
 const { sources, scans, analysis } = storeToRefs(library)
 const duplicates = useDuplicatesStore()
@@ -198,7 +200,7 @@ function keyLabel(k: string) {
         </button>
       </nav>
 
-      <div class="min-w-0 flex flex-col">
+      <div class="min-h-0 min-w-0 flex flex-col">
         <header class="h-13 shrink-0 px-6 flex items-center border-b border-border">
           <DialogTitle class="text-base font-semibold">
             {{ t(`settings.nav.${current.id}`) }}

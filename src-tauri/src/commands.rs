@@ -331,23 +331,60 @@ pub fn sound_model_status(state: State<'_, AppState>) -> SoundModelStatus {
 
 #[tauri::command]
 pub fn model_storage(state: State<'_, AppState>) -> Vec<crate::models::Storage> {
-    crate::models::storage(
+    let mut inventory = crate::models::storage(
         &state.models_dir,
         state.model_downloading.load(std::sync::atomic::Ordering::SeqCst),
         |model| state.stems.downloading(model),
-    )
+    );
+    for model in &mut inventory {
+        let operation = state.model_operations.state(model.id);
+        if model.id == "basicPitch" { model.downloading |= state.basic_pitch.downloading(); }
+        model.downloading |= model.id == "apollo" && state.apollo.downloading();
+        model.busy = model.downloading || operation.is_some();
+        model.downloading |= operation == Some(crate::models::Operation::Downloading);
+    }
+    inventory
+}
+
+#[tauri::command]
+pub async fn download_model(app: tauri::AppHandle, id: String) -> Result<()> {
+    use tauri::Manager;
+    let model = crate::models::optional_model(&id)?;
+    let state = app.state::<AppState>();
+    let lease = state.model_operations.acquire(model.id(), crate::models::Operation::Downloading)?;
+    let root = state.models_dir.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let _lease = lease;
+        let cancel = std::sync::atomic::AtomicBool::new(false);
+        model.ensure(&root, &cancel, |_| {}).map(|_| ())
+    }).await.map_err(|e| Error::Other(e.to_string()))?
+}
+
+#[tauri::command]
+pub async fn delete_model(app: tauri::AppHandle, id: String) -> Result<()> {
+    use tauri::Manager;
+    let model = crate::models::optional_model(&id)?;
+    let state = app.state::<AppState>();
+    let lease = state.model_operations.acquire(model.id(), crate::models::Operation::Deleting)?;
+    let root = state.models_dir.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let _lease = lease;
+        model.remove(&root)
+    }).await.map_err(|e| Error::Other(e.to_string()))?
 }
 
 /// Downloads the sound model in the background; progress and completion are
 /// reported through `model-download` events.
 #[tauri::command]
-pub fn download_sound_model(app: tauri::AppHandle, state: State<'_, AppState>) {
+pub fn download_sound_model(app: tauri::AppHandle, state: State<'_, AppState>) -> Result<()> {
     use std::sync::atomic::Ordering;
     use tauri::{Emitter, Manager};
+    let lease = state.model_operations.acquire("clap", crate::models::Operation::Downloading)?;
     if state.model_downloading.swap(true, Ordering::SeqCst) {
-        return;
+        return Ok(());
     }
     std::thread::spawn(move || {
+        let _lease = lease;
         let state = app.state::<AppState>();
         let emit = |p: crate::models::DownloadProgress| {
             let _ = app.emit(crate::models::DOWNLOAD_EVENT, p);
@@ -362,6 +399,7 @@ pub fn download_sound_model(app: tauri::AppHandle, state: State<'_, AppState>) {
             error: result.err().map(|e| e.to_string()),
         });
     });
+    Ok(())
 }
 
 #[tauri::command]
@@ -444,6 +482,7 @@ pub fn apply_settings(app: &tauri::AppHandle, state: &AppState, prev: Option<&Se
             Theme::Light => Some(tauri::Theme::Light),
             Theme::Dark => Some(tauri::Theme::Dark),
         });
+        crate::app_icon::refresh(app);
     }
     if prev.is_none_or(|p| p.watch_folders != next.watch_folders) {
         state.watcher.set_enabled(next.watch_folders);
@@ -498,11 +537,14 @@ pub fn app_info(app: tauri::AppHandle, state: State<'_, AppState>) -> AppInfo {
 /// Unloads and deletes the sound model. Embeddings and categories found with it stay.
 #[tauri::command]
 pub fn delete_sound_model(state: State<'_, AppState>) -> Result<()> {
+    let _lease = state.model_operations.acquire("clap", crate::models::Operation::Deleting)?;
     if state.model_downloading.load(std::sync::atomic::Ordering::SeqCst) {
         return Err(Error::Other("the sound model is downloading".into()));
     }
     state.analyzer.unload_model();
     let path = crate::models::model_path(&state.models_dir);
+    let partial = path.with_extension("part");
+    if partial.exists() { std::fs::remove_file(partial)?; }
     match std::fs::remove_file(&path) {
         Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.into()),
         _ => Ok(()),

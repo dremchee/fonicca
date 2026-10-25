@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tagColorStyle } from '@/tag-colors'
 import type { SampleKind } from '@/api'
 import type { Scope } from '@/stores/library'
 import {
@@ -146,7 +147,7 @@ function go(scope: Scope) {
               </CommandShortcut>
             </CommandItem>
             <CommandItem v-for="tag in library.tags" :key="`t${tag.id}`" :value="`go-tag-${tag.id}`" @select="go({ kind: 'tag', id: tag.id })">
-              <Tag /> {{ tag.name }}
+              <Tag class="text-tag-ink" :style="tagColorStyle(tag.name)" /> {{ tag.name }}
               <CommandShortcut class="tracking-normal">
                 {{ t('palette.tag') }}
               </CommandShortcut>

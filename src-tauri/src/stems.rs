@@ -1,5 +1,6 @@
 //! One cancellable local separation job. Results are published only when all
 //! stems have been written; a failed or cancelled job leaves the source intact.
+mod demucs;
 mod dsp;
 pub(crate) mod models;
 mod scnet;
@@ -34,14 +35,21 @@ pub enum Model {
     Spleeter,
     ScnetLarge,
     ScnetXlIhf,
+    Htdemucs,
 }
 impl Model {
-    pub const ALL: [Self; 3] = [Self::Spleeter, Self::ScnetLarge, Self::ScnetXlIhf];
+    pub const ALL: [Self; 4] = [
+        Self::Spleeter,
+        Self::ScnetLarge,
+        Self::ScnetXlIhf,
+        Self::Htdemucs,
+    ];
     pub fn id(self) -> &'static str {
         match self {
             Self::Spleeter => "spleeter",
             Self::ScnetLarge => "scnetLarge",
             Self::ScnetXlIhf => "scnetXlIhf",
+            Self::Htdemucs => "htdemucs",
         }
     }
 }
@@ -252,7 +260,17 @@ fn separate_to_folder_with_model(
             hound::WavWriter::create(working.path.join(format!("{n}.wav")), spec).map_err(failure)
         })
         .collect::<Result<Vec<_>>>()?;
-    if matches!(model, Model::ScnetLarge | Model::ScnetXlIhf) {
+    if model == Model::Htdemucs {
+        let mut separator = demucs::Separator::load(model_dir)?;
+        separator.separate(&pcm, cancel, &progress, |stems| {
+            for (writer, stem) in writers.iter_mut().zip(stems) {
+                for sample in stem {
+                    writer.write_sample(*sample).map_err(failure)?;
+                }
+            }
+            Ok(())
+        })?;
+    } else if matches!(model, Model::ScnetLarge | Model::ScnetXlIhf) {
         let mut separator = scnet::Separator::load_for(model_dir, model)?;
         separator.separate(&pcm, cancel, &progress, |stems| {
             for (writer, stem) in writers.iter_mut().zip(stems) {
@@ -305,13 +323,19 @@ fn separate_to_folder_with_model(
     publish_stems(&working.path, parent, &stem)
 }
 
-/// Publish beside the original (or into the configured directory), never
-/// replacing an existing file. A collision chooses a new suffix for the set.
+/// Publish one track per directory, never reusing an existing destination.
+/// Repeated separations choose a new numbered directory for the complete set.
 fn publish_stems(working: &Path, parent: &Path, name: &str) -> Result<Vec<PathBuf>> {
     for version in 1.. {
         let suffix = if version == 1 { String::new() } else { format!(" {version}") };
+        let folder = parent.join(format!("{name}{suffix}"));
+        match std::fs::create_dir(&folder) {
+            Ok(()) => {},
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e.into()),
+        }
         let paths: Vec<_> = dsp::NAMES.iter()
-            .map(|kind| parent.join(format!("{name} - {kind}{suffix}.wav"))).collect();
+            .map(|kind| folder.join(format!("{name} - {kind}.wav"))).collect();
         let mut published = Vec::new();
         let result: std::io::Result<()> = (|| {
             for (kind, target) in dsp::NAMES.iter().zip(&paths) {
@@ -329,7 +353,8 @@ fn publish_stems(working: &Path, parent: &Path, name: &str) -> Result<Vec<PathBu
             Ok(()) => return Ok(paths),
             Err(e) => {
                 for path in published { let _ = std::fs::remove_file(path); }
-                if e.kind() != std::io::ErrorKind::AlreadyExists { return Err(e.into()); }
+                let _ = std::fs::remove_dir(&folder);
+                return Err(e.into());
             }
         }
     }
@@ -446,19 +471,35 @@ mod tests {
         }
     }
     #[test]
-    fn flat_stem_files_are_published_without_overwriting_an_existing_set() {
+    fn stems_are_grouped_in_a_track_folder_without_overwriting_an_existing_set() {
         let dir = tempfile::tempdir().unwrap();
         let work = tempfile::tempdir().unwrap();
         for name in dsp::NAMES { std::fs::write(work.path().join(format!("{name}.wav")), name).unwrap(); }
-        let existing = dir.path().join("Song - drums.wav");
+        let existing_folder = dir.path().join("Song");
+        std::fs::create_dir(&existing_folder).unwrap();
+        let existing = existing_folder.join("Song - drums.wav");
         std::fs::write(&existing, "keep me").unwrap();
         let paths = publish_stems(work.path(), dir.path(), "Song").unwrap();
         assert_eq!(std::fs::read_to_string(existing).unwrap(), "keep me");
         assert!(!dir.path().join("Song - vocals.wav").exists());
         for (path, kind) in paths.iter().zip(dsp::NAMES) {
-            assert_eq!(path.parent(), Some(dir.path()));
-            assert_eq!(path.file_name().unwrap().to_str().unwrap(), format!("Song - {kind} 2.wav"));
+            assert_eq!(path.parent(), Some(dir.path().join("Song 2").as_path()));
+            assert_eq!(path.file_name().unwrap().to_str().unwrap(), format!("Song - {kind}.wav"));
             assert_eq!(std::fs::read_to_string(path).unwrap(), kind);
+        }
+    }
+
+    #[test]
+    fn first_separation_creates_a_folder_named_after_the_track() {
+        let dir = tempfile::tempdir().unwrap();
+        let work = tempfile::tempdir().unwrap();
+        for kind in dsp::NAMES {
+            std::fs::write(work.path().join(format!("{kind}.wav")), kind).unwrap();
+        }
+        let paths = publish_stems(work.path(), dir.path(), "John Lennon - Hold On").unwrap();
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+        for path in paths {
+            assert_eq!(path.parent(), Some(dir.path().join("John Lennon - Hold On").as_path()));
         }
     }
 
@@ -481,6 +522,11 @@ mod tests {
     #[ignore = "requires SCNET_XL_MODELS and STEM_AUDIO; XL full file write and cancellation"]
     fn xl_file_export_keeps_original_and_cleans_cancelled_work() {
         check_file_export(Model::ScnetXlIhf, "SCNET_XL_MODELS")
+    }
+    #[test]
+    #[ignore = "requires DEMUCS_MODELS and STEM_AUDIO; full file integration"]
+    fn htdemucs_file_export_keeps_original_and_cleans_cancelled_work() {
+        check_file_export(Model::Htdemucs, "DEMUCS_MODELS")
     }
     fn check_file_export(model: Model, model_env: &str) {
         let dir = tempfile::tempdir().unwrap();
@@ -518,7 +564,8 @@ mod tests {
             .is_err()
         );
         assert_eq!(std::fs::read(source).unwrap(), original);
-        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 4);
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+        assert_eq!(std::fs::read_dir(paths[0].parent().unwrap()).unwrap().count(), 4);
     }
     #[test]
     fn cancelled_processing_does_not_create_output_files() {
@@ -611,7 +658,8 @@ mod tests {
             .is_err()
         );
         assert_eq!(std::fs::read(source).unwrap(), bytes);
-        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 4);
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+        assert_eq!(std::fs::read_dir(paths[0].parent().unwrap()).unwrap().count(), 4);
     }
 }
 

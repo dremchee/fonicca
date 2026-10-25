@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Sample } from '@/api'
-import { AudioLines, CircleMinus, FolderOpen, Info, Layers, Pencil, Pause, Play, Star, Tag, WandSparkles } from '@lucide/vue'
+import { AudioLines, CircleMinus, FolderOpen, Info, Layers, Music, Pencil, Pause, Play, Star, Tag, WandSparkles } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -22,6 +22,7 @@ import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useStemsStore } from '@/stores/stems'
 import { useApolloStore } from '@/stores/apollo'
+import { useBasicPitchStore } from '@/stores/basicPitch'
 
 const props = defineProps<{ sample: Sample }>()
 const emit = defineEmits<{ close: [] }>()
@@ -102,6 +103,7 @@ async function submitNew() {
     </ContextMenuItem>
     <ContextMenuItem @select="runAfterClose(() => useStemsStore().show(sample))"><Layers />{{ t('stems.action') }}</ContextMenuItem>
     <ContextMenuItem @select="runAfterClose(() => useApolloStore().show(sample))"><WandSparkles />{{ t('apollo.action') }}</ContextMenuItem>
+    <ContextMenuItem @select="runAfterClose(() => useBasicPitchStore().show(sample))"><Music />{{ t('basicPitch.action') }}</ContextMenuItem>
     <ContextMenuSeparator />
     <ContextMenuGroup>
       <ContextMenuItem @select="library.toggleFavorite(sample)">

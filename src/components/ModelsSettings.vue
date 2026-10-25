@@ -19,7 +19,7 @@ const library = useLibraryStore()
 const { modelDownload } = storeToRefs(library)
 const models = shallowRef<ModelStorage[] | null>(null)
 const error = shallowRef('')
-const busy = shallowRef(false)
+const pending = shallowRef<string[]>([])
 const total = computed(() => models.value?.reduce((sum, model) => sum + model.size, 0) ?? 0)
 let active = true
 let timer: ReturnType<typeof setTimeout> | undefined
@@ -60,29 +60,35 @@ async function reveal(path: string) {
   catch (e) { toast.error(String(e)) }
 }
 
-async function download() {
-  busy.value = true
-  try { await library.downloadSoundModel(); await refresh() }
-  catch (e) { toast.error(String(e)) }
-  finally { busy.value = false }
-}
-
-async function remove() {
-  const ok = await confirm({
-    title: t('settings.analysis.deleteTitle'),
-    description: t('settings.analysis.deleteDesc'),
-    action: t('common.actions.delete'),
-    destructive: true,
-  })
-  if (!ok) return
-  busy.value = true
+async function download(model: ModelStorage) {
+  if (model.busy || pending.value.includes(model.id)) return
+  pending.value = [...pending.value, model.id]
   try {
-    await library.deleteSoundModel()
-    await refresh()
+    if (model.id === 'clap') await library.downloadSoundModel()
+    else await api.downloadModel(model.id)
     emit('changed')
   }
   catch (e) { toast.error(String(e)) }
-  finally { busy.value = false }
+  finally { pending.value = pending.value.filter(id => id !== model.id); await refresh() }
+}
+
+async function remove(model: ModelStorage) {
+  if (model.busy || pending.value.includes(model.id)) return
+  pending.value = [...pending.value, model.id]
+  try {
+    const ok = await confirm({
+      title: model.id === 'clap' ? t('settings.analysis.deleteTitle') : t('settings.models.deleteTitle', { name: t(`settings.models.${model.id}.name`) }),
+      description: model.id === 'clap' ? t('settings.analysis.deleteDesc') : t('settings.models.deleteDesc'),
+      action: t('common.actions.delete'),
+      destructive: true,
+    })
+    if (!ok) return
+    if (model.id === 'clap') await library.deleteSoundModel()
+    else await api.deleteModel(model.id)
+    emit('changed')
+  }
+  catch (e) { toast.error(String(e)) }
+  finally { pending.value = pending.value.filter(id => id !== model.id); await refresh() }
 }
 </script>
 
@@ -105,7 +111,7 @@ async function remove() {
             <div class="h-full bg-primary transition-[width]" :style="{ width: `${Math.min(100, model.size / model.downloadSize * 100)}%` }" />
           </div>
           <p v-if="model.id === 'clap' && modelDownload?.error" role="alert" class="mt-1 text-xs text-destructive">{{ modelDownload.error }}</p>
-          <p v-if="model.id !== 'clap' && model.id !== 'apollo' && !model.installed && !model.downloading" class="mt-1 text-xs text-muted-foreground">{{ t('settings.models.onSeparation') }}</p>
+          <p v-if="model.id !== 'clap' && model.id !== 'apollo' && !model.installed && !model.downloading" class="mt-1 text-xs text-muted-foreground">{{ t(model.id === 'basicPitch' ? 'settings.models.onTranscription' : 'settings.models.onSeparation') }}</p>
         </div>
         <div class="flex gap-0.5">
           <Hint v-if="model.installed || (model.id !== 'clap' && model.size > 0)" :text="t('common.actions.showInFinder')">
@@ -113,16 +119,14 @@ async function remove() {
               <FolderOpen />
             </Button>
           </Hint>
-          <template v-if="model.id === 'clap'">
-            <Hint v-if="model.installed" :text="t('settings.analysis.deleteModel')">
-              <Button variant="ghost" size="icon-sm" class="text-muted-foreground hover:text-destructive" :disabled="busy || model.downloading" :aria-label="t('settings.analysis.deleteModel')" @click="remove">
-                <Trash2 />
-              </Button>
-            </Hint>
-            <Button v-else variant="outline" size="sm" :disabled="busy || model.downloading" @click="download">
-              <Download /> {{ t('settings.analysis.download') }}
+          <Hint v-if="model.installed || model.size > 0" :text="model.busy && !model.downloading ? t('settings.models.inUse') : t('settings.analysis.deleteModel')">
+            <Button variant="ghost" size="icon-sm" class="text-muted-foreground hover:text-destructive" :disabled="pending.includes(model.id) || model.busy || model.downloading" :aria-label="`${t('settings.analysis.deleteModel')}: ${t(`settings.models.${model.id}.name`)}`" @click="remove(model)">
+              <Trash2 />
             </Button>
-          </template>
+          </Hint>
+          <Button v-if="!model.installed" variant="outline" size="sm" :disabled="pending.includes(model.id) || model.busy || model.downloading" :aria-label="`${t('settings.analysis.download')}: ${t(`settings.models.${model.id}.name`)}`" @click="download(model)">
+            <Download /> {{ t('settings.analysis.download') }}
+          </Button>
         </div>
       </div>
     </div>

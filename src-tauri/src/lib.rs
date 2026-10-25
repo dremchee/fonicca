@@ -1,5 +1,6 @@
-mod apollo;
+mod app_icon;
 mod analysis;
+mod apollo;
 mod analyzer;
 mod audio;
 mod batch;
@@ -19,6 +20,7 @@ mod player;
 mod scan;
 mod settings;
 mod stems;
+mod basic_pitch;
 mod similar;
 mod sync;
 mod tags;
@@ -31,8 +33,8 @@ use tauri::{Emitter, Manager};
 
 pub struct AppState {
     pub apollo: apollo::Jobs,
-    pub model_operations: models::Operations,
     pub stems: stems::Jobs,
+    pub basic_pitch: basic_pitch::Jobs,
     pub db: Mutex<Connection>,
     pub player: player::Player,
     pub scanner: Arc<watch::Scanner>,
@@ -45,6 +47,7 @@ pub struct AppState {
     pub overviews: overview::Cache,
     /// Files open in editor windows, by window label.
     pub editor: Mutex<std::collections::HashMap<String, editor::Session>>,
+    pub model_operations: models::Operations,
     pub model_downloading: std::sync::atomic::AtomicBool,
     pub duplicates_verifying: std::sync::atomic::AtomicBool,
     pub watcher: watch::LibraryWatcher,
@@ -118,9 +121,9 @@ pub fn run() {
             }
             let player = player::Player::new();
             app.manage(AppState {
-                apollo: Default::default(),
-                model_operations: Default::default(),
                 stems: Default::default(),
+                basic_pitch: Default::default(),
+                apollo: Default::default(),
                 db: Mutex::new(conn),
                 player,
                 scanner,
@@ -131,6 +134,7 @@ pub fn run() {
                 similar: Default::default(),
                 overviews: overview::Cache::with_disk(app.path().app_cache_dir()?.join("waveforms")),
                 editor: Default::default(),
+                model_operations: Default::default(),
                 model_downloading: Default::default(),
                 duplicates_verifying: Default::default(),
                 watcher,
@@ -141,6 +145,9 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::ThemeChanged(_)) {
+                app_icon::refresh(window.app_handle());
+            }
             if matches!(event, tauri::WindowEvent::Destroyed)
                 && window.label().starts_with(editor_commands::WINDOW_PREFIX)
             {
@@ -148,6 +155,9 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            basic_pitch::basic_pitch_status,
+            basic_pitch::basic_pitch_start,
+            basic_pitch::basic_pitch_cancel,
             editor_commands::open_editor_window,
             editor_commands::editor_open,
             editor_commands::editor_apply,
@@ -200,6 +210,8 @@ pub fn run() {
             commands::analysis_status,
             commands::sound_model_status,
             commands::model_storage,
+            commands::download_model,
+            commands::delete_model,
             commands::download_sound_model,
             apollo::apollo_status,
             apollo::apollo_start,
@@ -229,6 +241,12 @@ pub fn run() {
             commands::preferred_folders,
             commands::set_preferred_folder,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // Tauri applies its development icon just before Ready. Override it afterwards.
+            if matches!(event, tauri::RunEvent::Ready) {
+                app_icon::refresh(app);
+            }
+        });
 }

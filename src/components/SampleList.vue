@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tagColorStyle } from '@/tag-colors'
 import type { Sample } from '@/api'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { AudioLines, ChevronRight, FolderPlus, Layers, SearchX, Sparkles, Star, Tag, X } from '@lucide/vue'
@@ -8,6 +9,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { categoryHint, categoryLabel, formatBpm, formatDuration, kindLabel, sourceHint } from '@/format'
 import Hint from '@/components/Hint.vue'
+import CategoryIcon from '@/components/icons/CategoryIcon.vue'
 import SampleContextMenu from '@/components/SampleContextMenu.vue'
 import SampleStemProgress from '@/components/SampleStemProgress.vue'
 import { activeStemProgress } from '@/stem-progress'
@@ -29,17 +31,18 @@ const ROW_HEIGHT = 32
 const { t } = useI18n()
 const library = useLibraryStore()
 const player = usePlayerStore()
-const apollo = useApolloStore()
-const apolloProgress = computed(() => activeStemProgress(apollo.progress))
 const stems = useStemsStore()
 const stemProgress = computed(() => activeStemProgress(stems.progress))
+const apollo = useApolloStore()
+const apolloProgress = computed(() => activeStemProgress(apollo.progress))
 const { total, focusIndex, selectedIds, scope } = storeToRefs(library)
 
 // Keep the former full/compact preference when upgrading to individual columns.
 const legacyDetails = useStorage('fonicca-list-details', false)
 const columnVisibility = useStorage('fonicca-list-columns-v1', defaultSampleColumns(legacyDetails.value), undefined, { mergeDefaults: true })
 const visibleColumns = computed(() => SAMPLE_COLUMNS.filter(column => columnVisibility.value[column.id]))
-const { tableStyle, resizingColumn, preview: previewColumnWidth, commit: commitColumnWidth, cancel: cancelColumnResize, reset: resetColumnWidths } = useSampleColumnWidths(visibleColumns)
+const tableViewport = ref<HTMLElement | null>(null)
+const { tableStyle, resizingColumn, preview: previewColumnWidth, commit: commitColumnWidth, cancel: cancelColumnResize, reset: resetColumnWidths } = useSampleColumnWidths(visibleColumns, tableViewport)
 
 const similarTo = computed(() => (scope.value.kind === 'similar' ? scope.value : null))
 
@@ -103,7 +106,11 @@ const virtualizer = useVirtualizer(computed(() => ({
 })))
 
 const items = computed(() => virtualizer.value.getVirtualItems())
-const rows = computed(() => items.value.map(item => ({ item, sample: library.sampleAt(item.index) })))
+const rows = computed(() => items.value.map((item) => {
+  const sample = library.sampleAt(item.index)
+  const stemChild = sample?.stemParentId != null && library.expandedStems.has(sample.stemParentId)
+  return { item, sample, stemChild }
+}))
 
 // A scope change may keep the same row count and virtual range while clearing pages.
 watch([items, () => library.pages.size], ([list]) => {
@@ -196,7 +203,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
         </Button>
       </Hint>
     </div>
-    <div class="table-viewport flex-1 min-w-0 min-h-0 overflow-x-auto">
+    <div ref="tableViewport" class="table-viewport flex-1 min-w-0 min-h-0 overflow-x-auto">
       <div class="table-content relative flex flex-col h-full" :style="total > 0 ? tableStyle : undefined">
         <div v-if="total > 0" class="header grid items-center px-3 h-8 border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
           <span />
@@ -245,7 +252,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
               </Empty>
 
               <div v-else class="relative w-full" :style="{ height: `${virtualizer.getTotalSize()}px` }">
-                <template v-for="{ item, sample: s } in rows" :key="item.index">
+                <template v-for="{ item, sample: s, stemChild } in rows" :key="item.index">
                   <div
                     v-if="s"
                     class="row grid items-center px-3 absolute inset-x-0 tabular"
@@ -253,6 +260,8 @@ function onDragStart(e: DragEvent, sample: Sample) {
                       selected: selectedIds.has(s.id),
                       focused: item.index === focusIndex,
                       playing: player.isPlaying(s.id),
+                      'stem-parent': library.expandedStems.has(s.id),
+                      'stem-child': stemChild,
                     }"
                     :style="{ height: `${item.size}px`, transform: `translateY(${item.start}px)` }"
                     :data-index="item.index"
@@ -264,8 +273,9 @@ function onDragStart(e: DragEvent, sample: Sample) {
                   >
                     <span class="grid place-items-center">
                       <span v-if="player.isPlaying(s.id)" class="i-lucide-volume-2 text-primary text-xs" aria-hidden="true" />
+                      <CategoryIcon v-else :category="s.category" :stem="s.stemKind" class="size-3.5 text-muted-foreground" />
                     </span>
-                    <span class="flex items-center gap-2 min-w-0" :class="{ 'pl-5': s.stemParentId }">
+                    <span class="relative flex items-center gap-2 min-w-0 h-full" :class="{ 'pl-5': stemChild }">
                       <Hint :text="breakablePath(s.path)" side="top">
                         <span class="truncate">{{ s.stemKind ? t(`stems.instruments.${s.stemKind}`) : s.name }}</span>
                       </Hint>
@@ -288,7 +298,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
                     </span>
                     <template v-for="column in visibleColumns" :key="column.id">
                       <span v-if="column.id === 'tags'" class="flex gap-1 overflow-hidden">
-                        <span v-for="tag in s.tags" :key="tag.id" class="chip">{{ tag.name }}</span>
+                        <span v-for="tag in s.tags" :key="tag.id" class="chip tag-color" :style="tagColorStyle(tag.name)">{{ tag.name }}</span>
                       </span>
                       <Hint v-else-if="column.id === 'category'" :text="categoryHint(s.categorySource, s.categoryConfidence)" side="top">
                         <span class="truncate text-xs" :class="s.categorySource === 'audio' ? 'text-muted-foreground' : ''">{{ s.category ? categoryLabel(s.category) : '' }}</span>
@@ -368,14 +378,18 @@ function onDragStart(e: DragEvent, sample: Sample) {
 .header {
   flex-shrink: 0;
 }
+.row.stem-parent,
+.row.stem-child {
+  background: color-mix(in srgb, var(--primary) 5%, var(--background));
+}
 .row:hover {
   background: var(--accent);
 }
 .row.selected {
   background: color-mix(in srgb, var(--foreground) 8%, var(--background));
 }
-.row.focused {
-  box-shadow: inset 2px 0 0 var(--muted-foreground);
+.row.focused:not(.selected):not(.playing) {
+  background: var(--accent);
 }
 .star {
   justify-self: end;
@@ -393,19 +407,8 @@ function onDragStart(e: DragEvent, sample: Sample) {
   flex-shrink: 0;
   padding: 0 6px;
   border-radius: 4px;
-  background: var(--accent);
-  color: var(--muted-foreground);
   font-size: 11px;
   line-height: 18px;
-}
-.row.selected .chip {
-  background: var(--card);
-}
-.row.playing {
-  box-shadow: inset 3px 0 0 var(--primary);
-}
-.row.playing > span:nth-child(2) {
-  color: var(--primary);
 }
 .stem-toggle {
   background: var(--primary-soft);
@@ -413,5 +416,24 @@ function onDragStart(e: DragEvent, sample: Sample) {
 }
 button.stem-toggle:hover {
   filter: brightness(0.95);
+}
+.row.playing {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.row.playing :deep(.text-muted-foreground) {
+  color: color-mix(in srgb, var(--primary-foreground) 80%, transparent);
+}
+.row.playing :deep(.text-primary),
+.row.playing :deep(.text-amber-400),
+.row.playing .star {
+  color: var(--primary-foreground);
+}
+.row.playing .star {
+  opacity: 1;
+}
+.row.playing .stem-toggle {
+  background: color-mix(in srgb, var(--primary-foreground) 15%, transparent);
+  color: var(--primary-foreground);
 }
 </style>

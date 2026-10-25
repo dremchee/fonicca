@@ -15,6 +15,7 @@ import trackInfo from './trackInfo'
 import batch from './batch'
 import stems from './stems'
 import apollo from './apollo'
+import basicPitch from './basicPitch'
 
 export default {
   common,
@@ -33,4 +34,5 @@ export default {
   batch,
   stems,
   apollo,
+  basicPitch,
 }

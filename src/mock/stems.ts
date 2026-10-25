@@ -2,14 +2,32 @@ import type { Sample, StemModel } from '@/api'
 import { emit } from '@tauri-apps/api/event'
 const initial = () => ({ model: 'spleeter' as StemModel, sourceId: null as number | null, running: false, stage: '', progress: 0, error: null, cancelled: false, paths: [] as string[], ids: [] as number[], name: '' })
 let progress = initial()
-const ready: Record<StemModel, boolean> = { spleeter: location.hash === '#models', scnetLarge: location.hash === '#models', scnetXlIhf: location.hash === '#models' }
-const bytes = { spleeter: 78856560, scnetLarge: 45082486, scnetXlIhf: 221482626 }
+const ready: Record<StemModel, boolean> = { spleeter: location.hash === '#models', scnetLarge: location.hash === '#models', scnetXlIhf: location.hash === '#models', htdemucs: location.hash === '#models' }
+const bytes = { spleeter: 78856560, scnetLarge: 45082486, scnetXlIhf: 221482626, htdemucs: 316446953 }
 let generation = 0
 const original = { id: 1, sourceId: 1, path: '/mock/Drum loop.wav', name: 'Drum loop', duration: 8, ext: 'wav', size: 48000, sampleRate: 44100, channels: 2, bitDepth: 24, favorite: false, tags: [], bpm: 120, key: null, kind: 'loop', category: 'drum', bpmSource: 'name', keySource: null, peakDb: -3, lufs: -16, analyzed: true, categorySource: 'name', categoryConfidence: 1, similarity: null } satisfies Sample
 let children: Sample[] = []
+const downloads: Partial<Record<StemModel, number>> = {}
+export function deleteStemModel(model: StemModel) {
+  if (downloads[model] != null || (progress.running && progress.model === model)) throw new Error('model is in use')
+  ready[model] = false
+}
+export function downloadStemModel(model: StemModel) {
+  if (downloads[model] != null || (progress.running && progress.model === model)) throw new Error('model is in use')
+  downloads[model] = 0
+  return new Promise<void>(resolve => {
+    const tick = () => {
+      downloads[model] = Math.min(1, (downloads[model] ?? 0) + 0.2)
+      if (downloads[model]! < 1) setTimeout(tick, 400)
+      else { ready[model] = true; delete downloads[model]; resolve() }
+    }
+    setTimeout(tick, 400)
+  })
+}
 export function stemModelStorage(model: StemModel) {
-  const downloading = progress.running && progress.stage === 'downloading' && progress.model === model
-  return { id: model, path: `/m/${model}`, installed: ready[model], downloading, size: ready[model] ? bytes[model] : downloading ? Math.round(progress.progress * bytes[model]) : 0, downloadSize: bytes[model] }
+  const downloading = downloads[model] != null || (progress.running && progress.stage === 'downloading' && progress.model === model)
+  const busy = downloading || (progress.running && progress.model === model)
+  return { id: model, path: `/m/${model}`, installed: ready[model], downloading, busy, size: ready[model] ? bytes[model] : downloading ? Math.round((downloads[model] ?? progress.progress) * bytes[model]) : 0, downloadSize: bytes[model] }
 }
 export function stemsCommand(cmd: string, args: any, folder?: string | null): unknown {
   switch (cmd) {

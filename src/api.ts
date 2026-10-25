@@ -82,10 +82,11 @@ export interface SoundModelStatus {
   size: number
 }
 
-export type StemModel = 'spleeter' | 'scnetLarge' | 'scnetXlIhf'
+export type StemModel = 'spleeter' | 'scnetLarge' | 'scnetXlIhf' | 'htdemucs'
 
 export interface ModelStorage {
-  id: 'clap' | 'apollo' | StemModel
+  busy: boolean
+  id: 'clap' | 'apollo' | 'basicPitch' | StemModel
   path: string
   installed: boolean
   downloading: boolean
@@ -293,6 +294,8 @@ export const api = {
   analysisStatus: () => invoke<AnalysisProgress>('analysis_status'),
   soundModelStatus: () => invoke<SoundModelStatus>('sound_model_status'),
   modelStorage: () => invoke<ModelStorage[]>('model_storage'),
+  downloadModel: (id: Exclude<ModelStorage['id'], 'clap'>) => invoke<void>('download_model', { id }),
+  deleteModel: (id: Exclude<ModelStorage['id'], 'clap'>) => invoke<void>('delete_model', { id }),
   downloadSoundModel: () => invoke<void>('download_sound_model'),
   deleteSoundModel: () => invoke<void>('delete_sound_model'),
   getSettings: () => invoke<Settings>('get_settings'),

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { tagColorStyle } from '@/tag-colors'
 import type { TagRef } from '@/api'
 import { Check, Plus } from '@lucide/vue'
 import { ListboxItem } from 'reka-ui'
@@ -70,6 +71,7 @@ async function add(name: string) {
               </CommandEmpty>
               <CommandGroup v-if="available.length">
                 <CommandItem v-for="tag in available" :key="tag.id" :value="tag.name" @select="add(tag.name)">
+                  <span class="tag-dot size-2.5 shrink-0 rounded-full" :style="tagColorStyle(tag.name)" aria-hidden="true" />
                   {{ tag.name }}
                   <span class="ml-auto text-xs text-muted-foreground tabular">{{ formatNumber(tag.sampleCount) }}</span>
                 </CommandItem>
@@ -86,7 +88,7 @@ async function add(name: string) {
               </ListboxItem>
               <CommandGroup v-if="assigned.length" :heading="t('sidebar.tagPicker.assigned')">
                 <CommandItem v-for="tag in assigned" :key="tag.id" :value="`on:${tag.name}`" disabled>
-                  <Check /> {{ tag.name }}
+                  <Check /> <span class="tag-color rounded px-1" :style="tagColorStyle(tag.name)">{{ tag.name }}</span>
                 </CommandItem>
               </CommandGroup>
             </CommandList>

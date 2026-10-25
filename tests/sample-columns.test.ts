@@ -28,3 +28,24 @@ test('hidden columns reserve no space and recover their stored width when shown 
   assert.equal(sampleTableLayout(SAMPLE_COLUMNS, widths)['--sample-columns'], visible['--sample-columns'])
   assert.match(sampleTableLayout([], { name: NaN })['--sample-columns'], /minmax\(220px, 1fr\)/)
 })
+
+test('saved wide columns fit a narrower viewport without changing preferred widths', () => {
+  const columns = SAMPLE_COLUMNS.filter(c => c.defaultVisible)
+  const widths = { name: 620 }
+  const fitted = sampleTableLayout(columns, widths, 875)
+  assert.equal(fitted.minWidth, '875px')
+  assert.equal(fitted['--sample-columns'], '16px 531px 96px 56px 64px minmax(28px, 1fr)')
+  assert.equal(widths.name, 620)
+  assert.match(sampleTableLayout(columns, widths, 1200)['--sample-columns'], /620px/)
+})
+
+test('oversized metadata columns shrink to their limits before horizontal scrolling', () => {
+  const widths = { name: 800, category: 600, bpm: 400, length: 300 }
+  const columns = SAMPLE_COLUMNS.filter(c => c.defaultVisible)
+  const fitted = sampleTableLayout(columns, widths, 600)
+  assert.equal(fitted.minWidth, '600px')
+  assert.match(fitted['--sample-columns'], /^16px 160px /)
+  const tiny = sampleTableLayout(columns, widths, 200)
+  assert.equal(tiny.minWidth, '440px')
+  assert.equal(tiny['--sample-columns'], '16px 160px 64px 44px 44px minmax(28px, 1fr)')
+})

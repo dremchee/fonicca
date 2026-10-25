@@ -1,0 +1,11 @@
+Basic Pitch, Copyright 2022 Spotify AB. Apache License 2.0.
+Source: https://github.com/spotify/basic-pitch
+Pinned revision: fa5997af0a8210982619003269994a1be25eddf3.
+Model: basic_pitch/saved_models/icassp_2022/nmp.onnx, 230444 bytes.
+SHA-256: 2c3c1d144bfa61ad236e92e169c13535c880469a12a047d4e73451f2c059a0ec.
+
+Fonicca adapts windowing, onset inference, polyphonic note decoding and time
+alignment from basic_pitch/inference.py and basic_pitch/note_creation.py.
+The audio decoder/resampler, bounded ONNX runner, MIDI file writer and desktop
+integration are implemented in Rust. This version exports note on/off events
+and velocity; pitch-bend and contour export are not included.
