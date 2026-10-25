@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Kbd } from '@/components/ui/kbd'
 import { openTrackInfo, trackInfoFor } from '@/composables/trackInfo'
-import { formatBpm, formatChannels, formatDuration, formatRate, formatSize } from '@/format'
+import { categoryLabel, formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, kindLabel } from '@/format'
 
 const props = defineProps<{
   sample: Sample
@@ -42,6 +42,10 @@ const details = computed(() => {
     { label: t('trackInfo.fields.channels'), value: formatChannels(s.channels) },
     { label: t('trackInfo.fields.bitDepth'), value: s.bitDepth ? t('common.units.bit', { n: s.bitDepth }) : null },
     { label: t('trackInfo.fields.size'), value: formatSize(s.size) },
+    { label: t('list.columns.category'), value: s.category ? categoryLabel(s.category) : null },
+    { label: t('list.columns.kind'), value: s.kind ? kindLabel(s.kind) : null },
+    { label: t('player.samplePeak'), value: s.peakDb != null ? formatDb(s.peakDb) : null },
+    { label: t('player.integratedLoudness'), value: s.lufs != null ? formatDb(s.lufs, 'LUFS') : null },
     { label: 'BPM', value: s.bpm != null ? formatBpm(s.bpm) : null },
     { label: t('list.columns.key'), value: s.key },
   ].filter(row => row.value != null)

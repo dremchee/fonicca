@@ -18,7 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { trackInfoRevision } from '@/composables/trackInfo'
-import { categoryHint, categoryLabel, formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, kindLabel, shortPath, sourceHint } from '@/format'
+import { formatDuration, shortPath } from '@/format'
 import { playbackSeekTarget } from '@/playback-navigation'
 import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
@@ -328,23 +328,10 @@ function onDragStart(e: DragEvent) {
         </div>
       </div>
     </div>
-    <!-- Status bar. One line tall: fields that do not fit wrap onto the hidden second line
-         and drop out whole, least important (the last ones) first. -->
+    <!-- Tags and preview actions stay visible; technical details live in the info card. -->
     <div class="h-8 shrink-0 px-4 flex items-center gap-3 text-xs text-muted-foreground tabular">
       <PreviewTags :tags="sample.tags" :count="selectionSize" />
-      <div class="min-w-0 flex-1 h-8 flex flex-wrap items-center gap-x-3 leading-8 overflow-hidden">
-        <span v-if="sample.category" :title="categoryHint(sample.categorySource, sample.categoryConfidence)">{{ categoryLabel(sample.category) }}</span>
-        <span v-if="sample.kind">{{ kindLabel(sample.kind) }}</span>
-        <span v-if="sample.bpm != null" :title="sourceHint(sample.bpmSource)">{{ t('common.units.bpm', { n: formatBpm(sample.bpm) }) }}</span>
-        <span v-if="sample.key" :title="sourceHint(sample.keySource)">{{ sample.key }}</span>
-        <span v-if="sample.peakDb != null" :title="t('player.samplePeak')">{{ formatDb(sample.peakDb) }}</span>
-        <span v-if="sample.lufs != null" :title="t('player.integratedLoudness')">{{ formatDb(sample.lufs, 'LUFS') }}</span>
-        <span>{{ formatDuration(sample.duration) }}</span>
-        <span>{{ formatRate(sample.sampleRate) }}</span>
-        <span v-if="sample.bitDepth">{{ t('common.units.bit', { n: sample.bitDepth }) }}</span>
-        <span>{{ formatChannels(sample.channels) }}</span>
-        <span>{{ formatSize(sample.size) }}</span>
-      </div>
+      <span class="min-w-0 flex-1" aria-hidden="true" />
       <button
         class="group min-w-0 max-w-[25%] flex items-center gap-1.5 hover:text-foreground"
         :title="`${sample.path}\n${t('player.clickToReveal')}`"
