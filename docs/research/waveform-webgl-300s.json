@@ -1,0 +1,35 @@
+{
+  "graphicsRenderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M1 Pro, Unspecified Version)",
+  "source": "ref_long.wav · тестовый сигнал",
+  "durationSeconds": 300,
+  "repeated": true,
+  "mode": "webgl",
+  "library": "gl-waveform@5.3.0",
+  "viewport": {
+    "width": 1098,
+    "height": 160,
+    "dpr": 1
+  },
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36",
+  "warmupFrames": 20,
+  "measuredFrames": 180,
+  "canvasPreparation": null,
+  "canvasDrawCpu": null,
+  "webglDrawCpu": {
+    "medianMs": 0.7,
+    "p95Ms": 1.7,
+    "maxMs": 2.7
+  },
+  "frameIntervals": {
+    "medianMs": 10,
+    "p95Ms": 10.6,
+    "maxMs": 11
+  },
+  "framesOver25ms": 0,
+  "elapsedMs": 2001.5,
+  "webglInitializationMs": 38.5,
+  "pcmBytes": 57600000,
+  "canvasOverviewBytes": 0,
+  "gpuMemoryBytes": null,
+  "note": "CPU submission timings. GPU completion and total GPU memory are not measured. Canvas reduction is JS in this bench, Rust in production."
+}

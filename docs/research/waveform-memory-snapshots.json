@@ -1,0 +1,16 @@
+{
+  "canvas": {
+    "backingStorageSize": 125132240,
+    "embedderHeapUsedSize": 5210008,
+    "totalSize": 15384576,
+    "usedSize": 9975612
+  },
+  "webgl": {
+    "backingStorageSize": 126439535,
+    "embedderHeapUsedSize": 4932616,
+    "totalSize": 14860288,
+    "usedSize": 10155444
+  },
+  "gcForced": false,
+  "note": "Exploratory Chromium isolate snapshots from port 1420. May include prior documents and uncollected garbage; not attributable per renderer. Excludes GPU memory. Do not use as a total-memory comparison."
+}

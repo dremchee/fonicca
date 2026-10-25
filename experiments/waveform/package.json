@@ -1,0 +1,13 @@
+{
+  "name": "fonicca-waveform-comparison",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "gl-waveform": "5.3.0"
+  },
+  "scripts": {
+    "dev": "../../node_modules/.bin/vite --config vite.config.ts",
+    "check": "../../node_modules/.bin/vue-tsc --noEmit -p tsconfig.json",
+    "build": "npm run check && ../../node_modules/.bin/vite build --config vite.config.ts"
+  }
+}
