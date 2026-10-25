@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useTagColors } from '@/composables/tagColors'
 import type { Sample, TrackTags } from '@/api'
-import { Info } from '@lucide/vue'
-import { HoverCardContent, HoverCardPortal, HoverCardRoot, HoverCardTrigger } from 'reka-ui'
+import { Info, Pencil } from '@lucide/vue'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Badge } from '@/components/ui/badge'
@@ -19,12 +19,25 @@ const props = defineProps<{
 
 const { t } = useI18n()
 const { tagStyle } = useTagColors()
-const hovered = ref(false)
+const visible = ref(false)
 const open = computed({
-  get: () => hovered.value && !trackInfoFor.value,
-  set: value => hovered.value = value,
+  get: () => visible.value && !trackInfoFor.value,
+  set: value => visible.value = value,
 })
-watch(() => props.sample.id, () => hovered.value = false)
+watch(() => props.sample.id, () => visible.value = false)
+
+let editAfterClose = false
+function editMetadata() {
+  editAfterClose = true
+  open.value = false
+}
+function onCloseAutoFocus(event: Event) {
+  if (!editAfterClose)
+    return
+  event.preventDefault()
+  editAfterClose = false
+  setTimeout(() => openTrackInfo(props.sample), 0)
+}
 
 const metadata = computed(() => [
   { label: t('trackInfo.fields.artist'), value: props.tags?.artist },
@@ -53,52 +66,52 @@ const details = computed(() => {
 </script>
 
 <template>
-  <HoverCardRoot v-model:open="open" :open-delay="300" :close-delay="150">
-    <HoverCardTrigger as-child>
-      <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('trackInfo.edit')" @click="hovered = false; openTrackInfo(sample)">
+  <Popover v-model:open="open">
+    <PopoverTrigger as-child>
+      <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('trackInfo.title')">
         <Info />
       </Button>
-    </HoverCardTrigger>
-    <HoverCardPortal>
-      <HoverCardContent
-        side="top" align="end" :side-offset="8" :collision-padding="12"
-        :class="coverUrl ? 'w-[560px]' : 'w-80'"
-        class="z-50 max-w-[calc(100vw-24px)] max-h-[var(--reka-hover-card-content-available-height)] overflow-y-auto rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
-      >
-        <div class="sample-info-layout" :class="{ 'has-cover': coverUrl }">
-          <img v-if="coverUrl" :src="coverUrl" :alt="t('trackInfo.cover')" width="192" height="192" class="cover max-w-full rounded-sm object-contain">
-          <div class="min-w-0">
-            <div class="text-sm font-semibold [overflow-wrap:anywhere]">
-              {{ tags?.title || sample.name }}
-            </div>
-            <div v-if="tags?.title" class="mt-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">
-              {{ sample.name }}.{{ sample.ext }}
-            </div>
-            <dl v-if="metadata.length" class="mt-3 flex flex-col gap-1 text-xs">
-              <div v-for="row in metadata" :key="row.label" class="grid grid-cols-[5rem_1fr] gap-2">
-                <dt class="text-muted-foreground">{{ row.label }}</dt>
-                <dd class="min-w-0 [overflow-wrap:anywhere]">{{ row.value }}</dd>
-              </div>
-            </dl>
-            <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t pt-3 text-xs">
-              <div v-for="row in details" :key="row.label" class="min-w-0">
-                <dt class="text-muted-foreground">{{ row.label }}</dt>
-                <dd class="mt-0.5 tabular-nums">{{ row.value }}</dd>
-              </div>
-            </dl>
-            <div v-if="sample.tags.length" class="mt-3 flex flex-wrap gap-1">
-              <Badge v-for="tag in sample.tags" :key="tag.id" variant="secondary" :style="tagStyle(tag)" class="tag-color max-w-full whitespace-normal [overflow-wrap:anywhere]">{{ tag.name }}</Badge>
-            </div>
-            <p class="mt-3 text-[11px] text-muted-foreground [overflow-wrap:anywhere]">{{ sample.path }}</p>
+    </PopoverTrigger>
+    <PopoverContent
+      side="top" align="end" :side-offset="8" :collision-padding="12" @close-auto-focus="onCloseAutoFocus"
+      :class="coverUrl ? 'w-[560px]' : 'w-80'"
+      class="z-50 max-w-[calc(100vw-24px)] max-h-[var(--reka-popover-content-available-height)] overflow-y-auto rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+    >
+      <div class="sample-info-layout" :class="{ 'has-cover': coverUrl }">
+        <img v-if="coverUrl" :src="coverUrl" :alt="t('trackInfo.cover')" width="192" height="192" class="cover max-w-full rounded-sm object-contain">
+        <div class="min-w-0">
+          <div class="text-sm font-semibold [overflow-wrap:anywhere]">
+            {{ tags?.title || sample.name }}
           </div>
+          <div v-if="tags?.title" class="mt-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+            {{ sample.name }}.{{ sample.ext }}
+          </div>
+          <dl v-if="metadata.length" class="mt-3 flex flex-col gap-1 text-xs">
+            <div v-for="row in metadata" :key="row.label" class="grid grid-cols-[5rem_1fr] gap-2">
+              <dt class="text-muted-foreground">{{ row.label }}</dt>
+              <dd class="min-w-0 [overflow-wrap:anywhere]">{{ row.value }}</dd>
+            </div>
+          </dl>
+          <dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 border-t pt-3 text-xs">
+            <div v-for="row in details" :key="row.label" class="min-w-0">
+              <dt class="text-muted-foreground">{{ row.label }}</dt>
+              <dd class="mt-0.5 tabular-nums">{{ row.value }}</dd>
+            </div>
+          </dl>
+          <div v-if="sample.tags.length" class="mt-3 flex flex-wrap gap-1">
+            <Badge v-for="tag in sample.tags" :key="tag.id" variant="secondary" :style="tagStyle(tag)" class="tag-color max-w-full whitespace-normal [overflow-wrap:anywhere]">{{ tag.name }}</Badge>
+          </div>
+          <p class="mt-3 text-[11px] text-muted-foreground [overflow-wrap:anywhere]">{{ sample.path }}</p>
         </div>
-        <div class="mt-3 flex items-center justify-between gap-2 border-t pt-3 text-xs text-muted-foreground">
-          <span>{{ t('trackInfo.edit') }}</span>
-          <Kbd>I</Kbd>
-        </div>
-      </HoverCardContent>
-    </HoverCardPortal>
-  </HoverCardRoot>
+      </div>
+      <div class="mt-3 flex items-center justify-between gap-2 border-t pt-3 text-xs text-muted-foreground">
+        <Button variant="ghost" size="sm" class="w-full justify-start gap-2" @click="editMetadata">
+          <Pencil /> {{ t('trackInfo.editMetadata') }}
+          <Kbd class="ml-auto">I</Kbd>
+        </Button>
+      </div>
+    </PopoverContent>
+  </Popover>
 </template>
 
 <style scoped>

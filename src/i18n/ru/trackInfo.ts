@@ -2,6 +2,7 @@ import type en from '../en/trackInfo'
 
 export default {
   edit: 'Информация…',
+  editMetadata: 'Редактировать метаданные…',
   title: 'Информация о треке',
   description: 'Записывается в теги самого файла, поэтому её увидят и другие программы.',
   fields: {
