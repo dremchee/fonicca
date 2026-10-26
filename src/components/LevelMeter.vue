@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onBeforeUnmount, reactive, ref, watch } from 'vue'
+import type { MeterStyle } from '@/api'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
 
@@ -9,6 +10,9 @@ const props = defineProps<{
   /** Something is playing: poll the levels. When it stops, the bars fall back. */
   active: boolean
   horizontal?: boolean
+  variant?: MeterStyle
+  /** Static settings swatch; never polls playback. */
+  preview?: boolean
 }>()
 
 const { t } = useI18n()
@@ -51,6 +55,20 @@ const pct = (db: number) => `${iec(db) * 100}%`
 
 interface Channel { peak: number, rms: number, hold: number, holdAt: number, holdOpacity: number }
 const channels = reactive<Channel[]>([0, 1].map(() => ({ peak: FLOOR, rms: FLOOR, hold: FLOOR, holdAt: 0, holdOpacity: 0 })))
+const previewChannels: Channel[] = [
+  { peak: -3, rms: -12, hold: -1, holdAt: 0, holdOpacity: 1 },
+  { peak: -8, rms: -17, hold: -5, holdAt: 0, holdOpacity: 1 },
+]
+const meterChannels = computed(() => props.preview ? previewChannels : channels)
+const variant = computed(() => props.variant ?? 'bars')
+const vertical = computed(() => variant.value === 'vertical')
+const levelClip = (db: number) => vertical.value
+  ? { clipPath: `inset(calc(100% - ${pct(db)}) 0 0 0)` }
+  : { clipPath: `inset(0 calc(100% - ${pct(db)}) 0 0)` }
+const holdStyle = (ch: Channel) => ({
+  ...(vertical.value ? { bottom: `min(${pct(ch.hold)}, calc(100% - 1px))` } : { left: `min(${pct(ch.hold)}, calc(100% - 1px))` }),
+  opacity: ch.holdOpacity, background: meterColor(ch.hold),
+})
 const clipped = ref(false)
 let clippedAt = 0
 
@@ -70,7 +88,7 @@ async function tick(now: number) {
   const dt = Math.min(0.1, (now - last) / 1000)
   last = now
   let next: { peak: number[], rms: number[] } | null = null
-  if (props.active && !pending) {
+  if (props.active && !props.preview && !pending) {
     pending = true
     try {
       next = await api.playbackLevels()
@@ -120,7 +138,7 @@ function start() {
 }
 
 watch(() => props.active, (on) => {
-  if (on)
+  if (on && !props.preview)
     start()
 }, { immediate: true })
 onBeforeUnmount(() => {
@@ -130,19 +148,21 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <button
-    v-if="horizontal" class="horizontal-meter" :class="{ clipped }" :style="{ '--meter-gradient': horizontalGradient }"
+  <component
+    :is="preview ? 'span' : 'button'"
+    v-if="horizontal" class="horizontal-meter" :class="[{ clipped: clipped && !preview }, `meter-${variant}`]" :style="{ '--meter-gradient': vertical ? barGradient : horizontalGradient }"
+    :aria-hidden="preview ? true : undefined"
     :aria-label="`${t('player.meter.title')}. ${t(clipped ? 'player.meter.clip' : 'player.meter.noClip')}`"
     :aria-pressed="clipped" :title="`${t('player.meter.title')} · ${t(clipped ? 'player.meter.clip' : 'player.meter.noClip')}`"
     @click="clipped = false"
   >
-    <span v-for="(ch, i) in channels" :key="i" class="horizontal-lane" aria-hidden="true">
-      <span class="horizontal-peak" :style="{ clipPath: `inset(0 calc(100% - ${pct(ch.peak)}) 0 0)` }" />
-      <span class="horizontal-rms" :style="{ clipPath: `inset(0 calc(100% - ${pct(ch.rms)}) 0 0)` }" />
-      <span v-if="ch.hold > FLOOR" class="horizontal-hold" :style="{ left: `min(${pct(ch.hold)}, calc(100% - 1px))`, opacity: ch.holdOpacity, background: meterColor(ch.hold) }" />
+    <span v-for="(ch, i) in meterChannels" :key="i" class="horizontal-lane" aria-hidden="true">
+      <span class="horizontal-peak" :style="levelClip(ch.peak)" />
+      <span class="horizontal-rms" :style="levelClip(ch.rms)" />
+      <span v-if="ch.hold > FLOOR" class="horizontal-hold" :style="holdStyle(ch)" />
     </span>
     <span class="horizontal-clip" aria-hidden="true" />
-  </button>
+  </component>
   <div v-else
     class="level-meter w-[52px] shrink-0 flex flex-col gap-1 border-l border-border bg-card px-1.5 py-2 select-none"
     role="group" :aria-label="t('player.meter.title')" :title="t('player.meter.title')"
@@ -163,7 +183,7 @@ onBeforeUnmount(() => {
       <div class="relative w-3.5 shrink-0 text-[9px] leading-none text-muted-foreground tabular" aria-hidden="true">
         <span v-for="db in ticks" :key="db" class="absolute right-0 translate-y-1/2" :style="{ bottom: pct(db) }">{{ -db }}</span>
       </div>
-      <div v-for="(ch, i) in channels" :key="i" class="bar" :style="{ backgroundImage: barGradient }" aria-hidden="true">
+      <div v-for="(ch, i) in meterChannels" :key="i" class="bar" :style="{ backgroundImage: barGradient }" aria-hidden="true">
         <!-- Covers from the top: the unlit part, then the peak part dimmed above the RMS. -->
         <div class="cover" :style="{ height: `calc(100% - ${pct(ch.peak)})` }" />
         <div class="cover dim" :style="{ bottom: pct(ch.rms), height: `max(0%, calc(${pct(ch.peak)} - ${pct(ch.rms)}))` }" />
@@ -221,6 +241,35 @@ onBeforeUnmount(() => {
   background: transparent;
 }
 .clipped .horizontal-clip { background: var(--destructive); }
+
+.meter-segments .horizontal-peak,
+.meter-segments .horizontal-rms {
+  mask-image: repeating-linear-gradient(to right, #000 0 4px, transparent 4px 6px);
+}
+.meter-compact {
+  width: 56px;
+  height: 20px;
+}
+.meter-vertical {
+  width: 36px;
+  height: 30px;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) 3px;
+  grid-template-rows: 1fr;
+}
+.meter-vertical .horizontal-lane:nth-child(2) {
+  grid-column: 2;
+  grid-row: 1;
+}
+.meter-vertical .horizontal-hold {
+  inset-block: auto;
+  inset-inline: 0;
+  width: auto;
+  height: 1px;
+}
+.meter-vertical .horizontal-clip {
+  grid-column: 3;
+  grid-row: 1;
+}
 
 .bar {
   position: relative;

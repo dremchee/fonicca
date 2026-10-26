@@ -170,6 +170,18 @@ impl Default for WaveformSettings {
     }
 }
 
+/// Visual presentation only; all variants use the same output levels.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum MeterStyle {
+    Segments,
+    Vertical,
+    Compact,
+    #[default]
+    #[serde(other)]
+    Bars,
+}
+
 /// Missing or unknown fields fall back to defaults, so older and newer files both load.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -185,6 +197,7 @@ pub struct Settings {
     pub autoplay: bool,
     /// Preview volume, 0..=1.
     pub volume: f32,
+    pub meter_style: MeterStyle,
     /// Analysis threads; `None` picks half the cores.
     pub analysis_threads: Option<usize>,
     /// None saves stems beside the original.
@@ -220,6 +233,7 @@ impl Default for Settings {
             watch_folders: true,
             autoplay: true,
             volume: 1.0,
+            meter_style: MeterStyle::Bars,
             analysis_threads: None,
             stems_folder: None,
             sync_enabled: false,
@@ -410,6 +424,23 @@ mod tests {
         std::fs::write(&path, r#"{"format": "something-else", "version": 1}"#).unwrap();
         assert!(read_theme_file(&path).is_err());
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn meter_styles_default_and_round_trip() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        let store = SettingsStore::load(path.clone());
+        assert_eq!(store.get().meter_style, MeterStyle::Bars);
+        for (name, style) in [("bars", MeterStyle::Bars), ("segments", MeterStyle::Segments),
+            ("vertical", MeterStyle::Vertical), ("compact", MeterStyle::Compact)] {
+            let settings: Settings = serde_json::from_value(serde_json::json!({"meterStyle": name})).unwrap();
+            assert_eq!(settings.meter_style, style);
+            store.replace(settings).unwrap();
+            assert_eq!(SettingsStore::load(path.clone()).get().meter_style, style);
+        }
+        let unknown: Settings = serde_json::from_value(serde_json::json!({"meterStyle": "future-style"})).unwrap();
+        assert_eq!(unknown.meter_style, MeterStyle::Bars);
     }
 
     #[test]

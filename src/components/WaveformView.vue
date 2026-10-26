@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Sample, TrackTags } from '@/api'
 import type { Wave } from '@/stores/editor'
-import { FolderOpen, Pencil, Pause, Play, Star, Volume2 } from '@lucide/vue'
+import { FolderOpen, Pencil, Pause, Play, Star, Volume2, VolumeX } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { useResizeObserver } from '@vueuse/core'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useId, watch, watchEffect } from 'vue'
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { trackInfoRevision } from '@/composables/trackInfo'
 import { formatDuration, shortPath } from '@/format'
 import { playbackSeekTarget } from '@/playback-navigation'
@@ -263,17 +264,30 @@ function onDragStart(e: DragEvent) {
         </div>
       </div>
       <div class="preview-audio flex items-center gap-2">
-        <LevelMeter horizontal :active="player.playingId !== null && !player.paused" />
-        <div class="preview-volume shrink-0 flex items-center gap-2 w-28 text-xs text-muted-foreground tabular">
-          <Volume2 class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <Slider
-            :model-value="[volumePercent]" :min="0" :max="100" :step="1"
-            :aria-label="t('settings.playback.volume')"
-            @update:model-value="volumeDrag = ($event?.[0] ?? 0) / 100"
-            @value-commit="settings.update({ volume: ($event[0] ?? 0) / 100 }).then(() => volumeDrag = null)"
-          />
-          <span class="w-7 shrink-0 text-right">{{ volumePercent }}%</span>
-        </div>
+        <LevelMeter horizontal :variant="settings.settings.meterStyle" :active="player.playingId !== null && !player.paused" />
+        <Popover>
+          <PopoverTrigger as-child>
+            <Button
+              variant="ghost" size="icon-sm" class="text-muted-foreground"
+              :aria-label="`${t('settings.playback.volume')}: ${volumePercent}%`"
+              :title="`${t('settings.playback.volume')}: ${volumePercent}%`"
+            >
+              <component :is="volumePercent === 0 ? VolumeX : Volume2" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent side="top" align="end" class="w-56 p-3">
+            <div class="mb-3 flex items-center justify-between gap-3 text-xs">
+              <span>{{ t('settings.playback.volume') }}</span>
+              <span class="tabular text-muted-foreground">{{ volumePercent }}%</span>
+            </div>
+            <Slider
+              :model-value="[volumePercent]" :min="0" :max="100" :step="1"
+              :aria-label="t('settings.playback.volume')"
+              @update:model-value="volumeDrag = ($event?.[0] ?? 0) / 100"
+              @value-commit="settings.update({ volume: ($event[0] ?? 0) / 100 }).then(() => volumeDrag = null)"
+            />
+          </PopoverContent>
+        </Popover>
       </div>
       <div class="preview-time shrink-0 tabular text-xs text-muted-foreground whitespace-nowrap">
         <span class="text-foreground">{{ elapsedLabel }}</span>

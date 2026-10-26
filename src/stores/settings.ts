@@ -21,6 +21,7 @@ const DEFAULTS: Settings = {
   watchFolders: true,
   autoplay: true,
   volume: 1,
+  meterStyle: 'bars',
   analysisThreads: null,
   stemsFolder: null,
   syncEnabled: false,

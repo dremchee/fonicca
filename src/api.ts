@@ -120,6 +120,8 @@ export interface WaveformSettings {
   waveChannelColors: [string | null, string | null]
 }
 
+export type MeterStyle = 'bars' | 'segments' | 'vertical' | 'compact'
+
 export interface Settings extends WaveformSettings {
   theme: Theme
   /** Colour theme id: built-in or one of `customThemes`. */
@@ -132,6 +134,7 @@ export interface Settings extends WaveformSettings {
   autoplay: boolean
   /** Preview volume, 0..1. */
   volume: number
+  meterStyle: MeterStyle
   /** Analysis threads; null picks half the cores. */
   analysisThreads: number | null
   stemsFolder: string | null

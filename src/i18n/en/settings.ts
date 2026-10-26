@@ -41,6 +41,9 @@ export default {
     import: 'Import…',
   },
   playback: {
+    meter: 'Level meter',
+    meterDesc: 'Choose how stereo output levels appear in the preview player.',
+    meterStyles: { bars: 'Continuous', segments: 'Segmented', vertical: 'Vertical', compact: 'Compact' },
     autoplay: 'Autoplay',
     autoplayDesc: 'Play a sample when you move to it with the arrow keys.',
     volume: 'Preview volume',

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Component } from 'vue'
+import MeterSettings from '@/components/MeterSettings.vue'
 import type { AppInfo, Theme, WaveformSettings } from '@/api'
 import type { Locale } from '@/i18n'
 import type { SettingsSection } from '@/stores/settings'
@@ -409,6 +410,7 @@ function keyLabel(k: string) {
                 </div>
               </div>
             </section>
+            <MeterSettings />
           </template>
 
           <!-- Waveform -->
