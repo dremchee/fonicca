@@ -90,7 +90,7 @@ jobs:
           - name: macOS · Apple Silicon
             runner: macos-15
             target: aarch64-apple-darwin
-            bundles: dmg
+            bundles: app,dmg
             artifact: fonicca-macos-arm64
           - name: Windows · x64
             runner: windows-2022
@@ -173,6 +173,15 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: pnpm tauri build --ci --target '${{ matrix.target }}' --bundles '${{ matrix.bundles }}' --config .tauri-updater.json -- --locked
+
+      - name: Verify macOS updater archive
+        if: runner.os == 'macOS'
+        run: |
+          archive="src-tauri/target/${{ matrix.target }}/release/bundle/macos/Fonicca.app.tar.gz"
+          if [[ ! -s "$archive" || ! -s "$archive.sig" ]]; then
+            echo 'Missing signed macOS updater archive; build both app and dmg targets.' >&2
+            exit 1
+          fi
 
       - name: Upload installers
         id: upload
