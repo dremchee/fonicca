@@ -11,7 +11,7 @@ async function walk(directory) {
 }
 
 /** Validate complete signed releases before creating a draft or making its feed public. */
-export async function prepareRelease({ directory, version, tag, repository, date = new Date().toISOString(), signed = true }) {
+export async function prepareRelease({ directory, version, tag, repository, date = new Date().toISOString(), signed = true, notes }) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(repository ?? '') || tag !== `v${version}`)
     throw new Error('Expected a repository and matching release tag')
   const all = await walk(directory)
@@ -39,7 +39,7 @@ export async function prepareRelease({ directory, version, tag, repository, date
     platforms[platform] = { signature, url: `${downloadBase}/${encodeURIComponent(basename(artifact))}` }
   }
   const manifest = {
-    version, notes: `https://github.com/${repository}/releases/tag/${encodeURIComponent(tag)}`,
+    version, notes: notes ?? `https://github.com/${repository}/releases/tag/${encodeURIComponent(tag)}`,
     pub_date: date, platforms,
   }
   const manifestPath = join(directory, 'latest.json')
@@ -59,8 +59,11 @@ export async function prepareRelease({ directory, version, tag, repository, date
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  let notes
+  try { notes = await readFile(`docs/releases/${process.env.RELEASE_TAG}.md`, 'utf8') }
+  catch (error) { if (error.code !== 'ENOENT') throw error }
   const { assets } = await prepareRelease({
-    directory: 'installers', version: process.env.RELEASE_VERSION,
+    directory: 'installers', version: process.env.RELEASE_VERSION, notes,
     tag: process.env.RELEASE_TAG, repository: process.env.GH_REPO, signed: process.env.UPDATES_ENABLED === 'true',
   })
   await writeFile('release-assets.txt', assets.map(path => `${path}\n`).join(''))

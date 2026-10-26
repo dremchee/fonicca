@@ -209,9 +209,15 @@ jobs:
             fi
             gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
           else
-            flags=(--draft --title "Fonicca $RELEASE_VERSION" --notes "Fonicca $RELEASE_VERSION. Download the installer for your platform below.")
-            if [[ "$CROSS_REPOSITORY" != true ]]; then
-              flags+=(--verify-tag --generate-notes)
+            flags=(--draft --title "Fonicca $RELEASE_VERSION")
+            if [[ "$CROSS_REPOSITORY" != true ]]; then flags+=(--verify-tag); fi
+            notes_file="docs/releases/$RELEASE_TAG.md"
+            if [[ -f "$notes_file" ]]; then
+              flags+=(--notes-file "$notes_file")
+            elif [[ "$CROSS_REPOSITORY" != true ]]; then
+              flags+=(--generate-notes)
+            else
+              flags+=(--notes "Fonicca $RELEASE_VERSION. Download the installer for your platform below.")
             fi
             if [[ "$PRERELEASE" == true ]]; then flags+=(--prerelease); fi
             gh release create "$RELEASE_TAG" "${assets[@]}" "${flags[@]}"

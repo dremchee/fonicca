@@ -18,8 +18,9 @@ async function fixture() {
 test('signed release feed maps three platforms and includes every artifact in checksums', async () => {
   const options = await fixture()
   try {
-    const { manifest, assets } = await prepareRelease(options)
+    const { manifest, assets } = await prepareRelease({ ...options, notes: 'Release highlights\n\n- New features' })
     assert.equal(manifest.version, '0.2.0')
+    assert.equal(manifest.notes, 'Release highlights\n\n- New features')
     assert.deepEqual(Object.keys(manifest.platforms), ['darwin-aarch64', 'windows-x86_64', 'linux-x86_64'])
     assert.match(manifest.platforms['windows-x86_64'].url, /owner\/public-downloads\/releases\/download\/v0.2.0\/Fonicca_x64-setup.exe$/)
     assert.equal(assets.length, 11)

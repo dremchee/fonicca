@@ -47,7 +47,10 @@ Updater signatures are separate from Apple notarization and Windows code signing
    git push origin v0.1.1
    ```
 
-3. Wait for **Desktop builds**, then open the draft from the release job summary
+3. Optionally add `docs/releases/v<version>.md` before tagging. CI uses this file
+   as the draft description and the in-app update notes. If it is missing, the
+   same-repository release uses automatically generated notes.
+4. Wait for **Desktop builds**, then open the draft from the release job summary
    or the repository's Releases page. Review the installers and notes, then choose
    **Publish release**.
 
