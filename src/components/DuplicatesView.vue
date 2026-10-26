@@ -238,9 +238,9 @@ async function openNativeMenu(group: DuplicateGroup, copy: DuplicateCopy, positi
 // --- Keyboard: the global list shortcuts stand aside while this view is open.
 const copyRows = computed(() => rows.value.filter(r => r.kind === 'copy'))
 
-function selectCopy(copy: DuplicateCopy) {
+function selectCopy(copy: DuplicateCopy, event: MouseEvent) {
   focusedId.value = copy.id
-  if (player.autoplay)
+  if (player.autoplay && event.detail < 2 && player.playingId !== copy.id)
     void player.play(copy)
 }
 
@@ -396,7 +396,7 @@ onKeyStroke(' ', (e) => {
                   playing: player.isPlaying(row.c.id),
                 }"
                 :style="{ height: `${item.size}px`, transform: `translateY(${item.start}px)` }"
-                @click="selectCopy(row.c)"
+                @click="selectCopy(row.c, $event)"
               >
                 <button
                   class="keep"

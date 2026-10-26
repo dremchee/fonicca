@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Sample, TrackTags } from '@/api'
 import type { Wave } from '@/stores/editor'
-import { FolderOpen, Pencil, Pause, Play, Star, Volume2, VolumeX } from '@lucide/vue'
+import { FolderOpen, Pause, Play, Star, Volume2, VolumeX } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { useResizeObserver } from '@vueuse/core'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, useId, watch, watchEffect } from 'vue'
@@ -22,7 +22,6 @@ import { useWaveformBackgrounds } from '@/composables/waveformBackgrounds'
 import { trackInfoRevision } from '@/composables/trackInfo'
 import { formatDuration, shortPath } from '@/format'
 import { playbackSeekTarget } from '@/playback-navigation'
-import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
@@ -309,11 +308,6 @@ function onDragStart(e: DragEvent) {
           </Button>
         </Hint>
         <SampleInfoHover :key="sample.id" :sample="sample" :tags="tags" :cover-url="coverUrl" />
-        <Hint :text="t('player.edit')" shortcut="E">
-          <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('player.edit')" @click="openEditor(sample)">
-            <Pencil />
-          </Button>
-        </Hint>
       </div>
 
     </div>

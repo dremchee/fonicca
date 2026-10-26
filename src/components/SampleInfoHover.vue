@@ -103,8 +103,8 @@ const details = computed(() => {
           <p class="mt-3 text-[11px] text-muted-foreground [overflow-wrap:anywhere]">{{ sample.path }}</p>
         </div>
       </div>
-      <div class="mt-3 flex items-center justify-between gap-2 border-t pt-3 text-xs text-muted-foreground">
-        <Button variant="ghost" size="sm" class="w-full justify-start gap-2" @click="editMetadata">
+      <div class="mt-3 flex items-center justify-end border-t pt-3">
+        <Button variant="outline" size="sm" class="gap-2" @click="editMetadata">
           <Pencil /> {{ t('trackInfo.editMetadata') }}
         </Button>
       </div>

@@ -157,7 +157,8 @@ async function onMouseDown(e: MouseEvent, index: number, sample: Sample) {
   else {
     await library.clickRow(index, { shift: e.shiftKey, toggle })
   }
-  if (player.autoplay && !e.shiftKey)
+  // The second press belongs to opening the editor, not starting playback again.
+  if (player.autoplay && !e.shiftKey && e.detail < 2 && player.playingId !== sample.id)
     player.play(sample)
 }
 
@@ -481,8 +482,9 @@ function onDragStart(e: DragEvent, sample: Sample) {
   line-height: 18px;
 }
 .stem-toggle {
-  background: var(--primary-soft);
-  color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 500;
 }
 button.stem-toggle:hover {
   filter: brightness(0.95);
@@ -505,7 +507,7 @@ button.stem-toggle:hover {
   opacity: 1;
 }
 .row.playing .stem-toggle {
-  background: color-mix(in srgb, var(--primary-foreground) 15%, transparent);
-  color: var(--primary-foreground);
+  background: var(--primary-foreground);
+  color: var(--primary);
 }
 </style>
