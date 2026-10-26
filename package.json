@@ -1,6 +1,7 @@
 {
   "name": "fonicca",
   "private": true,
+  "packageManager": "pnpm@9.10.0",
   "version": "0.1.0",
   "type": "module",
   "scripts": {
@@ -8,7 +9,8 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "release:check": "node scripts/verify-release.mjs"
   },
   "dependencies": {
     "@lucide/vue": "^1.61.0",
