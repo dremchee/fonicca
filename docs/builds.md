@@ -15,13 +15,19 @@ It can also be started from **Actions → Desktop builds → Run workflow**, sel
 an available branch or tag. A workflow must be on the default branch before
 GitHub exposes its manual trigger.
 
-Open the completed run and download the platform archive from **Artifacts**, or
+Pushes to `main`, pull requests and manual runs on branches execute a single
+Ubuntu 24.04 checks job: frontend tests, TypeScript/frontend build and Rust tests
+(which compile and link the native code). They do not package or upload installers.
+
+Only matching `v*` tags run the three-platform installer matrix. This also applies
+to manual runs: select a version tag to build installers, or a branch for checks.
+
+Open the completed tag run and download the platform archive from **Artifacts**, or
 use the download link in the job summary. Artifacts are kept for 14 days. Each
 matrix job is independent: failure on one platform does not cancel the others.
 
-Branch and pull-request builds stay in Actions artifacts. A `v*` tag also creates
-or updates a **draft GitHub Release** once all three platform builds succeed. The
-draft contains the five installer formats, a `SHA256SUMS.txt` checksum file, and
+A `v*` tag creates or updates a **draft GitHub Release** once all three platform
+builds succeed. The draft contains the five installer formats, a `SHA256SUMS.txt` checksum file, and
 automatically generated release notes. Publish it manually after checking it.
 
 These builds are not distribution-signed or notarized. Branch and pull-request
@@ -59,7 +65,7 @@ bump versions for you. CI checks all four files before starting expensive builds
 and rejects a tag that does not exactly match `v<app version>`.
 
 Prerelease versions such as `0.2.0-beta.1` use the tag `v0.2.0-beta.1`; their release
-draft is marked as a prerelease. A manual run on a branch only builds artifacts;
+draft is marked as a prerelease. A manual run on a branch only runs checks;
 a manual run on a matching `v*` tag can recreate or update its draft.
 
 Re-running a successful tag build replaces files only while its release is still
@@ -74,11 +80,13 @@ a release by itself.
 
 - Node.js 26 and the package manager recorded in `package.json` (pnpm 9.10.0).
 - `pnpm install --frozen-lockfile` and the committed `src-tauri/Cargo.lock`.
-- Frontend tests run before packaging. Tauri's `beforeBuildCommand` runs the
+- Branch/PR checks include frontend and Rust unit tests; frontend tests also run
+  before release packaging. Tauri's `beforeBuildCommand` runs the
   TypeScript check and frontend production build on each runner.
 - Rust stable compiles the native application for the explicit matrix target.
-- pnpm and Cargo dependency caches speed up later runs. Only pushes to `main`
-  save the Rust cache.
+- pnpm and Cargo dependency caches speed up later runs. Native checks and release
+  builds use separate Rust caches. Main checks and release builds save caches;
+  pull requests only restore them.
 - Missing installer output fails the job instead of silently uploading nothing.
 
 ## ONNX Runtime and macOS Intel
