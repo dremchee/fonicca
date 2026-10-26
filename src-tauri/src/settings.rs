@@ -174,6 +174,10 @@ impl Default for WaveformSettings {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum MeterStyle {
+    Arcs,
+    Dots,
+    #[serde(alias = "vu")]
+    Spectrum,
     Segments,
     Vertical,
     Compact,
@@ -432,13 +436,15 @@ mod tests {
         let path = dir.path().join("settings.json");
         let store = SettingsStore::load(path.clone());
         assert_eq!(store.get().meter_style, MeterStyle::Bars);
-        for (name, style) in [("bars", MeterStyle::Bars), ("segments", MeterStyle::Segments),
+        for (name, style) in [("arcs", MeterStyle::Arcs), ("dots", MeterStyle::Dots), ("spectrum", MeterStyle::Spectrum), ("bars", MeterStyle::Bars), ("segments", MeterStyle::Segments),
             ("vertical", MeterStyle::Vertical), ("compact", MeterStyle::Compact)] {
             let settings: Settings = serde_json::from_value(serde_json::json!({"meterStyle": name})).unwrap();
             assert_eq!(settings.meter_style, style);
             store.replace(settings).unwrap();
             assert_eq!(SettingsStore::load(path.clone()).get().meter_style, style);
         }
+        let legacy: Settings = serde_json::from_value(serde_json::json!({"meterStyle": "vu"})).unwrap();
+        assert_eq!(legacy.meter_style, MeterStyle::Spectrum);
         let unknown: Settings = serde_json::from_value(serde_json::json!({"meterStyle": "future-style"})).unwrap();
         assert_eq!(unknown.meter_style, MeterStyle::Bars);
     }

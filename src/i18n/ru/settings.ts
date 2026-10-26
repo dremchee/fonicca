@@ -45,7 +45,7 @@ export default {
   playback: {
     meter: 'Индикатор уровня',
     meterDesc: 'Выберите вид стереоиндикатора в плеере предпрослушивания.',
-    meterStyles: { bars: 'Сплошной', segments: 'Сегментный', vertical: 'Вертикальный', compact: 'Компактный' },
+    meterStyles: { arcs: 'Дуги L/R', dots: 'Световые точки', spectrum: 'Спектр', bars: 'Сплошной', segments: 'Сегментный', vertical: 'Вертикальный', compact: 'Компактный' },
     autoplay: 'Автовоспроизведение',
     autoplayDesc: 'Проигрывать семпл при переходе к нему стрелками.',
     volume: 'Громкость прослушивания',

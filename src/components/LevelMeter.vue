@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import type { MeterStyle } from '@/api'
+import type { MeterStyle, PlaybackLevels } from '@/api'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
+import SpectrumDisplay from '@/components/SpectrumDisplay.vue'
+import StereoLevelDisplay from '@/components/StereoLevelDisplay.vue'
 
 // A peak meter like a DAW's master: per channel, RMS solid and peak translucent
 // above it, a fading peak-hold line, and an automatically clearing clip light.
@@ -13,6 +15,8 @@ const props = defineProps<{
   variant?: MeterStyle
   /** Static settings swatch; never polls playback. */
   preview?: boolean
+  /** Increment to replay the settings demo without polling audio. */
+  previewAnimation?: number
 }>()
 
 const { t } = useI18n()
@@ -59,7 +63,42 @@ const previewChannels: Channel[] = [
   { peak: -3, rms: -12, hold: -1, holdAt: 0, holdOpacity: 1 },
   { peak: -8, rms: -17, hold: -5, holdAt: 0, holdOpacity: 1 },
 ]
-const meterChannels = computed(() => props.preview ? previewChannels : channels)
+const previewPhase = ref<number | null>(null)
+let previewFrame = 0
+watch(() => props.previewAnimation, (run) => {
+  cancelAnimationFrame(previewFrame)
+  previewPhase.value = null
+  if (!props.preview || !run || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  const started = performance.now()
+  const animate = (now: number) => {
+    const phase = Math.min(1, (now - started) / 1300)
+    previewPhase.value = phase === 1 ? null : phase
+    previewFrame = phase < 1 ? requestAnimationFrame(animate) : 0
+  }
+  previewFrame = requestAnimationFrame(animate)
+})
+const meterChannels = computed(() => {
+  if (!props.preview) return channels
+  if (previewPhase.value == null) return previewChannels
+  const phase = previewPhase.value
+  const envelope = Math.sin(Math.PI * phase) ** 2
+  return previewChannels.map((channel, i) => {
+    const motion = envelope * (9 * Math.sin(phase * Math.PI * 4 + i) - 3)
+    return { ...channel, rms: Math.min(-3, channel.rms + motion), peak: Math.min(-0.5, channel.peak + motion), hold: Math.min(-0.5, channel.hold + motion * 0.4) }
+  })
+})
+const shapeChannels = computed(() => meterChannels.value.map(ch => ({
+  level: iec(ch.rms), peak: iec(ch.peak), hold: ch.holdOpacity > 0 ? iec(ch.hold) : 0,
+})))
+const spectrum = reactive(Array.from({ length: 16 }, () => FLOOR))
+const previewSpectrum = [0.22, 0.36, 0.51, 0.65, 0.81, 0.72, 0.59, 0.67, 0.49, 0.54, 0.4, 0.32, 0.39, 0.25, 0.18, 0.1]
+const spectrumLevels = computed(() => {
+  if (!props.preview) return spectrum.map(db => Math.min(1, Math.max(0, (db + 60) / 60)))
+  if (previewPhase.value == null) return previewSpectrum
+  const phase = previewPhase.value
+  const envelope = Math.sin(Math.PI * phase) ** 2
+  return previewSpectrum.map((level, i) => Math.min(1, Math.max(0.04, level + envelope * (0.27 * Math.sin(i * 0.7 + phase * Math.PI * 5) - 0.05))))
+})
 const variant = computed(() => props.variant ?? 'bars')
 const vertical = computed(() => variant.value === 'vertical')
 const levelClip = (db: number) => vertical.value
@@ -87,11 +126,11 @@ let disposed = false
 async function tick(now: number) {
   const dt = Math.min(0.1, (now - last) / 1000)
   last = now
-  let next: { peak: number[], rms: number[] } | null = null
+  let next: PlaybackLevels | null = null
   if (props.active && !props.preview && !pending) {
     pending = true
     try {
-      next = await api.playbackLevels()
+      next = await api.playbackLevels(props.variant === 'spectrum')
     }
     catch {
       next = null
@@ -124,6 +163,10 @@ async function tick(now: number) {
       ch.hold = FLOOR
     moving ||= ch.peak > FLOOR || (ch.hold > FLOOR && ch.holdOpacity > 0)
   })
+  spectrum.forEach((db, index) => {
+    spectrum[index] = Math.max(toDb(next?.spectrum?.[index] ?? 0), db - FALL * dt)
+    moving ||= spectrum[index] > FLOOR
+  })
   if (clipped.value && now - clippedAt >= CLIP_HOLD_MS)
     clipped.value = false
   // Keep animating until the bars and held indicators have cleared.
@@ -144,13 +187,24 @@ watch(() => props.active, (on) => {
 onBeforeUnmount(() => {
   disposed = true
   cancelAnimationFrame(frame)
+  cancelAnimationFrame(previewFrame)
 })
 </script>
 
 <template>
   <component
+    :is="preview ? 'span' : 'button'" v-if="horizontal && (variant === 'spectrum' || variant === 'arcs' || variant === 'dots')"
+    class="vu-control" :aria-hidden="preview ? true : undefined"
+    :aria-label="`${t('player.meter.title')}. ${t(clipped ? 'player.meter.clip' : 'player.meter.noClip')}`"
+    :title="t('player.meter.title')" :aria-pressed="preview ? undefined : clipped"
+    @click="clipped = false"
+  >
+    <SpectrumDisplay v-if="variant === 'spectrum'" :levels="spectrumLevels" :clipped="clipped && !preview" />
+    <StereoLevelDisplay v-else :variant="variant as 'arcs' | 'dots'" :channels="shapeChannels" :clipped="clipped && !preview" />
+  </component>
+  <component
     :is="preview ? 'span' : 'button'"
-    v-if="horizontal" class="horizontal-meter" :class="[{ clipped: clipped && !preview }, `meter-${variant}`]" :style="{ '--meter-gradient': vertical ? barGradient : horizontalGradient }"
+    v-else-if="horizontal" class="horizontal-meter" :class="[{ clipped: clipped && !preview }, `meter-${variant}`]" :style="{ '--meter-gradient': vertical ? barGradient : horizontalGradient }"
     :aria-hidden="preview ? true : undefined"
     :aria-label="`${t('player.meter.title')}. ${t(clipped ? 'player.meter.clip' : 'player.meter.noClip')}`"
     :aria-pressed="clipped" :title="`${t('player.meter.title')} · ${t(clipped ? 'player.meter.clip' : 'player.meter.noClip')}`"
@@ -196,6 +250,8 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.vu-control { display: block; padding: 0; border: 0; background: transparent; flex-shrink: 0; border-radius: 5px; }
+.vu-control:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .horizontal-meter {
   width: 96px;
   height: 26px;

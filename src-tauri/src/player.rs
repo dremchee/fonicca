@@ -190,9 +190,9 @@ impl Player {
 
     /// Peak and RMS per channel since the last call, as heard (volume applied);
     /// `None` when nothing is playing.
-    pub fn levels(&self) -> Option<Levels> {
+    pub fn levels(&self, spectrum: bool) -> Option<Levels> {
         let playing = self.current.lock().unwrap().as_ref().is_some_and(|p| !p.empty() && !p.is_paused());
-        playing.then(|| self.meter.drain(*self.volume.lock().unwrap()))
+        playing.then(|| self.meter.drain_with_spectrum(*self.volume.lock().unwrap(), spectrum))
     }
 
     /// Current position in seconds of the file, or `None` when nothing is playing.
@@ -239,7 +239,7 @@ mod tests {
         assert!((settled - paused_at).abs() <= 0.005 * 0.5 + f64::EPSILON);
         for _ in 0..4800 { output.next(); }
         assert_eq!(player.position(), Some(settled));
-        assert!(player.levels().is_none());
+        assert!(player.levels(false).is_none());
         assert!(player.resume());
         for _ in 0..4800 { output.next(); }
         assert!(player.position().unwrap() > paused_at);

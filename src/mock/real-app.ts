@@ -153,7 +153,7 @@ export function install() {
           return null
         const beat = ((performance.now() - playStart) / 500) % 1
         const level = 0.08 + 0.95 * Math.exp(-beat * 6)
-        return { peak: [level, level * 0.92], rms: [level * 0.45, level * 0.4] }
+        return { peak: [level, level * 0.92], rms: [level * 0.45, level * 0.4], ...(args.spectrum ? { spectrum: Array.from({ length: 16 }, (_, i) => level * (0.1 + 0.25 * Math.abs(Math.sin(i * 0.6 + beat * 2)))) } : {}) }
       }
       default: return editorCommand(cmd, args) ?? batchCommand(cmd, args) ?? null
     }

@@ -120,7 +120,7 @@ export interface WaveformSettings {
   waveChannelColors: [string | null, string | null]
 }
 
-export type MeterStyle = 'bars' | 'segments' | 'vertical' | 'compact'
+export type MeterStyle = 'arcs' | 'dots' | 'spectrum' | 'bars' | 'segments' | 'vertical' | 'compact'
 
 export interface Settings extends WaveformSettings {
   theme: Theme
@@ -200,6 +200,7 @@ export interface HiddenFile {
 
 /** Levels since the previous read, linear (1 = 0 dBFS), one per channel. */
 export interface PlaybackLevels {
+  spectrum?: number[]
   peak: number[]
   rms: number[]
 }
@@ -326,7 +327,7 @@ export const api = {
   seek: (position: number) => invoke<void>('seek', { position }),
   playbackPosition: () => invoke<number | null>('playback_position'),
   /** `null` when nothing plays. */
-  playbackLevels: () => invoke<PlaybackLevels | null>('playback_levels'),
+  playbackLevels: (spectrum = false) => invoke<PlaybackLevels | null>('playback_levels', { spectrum }),
 }
 
 let dragIcon: string | undefined
