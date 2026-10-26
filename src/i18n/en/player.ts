@@ -1,4 +1,5 @@
 export default {
+  volume: 'Volume',
   hiddenTags: 'Hidden tags: {n}',
   seek: 'Playback position',
   seekHint: 'Arrow keys seek; hold Shift for larger steps. Home and End jump to the start and end. Space plays or pauses.',

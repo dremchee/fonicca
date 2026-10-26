@@ -269,20 +269,20 @@ function onDragStart(e: DragEvent) {
           <PopoverTrigger as-child>
             <Button
               variant="ghost" size="icon-sm" class="text-muted-foreground"
-              :aria-label="`${t('settings.playback.volume')}: ${volumePercent}%`"
-              :title="`${t('settings.playback.volume')}: ${volumePercent}%`"
+              :aria-label="`${t('player.volume')}: ${volumePercent}%`"
+              :title="`${t('player.volume')}: ${volumePercent}%`"
             >
               <component :is="volumePercent === 0 ? VolumeX : Volume2" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent side="top" align="end" class="w-56 p-3">
+          <PopoverContent side="top" align="center" class="w-56 p-3">
             <div class="mb-3 flex items-center justify-between gap-3 text-xs">
-              <span>{{ t('settings.playback.volume') }}</span>
+              <span>{{ t('player.volume') }}</span>
               <span class="tabular text-muted-foreground">{{ volumePercent }}%</span>
             </div>
             <Slider
               :model-value="[volumePercent]" :min="0" :max="100" :step="1"
-              :aria-label="t('settings.playback.volume')"
+              :aria-label="t('player.volume')"
               @update:model-value="volumeDrag = ($event?.[0] ?? 0) / 100"
               @value-commit="settings.update({ volume: ($event[0] ?? 0) / 100 }).then(() => volumeDrag = null)"
             />

@@ -1,6 +1,6 @@
 export default {
   edit: 'Edit info…',
-  editMetadata: 'Edit metadata…',
+  editMetadata: 'Edit',
   title: 'Track info',
   description: 'Written into the file’s own tags, so other apps see it too.',
   fields: {

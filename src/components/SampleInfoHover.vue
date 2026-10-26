@@ -7,7 +7,6 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Kbd } from '@/components/ui/kbd'
 import { openTrackInfo, trackInfoFor } from '@/composables/trackInfo'
 import { categoryLabel, formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, kindLabel } from '@/format'
 
@@ -107,7 +106,6 @@ const details = computed(() => {
       <div class="mt-3 flex items-center justify-between gap-2 border-t pt-3 text-xs text-muted-foreground">
         <Button variant="ghost" size="sm" class="w-full justify-start gap-2" @click="editMetadata">
           <Pencil /> {{ t('trackInfo.editMetadata') }}
-          <Kbd class="ml-auto">I</Kbd>
         </Button>
       </div>
     </PopoverContent>
