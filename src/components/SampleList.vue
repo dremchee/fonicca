@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useWaveformBackgrounds } from '@/composables/waveformBackgrounds'
 import { useTagColors } from '@/composables/tagColors'
 import type { Sample } from '@/api'
 import { useVirtualizer } from '@tanstack/vue-virtual'
@@ -32,6 +33,7 @@ const ROW_HEIGHT = 36
 
 const { t } = useI18n()
 const { tagStyle } = useTagColors()
+const backgrounds = useWaveformBackgrounds()
 const library = useLibraryStore()
 const player = usePlayerStore()
 const settings = useSettingsStore()
@@ -118,6 +120,8 @@ const rows = computed(() => items.value.map((item) => {
   const grouped = groupStart || stemChild
   return { item, sample, stemChild, groupStart, groupEnd, grouped }
 }))
+
+watch(() => rows.value.map(row => row.sample).filter((sample): sample is Sample => !!sample), samples => backgrounds.restore(samples), { immediate: true })
 
 // A scope change may keep the same row count and virtual range while clearing pages.
 watch([items, () => library.pages.size], ([list]) => {
@@ -297,7 +301,10 @@ function onDragStart(e: DragEvent, sample: Sample) {
                       <span v-if="player.isPlaying(s.id)" class="i-lucide-volume-2 text-primary text-xs" aria-hidden="true" />
                       <CategoryIcon v-else :category="s.category" :stem="s.stemKind" class="size-3.5 text-muted-foreground" />
                     </span>
-                    <span class="track-name flex items-center gap-2 min-w-0 h-full">
+                    <span class="track-name relative isolate flex items-center gap-2 min-w-0 h-full overflow-hidden">
+                      <svg v-if="backgrounds.pathFor(s)" class="row-waveform pointer-events-none absolute inset-0 -z-1 size-full" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
+                        <path :d="backgrounds.pathFor(s)" fill="currentColor" />
+                      </svg>
                       <Hint :text="breakablePath(s.path)" side="top">
                         <span class="truncate">{{ s.stemKind ? t(`stems.instruments.${s.stemKind}`) : s.name }}</span>
                       </Hint>
@@ -378,6 +385,8 @@ function onDragStart(e: DragEvent, sample: Sample) {
 </template>
 
 <style scoped>
+.row-waveform { opacity: 0.1; }
+.row.playing .row-waveform { opacity: 0.14; }
 .header,
 .row,
 .column-guides {

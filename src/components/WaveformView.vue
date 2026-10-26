@@ -18,6 +18,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useWaveformBackgrounds } from '@/composables/waveformBackgrounds'
 import { trackInfoRevision } from '@/composables/trackInfo'
 import { formatDuration, shortPath } from '@/format'
 import { playbackSeekTarget } from '@/playback-navigation'
@@ -33,6 +34,7 @@ const props = defineProps<{ sample: Sample | undefined }>()
 
 const { t } = useI18n()
 const library = useLibraryStore()
+const backgrounds = useWaveformBackgrounds()
 const player = usePlayerStore()
 const settings = useSettingsStore()
 const selectionSize = computed(() => {
@@ -133,8 +135,10 @@ watch([() => props.sample?.id, width, () => settings.settings.waveChannels], asy
   try {
     const columns = Math.min(8192, Math.round(width.value * (window.devicePixelRatio || 1)))
     const data = parseWave(await api.sampleWave(id, columns, settings.settings.waveChannels === 'split'))
-    if (req === requestId)
+    if (req === requestId) {
       wave.value = data
+      if (props.sample) backgrounds.remember(props.sample, data)
+    }
   }
   catch (e) {
     if (req === requestId)

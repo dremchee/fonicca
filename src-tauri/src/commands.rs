@@ -262,6 +262,7 @@ pub async fn sample_wave(
     id: i64,
     columns: usize,
     split: bool,
+    cached_only: Option<bool>,
 ) -> Result<tauri::ipc::Response> {
     let (path, size, mtime, frames): (String, i64, i64, Option<f64>) = state.db.lock().unwrap().query_row(
         "SELECT path, size, mtime, duration * sample_rate FROM samples WHERE id = ?1",
@@ -276,16 +277,22 @@ pub async fn sample_wave(
             let disk = state.overviews.disk();
             let o = tauri::async_runtime::spawn_blocking(move || {
                 if let Some(o) = disk.as_ref().and_then(|d| d.load(key)) {
-                    return Ok(o);
+                    return Ok(Some(o));
+                }
+                if cached_only.unwrap_or(false) {
+                    return Ok(None);
                 }
                 let o = crate::overview::Overview::compute(std::path::Path::new(&path), frames.map(|f| f as usize))?;
                 if let Some(d) = &disk {
                     d.store(key, &o);
                 }
-                Ok::<_, Error>(o)
+                Ok::<_, Error>(Some(o))
             })
             .await
             .map_err(|e| Error::Other(e.to_string()))??;
+            let Some(o) = o else {
+                return Ok(tauri::ipc::Response::new(Vec::<u8>::new()));
+            };
             let o = Arc::new(o);
             state.overviews.put(key, Arc::clone(&o));
             o

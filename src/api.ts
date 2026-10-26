@@ -294,7 +294,7 @@ export const api = {
   exportUserData: (path: string) => invoke<number>('export_user_data', { path }),
   importUserData: (path: string) => invoke<ImportReport>('import_user_data', { path }),
   /** Whole-file waveform (min, max, RMS, bands per column), raw bytes for `parseWave`. */
-  sampleWave: (id: number, columns: number, split: boolean) => invoke<ArrayBuffer>('sample_wave', { id, columns, split }),
+  sampleWave: (id: number, columns: number, split: boolean, cachedOnly = false) => invoke<ArrayBuffer>('sample_wave', { id, columns, split, cachedOnly }),
   prioritizeAnalysis: (ids: number[]) => invoke<void>('prioritize_analysis', { ids }),
   setAnalysisPaused: (paused: boolean) => invoke<void>('set_analysis_paused', { paused }),
   analysisStatus: () => invoke<AnalysisProgress>('analysis_status'),

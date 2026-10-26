@@ -100,7 +100,14 @@ function slices(start: number, end: number, by: SliceBy): Span[] {
 export function editorCommand(cmd: string, args: any): unknown {
   switch (cmd) {
     case 'editor_open': return { state: state(), name: 'Drum Loop 120', ext: 'wav', path: '/Users/me/Projects/Sound/Loops/Drum Loop 120.wav', bpm: BPM }
-    case 'sample_wave': return wave(0, FRAMES, args.columns, args.split)
+    case 'sample_wave': {
+      const key = 'fonicca-mock-cached-waves'
+      let ids: number[] = []
+      try { ids = JSON.parse(localStorage.getItem(key) ?? '[]') } catch { /* Empty mock cache. */ }
+      if (args.cachedOnly && !ids.includes(args.id)) return new ArrayBuffer(0)
+      if (!args.cachedOnly) localStorage.setItem(key, JSON.stringify([...ids.filter(id => id !== args.id), args.id].slice(-128)))
+      return wave(0, FRAMES, args.columns, args.split)
+    }
     case 'editor_wave': return wave(args.start, args.end, args.columns, args.split)
     case 'editor_apply':
       remember()
