@@ -126,6 +126,12 @@ export default {
     deleteDesc: 'Categories already found by sound stay. Samples added later get categories from their names only, until you download the model again.',
   },
   models: {
+    groups: {
+      analysis: { title: 'Analysis & search', description: 'Categorize samples and find similar sounds.' },
+      separation: { title: 'Stem separation', description: 'Extract vocals, drums, bass and other instruments from a track.' },
+      restoration: { title: 'Audio restoration', description: 'Restore music after lossy compression.' },
+      transcription: { title: 'Audio to MIDI', description: 'Recognize notes and export MIDI for your DAW.' },
+    },
     onTranscription: 'Downloads automatically when you first export MIDI.',
     basicPitch: { name: 'Basic Pitch · audio to MIDI', description: 'Recognizes notes in melodic audio · Spotify · ONNX' },
     deleteTitle: 'Delete {name}?',
