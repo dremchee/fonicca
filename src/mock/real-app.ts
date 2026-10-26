@@ -135,6 +135,7 @@ export function install() {
         preferred = args.preferred ? [args.path, ...preferred.filter(p => p !== args.path)] : preferred.filter(p => p !== args.path)
         return null
       // Playback: time runs from the play call; levels mimic a kick on every beat at 120 BPM.
+      case 'editor_update_playback': return playStart !== null
       case 'editor_play': playLoaded = true; playStart = performance.now(); playFrom = args.start / 48000; return null
       case 'play': playLoaded = true; playStart = performance.now(); playFrom = args.start ?? 0; return { stretch: 1, semitones: 0 }
       case 'stop': playLoaded = false; playStart = null; return null

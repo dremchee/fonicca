@@ -113,6 +113,7 @@ const editorApi = {
   paste: (start: number, end: number) => invoke<{ state: EditorState, start: number, end: number }>('editor_paste', { start, end }),
   zeroSnap: (frames: number[], radius: number) => invoke<number[]>('editor_zero_snap', { frames, radius }),
   play: (start: number, end: number, looping: boolean) => invoke<void>('editor_play', { start, end, looping }),
+  updatePlayback: (start: number, end: number, looping: boolean) => invoke<boolean>('editor_update_playback', { start, end, looping }),
   save: (asNew: boolean) =>
     invoke<{ path: string, backup: string | null, state: EditorState }>('editor_save', { asNew }),
 }
@@ -446,6 +447,19 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
+  async function updatePlaybackRange() {
+    const range = selection.value
+    if (!playing.value || !range) return
+    try {
+      if (!await editorApi.updatePlayback(range.start, range.end, looping.value)) {
+        cancelAnimationFrame(frame)
+        playing.value = false
+        playhead.value = null
+      }
+    }
+    catch (e) { toast.error(String(e)) }
+  }
+
   function stopPlayback() {
     cancelAnimationFrame(frame)
     if (playing.value)
@@ -523,6 +537,7 @@ export const useEditorStore = defineStore('editor', () => {
     play,
     stopPlayback,
     togglePlay,
+    updatePlaybackRange,
     save,
   }
 })

@@ -723,9 +723,11 @@ function onHover(e: MouseEvent) {
   hoverMarker.value = markerAt(e) >= 0
 }
 
+let mouseGesture = 0
 function onMouseDown(e: MouseEvent) {
   if (e.button !== 0)
     return
+  const gesture = ++mouseGesture
   const badge = badgeAt(e)
   if (badge) {
     playRegion(badge)
@@ -776,7 +778,7 @@ function onMouseDown(e: MouseEvent) {
     const f = snapped(frameAt(ev.clientX), ev)
     editor.selection = f === anchor ? null : { start: Math.min(f, anchor), end: Math.max(f, anchor) }
   }
-  const up = (ev: MouseEvent) => {
+  const up = async (ev: MouseEvent) => {
     window.removeEventListener('mousemove', move)
     window.removeEventListener('mouseup', up)
     // The last mousemove may lag behind the release point.
@@ -797,7 +799,17 @@ function onMouseDown(e: MouseEvent) {
     else if (editor.selection) {
       editor.cursor = editor.selection.start
     }
-    toZeroCrossings(ev)
+    await toZeroCrossings(ev)
+    if (gesture !== mouseGesture)
+      return
+    const selected = editor.selection
+    const changedRange = selected && (!sel || selected.start !== sel.start || selected.end !== sel.end)
+    // An active audition follows the edited selection, including its new end and loop bounds.
+    if (editor.playing && changedRange)
+      void editor.updatePlaybackRange()
+    // Creating a selection while stopped remains silent; a plain click auditions the cursor.
+    else if (!dragged && !e.shiftKey && e.detail < 2 && !selected && editor.cursor < frames.value)
+      void editor.play()
   }
   window.addEventListener('mousemove', move)
   window.addEventListener('mouseup', up)
@@ -1244,7 +1256,7 @@ const curves: { value: Curve, label: string }[] = [
         {{ editor.error }}
       </div>
     </div>
-    <LevelMeter :active="editor.playhead !== null" />
+    <LevelMeter :active="editor.playhead !== null" :split-channels="!isSpectrogram && settings.settings.editorWaveform.waveChannels === 'split' && (editor.state?.channels ?? 1) > 1" :top-inset="RULER" />
     </div>
 
     <footer class="h-9 shrink-0 px-4 flex items-center gap-4 border-t border-border text-xs text-muted-foreground tabular">

@@ -234,6 +234,11 @@ pub fn editor_play(state: State<'_, AppState>, window: Window, start: usize, end
     with_session(&state, &window, |s| state.player.play_buffer(s.audio(), start, end, looping))
 }
 
+#[tauri::command]
+pub fn editor_update_playback(state: State<'_, AppState>, window: Window, start: usize, end: usize, looping: bool) -> Result<bool> {
+    with_session(&state, &window, |s| state.player.update_buffer_range(s.audio(), start, end, looping))
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Saved {

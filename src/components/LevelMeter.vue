@@ -12,6 +12,9 @@ const props = defineProps<{
   /** Something is playing: poll the levels. When it stops, the bars fall back. */
   active: boolean
   horizontal?: boolean
+  /** Match separate waveform lanes with one mono meter per channel. */
+  splitChannels?: boolean
+  topInset?: number
   variant?: MeterStyle
   /** Static settings swatch; never polls playback. */
   preview?: boolean
@@ -87,6 +90,7 @@ const meterChannels = computed(() => {
     return { ...channel, rms: Math.min(-3, channel.rms + motion), peak: Math.min(-0.5, channel.peak + motion), hold: Math.min(-0.5, channel.hold + motion * 0.4) }
   })
 })
+const meterGroups = computed(() => props.splitChannels ? meterChannels.value.map(channel => [channel]) : [meterChannels.value])
 const shapeChannels = computed(() => meterChannels.value.map(ch => ({
   level: iec(ch.rms), peak: iec(ch.peak), hold: ch.holdOpacity > 0 ? iec(ch.hold) : 0,
 })))
@@ -110,6 +114,16 @@ const holdStyle = (ch: Channel) => ({
 })
 const clipped = ref(false)
 let clippedAt = 0
+const channelClips = reactive([false, false])
+const channelClipTimes = [0, 0]
+function clearClip(channel?: number) {
+  if (channel === undefined) channelClips.fill(false)
+  else channelClips[channel] = false
+  clipped.value = channelClips.some(Boolean)
+}
+function groupClipped(index: number) {
+  return props.splitChannels ? channelClips[index] : clipped.value
+}
 
 const ticks = [0, -3, -6, -9, -12, -18, -24, -36, -48]
 // Fixed dB zones: green, yellow from -6 dB, red from -1 dB.
@@ -149,6 +163,8 @@ async function tick(now: number) {
     if (peakLin >= 0.999) {
       clipped.value = true
       clippedAt = now
+      channelClips[i] = true
+      channelClipTimes[i] = now
     }
     const peak = toDb(peakLin)
     const rms = toDb(rmsLin)
@@ -169,6 +185,9 @@ async function tick(now: number) {
   })
   if (clipped.value && now - clippedAt >= CLIP_HOLD_MS)
     clipped.value = false
+  channelClips.forEach((_, i) => {
+    if (now - channelClipTimes[i] >= CLIP_HOLD_MS) channelClips[i] = false
+  })
   // Keep animating until the bars and held indicators have cleared.
   frame = props.active || moving || clipped.value ? requestAnimationFrame(tick) : 0
 }
@@ -197,7 +216,7 @@ onBeforeUnmount(() => {
     class="vu-control" :aria-hidden="preview ? true : undefined"
     :aria-label="`${t('player.meter.title')}. ${t(clipped ? 'player.meter.clip' : 'player.meter.noClip')}`"
     :title="t('player.meter.title')" :aria-pressed="preview ? undefined : clipped"
-    @click="clipped = false"
+    @click="clearClip()"
   >
     <SpectrumDisplay v-if="variant === 'spectrum'" :levels="spectrumLevels" :clipped="clipped && !preview" />
     <StereoLevelDisplay v-else :variant="variant as 'arcs' | 'dots'" :channels="shapeChannels" :clipped="clipped && !preview" />
@@ -208,7 +227,7 @@ onBeforeUnmount(() => {
     :aria-hidden="preview ? true : undefined"
     :aria-label="`${t('player.meter.title')}. ${t(clipped ? 'player.meter.clip' : 'player.meter.noClip')}`"
     :aria-pressed="clipped" :title="`${t('player.meter.title')} · ${t(clipped ? 'player.meter.clip' : 'player.meter.noClip')}`"
-    @click="clipped = false"
+    @click="clearClip()"
   >
     <span v-for="(ch, i) in meterChannels" :key="i" class="horizontal-lane" aria-hidden="true">
       <span class="horizontal-peak" :style="levelClip(ch.peak)" />
@@ -218,31 +237,34 @@ onBeforeUnmount(() => {
     <span class="horizontal-clip" aria-hidden="true" />
   </component>
   <div v-else
-    class="level-meter w-[52px] shrink-0 flex flex-col gap-1 border-l border-border bg-card px-1.5 py-2 select-none"
+    class="level-meter w-[52px] shrink-0 flex flex-col border-l border-border bg-card px-1.5 select-none"
+    :style="{ paddingTop: `${topInset ?? 0}px` }"
     role="group" :aria-label="t('player.meter.title')" :title="t('player.meter.title')"
   >
-    <div class="flex gap-[3px]">
-      <span class="w-3.5 shrink-0" />
-      <button
-        class="h-1.5 w-[25px] rounded-sm transition-colors"
-        :class="clipped ? 'bg-destructive' : 'bg-muted'"
-        :aria-label="t(clipped ? 'player.meter.clip' : 'player.meter.noClip')"
-        :aria-pressed="clipped"
-        :title="t(clipped ? 'player.meter.clip' : 'player.meter.noClip')"
-        @click="clipped = false"
-      />
-    </div>
-    <div class="relative flex-1 min-h-0 flex gap-[3px]">
-      <!-- Scale: dB below full scale, as DAW meters print it. -->
-      <div class="relative w-3.5 shrink-0 text-[9px] leading-none text-muted-foreground tabular" aria-hidden="true">
-        <span v-for="db in ticks" :key="db" class="absolute right-0 translate-y-1/2" :style="{ bottom: pct(db) }">{{ -db }}</span>
+    <div v-for="(group, groupIndex) in meterGroups" :key="groupIndex" class="vertical-group min-h-0 flex-1 flex flex-col gap-1 py-2" :class="{ 'border-t border-border': splitChannels && groupIndex > 0 }">
+      <div class="flex gap-[3px]">
+        <span class="w-3.5 shrink-0 text-[9px] text-muted-foreground text-right leading-none">{{ splitChannels ? (groupIndex === 0 ? 'L' : 'R') : '' }}</span>
+        <button
+          class="h-1.5 w-[25px] rounded-sm transition-colors"
+          :class="groupClipped(groupIndex) ? 'bg-destructive' : 'bg-muted'"
+          :aria-label="t(groupClipped(groupIndex) ? 'player.meter.clip' : 'player.meter.noClip')"
+          :aria-pressed="groupClipped(groupIndex)"
+          :title="t(groupClipped(groupIndex) ? 'player.meter.clip' : 'player.meter.noClip')"
+          @click="clearClip(splitChannels ? groupIndex : undefined)"
+        />
       </div>
-      <div v-for="(ch, i) in meterChannels" :key="i" class="bar" :style="{ backgroundImage: barGradient }" aria-hidden="true">
-        <!-- Covers from the top: the unlit part, then the peak part dimmed above the RMS. -->
-        <div class="cover" :style="{ height: `calc(100% - ${pct(ch.peak)})` }" />
-        <div class="cover dim" :style="{ bottom: pct(ch.rms), height: `max(0%, calc(${pct(ch.peak)} - ${pct(ch.rms)}))` }" />
-        <div v-for="db in ticks" :key="db" class="tick" :style="{ bottom: pct(db) }" />
-        <div v-if="ch.hold > FLOOR" class="hold" :style="{ bottom: pct(ch.hold), opacity: ch.holdOpacity, background: meterColor(ch.hold) }" />
+      <div class="relative flex-1 min-h-0 flex gap-[3px]">
+        <!-- Scale: dB below full scale, as DAW meters print it. -->
+        <div class="relative w-3.5 shrink-0 text-[9px] leading-none text-muted-foreground tabular" aria-hidden="true">
+          <span v-for="db in ticks" :key="db" class="absolute right-0 translate-y-1/2" :style="{ bottom: pct(db) }">{{ -db }}</span>
+        </div>
+        <div v-for="(ch, i) in group" :key="i" class="bar" :class="{ 'mono-bar': splitChannels }" :style="{ backgroundImage: barGradient }" aria-hidden="true">
+          <!-- Covers from the top: the unlit part, then the peak part dimmed above the RMS. -->
+          <div class="cover" :style="{ height: `calc(100% - ${pct(ch.peak)})` }" />
+          <div class="cover dim" :style="{ bottom: pct(ch.rms), height: `max(0%, calc(${pct(ch.peak)} - ${pct(ch.rms)}))` }" />
+          <div v-for="db in ticks" :key="db" class="tick" :style="{ bottom: pct(db) }" />
+          <div v-if="ch.hold > FLOOR" class="hold" :style="{ bottom: pct(ch.hold), opacity: ch.holdOpacity, background: meterColor(ch.hold) }" />
+        </div>
       </div>
     </div>
 
@@ -333,6 +355,8 @@ onBeforeUnmount(() => {
   border-radius: 2px;
   overflow: hidden;
 }
+
+.mono-bar { width: 25px; }
 
 .cover {
   position: absolute;

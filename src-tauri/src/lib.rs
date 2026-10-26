@@ -181,6 +181,7 @@ pub fn run() {
             editor_commands::editor_slices,
             editor_commands::editor_export_slices,
             editor_commands::editor_play,
+            editor_commands::editor_update_playback,
             editor_commands::editor_save,
             commands::list_sources,
             commands::source_folders,

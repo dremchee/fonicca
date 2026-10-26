@@ -35,13 +35,15 @@ struct Timing {
     offset: f64,
     /// Length of a looping region; positions wrap within it.
     loop_len: Option<f64>,
+    /// Initial position within the region, retained when its bounds change.
+    phase: f64,
 }
 
 impl Timing {
-    const PLAIN: Timing = Timing { scale: 1.0, offset: 0.0, loop_len: None };
+    const PLAIN: Timing = Timing { scale: 1.0, offset: 0.0, loop_len: None, phase: 0.0 };
 
     fn source_time(&self, played: f64) -> f64 {
-        let t = played * self.scale;
+        let t = played * self.scale + self.phase;
         self.offset + self.loop_len.filter(|l| *l > 0.0).map_or(t, |l| t % l)
     }
 }
@@ -124,6 +126,24 @@ impl Player {
     /// Plays frames `[start, end)` of an in-memory buffer (the editor), optionally
     /// looping. Positions are reported in seconds of the buffer.
     pub fn play_buffer(&self, pcm: &crate::audio::Pcm, start: usize, end: usize, looping: bool) -> Result<()> {
+        self.play_buffer_from(pcm, start, end, looping, start)
+    }
+
+    /// Changes an editor region without moving the playhead back to its beginning.
+    pub fn update_buffer_range(&self, pcm: &crate::audio::Pcm, start: usize, end: usize, looping: bool) -> Result<bool> {
+        let Some(seconds) = self.position() else { return Ok(false) };
+        let position = (seconds * pcm.sample_rate as f64).round() as usize;
+        let end = end.min(pcm.frames());
+        if end <= start || (position >= end && !looping) {
+            self.stop();
+            return Ok(false);
+        }
+        let position = if position >= end { start } else { position.max(start) };
+        self.play_buffer_from(pcm, start, end, looping, position)?;
+        Ok(true)
+    }
+
+    fn play_buffer_from(&self, pcm: &crate::audio::Pcm, start: usize, end: usize, looping: bool, position: usize) -> Result<()> {
         use rodio::Source;
         let mixer = self.mixer.as_ref().ok_or_else(|| Error::Audio("no output device".into()))?;
         let ch = pcm.channels.max(1);
@@ -136,16 +156,19 @@ impl Player {
         let buffer = rodio::buffer::SamplesBuffer::new(channels, rate, pcm.samples[start * ch..end * ch].to_vec());
         let player = RodioPlayer::connect_new(mixer);
         player.set_volume(*self.volume.lock().unwrap());
-        if looping {
-            player.append(Metered::new(buffer.repeat_infinite(), Arc::clone(&self.meter)));
-        } else {
-            player.append(Metered::new(buffer, Arc::clone(&self.meter)));
-        }
         let sr = pcm.sample_rate as f64;
+        let phase = position.saturating_sub(start) as f64 / sr;
+        let skip = Duration::from_secs_f64(phase);
+        if looping {
+            player.append(Metered::new(buffer.repeat_infinite().skip_duration(skip), Arc::clone(&self.meter)));
+        } else {
+            player.append(Metered::new(buffer.skip_duration(skip), Arc::clone(&self.meter)));
+        }
         *self.timing.lock().unwrap() = Timing {
             scale: 1.0,
             offset: start as f64 / sr,
             loop_len: looping.then(|| (end - start) as f64 / sr),
+            phase,
         };
         *self.current.lock().unwrap() = Some(player);
         Ok(())
@@ -182,7 +205,7 @@ impl Player {
     pub fn seek(&self, pos: f64) -> Result<()> {
         if let Some(p) = self.current.lock().unwrap().as_ref() {
             let t = *self.timing.lock().unwrap();
-            let played = ((pos - t.offset) / t.scale).max(0.0);
+            let played = ((pos - t.offset - t.phase) / t.scale).max(0.0);
             p.try_seek(Duration::from_secs_f64(played)).map_err(|e| Error::Audio(e.to_string()))?;
         }
         Ok(())
@@ -215,6 +238,52 @@ mod tests {
     use super::*;
 
     #[test]
+    fn resizing_editor_range_preserves_position_and_uses_new_loop_bounds() {
+        let (mixer, mut output) = rodio::mixer::mixer(
+            std::num::NonZero::new(1).unwrap(), std::num::NonZero::new(48000).unwrap(),
+        );
+        let player = Player {
+            mixer: Some(mixer), current: Mutex::new(None), volume: Mutex::new(1.0),
+            timing: Mutex::new(Timing::PLAIN), meter: Arc::default(),
+        };
+        let pcm = crate::audio::Pcm { samples: vec![0.25; 48000 * 4], channels: 1, sample_rate: 48000 };
+        player.play_buffer(&pcm, 48000, 48000 * 4, true).unwrap();
+        for _ in 0..48000 { output.next(); }
+        let before = player.position().unwrap();
+        assert!(before > 1.9);
+        assert!(player.update_buffer_range(&pcm, 72000, 144000, true).unwrap());
+        assert!((player.position().unwrap() - before).abs() < 0.001);
+        for _ in 0..60000 { output.next(); }
+        let wrapped = player.position().unwrap();
+        assert!((1.5..2.0).contains(&wrapped), "position after loop: {wrapped}");
+        // A non-looping range shortened past the playhead ends rather than restarting.
+        assert!(!player.update_buffer_range(&pcm, 0, 48000, false).unwrap());
+        assert_eq!(player.position(), None);
+        assert!(!player.update_buffer_range(&pcm, 0, 96000, true).unwrap());
+    }
+
+    #[test]
+    fn resized_non_looping_region_continues_until_the_new_end() {
+        let (mixer, mut output) = rodio::mixer::mixer(
+            std::num::NonZero::new(1).unwrap(), std::num::NonZero::new(48000).unwrap(),
+        );
+        let player = Player {
+            mixer: Some(mixer), current: Mutex::new(None), volume: Mutex::new(1.0),
+            timing: Mutex::new(Timing::PLAIN), meter: Arc::default(),
+        };
+        let pcm = crate::audio::Pcm { samples: vec![0.25; 48000 * 4], channels: 1, sample_rate: 48000 };
+        player.play_buffer(&pcm, 48000, 192000, false).unwrap();
+        for _ in 0..48000 { output.next(); }
+        let before = player.position().unwrap();
+        assert!(player.update_buffer_range(&pcm, 72000, 144000, false).unwrap());
+        assert!((player.position().unwrap() - before).abs() < 0.001);
+        for _ in 0..24000 { output.next(); }
+        assert!(player.position().unwrap() > 2.4);
+        for _ in 0..48000 { output.next(); }
+        assert_eq!(player.position(), None);
+    }
+
+    #[test]
     fn pause_keeps_the_source_position_and_resume_continues_the_same_buffer() {
         // Drive a mixer manually: no sound device or wall-clock sleeps needed.
         let (mixer, mut output) = rodio::mixer::mixer(
@@ -226,7 +295,7 @@ mod tests {
         ));
         let player = Player {
             mixer: Some(mixer), current: Mutex::new(Some(sink)), volume: Mutex::new(1.0),
-            timing: Mutex::new(Timing { scale: 0.5, offset: 2.0, loop_len: None }), meter: Arc::default(),
+            timing: Mutex::new(Timing { scale: 0.5, offset: 2.0, loop_len: None, phase: 0.0 }), meter: Arc::default(),
         };
         for _ in 0..4800 { output.next(); }
         let paused_at = player.pause().unwrap();
