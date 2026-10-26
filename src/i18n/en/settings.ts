@@ -50,6 +50,13 @@ export default {
     volumeDesc: 'Applies to previews only, not to files dragged into a DAW.',
   },
   waveform: {
+    zoom: 'Waveform zoom',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    resetZoom: 'Reset zoom',
+    pan: 'Waveform position',
+
+    groups: { appearance: 'Shape', amplitude: 'Amplitude', channelsColors: 'Channels and color' },
     waveBarWidth: 'Bar width',
     waveBarGap: 'Bar gap',
     waveBarRadius: 'Bar roundness',

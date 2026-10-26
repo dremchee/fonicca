@@ -52,6 +52,13 @@ export default {
     volumeDesc: 'Влияет только на прослушивание, а не на файлы, перетащенные в DAW.',
   },
   waveform: {
+    zoom: 'Масштаб волны',
+    zoomIn: 'Приблизить',
+    zoomOut: 'Отдалить',
+    resetZoom: 'Сбросить масштаб',
+    pan: 'Положение волны',
+
+    groups: { appearance: 'Рисунок волны', amplitude: 'Амплитуда', channelsColors: 'Каналы и цвет' },
     waveBarWidth: 'Ширина столбика',
     waveBarGap: 'Расстояние между столбиками',
     waveBarRadius: 'Скругление концов',
