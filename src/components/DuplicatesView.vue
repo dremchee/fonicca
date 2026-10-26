@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import type { DuplicateCopy, DuplicateGroup } from '@/api'
-import { CircleCheck, EyeOff, FolderOpen, Pin, Pause, Play, Trash2, X } from '@lucide/vue'
+import { CircleCheck, EyeOff, FolderOpen, Pin, Volume2, Trash2, X } from '@lucide/vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { onKeyStroke } from '@vueuse/core'
+import { useSettingsStore } from '@/stores/settings'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { isTauri } from '@tauri-apps/api/core'
+import { LogicalPosition } from '@tauri-apps/api/dpi'
+import { Menu, type MenuItemOptions } from '@tauri-apps/api/menu'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import Hint from '@/components/Hint.vue'
+import CategoryIcon from '@/components/icons/CategoryIcon.vue'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
@@ -183,7 +188,7 @@ async function prefer(folder: string, on = true) {
 
 // One context menu for all rows; the row under the pointer is remembered.
 const menuTarget = ref<{ g: DuplicateGroup, c: DuplicateCopy } | null>(null)
-function onContextMenu(e: MouseEvent) {
+async function onContextMenu(e: MouseEvent) {
   const el = (e.target as HTMLElement).closest<HTMLElement>('[data-row]')
   const row = el ? rows.value[Number(el.dataset.row)] : undefined
   if (row?.kind !== 'copy') {
@@ -193,10 +198,51 @@ function onContextMenu(e: MouseEvent) {
   }
   menuTarget.value = { g: row.g, c: row.c }
   focusedId.value = row.c.id
+  if (nativeMenus) {
+    e.preventDefault()
+    await openNativeMenu(row.g, row.c, { x: e.clientX, y: e.clientY })
+  }
+}
+
+const nativeMenus = isTauri()
+let nativeMenu: Menu | null = null
+onBeforeUnmount(() => { void nativeMenu?.close().catch(error => console.error('menu cleanup failed', error)) })
+
+async function openNativeMenu(group: DuplicateGroup, copy: DuplicateCopy, position: { x: number, y: number }) {
+  const folder = packFolder(group, copy)
+  const item = (text: string, action: () => unknown, enabled = true): MenuItemOptions => ({
+    text, enabled,
+    // Dismiss the native menu before presenting confirmation or changing the list.
+    action: () => { setTimeout(() => { Promise.resolve().then(action).catch(error => toast.error(String(error))) }, 0) },
+  })
+  try {
+    await nativeMenu?.close()
+    nativeMenu = null
+    nativeMenu = await Menu.new({ items: [
+      item(t('duplicates.menu.keepThis'), () => dup.setKeep(group, copy.id)),
+      item(t('duplicates.menu.alwaysKeep', { folder: folderName(folder) }), () => prefer(folder)),
+      { item: 'Separator' },
+      item(t('common.actions.showInFinder'), () => reveal(copy.path)),
+      item(t('duplicates.menu.hideThis'), () => hideExtras({ group, copy })),
+      item(t('duplicates.menu.trashThis'), () => trashOne(group, copy), group.verified),
+    ] })
+    await nativeMenu.popup(new LogicalPosition(position.x, position.y))
+  }
+  catch (error) {
+    await nativeMenu?.close().catch(() => {})
+    nativeMenu = null
+    toast.error(String(error))
+  }
 }
 
 // --- Keyboard: the global list shortcuts stand aside while this view is open.
 const copyRows = computed(() => rows.value.filter(r => r.kind === 'copy'))
+
+function selectCopy(copy: DuplicateCopy) {
+  focusedId.value = copy.id
+  if (player.autoplay)
+    void player.play(copy)
+}
 
 function move(delta: number) {
   const list = copyRows.value
@@ -211,6 +257,7 @@ function move(delta: number) {
 }
 
 function isTyping(e: KeyboardEvent) {
+  if (useSettingsStore().dialogOpen) return true
   return e.target instanceof Element && (e.target.closest('[role="menu"], [role="dialog"], [role="alertdialog"], [role="listbox"]') !== null
     || (e.target instanceof HTMLInputElement && e.target.type !== 'checkbox'))
 }
@@ -307,7 +354,7 @@ onKeyStroke(' ', (e) => {
     </div>
 
     <ContextMenu>
-      <ContextMenuTrigger as-child>
+      <ContextMenuTrigger as-child :disabled="nativeMenus">
         <div ref="scroller" class="flex-1 overflow-y-auto outline-none" tabindex="-1" @contextmenu="onContextMenu">
           <div v-if="!groups.length" class="h-full grid place-items-center text-muted-foreground">
             <div v-if="loading" class="flex items-center gap-2">
@@ -349,7 +396,7 @@ onKeyStroke(' ', (e) => {
                   playing: player.isPlaying(row.c.id),
                 }"
                 :style="{ height: `${item.size}px`, transform: `translateY(${item.start}px)` }"
-                @click="focusedId = row.c.id"
+                @click="selectCopy(row.c)"
               >
                 <button
                   class="keep"
@@ -362,11 +409,12 @@ onKeyStroke(' ', (e) => {
                 <Button
                   variant="ghost"
                   size="icon-xs"
-                  class="rounded-full shrink-0"
+                  class="shrink-0"
                   :aria-label="player.isPlaying(row.c.id) ? t('common.actions.pause') : t('common.actions.play')"
                   @click.stop="focusedId = row.c.id; player.toggle(row.c)"
                 >
-                  <component :is="player.isPlaying(row.c.id) ? Pause : Play" class="fill-current" />
+                  <Volume2 v-if="player.isPlaying(row.c.id)" />
+                  <CategoryIcon v-else :category="row.c.category" />
                 </Button>
                 <span class="flex-1 min-w-0 truncate" :title="row.c.path">
                   <template v-for="(p, i) in segments(row.g, row.c)" :key="i">
@@ -385,7 +433,7 @@ onKeyStroke(' ', (e) => {
           </div>
         </div>
       </ContextMenuTrigger>
-      <ContextMenuContent v-if="menuTarget">
+      <ContextMenuContent v-if="!nativeMenus && menuTarget">
         <ContextMenuItem @select="dup.setKeep(menuTarget.g, menuTarget.c.id)">
           {{ t('duplicates.menu.keepThis') }}
         </ContextMenuItem>
@@ -427,7 +475,21 @@ onKeyStroke(' ', (e) => {
   background: var(--primary-soft);
 }
 
-.copy-row.extra:not(.focused) {
+.copy-row.playing {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+.copy-row.playing :deep(.text-muted-foreground),
+.copy-row.playing :deep(.text-muted-foreground\/60),
+.copy-row.playing :deep(.text-foreground) {
+  color: inherit;
+}
+.copy-row.playing .keep {
+  color: inherit;
+  border-color: color-mix(in srgb, currentColor 30%, transparent);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.copy-row.extra:not(.focused):not(.playing) {
   opacity: 0.75;
 }
 

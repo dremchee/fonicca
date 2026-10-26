@@ -70,6 +70,7 @@ export default {
     removeMany: 'Убрать {samples} из избранного',
   },
   menu: {
+    processing: 'Обработка',
     space: 'Пробел',
     edit: 'Редактировать…',
     findSimilar: 'Найти похожие',

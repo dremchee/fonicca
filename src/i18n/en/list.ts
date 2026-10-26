@@ -68,6 +68,7 @@ export default {
     removeMany: 'Remove {samples} from favorites',
   },
   menu: {
+    processing: 'Processing',
     space: 'Space',
     edit: 'Edit…',
     findSimilar: 'Find similar',

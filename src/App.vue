@@ -39,7 +39,12 @@ const duplicates = useDuplicatesStore()
 const paletteOpen = ref(false)
 const { focused } = storeToRefs(library)
 // The selected sample, or the one playing once nothing is selected.
-const shownSample = computed(() => focused.value ?? player.playingSample ?? undefined)
+const shownSample = computed(() => {
+  const selected = library.scope.kind === 'duplicates'
+    ? duplicates.filteredGroups.flatMap(g => g.copies).find(c => c.id === duplicates.focusedId)
+    : focused.value
+  return selected ?? player.playingSample ?? undefined
+})
 const toolbar = useTemplateRef<InstanceType<typeof LibraryToolbar>>('toolbar')
 const search = computed(() => toolbar.value?.searchElement)
 
@@ -48,12 +53,14 @@ onMounted(() => Promise.all([settings.init(), library.init(), duplicates.init(),
 // The native menu is rebuilt whenever the language changes.
 watch(locale, () => installAppMenu(() => settings.openDialog()).catch(console.error), { immediate: true })
 
+watch(() => library.scope, () => { settings.dialogOpen = false })
+
 // DuplicatesView replaces the list and handles its own arrows and Space.
 const inDuplicates = computed(() => library.scope.kind === 'duplicates')
 
 // Typing in a field or working in an open menu, popover or dialog: global shortcuts stay out of the way.
 function isTyping(e: KeyboardEvent) {
-  if (inDuplicates.value || e.defaultPrevented)
+  if (settings.dialogOpen || inDuplicates.value || e.defaultPrevented)
     return true
   if (e.target instanceof Element && e.target.closest('button, a, [role="slider"], [role="checkbox"], [role="combobox"], [role="menu"], [role="dialog"], [role="alertdialog"]'))
     return true
@@ -117,6 +124,7 @@ onKeyStroke(['e', 'у'], (e) => {
   openEditor(library.focused)
 })
 onKeyStroke('Escape', (e) => {
+  if (settings.dialogOpen) return
   if (e.target instanceof Element && e.target.closest('[role="menu"], [role="dialog"], [role="alertdialog"]'))
     return
   if (player.playingId !== null)
@@ -127,6 +135,7 @@ onKeyStroke('Escape', (e) => {
 onKeyStroke(['f', 'а'], (e) => {
   if (e.metaKey || e.ctrlKey) {
     e.preventDefault()
+    settings.dialogOpen = false
     search.value?.focus()
     search.value?.select()
   }
@@ -156,13 +165,16 @@ onKeyStroke(',', (e) => {
       <ResizableHandle />
       <!-- The list needs ~520px for its columns; the sidebar gives way before it does. -->
       <ResizablePanel id="main" :order="2" as="main" size-unit="px" :min-size="520" class="min-w-0 flex flex-col">
-        <DuplicatesView v-if="inDuplicates" />
-        <template v-else>
-          <LibraryToolbar ref="toolbar" @open-search="paletteOpen = true" />
-          <FilterBar />
+        <SettingsDialog embedded v-show="settings.dialogOpen" />
+        <div v-show="!settings.dialogOpen" class="min-h-0 flex-1 flex flex-col">
+          <template v-if="!inDuplicates">
+            <LibraryToolbar ref="toolbar" @open-search="paletteOpen = true" />
+            <FilterBar />
+          </template>
           <ResizablePanelGroup direction="vertical" auto-save-id="fonicca-layout-rows" class="min-h-0 flex-1">
             <ResizablePanel id="list" :order="1" :min-size="20" class="flex flex-col">
-              <SampleList />
+              <DuplicatesView v-if="inDuplicates" />
+              <SampleList v-else />
             </ResizablePanel>
             <!-- The player exists while a sample is selected, or one is still playing. -->
             <template v-if="shownSample">
@@ -172,10 +184,9 @@ onKeyStroke(',', (e) => {
               </ResizablePanel>
             </template>
           </ResizablePanelGroup>
-        </template>
+        </div>
       </ResizablePanel>
     </ResizablePanelGroup>
-    <SettingsDialog />
     <TrackInfoDialog />
     <BatchDialog />
     <StemDialog />

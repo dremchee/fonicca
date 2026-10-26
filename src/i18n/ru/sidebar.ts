@@ -2,6 +2,7 @@ import type en from '../en/sidebar'
 
 export default {
   addFolders: 'Добавить папки',
+  backToLibrary: 'К библиотеке',
   settings: 'Настройки',
   allSamples: 'Все семплы',
   favorites: 'Избранное',
@@ -23,7 +24,7 @@ export default {
   deleteTag: 'Удалить тег',
   empty: {
     folders: 'Добавьте папку с семплами, чтобы начать. Файлы остаются на своих местах — Fonicca только индексирует их.',
-    collections: 'Собирайте семплы для треков и проектов.',
+    collections: 'Нет коллекций',
     tags: 'Выделите семплы и нажмите T, чтобы добавить тег.',
   },
   confirmRemoveSource: {

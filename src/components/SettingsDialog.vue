@@ -1,33 +1,25 @@
 <script setup lang="ts">
-import type { Component } from 'vue'
+import SettingsNavigation from '@/components/SettingsNavigation.vue'
 import MeterSettings from '@/components/MeterSettings.vue'
 import type { AppInfo, Theme, WaveformSettings } from '@/api'
 import type { Locale } from '@/i18n'
-import type { SettingsSection } from '@/stores/settings'
 import darkAppIcon from '../../src-tauri/icons/128x128-dark.png'
 import lightAppIcon from '../../src-tauri/icons/128x128-light.png'
 import {
-  AudioLines,
-  AudioWaveform,
-  Palette,
-  Cpu,
   Download,
   EyeOff,
   FolderOpen,
   FolderPlus,
-  Info,
-  Keyboard,
-  Library,
   Monitor,
   Moon,
   Pause,
   Play,
   RefreshCw,
-  Settings2,
   Sun,
   Trash2,
   Upload,
   Volume2,
+  X,
 } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { storeToRefs } from 'pinia'
@@ -56,7 +48,7 @@ import { useDuplicatesStore } from '@/stores/duplicates'
 import { useLibraryStore } from '@/stores/library'
 import { useSettingsStore } from '@/stores/settings'
 
-const props = withDefaults(defineProps<{ waveTarget?: 'preview' | 'editor' }>(), { waveTarget: 'preview' })
+const props = withDefaults(defineProps<{ waveTarget?: 'preview' | 'editor', embedded?: boolean }>(), { waveTarget: 'preview', embedded: false })
 const { t } = useI18n()
 const store = useSettingsStore()
 const { settings, dialogOpen, section } = storeToRefs(store)
@@ -64,18 +56,6 @@ const appIcon = computed(() => store.mode === 'dark' ? darkAppIcon : lightAppIco
 const library = useLibraryStore()
 const { sources, scans, analysis } = storeToRefs(library)
 const duplicates = useDuplicatesStore()
-
-const sections: { id: SettingsSection, icon: Component }[] = [
-  { id: 'general', icon: Settings2 },
-  { id: 'library', icon: Library },
-  { id: 'playback', icon: AudioLines },
-  { id: 'waveform', icon: AudioWaveform },
-  { id: 'themes', icon: Palette },
-  { id: 'analysis', icon: Cpu },
-  { id: 'shortcuts', icon: Keyboard },
-  { id: 'about', icon: Info },
-]
-const current = computed(() => sections.find(s => s.id === section.value)!)
 
 // Paths and sizes change while the app runs: read them each time the dialog opens.
 const info = ref<AppInfo | null>(null)
@@ -186,29 +166,19 @@ function keyLabel(k: string) {
 </script>
 
 <template>
-  <Dialog v-model:open="dialogOpen">
-    <DialogContent class="p-0 gap-0 sm:max-w-5xl h-[min(720px,calc(100vh-4rem))] grid grid-cols-[200px_1fr] overflow-hidden">
-      <nav class="bg-muted/40 border-r border-border p-2 pt-4 flex flex-col gap-px">
-        <button
-          v-for="s in sections"
-          :key="s.id"
-          class="nav-row"
-          :class="{ active: section === s.id }"
-          @click="section = s.id"
-        >
-          <component :is="s.icon" class="size-4 shrink-0" />
-          {{ t(`settings.nav.${s.id}`) }}
-        </button>
-      </nav>
+  <component :is="embedded ? 'section' : Dialog" v-model:open="dialogOpen" :aria-label="embedded ? t('sidebar.settings') : undefined" :class="embedded ? 'embedded-settings h-full min-h-0 flex-1 flex flex-col' : undefined">
+    <component :is="embedded ? 'div' : DialogContent" :class="embedded ? 'h-full min-h-0 flex flex-col overflow-hidden' : 'p-0 gap-0 sm:max-w-5xl h-[min(720px,calc(100vh-4rem))] grid grid-cols-[200px_1fr] overflow-hidden'">
+      <SettingsNavigation v-if="!embedded" class="bg-muted/40 border-r border-border pt-4" />
 
-      <div class="min-h-0 min-w-0 flex flex-col">
-        <header class="h-13 shrink-0 px-6 flex items-center border-b border-border">
-          <DialogTitle class="text-base font-semibold">
-            {{ t(`settings.nav.${current.id}`) }}
-          </DialogTitle>
-          <DialogDescription class="sr-only">
-            {{ t('settings.description', { section: t(`settings.nav.${current.id}`) }) }}
-          </DialogDescription>
+      <div class="min-h-0 min-w-0 flex-1 flex flex-col">
+        <header class="h-16 shrink-0 px-6 flex items-center justify-between gap-3 border-b border-border" data-tauri-drag-region>
+          <component :is="embedded ? 'h1' : DialogTitle" class="text-base font-semibold" data-tauri-drag-region>
+            {{ t(`settings.nav.${section}`) }}
+          </component>
+          <component :is="embedded ? 'p' : DialogDescription" class="sr-only">
+            {{ t('settings.description', { section: t(`settings.nav.${section}`) }) }}
+          </component>
+          <Button v-if="embedded" variant="ghost" size="icon-sm" :aria-label="t('common.actions.close')" @click="dialogOpen = false"><X /></Button>
         </header>
 
         <div class="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-6">
@@ -560,31 +530,16 @@ function keyLabel(k: string) {
           </template>
         </div>
       </div>
-    </DialogContent>
-  </Dialog>
+    </component>
+  </component>
 </template>
 
 <style scoped>
-.nav-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  height: 1.875rem;
-  padding: 0 0.5rem;
-  border-radius: calc(var(--radius) - 2px);
-  color: var(--muted-foreground);
-  text-align: left;
+.embedded-settings .row {
+  flex-wrap: wrap;
 }
-
-.nav-row:hover {
-  background: var(--accent);
-  color: var(--foreground);
-}
-
-.nav-row.active {
-  background: var(--primary-soft);
-  color: var(--primary);
-  font-weight: 500;
+.embedded-settings .row-text {
+  flex-basis: 160px;
 }
 
 .group-title {

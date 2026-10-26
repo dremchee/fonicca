@@ -5,7 +5,8 @@ import { useVirtualizer } from '@tanstack/vue-virtual'
 import { AudioLines, ChevronRight, FolderPlus, Layers, SearchX, Sparkles, Star, Tag, X } from '@lucide/vue'
 import { onKeyStroke, useEventListener } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
+import { isTauri } from '@tauri-apps/api/core'
 import { useI18n } from 'vue-i18n'
 import { categoryHint, categoryLabel, formatBpm, formatDuration, kindLabel, sourceHint } from '@/format'
 import Hint from '@/components/Hint.vue'
@@ -25,6 +26,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { openEditor } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
+import { useSettingsStore } from '@/stores/settings'
 
 const ROW_HEIGHT = 36
 
@@ -32,6 +34,7 @@ const { t } = useI18n()
 const { tagStyle } = useTagColors()
 const library = useLibraryStore()
 const player = usePlayerStore()
+const settings = useSettingsStore()
 const stems = useStemsStore()
 const stemProgress = computed(() => activeStemProgress(stems.progress))
 const apollo = useApolloStore()
@@ -78,7 +81,7 @@ const empty = computed(() => {
 // Esc leaves the similar view once nothing is playing (the first Esc stops playback).
 // Capture phase: checked before the app-wide Esc handler stops the player.
 useEventListener(window, 'keydown', (e: KeyboardEvent) => {
-  if (e.key !== 'Escape' || !similarTo.value || player.playingId !== null)
+  if (settings.dialogOpen || e.key !== 'Escape' || !similarTo.value || player.playingId !== null)
     return
   if (e.target instanceof Element && e.target.closest('[role="menu"], [role="dialog"], [role="alertdialog"], input'))
     return
@@ -87,7 +90,7 @@ useEventListener(window, 'keydown', (e: KeyboardEvent) => {
 
 // S: find samples that sound like the focused one (Esc or × to go back).
 onKeyStroke(['s', 'ы'], (e) => {
-  if (e.metaKey || e.ctrlKey || e.altKey || (e.target instanceof Element && e.target.closest('input, [role="menu"], [role="dialog"]')))
+  if (settings.dialogOpen || e.metaKey || e.ctrlKey || e.altKey || (e.target instanceof Element && e.target.closest('input, [role="menu"], [role="dialog"]')))
     return
   const s = library.focused
   if (s) {
@@ -167,6 +170,8 @@ function onDoubleClick(index: number) {
     openEditor(s)
 }
 
+const nativeMenus = isTauri()
+const sampleMenu = ref<InstanceType<typeof SampleContextMenu> | null>(null)
 const menuOpen = ref(false)
 const menuSample = ref<Sample | null>(null)
 
@@ -174,7 +179,7 @@ useEventListener(window, 'blur', () => (menuOpen.value = false))
 
 // One menu for the whole list: find the row under the cursor and skip
 // the menu entirely on empty space and placeholder rows.
-function onContextMenu(e: MouseEvent) {
+async function onContextMenu(e: MouseEvent) {
   const row = (e.target as HTMLElement).closest<HTMLElement>('[data-index]')
   const index = row ? Number(row.dataset.index) : -1
   const sample = index >= 0 ? library.sampleAt(index) : undefined
@@ -185,6 +190,12 @@ function onContextMenu(e: MouseEvent) {
   menuSample.value = sample
   if (!selectedIds.value.has(sample.id))
     library.clickRow(index)
+  if (nativeMenus) {
+    e.preventDefault()
+    const position = { x: e.clientX, y: e.clientY }
+    await nextTick()
+    await sampleMenu.value?.openNative(position)
+  }
 }
 
 function onDragStart(e: DragEvent, sample: Sample) {
@@ -232,7 +243,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
         </div>
 
         <ContextMenu v-model:open="menuOpen">
-          <ContextMenuTrigger as-child>
+          <ContextMenuTrigger as-child :disabled="nativeMenus">
             <div ref="scroller" class="flex-1 min-h-0 overflow-y-auto outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" tabindex="0" :aria-label="t('sidebar.allSamples')" @contextmenu="onContextMenu">
               <Empty v-if="total === 0" class="h-full">
                 <EmptyHeader>
@@ -353,7 +364,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
               </div>
             </div>
           </ContextMenuTrigger>
-          <SampleContextMenu v-if="menuSample" :sample="menuSample" @close="menuOpen = false" />
+          <SampleContextMenu v-if="menuSample" ref="sampleMenu" :native="nativeMenus" :sample="menuSample" @close="menuOpen = false" />
         </ContextMenu>
         <div v-if="total > 0" class="column-guides pointer-events-none absolute inset-0 grid px-3" aria-hidden="true">
           <span />

@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { tagColorStyle } from '@/tag-colors'
+import SettingsNavigation from '@/components/SettingsNavigation.vue'
 import TagColorPicker from '@/components/TagColorPicker.vue'
 import type { Scope } from '@/stores/library'
-import { ChevronRight, FolderOpen, FolderPlus, Pencil, Plus, RefreshCw, Settings, Trash2, X } from '@lucide/vue'
+import { ChevronRight, FolderOpen, Pencil, Plus, RefreshCw, Settings, Trash2, X } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { storeToRefs } from 'pinia'
 import { useStorage } from '@vueuse/core'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { isTauri } from '@tauri-apps/api/core'
+import { LogicalPosition } from '@tauri-apps/api/dpi'
+import { Menu, type MenuItemOptions } from '@tauri-apps/api/menu'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import Hint from '@/components/Hint.vue'
@@ -74,6 +78,7 @@ async function toggleSource(id: number) {
 }
 
 function isActive(s: Scope) {
+  if (settings.dialogOpen) return false
   const cur = scope.value
   if (s.kind === 'source')
     return cur.kind === 'source' && cur.id === s.id && cur.path === s.path
@@ -202,7 +207,7 @@ const menuItem = computed(() => {
   return undefined
 })
 
-function onContextMenu(e: MouseEvent) {
+async function onContextMenu(e: MouseEvent) {
   const row = (e.target as HTMLElement).closest<HTMLElement>('[data-menu]')
   const [kind, id] = row?.dataset.menu?.split(':') ?? []
   if (!kind || editing.value) {
@@ -211,6 +216,55 @@ function onContextMenu(e: MouseEvent) {
   }
   menuTarget.value = { kind: kind as 'source' | Editable, id: Number(id) }
   menuDirectory.value = row?.dataset.directoryPath ?? null
+  if (nativeMenus) {
+    e.preventDefault()
+    await openNativeMenu({ x: e.clientX, y: e.clientY })
+  }
+}
+
+const nativeMenus = isTauri()
+let nativeMenu: Menu | null = null
+onBeforeUnmount(() => { void nativeMenu?.close().catch(error => console.error('menu cleanup failed', error)) })
+
+async function openNativeMenu(position: { x: number, y: number }) {
+  const target = menuTarget.value
+  const source = menuSource.value
+  const entry = menuItem.value
+  const directory = menuDirectory.value
+  const item = (text: string, action: () => unknown): MenuItemOptions => ({
+    text,
+    // Let the system menu dismiss before showing a dialog or focusing an input.
+    action: () => { setTimeout(() => { Promise.resolve().then(action).catch(error => toast.error(String(error))) }, 0) },
+  })
+  if (!target) return
+  const items = source
+    ? [
+        item(t('sidebar.rescan'), () => library.rescanSource(source.id)),
+        item(t('common.actions.showInFinder'), () => revealItemInDir(directory ?? source.path)),
+        ...(!directory ? [
+          { item: 'Separator' as const },
+          item(t('sidebar.removeFromLibrary'), () => confirmRemoveSource(source.id)),
+        ] : []),
+      ]
+    : entry && target.kind !== 'source'
+      ? [
+          item(t('common.actions.rename'), () => startRename(target.kind as Editable, entry.id, entry.name)),
+          { item: 'Separator' as const },
+          item(t(target.kind === 'tag' ? 'sidebar.deleteTag' : 'sidebar.deleteCollection'), () => target.kind === 'tag' ? confirmDeleteTag(entry.id) : confirmDeleteCollection(entry.id)),
+        ]
+      : []
+  if (!items.length) return
+  try {
+    await nativeMenu?.close()
+    nativeMenu = null
+    nativeMenu = await Menu.new({ items })
+    await nativeMenu.popup(new LogicalPosition(position.x, position.y))
+  }
+  catch (error) {
+    await nativeMenu?.close().catch(() => {})
+    nativeMenu = null
+    toast.error(String(error))
+  }
 }
 
 // Renaming focuses an input, so it waits until the menu has given focus back.
@@ -296,27 +350,18 @@ async function confirmDeleteTag(id: number) {
 <template>
   <aside class="h-full min-h-0 flex flex-col overflow-hidden bg-card">
     <!-- Left part of this bar sits under the macOS traffic lights (overlay title bar). -->
-    <div class="h-11 shrink-0 px-3 flex items-center justify-end gap-0.5" data-tauri-drag-region>
-      <Hint :text="t('sidebar.addFolders')">
-        <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('sidebar.addFolders')" @click="library.addSources()">
-          <FolderPlus />
-        </Button>
-      </Hint>
-      <Hint :text="t('sidebar.settings')" shortcut="⌘,">
-        <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('sidebar.settings')" @click="settings.openDialog()">
-          <Settings />
-        </Button>
-      </Hint>
-    </div>
+    <div class="h-11 shrink-0" data-tauri-drag-region />
 
+    <SettingsNavigation v-if="settings.dialogOpen" show-back class="flex-1" />
+    <div v-show="!settings.dialogOpen" class="min-h-0 flex-1 flex flex-col">
     <ContextMenu>
-      <ContextMenuTrigger as-child>
+      <ContextMenuTrigger as-child :disabled="nativeMenus">
         <nav class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2 flex flex-col gap-px [&>*]:shrink-0" @contextmenu="onContextMenu">
-          <button class="row" :class="{ active: isActive({ kind: 'all' }) }" @click="scope = { kind: 'all' }">
+          <button class="row" :class="{ active: isActive({ kind: 'all' }) }" @click="settings.dialogOpen = false; scope = { kind: 'all' }">
             <span class="i-lucide-library shrink-0" />
             <span class="flex-1 truncate">{{ t('sidebar.allSamples') }}</span>
           </button>
-          <button class="row" :class="{ active: isActive({ kind: 'favorites' }) }" @click="scope = { kind: 'favorites' }">
+          <button class="row" :class="{ active: isActive({ kind: 'favorites' }) }" @click="settings.dialogOpen = false; scope = { kind: 'favorites' }">
             <span class="i-lucide-star shrink-0" />
             <span class="flex-1 truncate">{{ t('sidebar.favorites') }}</span>
           </button>
@@ -325,25 +370,30 @@ async function confirmDeleteTag(id: number) {
             v-if="duplicates.count || isActive({ kind: 'duplicates' })"
             class="row"
             :class="{ active: isActive({ kind: 'duplicates' }) }"
-            @click="scope = { kind: 'duplicates' }"
+            @click="settings.dialogOpen = false; scope = { kind: 'duplicates' }"
           >
             <span class="i-lucide-copy shrink-0" />
             <span class="flex-1 truncate">{{ t('sidebar.duplicates') }}</span>
             <span class="text-[11px] text-muted-foreground tabular">{{ formatNumber(duplicates.count) }}</span>
           </button>
 
-          <h3 class="section">
+          <h3 class="section flex items-center justify-between">
             <button type="button" class="section-toggle" :aria-expanded="sections.folders" @click="sections.folders = !sections.folders">
               <ChevronRight class="size-3 shrink-0 transition-transform" :class="{ 'rotate-90': sections.folders }" />
               {{ t('sidebar.folders') }}
             </button>
+            <Hint :text="t('sidebar.addFolders')">
+              <Button variant="ghost" size="icon-xs" class="text-muted-foreground -my-1" :aria-label="t('sidebar.addFolders')" @click="library.addSources()">
+                <Plus />
+              </Button>
+            </Hint>
           </h3>
           <template v-if="sections.folders">
             <template v-for="s in sources" :key="s.id">
               <div
                 class="row group" :class="{ active: isActive({ kind: 'source', id: s.id }) }"
                 :data-menu="`source:${s.id}`"
-                @click="scope = { kind: 'source', id: s.id }"
+                @click="settings.dialogOpen = false; scope = { kind: 'source', id: s.id }"
               >
                 <button
                   v-if="!library.sourceFolders.has(s.id) || library.sourceFolders.get(s.id)?.length"
@@ -360,7 +410,7 @@ async function confirmDeleteTag(id: number) {
                   <button
                     class="min-w-0 flex-1 truncate rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     :aria-current="isActive({ kind: 'source', id: s.id }) ? 'page' : undefined"
-                    @click.stop="scope = { kind: 'source', id: s.id }"
+                    @click.stop="settings.dialogOpen = false; scope = { kind: 'source', id: s.id }"
                   >
                     {{ folderName(s.path) }}
                   </button>
@@ -408,7 +458,7 @@ async function confirmDeleteTag(id: number) {
               v-for="c in collections" :key="c.id"
               class="row group" :class="{ active: isActive({ kind: 'collection', id: c.id }) }"
               :data-menu="`collection:${c.id}`"
-              @click="scope = { kind: 'collection', id: c.id }"
+              @click="settings.dialogOpen = false; scope = { kind: 'collection', id: c.id }"
               @dblclick="startRename('collection', c.id, c.name)"
             >
               <span class="i-lucide-layers shrink-0" />
@@ -472,7 +522,7 @@ async function confirmDeleteTag(id: number) {
               v-for="tag in tags" :key="tag.id"
               class="row group" :class="{ active: isActive({ kind: 'tag', id: tag.id }) }"
               :data-menu="`tag:${tag.id}`"
-              @click="scope = { kind: 'tag', id: tag.id }"
+              @click="settings.dialogOpen = false; scope = { kind: 'tag', id: tag.id }"
               @dblclick="startRename('tag', tag.id, tag.name)"
             >
               <TagColorPicker :tag="tag" />
@@ -517,7 +567,7 @@ async function confirmDeleteTag(id: number) {
           </template>
         </nav>
       </ContextMenuTrigger>
-      <ContextMenuContent class="w-52" @close-auto-focus="onCloseAutoFocus">
+      <ContextMenuContent v-if="!nativeMenus" class="w-52" @close-auto-focus="onCloseAutoFocus">
         <template v-if="menuSource">
           <ContextMenuItem @select="library.rescanSource(menuSource.id)">
             <RefreshCw />
@@ -546,6 +596,14 @@ async function confirmDeleteTag(id: number) {
         </template>
       </ContextMenuContent>
     </ContextMenu>
+    </div>
+
+    <footer v-if="!settings.dialogOpen" class="shrink-0 border-t border-border px-2 pt-1 pb-3">
+      <button type="button" class="row w-full" :class="{ active: settings.dialogOpen }" :aria-current="settings.dialogOpen ? 'page' : undefined" @click="settings.openDialog()">
+        <Settings class="size-4 shrink-0" />
+        <span>{{ t('sidebar.settings') }}</span>
+      </button>
+    </footer>
   </aside>
 </template>
 
