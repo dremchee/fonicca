@@ -432,16 +432,14 @@ fn import_files(db_path: &Path, paths: &[PathBuf]) -> Result<(i64, Vec<i64>)> {
         }
     };
     crate::scan::scan_source(db_path, source_id, |_| {});
-    let mut conn = crate::db::open(db_path)?;
+    let conn = crate::db::open(db_path)?;
     let mut ids = Vec::new();
-    for (name, path) in dsp::NAMES.iter().zip(paths) {
+    for path in paths {
         let id = conn.query_row(
             "SELECT id FROM samples WHERE path=?1",
             [path.to_string_lossy().as_ref()],
             |r| r.get(0),
         )?;
-        let tag = crate::library::ensure_tag(&conn, &format!("stem:{name}"))?;
-        crate::library::tag_samples(&mut conn, &[id], tag.id)?;
         ids.push(id);
     }
     Ok((source_id, ids))
@@ -669,7 +667,7 @@ mod tests {
 mod import_tests {
     use super::*;
     #[test]
-    fn generated_stems_are_imported_and_tagged_without_duplicate_sources() {
+    fn generated_stems_keep_grouping_without_automatic_tags_or_duplicate_sources() {
         let dir = tempfile::tempdir().unwrap();
         let db_path = dir.path().join("library.db");
         let mut conn = crate::db::open(&db_path).unwrap();
@@ -712,9 +710,21 @@ mod import_tests {
                 .unwrap(),
             1
         );
-        for (id, name) in ids.into_iter().zip(dsp::NAMES) {
-            let tag:String=conn.query_row("SELECT t.name FROM tags t JOIN sample_tags st ON t.id=st.tag_id WHERE st.sample_id=?1",[id],|r|r.get(0)).unwrap();
-            assert_eq!(tag, format!("stem:{name}"));
-        }
+        assert_eq!(conn.query_row("SELECT COUNT(*) FROM tags", [], |r| r.get::<_, i64>(0)).unwrap(), 0);
+        assert_eq!(conn.query_row("SELECT COUNT(*) FROM sample_tags", [], |r| r.get::<_, i64>(0)).unwrap(), 0);
+
+        // Re-importing must preserve tags the user assigned themselves.
+        let tag = crate::library::ensure_tag(&conn, "My project").unwrap();
+        let mut conn = conn;
+        crate::library::tag_samples(&mut conn, &[ids[0]], tag.id).unwrap();
+        drop(conn);
+        import_files(&db_path, &paths).unwrap();
+        let conn = crate::db::open(&db_path).unwrap();
+        let saved: String = conn.query_row(
+            "SELECT t.name FROM tags t JOIN sample_tags st ON t.id=st.tag_id WHERE st.sample_id=?1",
+            [ids[0]], |r| r.get(0),
+        ).unwrap();
+        assert_eq!(saved, "My project");
+        assert_eq!(conn.query_row("SELECT COUNT(*) FROM tags", [], |r| r.get::<_, i64>(0)).unwrap(), 1);
     }
 }
