@@ -1,4 +1,5 @@
 import type en from '../en'
+import updates from './updates'
 import common from './common'
 import settings from './settings'
 import sidebar from './sidebar'
@@ -18,6 +19,7 @@ import apollo from './apollo'
 import basicPitch from './basicPitch'
 
 export default {
+  updates,
   common,
   settings,
   sidebar,

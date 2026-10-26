@@ -301,6 +301,8 @@ fn items(conn: &rusqlite::Connection, ids: &[i64]) -> Result<Vec<Item>> {
 static CANCEL: AtomicBool = AtomicBool::new(false);
 static RUNNING: AtomicBool = AtomicBool::new(false);
 
+pub fn is_running() -> bool { RUNNING.load(Ordering::SeqCst) }
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Progress {

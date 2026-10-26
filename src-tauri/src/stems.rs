@@ -75,6 +75,8 @@ pub struct Jobs {
     status: Mutex<Progress>,
 }
 impl Jobs {
+    pub fn is_running(&self) -> bool { self.running.load(Ordering::SeqCst) }
+
     pub fn downloading(&self, model: Model) -> bool {
         let status = self.status.lock().unwrap();
         status.running && status.stage == "downloading" && status.model == model

@@ -29,6 +29,7 @@ import { openEditor } from '@/stores/editor'
 import { openTrackInfo } from '@/composables/trackInfo'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
+import { useUpdatesStore } from '@/stores/updates'
 import { useSettingsStore } from '@/stores/settings'
 
 const { locale } = useI18n()
@@ -48,7 +49,10 @@ const shownSample = computed(() => {
 const toolbar = useTemplateRef<InstanceType<typeof LibraryToolbar>>('toolbar')
 const search = computed(() => toolbar.value?.searchElement)
 
-onMounted(() => Promise.all([settings.init(), library.init(), duplicates.init(), useStemsStore().init(), useApolloStore().init(), useBasicPitchStore().init()]))
+onMounted(async () => {
+  await Promise.all([settings.init(), library.init(), duplicates.init(), useStemsStore().init(), useApolloStore().init(), useBasicPitchStore().init()])
+  void useUpdatesStore().init()
+})
 
 // The native menu is rebuilt whenever the language changes.
 watch(locale, () => installAppMenu(() => settings.openDialog()).catch(console.error), { immediate: true })

@@ -6,7 +6,7 @@ The `Desktop builds` GitHub Actions workflow produces installers on each platfor
 | --- | --- | --- | --- |
 | macOS 13.4+ | Apple Silicon (ARM64) | `macos-15` | `.dmg` |
 | Windows | x64 | `windows-2022` | NSIS `.exe`, WiX `.msi` |
-| Linux | x64 | `ubuntu-22.04` | `.deb`, `.AppImage` |
+| Linux (Ubuntu 24.04+) | x64 | `ubuntu-24.04` | `.deb`, `.AppImage` |
 
 ## Run and download
 
@@ -24,9 +24,11 @@ or updates a **draft GitHub Release** once all three platform builds succeed. Th
 draft contains the five installer formats, a `SHA256SUMS.txt` checksum file, and
 automatically generated release notes. Publish it manually after checking it.
 
-These builds are not distribution-signed or notarized. No custom repository
-secrets are required: only the release job receives `contents: write` via the
-built-in `GITHUB_TOKEN`.
+These builds are not distribution-signed or notarized. Branch and pull-request
+builds need no signing secrets. Release tags require `TAURI_SIGNING_PRIVATE_KEY`
+to produce signed updater packages. The release job receives `contents: write`
+via the built-in `GITHUB_TOKEN` to publish a draft in this repository.
+Updater signatures are separate from Apple notarization and Windows code signing.
 
 ## Release by tag
 
@@ -84,6 +86,15 @@ and links ONNX Runtime statically. Its prebuilt distribution does **not** includ
 and are intentionally absent from the matrix. The supported runtime requires
 macOS 13.4 or later, reflected in `tauri.conf.json`.
 
+## Linux runtime baseline
+
+The prebuilt ONNX Runtime archive references the `__isoc23_*` conversion functions
+introduced in glibc 2.38. Ubuntu 22.04 ships glibc 2.35 and cannot link that archive.
+Linux installers are therefore built on Ubuntu 24.04 (glibc 2.39), with the matching
+`libfuse2t64` package. The Rust cache key includes the runner image to avoid reusing
+native build outputs from the older image. The resulting Linux build targets
+Ubuntu 24.04 or compatible newer systems; AppImage does not bundle glibc.
+
 ## Local equivalent
 
 ```sh
@@ -98,3 +109,80 @@ installers. The three hosted jobs provide that verification.
 
 References: [Tauri GitHub Actions guide](https://v2.tauri.app/distribute/pipelines/github/),
 [ort release notes](https://github.com/pykeio/ort/releases/tag/v2.0.0-rc.11).
+
+
+## Automatic updates
+
+The public `dremchee/fonicca` repository hosts both source code and releases.
+Production builds check this feed at startup and from **Settings → About → Updates**:
+
+`https://github.com/dremchee/fonicca/releases/latest/download/latest.json`
+
+Downloads show progress and are verified with the public signing key bundled in
+the app. Installation requires confirmation and rechecks native state: all editor
+windows must be saved and closed, and processing, model operations and duplicate
+verification must finish. Windows exits to run its installer; macOS and AppImage
+restart after installation. Development builds do not check for updates. Debian
+packages are updated through the package manager.
+
+### One-time signing setup
+
+1. In the repository’s **Settings → Secrets and variables → Actions → Secrets**,
+   add `TAURI_SIGNING_PRIVATE_KEY` using the full contents of the local signing
+   key. On the machine where this integration was prepared, the key is
+   `~/.tauri/fonicca-updater.key`, outside the checkout. Its public sibling
+   `.key.pub` matches `plugins.updater.pubkey` in `src-tauri/tauri.conf.json`.
+   The key currently has an empty password. If using a password-protected key,
+   also set `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+2. Keep a secure backup: future updates must be signed by the key trusted by
+   installed versions. Never commit it or paste it into a release or issue.
+
+   With an authenticated GitHub CLI, upload it without printing it:
+
+   ```sh
+   gh secret set TAURI_SIGNING_PRIVATE_KEY --repo dremchee/fonicca < ~/.tauri/fonicca-updater.key
+   ```
+
+3. Bump the version, commit and push the matching `v*` tag as described above.
+   CI signs updater packages, verifies the required artifacts and writes
+   `latest.json`. The draft is created in this repository using `GITHUB_TOKEN`;
+   no personal access token or `UPDATE_REPOSITORY` variable is required.
+4. Review the release notes and publish the draft. Draft assets are not available
+   to ordinary users. Only published stable releases enter the stable update
+   channel; prereleases do not.
+
+### Optional separate downloads repository
+
+If source code is made private in the future, initialize a public binary-only
+repository and set the Actions variable `UPDATE_REPOSITORY` to `owner/repository`.
+For a different repository, CI additionally requires a `RELEASE_TOKEN` secret:
+use a fine-grained token with **Contents: Read and write**, scoped only to that
+public downloads repository. The built-in token cannot publish across repositories.
+Using the current repository as the variable value still uses `GITHUB_TOKEN`.
+The release build generates its feed URL from this variable; tokens are never
+embedded in the application. A changed feed requires users to install a version
+that knows the new address before the old feed is removed.
+
+Signed releases include the usual five installer formats plus the macOS
+`.app.tar.gz` updater archive and `.sig` files. The feed maps `darwin-aarch64` to
+the macOS archive, `windows-x86_64` to NSIS, and `linux-x86_64` to AppImage.
+Checksums cover installers, update archives, signatures and the manifest.
+
+**The first version with an enabled feed must be installed manually.** Older
+versions without the updater or with updates disabled cannot discover it. From
+that version onward, publishing a higher version makes it available on the next
+app launch or manual check. Users do not need GitHub accounts.
+
+For a local signed build, set `TAURI_SIGNING_PRIVATE_KEY` to the key’s absolute
+path and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` as needed, then provide the same
+configuration overlay as CI:
+
+```sh
+export UPDATE_REPOSITORY=dremchee/fonicca
+export TAURI_SIGNING_PRIVATE_KEY="$HOME/.tauri/fonicca-updater.key"
+export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=''
+pnpm tauri build --ci --config "$(node scripts/updater-config.mjs)" -- --locked
+```
+
+See the [Tauri updater documentation](https://v2.tauri.app/plugin/updater/) for
+platform-specific installation and signing behavior.

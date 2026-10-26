@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SettingsNavigation from '@/components/SettingsNavigation.vue'
+import UpdateSettings from '@/components/UpdateSettings.vue'
 import MeterSettings from '@/components/MeterSettings.vue'
 import type { AppInfo, Theme, WaveformSettings } from '@/api'
 import type { Locale } from '@/i18n'
@@ -495,6 +496,8 @@ function keyLabel(k: string) {
                 </div>
               </div>
             </div>
+
+            <UpdateSettings v-if="embedded" />
 
             <div v-if="info" class="flex flex-col gap-2">
               <h3 class="group-title">

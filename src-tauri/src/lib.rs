@@ -26,6 +26,7 @@ mod similar;
 mod sync;
 mod tags;
 mod watch;
+mod updates;
 
 use std::sync::{Arc, Mutex};
 
@@ -75,6 +76,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_drag::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&dir)?;
@@ -159,6 +162,7 @@ pub fn run() {
             basic_pitch::basic_pitch_status,
             basic_pitch::basic_pitch_start,
             basic_pitch::basic_pitch_cancel,
+            updates::update_status,
             editor_commands::open_editor_window,
             editor_commands::editor_open,
             editor_commands::editor_apply,

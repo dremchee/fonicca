@@ -1,0 +1,16 @@
+export default {
+  unconfigured: 'Updates have not been configured yet.',
+  title: 'Updates', automatic: 'Checks automatically when Fonicca starts.',
+  check: 'Check for updates', checking: 'Checking for updates…', current: 'You’re up to date.',
+  available: 'Fonicca {version} is available.', details: 'View update', download: 'Download',
+  downloading: 'Downloading update…', ready: 'Downloaded and verified. Ready to install.',
+  install: 'Install and restart', installTitle: 'Install update?',
+  installDescription: 'Fonicca will close and restart. Save and close editor windows and wait for processing to finish first.',
+  installing: 'Installing update…', installed: 'Update installed. Restart to finish.', restart: 'Restart',
+  closeEditors: 'Save and close all editor windows before installing the update.',
+  finishJobs: 'Wait for processing, model downloads and duplicate verification to finish.',
+  notes: 'What’s new', failed: 'Could not complete the update. You can try again.',
+  development: 'Update checks are disabled in development builds.',
+  package: 'Install the new .deb through your package manager, or use AppImage for in-app updates.',
+  browser: 'Updates are available in the installed desktop app.',
+}

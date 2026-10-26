@@ -58,6 +58,8 @@ pub struct Jobs {
     status: Mutex<Progress>,
 }
 impl Jobs {
+    pub fn is_running(&self) -> bool { self.running.load(Ordering::SeqCst) }
+
     fn update(&self, stage: &str, progress: f64) {
         let mut s = self.status.lock().unwrap();
         s.stage = stage.into();

@@ -57,8 +57,9 @@ jobs:
             target: x86_64-pc-windows-msvc
             bundles: nsis,msi
             artifact: fonicca-windows-x64
+          # ONNX Runtime uses __isoc23_* symbols from glibc 2.38+.
           - name: Linux · x64
-            runner: ubuntu-22.04
+            runner: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
             bundles: deb,appimage
             artifact: fonicca-linux-x64
@@ -67,6 +68,7 @@ jobs:
         shell: bash
     env:
       CARGO_TERM_COLOR: always
+      UPDATE_REPOSITORY: ${{ vars.UPDATE_REPOSITORY || github.repository }}
       # AppImage tools must also work on runners without a mounted FUSE device.
       APPIMAGE_EXTRACT_AND_RUN: '1'
 
@@ -75,6 +77,21 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Require updater signing credentials
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          if [[ -z "$TAURI_SIGNING_PRIVATE_KEY" ]]; then
+            echo 'Add the TAURI_SIGNING_PRIVATE_KEY repository secret before building a release.' >&2
+            exit 1
+          fi
+          if [[ "$UPDATE_REPOSITORY" != "$GITHUB_REPOSITORY" && -z "$RELEASE_TOKEN" ]]; then
+            echo 'Add RELEASE_TOKEN with Contents write access to the public updates repository.' >&2
+            exit 1
+          fi
+
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: |
@@ -82,7 +99,7 @@ jobs:
           sudo apt-get install --no-install-recommends -y \
             build-essential pkg-config libssl-dev libwebkit2gtk-4.1-dev \
             libayatana-appindicator3-dev librsvg2-dev patchelf \
-            libasound2-dev libudev-dev libfuse2 xdg-utils
+            libasound2-dev libudev-dev libfuse2t64 xdg-utils
 
       - uses: pnpm/action-setup@v6
 
@@ -99,7 +116,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
-          key: ${{ matrix.target }}
+          key: ${{ matrix.runner }}-${{ matrix.target }}
           save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
 
       - name: Install frontend dependencies
@@ -110,7 +127,16 @@ jobs:
 
       # beforeBuildCommand in tauri.conf.json checks types and builds the frontend.
       - name: Build installers
-        run: pnpm tauri build --ci --target '${{ matrix.target }}' --bundles '${{ matrix.bundles }}' -- --locked
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
+          RELEASE_BUILD: ${{ startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          args=()
+          if [[ "$RELEASE_BUILD" == true ]]; then
+            args+=(--config "$(node scripts/updater-config.mjs)")
+          fi
+          pnpm tauri build --ci --target '${{ matrix.target }}' --bundles '${{ matrix.bundles }}' "${args[@]}" -- --locked
 
       - name: Upload installers
         id: upload
@@ -126,6 +152,8 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/msi/*.msi
             src-tauri/target/${{ matrix.target }}/release/bundle/deb/*.deb
             src-tauri/target/${{ matrix.target }}/release/bundle/appimage/*.AppImage
+            src-tauri/target/${{ matrix.target }}/release/bundle/macos/*.app.tar.gz
+            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.sig
 
       - name: Link downloads in the build summary
         env:
@@ -142,45 +170,35 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '26'
+          package-manager-cache: false
       - uses: actions/download-artifact@v8
         with:
           pattern: fonicca-*
           path: installers
           merge-multiple: true
 
-      - name: Verify installers and prepare checksums
-        run: |
-          python3 - <<'PY'
-          import hashlib
-          from pathlib import Path
-          root = Path('installers')
-          formats = {'.dmg', '.exe', '.msi', '.deb', '.AppImage'}
-          files = sorted(path for path in root.rglob('*') if path.is_file() and path.suffix in formats)
-          missing = formats - {path.suffix for path in files}
-          if missing:
-              raise SystemExit(f'Missing installers: {sorted(missing)}')
-          names = [path.name for path in files]
-          if len(names) != len(set(names)) or any('\n' in name or '#' in name for name in names):
-              raise SystemExit('Installer names must be unique and safe for release upload')
-          checksums = root / 'SHA256SUMS.txt'
-          lines = []
-          for path in files:
-              digest = hashlib.sha256()
-              with path.open('rb') as stream:
-                  for chunk in iter(lambda: stream.read(1024 * 1024), b''):
-                      digest.update(chunk)
-              lines.append(f'{digest.hexdigest()}  {path.name}\n')
-          checksums.write_text(''.join(lines))
-          Path('release-assets.txt').write_text(''.join(f'{path}\n' for path in [*files, checksums]))
-          PY
+      - name: Verify artifacts and prepare manifest and checksums
+        env:
+          UPDATES_ENABLED: 'true'
+          GH_REPO: ${{ vars.UPDATE_REPOSITORY || github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_VERSION: ${{ needs.version.outputs.version }}
+        run: node scripts/prepare-release.mjs
 
       - name: Create or update the release draft
         env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ vars.UPDATE_REPOSITORY != '' && vars.UPDATE_REPOSITORY != github.repository && secrets.RELEASE_TOKEN || github.token }}
+          GH_REPO: ${{ vars.UPDATE_REPOSITORY || github.repository }}
           RELEASE_TAG: ${{ github.ref_name }}
           RELEASE_VERSION: ${{ needs.version.outputs.version }}
           PRERELEASE: ${{ needs.version.outputs.prerelease }}
+          CROSS_REPOSITORY: ${{ vars.UPDATE_REPOSITORY != '' && vars.UPDATE_REPOSITORY != github.repository }}
         run: |
           assets=()
           while IFS= read -r path; do assets+=("$path"); done < release-assets.txt
@@ -191,7 +209,10 @@ jobs:
             fi
             gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
           else
-            flags=(--draft --verify-tag --generate-notes --title "Fonicca $RELEASE_VERSION")
+            flags=(--draft --title "Fonicca $RELEASE_VERSION" --notes "Fonicca $RELEASE_VERSION. Download the installer for your platform below.")
+            if [[ "$CROSS_REPOSITORY" != true ]]; then
+              flags+=(--verify-tag --generate-notes)
+            fi
             if [[ "$PRERELEASE" == true ]]; then flags+=(--prerelease); fi
             gh release create "$RELEASE_TAG" "${assets[@]}" "${flags[@]}"
           fi

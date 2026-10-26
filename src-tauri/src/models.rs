@@ -18,6 +18,7 @@ pub struct Operations(std::sync::Arc<std::sync::Mutex<std::collections::HashMap<
 pub enum Operation { Using, Downloading, Deleting }
 pub struct Lease { operations: Operations, id: &'static str }
 impl Operations {
+    pub fn is_busy(&self) -> bool { !self.0.lock().unwrap().is_empty() }
     pub fn acquire(&self, id: &'static str, operation: Operation) -> Result<Lease> {
         let mut active = self.0.lock().unwrap();
         if active.contains_key(id) {

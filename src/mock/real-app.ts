@@ -1,6 +1,7 @@
 // The real App on a fake backend (mockIPC), to click through the UI in a browser.
 import type { DuplicateGroup, HiddenFile, StemModel } from '@/api'
 import { emit } from '@tauri-apps/api/event'
+import { updateCommand } from './updates'
 import { mockIPC } from '@tauri-apps/api/mocks'
 import { groups as fake } from './duplicates-data'
 import { batchCommand } from './batch'
@@ -36,7 +37,10 @@ let clapDownloading = false
 let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], language: 'en', watchFolders: true, autoplay: true, volume: 1, analysisThreads: null, stemsFolder: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme', editorWaveform: { waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' } }
 
 export function install() {
+  Object.assign(window, { isTauri: true })
   mockIPC((cmd, args: any) => {
+    const update = updateCommand(cmd, args)
+    if (update !== undefined) return update
     const midi = basicPitchCommand(cmd, args)
     if (midi !== undefined) return midi
     const restored = apolloCommand(cmd, args, apolloInstalled, () => { apolloInstalled = true })
