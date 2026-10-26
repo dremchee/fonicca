@@ -55,3 +55,34 @@ cargo test --manifest-path src-tauri/Cargo.toml --lib \
 
 The change applies to newly loaded separation sessions. Existing in-flight
 sessions cannot change their worker count.
+
+## Sequential chunks with parallel synthesis
+
+The four independent inverse STFT reconstructions now run through indexed
+Rayon parallel iteration after each inference, for both SCNet variants. The
+next model chunk still waits for all four reconstructions. Model weights,
+precision, source order, segmentation, 75% overlap and crossfades are unchanged.
+At most four reconstructions are submitted per chunk; they can retain more
+FFT scratch/spectrum memory simultaneously, but this remains bounded by one
+chunk rather than track length.
+
+The ignored native test
+`stems::scnet::tests::benchmark_parallel_synthesis_preserves_samples` compares
+four distinct spectra and requires exact sample equality and ordering. Three
+M1 Pro measurements gave 130.9–133.0 ms sequential versus 33.1–34.3 ms with
+four workers. This saves about 0.10 seconds per model window, not 4x on the
+whole separation pipeline; model inference remains the main cost.
+
+On the same 6.803-second Cristina Vane excerpt, native exports before and after
+were byte-identical for all four WAVs. Total elapsed times were 27.10 and
+21.66 seconds, but the synthesis saving explains only a small portion of that
+difference. Background CPU load and run-to-run variation prevent attributing
+that total-time ratio to this change.
+
+CPU-arena and thread-count experiments were also evaluated without changing
+inference inputs. Arena-disabled runs took 23.34–30.27 seconds, arena-enabled
+runs 26.03–54.48 seconds. Eight-worker runs took 29.88–30.63 seconds; subsequent
+six-worker runs took 36.21–42.91 seconds, despite earlier six-worker runs being
+faster. The changing background load makes the thread-count comparison
+inconclusive, so the existing six-performance-core limit and disabled arena
+are retained. All compared model activations were identical in these trials.

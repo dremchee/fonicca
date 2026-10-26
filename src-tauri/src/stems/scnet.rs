@@ -6,6 +6,7 @@ use ort::{
     session::{Session, builder::GraphOptimizationLevel},
     value::Tensor,
 };
+use rayon::prelude::*;
 use realfft::{RealFftPlanner, num_complex::Complex32};
 use std::{path::Path, sync::atomic::AtomicBool};
 const FFT: usize = 4096;
@@ -178,7 +179,9 @@ impl Separator {
                 return Err(failure("invalid SCNet XL IHF model output"));
             }
             return [3usize, 0, 1, 2]
-                .into_iter()
+                // Each stem has independent inverse FFTs; finish all four
+                // before advancing to the next sequential model segment.
+                .into_par_iter()
                 .map(|source| {
                     check(cancel)?;
                     let mut packed = Vec::with_capacity(4 * PLANE);
@@ -208,7 +211,7 @@ impl Separator {
         }
         // Graph: drums, bass, other, vocals. App: vocals, drums, bass, other.
         [3, 0, 1, 2]
-            .into_iter()
+            .into_par_iter()
             .map(|source| {
                 check(cancel)?;
                 reconstruct(
@@ -367,6 +370,49 @@ fn demix(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    #[ignore = "measures sequential vs bounded parallel synthesis; run without concurrent inference/builds"]
+    fn benchmark_parallel_synthesis_preserves_samples() {
+        let pcm = Pcm {
+            samples: (0..SEGMENT * 2)
+                .map(|i| (i as f32 * 0.017).sin() * 0.2)
+                .collect(),
+            channels: 2,
+            sample_rate: RATE,
+        };
+        let spec = analyse(&pcm).unwrap();
+        let spectra: Vec<Vec<f32>> = (0..4)
+            .map(|source| {
+                spec.iter()
+                    .map(|sample| *sample * (source + 1) as f32 / 4.0)
+                    .collect()
+            })
+            .collect();
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(4)
+            .build()
+            .unwrap();
+        for round in 0..3 {
+            let start = std::time::Instant::now();
+            let serial: Vec<_> = spectra
+                .iter()
+                .map(|s| reconstruct(s, SEGMENT).unwrap())
+                .collect();
+            let sequential = start.elapsed();
+            let start = std::time::Instant::now();
+            let parallel: Vec<_> = pool.install(|| {
+                spectra
+                    .par_iter()
+                    .map(|s| reconstruct(s, SEGMENT).unwrap())
+                    .collect()
+            });
+            let concurrent = start.elapsed();
+            assert_eq!(serial, parallel);
+            eprintln!(
+                "synthesis round {round}: sequential={sequential:?}, parallel={concurrent:?}"
+            );
+        }
+    }
     #[test]
     fn rectangular_stft_round_trips_short_mono_and_stereo_without_shift() {
         for (frames, channels) in [(1, 1), (1300, 2), (SEGMENT, 2)] {
