@@ -1,3 +1,5 @@
+import type { SampleSort } from '@/sample-columns'
+import { normalizeSampleSort } from '@/sample-columns'
 import { useTagColors } from '@/composables/tagColors'
 import type { AnalysisProgress, Collection, DownloadProgress, Sample, SampleFilter, SampleKind, ScanProgress, SoundModelStatus, Source, SourceFolder, Tag } from '@/api'
 import { listen } from '@tauri-apps/api/event'
@@ -47,6 +49,8 @@ export const useLibraryStore = defineStore('library', () => {
   let selectionRevision = 0
   const scope = ref<Scope>({ kind: 'all' })
   const query = ref('')
+  const sortPreference = useStorage<SampleSort>('fonicca-sample-sort-v1', { by: 'name', direction: 'asc' })
+  const sort = computed(() => normalizeSampleSort(sortPreference.value))
   const kindFilter = ref<SampleKind | null>(null)
   const bpmMin = ref<number | null>(null)
   const bpmMax = ref<number | null>(null)
@@ -80,6 +84,8 @@ export const useLibraryStore = defineStore('library', () => {
   const filter = computed<SampleFilter>(() => {
     const s = scope.value
     return {
+      sortBy: sort.value.by,
+      sortDirection: sort.value.direction,
       groupStems: s.kind !== 'similar',
       expandedStems: [...expandedStems],
       query: query.value,
@@ -179,8 +185,39 @@ export const useLibraryStore = defineStore('library', () => {
   watch(filter, (next, previous) => {
     // Expansion reloads below while preserving selection and keyboard focus.
     if (JSON.stringify({ ...next, expandedStems: [] }) === JSON.stringify({ ...previous, expandedStems: [] })) return
+    const withoutSort = (f: SampleFilter) => JSON.stringify({ ...f, sortBy: null, sortDirection: null })
+    if (!restoringSession && withoutSort(next) === withoutSort(previous)) {
+      void refreshSorted()
+      return
+    }
     if (!restoringSession) refresh()
   }, { flush: 'sync' })
+
+  function setSort(by: SampleSort['by']) {
+    if (scope.value.kind === 'similar') return
+    sortPreference.value = { by, direction: sort.value.by === by && sort.value.direction === 'asc' ? 'desc' : 'asc' }
+  }
+
+  async function refreshSorted() {
+    const id = focused.value?.id
+    const revision = navigationRevision
+    try {
+      await refresh({ keepSelection: true })
+      if (revision !== navigationRevision) return
+      const gen = generation
+      const ids = id == null ? [] : await api.sampleIds(filter.value)
+      if (revision !== navigationRevision || gen !== generation) return
+      focusIndex.value = id == null ? -1 : ids.indexOf(id)
+      anchorIndex.value = focusIndex.value
+      if (focusIndex.value >= 0) {
+        await ensureRange(focusIndex.value, focusIndex.value)
+        if (revision !== navigationRevision || gen !== generation) return
+        const sample = sampleAt(focusIndex.value)
+        if (sample) rememberSelection(sample, focusIndex.value)
+      }
+    }
+    catch (e) { toast.error(String(e)) }
+  }
 
   let expanding = false
   async function toggleStems(sample: Sample, index: number) {
@@ -716,6 +753,8 @@ export const useLibraryStore = defineStore('library', () => {
     selectedIds,
     tagInputRequest,
     requestTagInput,
+    sort,
+    setSort,
     sampleAt,
     ensureRange,
     refresh,

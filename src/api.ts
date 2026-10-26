@@ -235,6 +235,8 @@ export interface ScanProgress {
 }
 
 export interface SampleFilter {
+  sortBy?: 'name' | 'tags' | 'category' | 'kind' | 'bpm' | 'key' | 'length' | 'type'
+  sortDirection?: 'asc' | 'desc'
   groupStems?: boolean
   expandedStems?: number[]
   query?: string

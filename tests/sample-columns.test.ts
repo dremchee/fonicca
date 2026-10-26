@@ -49,3 +49,26 @@ test('oversized metadata columns shrink to their limits before horizontal scroll
   assert.equal(tiny.minWidth, '440px')
   assert.equal(tiny['--sample-columns'], '16px 160px 64px 44px 44px minmax(28px, 1fr)')
 })
+
+test('saved sort preferences accept known columns and fall back safely', async () => {
+  const { normalizeSampleSort } = await import('../src/sample-columns.ts')
+  assert.deepEqual(normalizeSampleSort({ by: 'bpm', direction: 'desc' }), { by: 'bpm', direction: 'desc' })
+  assert.deepEqual(normalizeSampleSort({ by: 'missing', direction: 'invalid' }), { by: 'name', direction: 'asc' })
+  assert.deepEqual(normalizeSampleSort(null), { by: 'name', direction: 'asc' })
+})
+
+test('directory labels exclude the filename on POSIX and Windows paths', async () => {
+  const { sampleDirectory } = await import('../src/sample-columns.ts')
+  assert.equal(sampleDirectory('/Library/Drums/Kick.wav'), '/Library/Drums')
+  assert.equal(sampleDirectory('/Kick.wav'), '/')
+  assert.equal(sampleDirectory(String.raw`C:\Samples\Kick.wav`), String.raw`C:\Samples`)
+  assert.equal(sampleDirectory('Kick.wav'), '')
+})
+
+test('directory column shows paths relative to the imported folder', async () => {
+  const { relativeSampleDirectory } = await import('../src/sample-columns.ts')
+  assert.equal(relativeSampleDirectory('/Music/VK/1970-е/Track.mp3', '/Music/VK'), '1970-е')
+  assert.equal(relativeSampleDirectory('/Music/VK/Track.mp3', '/Music/VK/'), 'VK')
+  assert.equal(relativeSampleDirectory('/Music/VK2/Albums/Track.mp3', '/Music/VK'), 'Albums')
+  assert.equal(relativeSampleDirectory(String.raw`C:\Samples\Drums\Kick.wav`, String.raw`C:\Samples`), 'Drums')
+})

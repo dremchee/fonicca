@@ -275,6 +275,7 @@ pub fn prune_detached(conn: &Connection) -> Result<()> {
 
 pub fn open(path: &Path) -> Result<Connection> {
     let conn = Connection::open(path)?;
+    conn.create_collation("FONICCA_NATURAL", crate::natural_sort::compare)?;
     conn.execute_batch(
         "PRAGMA journal_mode = WAL;
          PRAGMA synchronous = NORMAL;
@@ -285,6 +286,7 @@ pub fn open(path: &Path) -> Result<Connection> {
 }
 
 pub fn migrate(conn: &mut Connection) -> Result<()> {
+    conn.create_collation("FONICCA_NATURAL", crate::natural_sort::compare)?;
     let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
     for (i, sql) in MIGRATIONS.iter().enumerate().skip(version as usize) {
         let tx = conn.transaction()?;

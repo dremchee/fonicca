@@ -1,12 +1,13 @@
 import type { ComputedRef, Ref } from 'vue'
-import type { ResizableSampleColumnId, SampleColumnWidths, SAMPLE_COLUMNS } from '@/sample-columns'
-import { useElementSize, useStorage } from '@vueuse/core'
+import type { ResizableSampleColumnId, SAMPLE_COLUMNS } from '@/sample-columns'
+import { useElementSize } from '@vueuse/core'
+import { useSampleColumns } from '@/composables/sampleColumns'
 import { computed, shallowRef } from 'vue'
 import { boundedSampleColumnWidth, sampleTableLayout } from '@/sample-columns'
 
 export function useSampleColumnWidths(columns: ComputedRef<readonly typeof SAMPLE_COLUMNS[number][]>, viewport: Ref<HTMLElement | null>) {
   const { width: viewportWidth } = useElementSize(viewport)
-  const saved = useStorage<SampleColumnWidths>('fonicca-list-column-widths-v1', {})
+  const { widths: saved } = useSampleColumns()
   const draft = shallowRef<{ id: ResizableSampleColumnId, width: number } | null>(null)
   const tableStyle = computed(() => sampleTableLayout(columns.value, draft.value
     ? { ...saved.value, [draft.value.id]: draft.value.width }

@@ -6,6 +6,8 @@ import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Hint from '@/components/Hint.vue'
+import SampleColumnsMenu from '@/components/SampleColumnsMenu.vue'
+import { useSampleColumns } from '@/composables/sampleColumns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -27,6 +29,7 @@ import { useLibraryStore } from '@/stores/library'
 
 const { t } = useI18n()
 const library = useLibraryStore()
+const { visibility: columnVisibility, resetWidths } = useSampleColumns()
 const { kindFilter, bpmMin, bpmMax, keyFilter, categoryFilter, hasAnalysisFilters, analysis, soundModel, modelDownload } = storeToRefs(library)
 
 const kinds: SampleKind[] = ['oneshot', 'loop', 'long']
@@ -241,6 +244,7 @@ function parseBpm(e: Event): number | null {
           </Button>
         </Hint>
       </template>
+      <SampleColumnsMenu v-model="columnVisibility" @reset-widths="resetWidths" />
     </div>
   </div>
 </template>

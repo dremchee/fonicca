@@ -15,6 +15,7 @@ mod error;
 mod library;
 mod meter;
 mod models;
+mod natural_sort;
 mod overview;
 mod player;
 mod scan;

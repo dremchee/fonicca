@@ -1,4 +1,5 @@
 export const SAMPLE_COLUMNS = [
+  { id: 'directory', width: 180, defaultVisible: false },
   { id: 'tags', width: 120, defaultVisible: false },
   { id: 'category', width: 96, defaultVisible: true },
   { id: 'kind', width: 64, defaultVisible: false },
@@ -19,7 +20,7 @@ export type ResizableSampleColumnId = 'name' | SampleColumnId
 export type SampleColumnWidths = Partial<Record<ResizableSampleColumnId, number>>
 
 export function sampleColumnLimits(id: ResizableSampleColumnId) {
-  return id === 'name' ? { min: 160, max: 2400 } : { min: id === 'tags' || id === 'category' ? 64 : 44, max: 800 }
+  return id === 'name' ? { min: 160, max: 2400 } : { min: id === 'directory' || id === 'tags' || id === 'category' ? 64 : 44, max: 800 }
 }
 
 export function boundedSampleColumnWidth(id: ResizableSampleColumnId, width: number): number {
@@ -53,4 +54,32 @@ export function sampleTableLayout(columns: readonly typeof SAMPLE_COLUMNS[number
     '--sample-columns': `16px ${fixedName ? `${nameWidth}px` : `minmax(${nameWidth}px, 1fr)`} ${sizes.map(w => `${w}px`).join(' ')} ${fixedName ? 'minmax(28px, 1fr)' : '28px'}`,
     minWidth: `${overhead + nameWidth + sizes.reduce((sum, width) => sum + width, 0)}px`,
   }
+}
+
+export interface SampleSort {
+  by: Exclude<ResizableSampleColumnId, 'directory'>
+  direction: 'asc' | 'desc'
+}
+
+export function normalizeSampleSort(value: unknown): SampleSort {
+  const sort = value && typeof value === 'object' ? value as Partial<SampleSort> : {}
+  return {
+    by: sort.by === 'name' || SAMPLE_COLUMNS.some(column => column.id !== 'directory' && column.id === sort.by) ? sort.by! : 'name',
+    direction: sort.direction === 'desc' ? 'desc' : 'asc',
+  }
+}
+
+export function sampleDirectory(path: string): string {
+  const index = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'))
+  return index < 0 ? '' : path.slice(0, index) || path.slice(0, 1)
+}
+
+export function relativeSampleDirectory(path: string, sourceRoot?: string): string {
+  const directory = sampleDirectory(path)
+  const root = sourceRoot?.replace(/[\\/]+$/, '')
+  if (root && directory === root)
+    return root.split(/[\\/]/).pop() ?? root
+  if (root && (directory.startsWith(`${root}/`) || directory.startsWith(`${root}\\`)))
+    return directory.slice(root.length + 1)
+  return directory.split(/[\\/]/).filter(Boolean).pop() ?? directory
 }

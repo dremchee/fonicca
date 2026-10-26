@@ -3,7 +3,7 @@ import { useTagColors } from '@/composables/tagColors'
 import type { Sample } from '@/api'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { AudioLines, ChevronRight, FolderPlus, Layers, SearchX, Sparkles, Star, Tag, X } from '@lucide/vue'
-import { onKeyStroke, useEventListener, useStorage } from '@vueuse/core'
+import { onKeyStroke, useEventListener } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -15,10 +15,10 @@ import SampleStemProgress from '@/components/SampleStemProgress.vue'
 import { activeStemProgress } from '@/stem-progress'
 import { useStemsStore } from '@/stores/stems'
 import { useApolloStore } from '@/stores/apollo'
-import SampleColumnsMenu from '@/components/SampleColumnsMenu.vue'
+import { useSampleColumns } from '@/composables/sampleColumns'
 import SampleColumnHeader from '@/components/SampleColumnHeader.vue'
 import { useSampleColumnWidths } from '@/composables/sampleColumnWidths'
-import { defaultSampleColumns, sampleColumnLimits, SAMPLE_COLUMNS } from '@/sample-columns'
+import { relativeSampleDirectory, sampleDirectory, sampleColumnLimits, SAMPLE_COLUMNS } from '@/sample-columns'
 import { Button } from '@/components/ui/button'
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
@@ -39,8 +39,7 @@ const apolloProgress = computed(() => activeStemProgress(apollo.progress))
 const { total, focusIndex, selectedIds, scope } = storeToRefs(library)
 
 // Keep the former full/compact preference when upgrading to individual columns.
-const legacyDetails = useStorage('fonicca-list-details', false)
-const columnVisibility = useStorage('fonicca-list-columns-v1', defaultSampleColumns(legacyDetails.value), undefined, { mergeDefaults: true })
+const { visibility: columnVisibility } = useSampleColumns()
 const visibleColumns = computed(() => SAMPLE_COLUMNS.filter(column => columnVisibility.value[column.id]))
 const tableViewport = ref<HTMLElement | null>(null)
 const { tableStyle, resizingColumn, preview: previewColumnWidth, commit: commitColumnWidth, cancel: cancelColumnResize, reset: resetColumnWidths } = useSampleColumnWidths(visibleColumns, tableViewport)
@@ -213,19 +212,23 @@ function onDragStart(e: DragEvent, sample: Sample) {
         <div v-if="total > 0" class="header grid items-center px-3 h-8 border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
           <span />
           <SampleColumnHeader
+            :direction="similarTo ? null : library.sort.by === 'name' ? library.sort.direction : null"
+            :sort-disabled="!!similarTo" @sort="library.setSort('name')"
             :label="t('list.columns.name')" :min-width="sampleColumnLimits('name').min" :max-width="sampleColumnLimits('name').max"
             @resize="previewColumnWidth('name', $event)" @commit="commitColumnWidth('name', $event)"
             @cancel="cancelColumnResize" @reset="resetColumnWidths('name')"
           />
           <SampleColumnHeader
             v-for="column in visibleColumns" :key="column.id"
+            :direction="similarTo ? null : library.sort.by === column.id ? library.sort.direction : null"
+            :sort-disabled="!!similarTo || column.id === 'directory'" @sort="column.id !== 'directory' && library.setSort(column.id)"
             :label="column.id === 'bpm' ? 'BPM' : t(`list.columns.${column.id}`)"
             :min-width="sampleColumnLimits(column.id).min" :max-width="sampleColumnLimits(column.id).max"
             :align-right="column.id === 'bpm' || column.id === 'length'"
             @resize="previewColumnWidth(column.id, $event)" @commit="commitColumnWidth(column.id, $event)"
             @cancel="cancelColumnResize" @reset="resetColumnWidths(column.id)"
           />
-          <SampleColumnsMenu v-model="columnVisibility" @reset-widths="resetColumnWidths()" />
+          <span aria-hidden="true" />
         </div>
 
         <ContextMenu v-model:open="menuOpen">
@@ -305,7 +308,8 @@ function onDragStart(e: DragEvent, sample: Sample) {
                       <span v-else-if="s.stemCount" class="stem-toggle ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px]">{{ t('stems.badge', { n: s.stemCount }) }}</span>
                     </span>
                     <template v-for="column in visibleColumns" :key="column.id">
-                      <span v-if="column.id === 'tags'" class="flex gap-1 overflow-hidden">
+                      <span v-if="column.id === 'directory'" class="min-w-0 truncate text-muted-foreground text-xs" :title="sampleDirectory(s.path)">{{ relativeSampleDirectory(s.path, library.sources.find(source => source.id === s.sourceId)?.path) }}</span>
+                      <span v-else-if="column.id === 'tags'" class="flex gap-1 overflow-hidden">
                         <span v-for="tag in s.tags" :key="tag.id" class="chip tag-color" :style="tagStyle(tag)">{{ tag.name }}</span>
                       </span>
                       <Hint v-else-if="column.id === 'category'" :text="categoryHint(s.categorySource, s.categoryConfidence)" side="top">

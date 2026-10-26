@@ -14,6 +14,11 @@ export default {
     selectSamples: 'Select samples to add to a collection',
   },
   columns: {
+    directory: 'Directory',
+    sortAscending: 'Sort {name}: ascending',
+    sortDescending: 'Sort {name}: descending',
+    sortedAscending: 'Sorted ascending',
+    sortedDescending: 'Sorted descending',
     resize: 'Width of {name} column',
     resizeHint: 'Drag to resize. Double-click to reset. Arrow keys adjust by 10 pixels; Shift by 40.',
     resetWidths: 'Reset column widths',

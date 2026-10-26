@@ -26,7 +26,7 @@ function toggle(id: SampleColumnId, checked: boolean | 'indeterminate') {
 <template>
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
-      <Button variant="ghost" size="icon-xs" class="sticky right-3 justify-self-end bg-background" :aria-label="t('list.columns.configure')" :title="t('list.columns.configure')">
+      <Button variant="ghost" size="icon-xs" class="shrink-0 text-muted-foreground" :aria-label="t('list.columns.configure')" :title="t('list.columns.configure')">
         <Columns3 />
       </Button>
     </DropdownMenuTrigger>

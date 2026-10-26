@@ -7,9 +7,28 @@ use serde::{Deserialize, Serialize};
 use crate::error::{Error, Result};
 use crate::similar::Ranking;
 
+#[derive(Debug, Default, Clone, Copy, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SortColumn {
+    Tags, Category, Kind, Bpm, Key, Length, Type,
+    #[default]
+    #[serde(other)]
+    Name,
+}
+#[derive(Debug, Default, Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SortDirection {
+    Desc,
+    #[default]
+    #[serde(other)]
+    Asc,
+}
+
 #[derive(Debug, Default, Clone, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Filter {
+    pub sort_by: SortColumn,
+    pub sort_direction: SortDirection,
     pub query: Option<String>,
     pub source_id: Option<i64>,
     /// Include files in this directory and all its descendants.
@@ -188,15 +207,33 @@ fn args_iter(args: &[Box<dyn ToSql>]) -> impl Iterator<Item = &dyn ToSql> {
     args.iter().map(|a| a.as_ref())
 }
 
+/// Whitelisted expressions only: filter values never become SQL identifiers.
+fn sort_order(f: &Filter, alias: &str) -> String {
+    let value = match f.sort_by {
+        SortColumn::Name => format!("{alias}.name"),
+        SortColumn::Bpm => format!("{alias}.bpm"),
+        SortColumn::Length => format!("{alias}.duration"),
+        SortColumn::Category => format!("{alias}.category"),
+        SortColumn::Kind => format!("{alias}.kind"),
+        SortColumn::Key => format!("{alias}.musical_key"),
+        SortColumn::Type => format!("{alias}.ext"),
+        SortColumn::Tags => format!("(SELECT group_concat(name, char(31)) FROM (SELECT t.name FROM sample_tags st JOIN tags t ON t.id=st.tag_id WHERE st.sample_id={alias}.id ORDER BY t.name COLLATE FONICCA_NATURAL))"),
+    };
+    let direction = match f.sort_direction { SortDirection::Asc => "ASC", SortDirection::Desc => "DESC" };
+    // Unknown/empty metadata stays last in either direction. Ties are stable
+    // across pages, selection queries and repeated scans.
+    format!("({value} IS NULL OR {value} = '') ASC, {value} COLLATE FONICCA_NATURAL {direction}, {alias}.name COLLATE FONICCA_NATURAL ASC, {alias}.path COLLATE FONICCA_NATURAL ASC, {alias}.id ASC")
+}
+
 /// `FROM … WHERE …` and `ORDER BY` for a filter. With a similarity ranking the
 /// rows are limited to the ranked ids and keep the ranking's order.
-fn source(f: &Filter, ranking: Option<&Ranking>) -> (String, Vec<Box<dyn ToSql>>, &'static str) {
+fn source(f: &Filter, ranking: Option<&Ranking>) -> (String, Vec<Box<dyn ToSql>>, String) {
     let (filter, args) = where_clause(f);
     match ranking {
         Some(r) => {
             let mut all: Vec<Box<dyn ToSql>> = vec![Box::new(r.ids_json())];
             all.extend(args);
-            (format!("FROM samples s JOIN json_each(?) r ON r.value = s.id {filter}"), all, "ORDER BY r.key")
+            (format!("FROM samples s JOIN json_each(?) r ON r.value = s.id {filter}"), all, "ORDER BY r.key".into())
         }
         None if f.group_stems => {
             let mut args = args;
@@ -211,9 +248,9 @@ fn source(f: &Filter, ranking: Option<&Ranking>) -> (String, Vec<Box<dyn ToSql>>
                 WHERE l.parent_id IN (SELECT value FROM json_each(?)))
               SELECT * FROM visible
             ) v JOIN samples s ON s.id=v.id JOIN samples parent ON parent.id=v.root_id");
-            (from,args,"ORDER BY parent.name COLLATE NOCASE, parent.path, v.position, s.name COLLATE NOCASE, s.path")
+            (from,args,format!("ORDER BY {}, v.position, s.name COLLATE FONICCA_NATURAL, s.path, s.id", sort_order(f, "parent")))
         }
-        None => (format!("FROM samples s {filter}"), args, "ORDER BY s.name COLLATE NOCASE, s.path"),
+        None => (format!("FROM samples s {filter}"), args, format!("ORDER BY {}", sort_order(f, "s"))),
     }
 }
 
@@ -657,6 +694,60 @@ mod tests {
             .unwrap();
         }
         conn
+    }
+
+    #[test]
+    fn numeric_names_column_orders_and_pages_share_the_same_order() {
+        let conn = setup();
+        conn.execute("DELETE FROM samples", []).unwrap();
+        for (id, name, bpm, duration) in [(1, "Track 10", Some(100), Some(12.0)),
+            (2, "track 2", Some(90), Some(3.0)), (3, "Track 1", None, None),
+            (4, "Track 02", Some(100), Some(2.0))] {
+            conn.execute("INSERT INTO samples(id,source_id,path,name,ext,size,mtime,bpm,duration) VALUES(?1,1,?2,?3,'wav',0,0,?4,?5)",
+                params![id,format!("/lib/{name}.wav"),name,bpm,duration]).unwrap();
+        }
+        let mut f = Filter::default();
+        assert_eq!(ids(&conn,&f).unwrap(), vec![3,2,4,1]);
+        f.sort_direction = SortDirection::Desc;
+        assert_eq!(ids(&conn,&f).unwrap(), vec![1,4,2,3]);
+        f.sort_by = SortColumn::Bpm;
+        for (direction, expected) in [(SortDirection::Asc, vec![2,4,1,3]), (SortDirection::Desc, vec![4,1,2,3])] {
+            f.sort_direction = direction;
+            assert_eq!(ids(&conn,&f).unwrap(), expected);
+            let paged: Vec<_> = (0..4).map(|offset| list(&conn,&f,offset,1).unwrap()[0].id).collect();
+            assert_eq!(paged, expected);
+        }
+        f.sort_by = SortColumn::Length;
+        f.sort_direction = SortDirection::Asc;
+        assert_eq!(ids(&conn,&f).unwrap(), vec![4,2,1,3]);
+        // Similarity remains relevance-ranked even if a column preference exists.
+        let ranking = Ranking { ids: vec![1,3,2], scores: Default::default() };
+        assert_eq!(ids_ranked(&conn,&f,Some(&ranking)).unwrap(), vec![1,3,2]);
+    }
+
+    #[test]
+    fn sorting_roots_keeps_children_below_their_parent_in_both_directions() {
+        let conn = setup();
+        conn.execute("UPDATE samples SET bpm=id*10",[]).unwrap();
+        for (id,kind,position) in [(10,"vocals",0),(11,"drums",1)] {
+            conn.execute("INSERT INTO samples(id,source_id,path,name,ext,size,mtime,bpm) VALUES(?1,1,?2,?3,'wav',0,0,1)",
+                params![id,format!("/lib/{kind}.wav"),kind]).unwrap();
+            conn.execute("INSERT INTO sample_stems(child_id,parent_id,kind,position) VALUES(?1,1,?2,?3)",params![id,kind,position]).unwrap();
+        }
+        let mut f = Filter {group_stems:true, expanded_stems:vec![1], sort_by:SortColumn::Bpm, ..Default::default()};
+        assert_eq!(ids(&conn,&f).unwrap(), vec![1,10,11,2,3,4]);
+        f.sort_direction=SortDirection::Desc;
+        assert_eq!(ids(&conn,&f).unwrap(), vec![4,3,2,1,10,11]);
+        assert_eq!(list(&conn,&f,4,1).unwrap()[0].id,10);
+        // Every metadata column, including correlated tag sorting, works for groups.
+        let t=ensure_tag(&conn,"Tag 10").unwrap();
+        conn.execute("INSERT INTO sample_tags VALUES(1,?1)",[t.id]).unwrap();
+        for column in [SortColumn::Name,SortColumn::Tags,SortColumn::Category,SortColumn::Kind,SortColumn::Key,SortColumn::Length,SortColumn::Type] {
+            f.sort_by=column;
+            let visible=ids(&conn,&f).unwrap();
+            let i=visible.iter().position(|id| *id==1).unwrap();
+            assert_eq!(&visible[i..i+3], &[1,10,11]);
+        }
     }
 
     #[test]

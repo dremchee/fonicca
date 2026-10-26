@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { ArrowDown, ArrowUp } from '@lucide/vue'
 import { useEventListener, useResizeObserver } from '@vueuse/core'
 import { onBeforeUnmount, shallowRef, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-const props = defineProps<{ label: string, minWidth: number, maxWidth: number, alignRight?: boolean }>()
-const emit = defineEmits<{ resize: [width: number], commit: [width: number], cancel: [], reset: [] }>()
+const props = defineProps<{ label: string, minWidth: number, maxWidth: number, alignRight?: boolean, direction?: 'asc' | 'desc' | null, sortDisabled?: boolean }>()
+const emit = defineEmits<{ resize: [width: number], commit: [width: number], cancel: [], reset: [], sort: [] }>()
 const { t } = useI18n()
 const cell = useTemplateRef<HTMLElement>('cell')
 const width = shallowRef(0)
@@ -69,7 +70,17 @@ onBeforeUnmount(cancel)
 
 <template>
   <div ref="cell" class="column-heading relative min-w-0 flex items-center h-full" :class="{ 'justify-end': alignRight }">
-    <span class="truncate" :title="label">{{ label }}</span>
+    <button
+      type="button" class="sort-heading w-full min-w-0 flex items-center gap-1 h-full rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      :class="{ 'text-foreground': direction, 'justify-end ml-auto': alignRight }"
+      :disabled="sortDisabled" :aria-pressed="!!direction"
+      :aria-label="sortDisabled ? label : t(direction === 'asc' ? 'list.columns.sortDescending' : 'list.columns.sortAscending', { name: label })"
+      :title="direction ? t(direction === 'asc' ? 'list.columns.sortedAscending' : 'list.columns.sortedDescending') : label"
+      @click="emit('sort')"
+    >
+      <span class="truncate">{{ label }}</span>
+      <component :is="direction === 'desc' ? ArrowDown : ArrowUp" v-if="direction" class="size-3 shrink-0" aria-hidden="true" />
+    </button>
     <div
       class="resize-handle" :class="{ resizing: drag !== null }"
       role="separator" tabindex="0" aria-orientation="vertical"
@@ -84,6 +95,8 @@ onBeforeUnmount(cancel)
 </template>
 
 <style scoped>
+.sort-heading:not(:disabled):hover { color: var(--foreground); }
+.sort-heading:disabled { cursor: default; }
 .resize-handle {
   position: absolute;
   inset-block: 0;

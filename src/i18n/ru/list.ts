@@ -16,6 +16,11 @@ export default {
     selectSamples: 'Выберите семплы для добавления в коллекцию',
   },
   columns: {
+    directory: 'Директория',
+    sortAscending: 'Сортировать «{name}» по возрастанию',
+    sortDescending: 'Сортировать «{name}» по убыванию',
+    sortedAscending: 'По возрастанию',
+    sortedDescending: 'По убыванию',
     resize: 'Ширина колонки «{name}»',
     resizeHint: 'Потяните границу, чтобы изменить ширину. Двойной щелчок — сброс. Стрелки — шаг 10 пикселей, Shift — 40.',
     resetWidths: 'Сбросить ширину колонок',
