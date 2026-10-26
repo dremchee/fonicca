@@ -379,7 +379,7 @@ async function confirmDeleteTag(id: number) {
 
           <h3 class="section flex items-center justify-between">
             <button type="button" class="section-toggle" :aria-expanded="sections.folders" @click="sections.folders = !sections.folders">
-              <ChevronRight class="size-3 shrink-0 transition-transform" :class="{ 'rotate-90': sections.folders }" />
+              <ChevronRight class="size-6 shrink-0 p-1.5 transition-transform" :class="{ 'rotate-90': sections.folders }" />
               {{ t('sidebar.folders') }}
             </button>
             <Hint :text="t('sidebar.addFolders')">
@@ -444,7 +444,7 @@ async function confirmDeleteTag(id: number) {
           </template>
           <h3 class="section flex items-center justify-between">
             <button type="button" class="section-toggle" :aria-expanded="sections.collections" @click="sections.collections = !sections.collections">
-              <ChevronRight class="size-3 shrink-0 transition-transform" :class="{ 'rotate-90': sections.collections }" />
+              <ChevronRight class="size-6 shrink-0 p-1.5 transition-transform" :class="{ 'rotate-90': sections.collections }" />
               {{ t('sidebar.collections') }}
             </button>
             <Hint :text="t('sidebar.newCollection')">
@@ -508,7 +508,7 @@ async function confirmDeleteTag(id: number) {
           </template>
           <h3 class="section flex items-center justify-between">
             <button type="button" class="section-toggle" :aria-expanded="sections.tags" @click="sections.tags = !sections.tags">
-              <ChevronRight class="size-3 shrink-0 transition-transform" :class="{ 'rotate-90': sections.tags }" />
+              <ChevronRight class="size-6 shrink-0 p-1.5 transition-transform" :class="{ 'rotate-90': sections.tags }" />
               {{ t('sidebar.tags') }}
             </button>
             <Hint :text="t('sidebar.newTag')">
@@ -611,7 +611,7 @@ async function confirmDeleteTag(id: number) {
 .section-toggle {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 0;
   flex: 1;
   min-width: 0;
   text-align: left;
@@ -628,7 +628,7 @@ async function confirmDeleteTag(id: number) {
   outline-offset: 2px;
 }
 .section {
-  margin: 12px 8px 4px;
+  margin: 12px 0 4px;
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
