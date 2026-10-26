@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+import { fileURLToPath } from 'node:url'
 import { mkdtemp, mkdir, readFile, writeFile, rm, unlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -62,4 +65,23 @@ test('public feed configuration keeps the source repository out of download URLs
   assert.deepEqual(config.plugins.updater.endpoints, ['https://github.com/owner/public-downloads/releases/latest/download/latest.json'])
   assert.equal(config.bundle.createUpdaterArtifacts, true)
   assert.throws(() => updaterConfig('https://github.com/owner/repo'), /Invalid/)
+})
+
+
+test('updater CLI writes a config file whose path can contain spaces', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'fonicca-config-'))
+  const target = join(directory, 'updater config.json')
+  const script = fileURLToPath(new URL('../scripts/updater-config.mjs', import.meta.url))
+  const run = promisify(execFile)
+  try {
+    const { stdout } = await run(process.execPath, [script, '--output', target], {
+      env: { ...process.env, UPDATE_REPOSITORY: 'dremchee/fonicca' },
+    })
+    assert.equal(stdout, '')
+    assert.deepEqual(JSON.parse(await readFile(target, 'utf8')), updaterConfig('dremchee/fonicca'))
+    await assert.rejects(run(process.execPath, [script, '--output', target], {
+      env: { ...process.env, UPDATE_REPOSITORY: '' },
+    }))
+  }
+  finally { await rm(directory, { recursive: true }) }
 })

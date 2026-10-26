@@ -192,7 +192,8 @@ configuration overlay as CI:
 export UPDATE_REPOSITORY=dremchee/fonicca
 export TAURI_SIGNING_PRIVATE_KEY="$HOME/.tauri/fonicca-updater.key"
 export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=''
-pnpm tauri build --ci --config "$(node scripts/updater-config.mjs)" -- --locked
+node scripts/updater-config.mjs --output .tauri-updater.json
+pnpm tauri build --ci --config .tauri-updater.json -- --locked
 ```
 
 See the [Tauri updater documentation](https://v2.tauri.app/plugin/updater/) for

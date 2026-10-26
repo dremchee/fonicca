@@ -164,12 +164,15 @@ jobs:
       - name: Run frontend tests
         run: pnpm test
 
+      - name: Write updater configuration
+        run: node scripts/updater-config.mjs --output .tauri-updater.json
+
       # beforeBuildCommand in tauri.conf.json checks types and builds the frontend.
       - name: Build installers
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: pnpm tauri build --ci --target '${{ matrix.target }}' --bundles '${{ matrix.bundles }}' --config "$(node scripts/updater-config.mjs)" -- --locked
+        run: pnpm tauri build --ci --target '${{ matrix.target }}' --bundles '${{ matrix.bundles }}' --config .tauri-updater.json -- --locked
 
       - name: Upload installers
         id: upload
