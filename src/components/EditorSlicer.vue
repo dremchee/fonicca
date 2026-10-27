@@ -2,7 +2,7 @@
 import type { Marker, SliceBy, Span } from '@/stores/editor'
 import { Slice } from '@lucide/vue'
 import { useLocalStorage, watchDebounced } from '@vueuse/core'
-import { computed, ref, shallowRef } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
@@ -108,6 +108,7 @@ const by = computed<SliceBy | null>(() => {
 })
 
 let request = 0
+onBeforeUnmount(() => { request++; preview.value = [] })
 watchDebounced(
   [open, by, target, () => editor.revision, () => props.zero],
   async () => {

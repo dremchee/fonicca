@@ -45,6 +45,60 @@ test('crop clamps the view and selection zoom uses the selected range', async ()
   finally { v.scope.stop() }
 })
 
+test('playback follows offscreen frames while preserving zoom and file bounds', (t) => {
+  let now = 0
+  t.mock.method(Date, 'now', () => now)
+  const v = viewport()
+  try {
+    v.zoom(0.2, 0)
+    now = 3000
+    v.follow(1800)
+    assert.deepEqual([v.viewStart.value, v.viewEnd.value], [0, 2000])
+    v.follow(2000)
+    assert.deepEqual([v.viewStart.value, v.viewEnd.value], [1800, 3800])
+    v.follow(3700)
+    assert.deepEqual([v.viewStart.value, v.viewEnd.value], [1800, 3800])
+    v.follow(9950)
+    assert.deepEqual([v.viewStart.value, v.viewEnd.value], [8000, 10000])
+    v.follow(50) // A loop or a backwards seek brings the start back into view.
+    assert.deepEqual([v.viewStart.value, v.viewEnd.value], [0, 2000])
+    v.follow(null)
+    v.follow(Number.NaN)
+    assert.deepEqual([v.viewStart.value, v.viewEnd.value], [0, 2000])
+    v.fit()
+    v.follow(6000)
+    assert.deepEqual([v.viewStart.value, v.viewEnd.value], [0, 10000])
+  }
+  finally { v.scope.stop() }
+})
+
+test('manual navigation delays following for three seconds after the latest interaction', (t) => {
+  let now = 0
+  t.mock.method(Date, 'now', () => now)
+  const v = viewport()
+  try {
+    v.zoom(0.2, 0)
+    now = 2999
+    v.follow(6000)
+    assert.deepEqual([v.viewStart.value, v.viewEnd.value], [0, 2000])
+    v.pan(1000)
+    now = 5998
+    v.follow(6000)
+    assert.deepEqual([v.viewStart.value, v.viewEnd.value], [1000, 3000])
+    now = 5999
+    v.follow(6000)
+    assert.deepEqual([v.viewStart.value, v.viewEnd.value], [5800, 7800])
+    v.deferFollow() // Dragging the overview uses the same delay.
+    now = 8998
+    v.follow(1000)
+    assert.deepEqual([v.viewStart.value, v.viewEnd.value], [5800, 7800])
+    now = 8999
+    v.follow(1000)
+    assert.deepEqual([v.viewStart.value, v.viewEnd.value], [800, 2800])
+  }
+  finally { v.scope.stop() }
+})
+
 test('beat grid follows tempo, origin, time fallback and Alt inversion', () => {
   const options = {
     bpm: shallowRef<number | null>(120), rate: shallowRef(1000), frames: shallowRef(1900),

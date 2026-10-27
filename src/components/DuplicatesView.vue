@@ -32,6 +32,7 @@ import { folderName, formatDate, formatDuration, formatNumber, formatSize } from
 import { useDuplicatesStore } from '@/stores/duplicates'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
+import { useEditorStore } from '@/stores/editor'
 
 const { t } = useI18n()
 const dup = useDuplicatesStore()
@@ -39,6 +40,13 @@ const { loading, falseMatches, rule, preferred, selected, focusedId, verifying, 
 const groups = computed(() => dup.filteredGroups)
 const library = useLibraryStore()
 const player = usePlayerStore()
+const editor = useEditorStore()
+
+async function audition(copy: DuplicateCopy, toggle = false) {
+  await editor.stopPlayback()
+  if (toggle) await player.toggle(copy)
+  else await player.play(copy)
+}
 
 onMounted(async () => {
   await dup.load()
@@ -241,7 +249,7 @@ const copyRows = computed(() => rows.value.filter(r => r.kind === 'copy'))
 function selectCopy(copy: DuplicateCopy, event: MouseEvent) {
   focusedId.value = copy.id
   if (player.autoplay && event.detail < 2 && player.playingId !== copy.id)
-    void player.play(copy)
+    void audition(copy)
 }
 
 function move(delta: number) {
@@ -253,12 +261,12 @@ function move(delta: number) {
   focusedId.value = next.c.id
   virtualizer.value.scrollToIndex(rows.value.indexOf(next), { align: 'auto' })
   if (player.autoplay)
-    player.play(next.c)
+    void audition(next.c)
 }
 
 function isTyping(e: KeyboardEvent) {
   if (useSettingsStore().dialogOpen) return true
-  return e.target instanceof Element && (e.target.closest('[role="menu"], [role="dialog"], [role="alertdialog"], [role="listbox"]') !== null
+  return e.target instanceof Element && (e.target.closest('[data-editor-panel], [role="menu"], [role="dialog"], [role="alertdialog"], [role="listbox"]') !== null
     || (e.target instanceof HTMLInputElement && e.target.type !== 'checkbox'))
 }
 onKeyStroke('ArrowDown', (e) => {
@@ -277,7 +285,7 @@ onKeyStroke(' ', (e) => {
   const row = copyRows.value.find(r => r.c.id === focusedId.value)
   if (!isTyping(e) && row) {
     e.preventDefault()
-    player.toggle(row.c)
+    void audition(row.c, true)
   }
 })
 </script>
@@ -411,7 +419,7 @@ onKeyStroke(' ', (e) => {
                   size="icon-xs"
                   class="shrink-0"
                   :aria-label="player.isPlaying(row.c.id) ? t('common.actions.pause') : t('common.actions.play')"
-                  @click.stop="focusedId = row.c.id; player.toggle(row.c)"
+                  @click.stop="focusedId = row.c.id; audition(row.c, true)"
                 >
                   <Volume2 v-if="player.isPlaying(row.c.id)" />
                   <CategoryIcon v-else :category="row.c.category" />

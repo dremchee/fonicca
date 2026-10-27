@@ -6,6 +6,13 @@ const RATE = 44100
 const BPM = 120
 const FRAMES = Math.round((60 / BPM) * 16 * RATE)
 const BEAT = (60 / BPM) * RATE
+let sampleId = 1
+let currentPath = '/mock/Drum loop.wav'
+let originalPath = currentPath
+let hasSavedTarget = false
+let savedVersion = 0
+let version = 0
+let nextVersion = 0
 
 // Envelope of the loop at a frame, 0…1.
 function level(frame: number) {
@@ -20,11 +27,12 @@ let clip: ClipInfo | null = null
 let markers: Marker[] = []
 let currentFrames = FRAMES
 let processed = false
-const capture = () => ({ frames: currentFrames, loop: loop && { ...loop }, markers: markers.map(m => ({ ...m })), processed })
+const capture = () => ({ version, frames: currentFrames, loop: loop && { ...loop }, markers: markers.map(m => ({ ...m })), processed })
 type Snapshot = ReturnType<typeof capture>
 const history: Snapshot[] = []
 const future: Snapshot[] = []
 function restore(s: Snapshot) {
+  version = s.version
   currentFrames = s.frames
   loop = s.loop
   markers = s.markers
@@ -32,11 +40,12 @@ function restore(s: Snapshot) {
 }
 function remember() {
   history.push(capture())
+  version = ++nextVersion
   future.length = 0
 }
 
 function state(): EditorState {
-  return { sampleId: 1, frames: currentFrames, sampleRate: RATE, channels: 2, canUndo: history.length > 0, canRedo: future.length > 0, dirty: processed || loop !== null || markers.length > 0, loop, markers }
+  return { sampleId, frames: currentFrames, sampleRate: RATE, channels: 2, canUndo: history.length > 0, canRedo: future.length > 0, dirty: version !== savedVersion, hasSavedTarget, canReplaceOriginal: true, originalPath, loop, markers }
 }
 
 // Same packing as the backend: u32 mode, lanes, count, stride, then lane-major columns
@@ -99,7 +108,31 @@ function slices(start: number, end: number, by: SliceBy): Span[] {
 /** Editor commands for the mock backend; `undefined` for anything else. */
 export function editorCommand(cmd: string, args: any): unknown {
   switch (cmd) {
-    case 'editor_open': return { state: state(), name: 'Drum Loop 120', ext: 'wav', path: '/Users/me/Projects/Sound/Loops/Drum Loop 120.wav', bpm: BPM }
+    case 'editor_close': return null
+    case 'editor_open':
+      sampleId = args.id
+      currentPath = originalPath = '/mock/Drum loop.wav'
+      hasSavedTarget = false
+      savedVersion = version = nextVersion = 0
+      currentFrames = FRAMES
+      loop = null
+      markers = []
+      processed = false
+      history.length = 0
+      future.length = 0
+      return { state: state(), name: 'Drum Loop 120', ext: 'wav', path: currentPath, bpm: BPM }
+    case 'plugin:dialog|save': return '/mock/Custom edited.wav'
+    case 'editor_save': {
+      const path = args.mode === 'replaceOriginal' ? originalPath : args.destination ?? (hasSavedTarget ? currentPath : '/mock/Drum loop — edited.wav')
+      const name = path.split('/').pop().replace(/\.wav$/i, '')
+      if (args.mode !== 'selection') {
+        currentPath = path
+        hasSavedTarget = true
+        savedVersion = version
+        sampleId = path === originalPath ? 1 : 1001
+      }
+      return { path, backup: null, state: state(), name, ext: 'wav', bpm: BPM, inLibrary: true, warning: null }
+    }
     case 'sample_wave': {
       const key = 'fonicca-mock-cached-waves'
       let ids: number[] = []
@@ -118,6 +151,8 @@ export function editorCommand(cmd: string, args: any): unknown {
       // Sorted, one per frame (the last wins), inside the file: as the backend does.
       else if (args.op.op === 'setMarkers')
         markers = [...new Map((args.op.markers as Marker[]).filter(m => m.frame < currentFrames).map(m => [m.frame, m])).values()].sort((a, b) => a.frame - b.frame)
+      else
+        processed = true
       return state()
     case 'editor_undo': {
       const previous = history.pop()

@@ -1,11 +1,10 @@
-//! Tauri commands for the editor. Each file opens in its own window
-//! ("editor-<sample id>"); sessions are keyed by window label.
+//! Tauri commands for embedded and standalone editor sessions, keyed by window label.
 
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::UNIX_EPOCH;
 
 use serde::Serialize;
-use tauri::{AppHandle, Manager, State, WebviewUrl, WebviewWindowBuilder, Window};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder, Window};
 
 use crate::editor::{self, Op, Session, State as EditorState};
 use crate::error::{Error, Result};
@@ -68,7 +67,11 @@ pub struct Opened {
 
 /// Loads the sample into this window's session.
 #[tauri::command]
-pub async fn editor_open(state: State<'_, AppState>, window: Window, id: i64) -> Result<Opened> {
+pub async fn editor_open(state: State<'_, AppState>, window: Window, id: i64, discard_existing: Option<bool>) -> Result<Opened> {
+    // Keep the current session intact until the replacement has decoded successfully.
+    if !discard_existing.unwrap_or(false) && state.editor.lock().unwrap().get(window.label()).is_some_and(|s| s.state().dirty) {
+        return Err(Error::Other("editor has unsaved changes".into()));
+    }
     let (path, name, ext, bit_depth, bpm): (String, String, String, Option<u32>, Option<f64>) =
         state.db.lock().unwrap().query_row(
             "SELECT path, name, ext, bit_depth, bpm FROM samples WHERE id = ?1",
@@ -77,8 +80,23 @@ pub async fn editor_open(state: State<'_, AppState>, window: Window, id: i64) ->
         )?;
     let session = Session::open(id, Path::new(&path), bit_depth)?;
     let s = session.state();
-    state.editor.lock().unwrap().insert(window.label().to_string(), session);
+    let mut sessions = state.editor.lock().unwrap();
+    if !discard_existing.unwrap_or(false) && sessions.get(window.label()).is_some_and(|s| s.state().dirty) {
+        return Err(Error::Other("editor has unsaved changes".into()));
+    }
+    sessions.insert(window.label().to_string(), session);
     Ok(Opened { state: s, name, ext, path, bpm })
+}
+
+/// Close an embedded session only after its edits have been saved or discarded.
+#[tauri::command]
+pub fn editor_close(state: State<'_, AppState>, window: Window, discard: bool) -> Result<()> {
+    let mut sessions = state.editor.lock().unwrap();
+    if !discard && sessions.get(window.label()).is_some_and(|s| s.state().dirty) {
+        return Err(Error::Other("editor has unsaved changes".into()));
+    }
+    sessions.remove(window.label());
+    Ok(())
 }
 
 /// Frees a window's session (also done when the window is destroyed).
@@ -243,45 +261,82 @@ pub fn editor_update_playback(state: State<'_, AppState>, window: Window, start:
 #[serde(rename_all = "camelCase")]
 pub struct Saved {
     path: String,
-    /// Where the previous version went when saving over the original.
     backup: Option<String>,
     state: EditorState,
+    name: String,
+    ext: String,
+    bpm: Option<f64>,
+    in_library: bool,
+    warning: Option<String>,
+    file_id: Option<i64>,
 }
 
-/// Saves as a new WAV next to the original ("Kick (edit).wav"), or over the
-/// original after copying it to the backups folder. Non-WAV originals are
-/// always saved as a new file, since writing WAV would change their format.
+/// Saves the current buffer, or exports a selection without changing the session.
 #[tauri::command]
-pub fn editor_save(state: State<'_, AppState>, window: Window, as_new: bool) -> Result<Saved> {
+pub fn editor_save(state: State<'_, AppState>, window: Window, mode: editor::saving::SaveMode, destination: Option<String>, range: Option<editor::Span>) -> Result<Saved> {
     let backups = state.db_path.parent().map(|d| d.join("backups")).unwrap_or_else(|| PathBuf::from("backups"));
     let saved = with_session(&state, &window, |s| {
-        let is_wav = s.path.extension().and_then(|e| e.to_str()).is_some_and(|e| e.eq_ignore_ascii_case("wav"));
-        let (target, backup) = if as_new || !is_wav {
-            (editor::edited_path(&s.path), None)
-        } else {
-            std::fs::create_dir_all(&backups)?;
-            let stamp = SystemTime::now().duration_since(UNIX_EPOCH).map_or(0, |d| d.as_secs());
-            let name = s.path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-            let backup = backups.join(format!("{stamp}-{name}"));
-            std::fs::copy(&s.path, &backup)?;
-            (s.path.clone(), Some(backup))
-        };
-        // Through a temporary file so a failed write never truncates the target.
-        let tmp = target.with_extension("wav.tmp");
-        editor::write_wav(&tmp, s.audio(), s.bit_depth, s.loop_points())?;
-        editor::append_markers(&tmp, s.markers())?;
-        std::fs::rename(&tmp, &target)?;
-        if backup.is_some() {
-            s.mark_saved();
+        let output = editor::saving::save_session(s, &backups, mode, destination.as_deref().map(Path::new), range)?;
+        // Index just the saved file, rather than rescanning a potentially large source.
+        let indexed = index_saved(&state.db.lock().unwrap(), &output.path);
+        let (id, warning) = match indexed { Ok(id) => (id, None), Err(error) => (None, Some(error.to_string())) };
+        if mode != editor::saving::SaveMode::Selection {
+            if let Some(id) = id { s.sample_id = id; }
         }
+        let bpm = state.db.lock().unwrap().query_row("SELECT bpm FROM samples WHERE id=?1", [s.sample_id], |r| r.get(0)).ok().flatten();
         Ok(Saved {
-            path: target.to_string_lossy().into_owned(),
-            backup: backup.map(|b| b.to_string_lossy().into_owned()),
+            path: output.path.to_string_lossy().into_owned(),
+            backup: output.backup.map(|b| b.to_string_lossy().into_owned()),
             state: s.state(),
+            name: output.path.file_stem().unwrap_or_default().to_string_lossy().into_owned(),
+            ext: "wav".into(), bpm, in_library: id.is_some(), warning, file_id: id,
         })
     })?;
-    rescan_containing(&state, Path::new(&saved.path))?;
+    if let Some(id) = saved.file_id { let _ = window.emit("editor:saved", id); }
     Ok(saved)
+}
+
+/// Import/update only files under a library source. Save As outside the library
+/// never adds a whole unrelated folder to the user's sources.
+fn index_saved(conn: &rusqlite::Connection, path: &Path) -> Result<Option<i64>> {
+    let mut stmt = conn.prepare("SELECT id,path FROM sources")?;
+    let sources = stmt.query_map([], |r| Ok((r.get::<_, i64>(0)?, r.get::<_, String>(1)?)))?.collect::<rusqlite::Result<Vec<_>>>()?;
+    let Some((source, _)) = sources.into_iter().filter(|(_, root)| path.starts_with(root)).max_by_key(|(_, root)| root.len()) else { return Ok(None) };
+    let info = crate::audio::probe(path)?;
+    let meta = std::fs::metadata(path)?;
+    let mtime = meta.modified()?.duration_since(UNIX_EPOCH).unwrap_or_default().as_secs() as i64;
+    let fingerprint = crate::audio::fingerprint(path, meta.len()).ok();
+    conn.execute("INSERT INTO samples(source_id,path,name,ext,size,mtime,duration,sample_rate,channels,bit_depth,fingerprint)
+        VALUES(?1,?2,?3,'wav',?4,?5,?6,?7,?8,?9,?10)
+        ON CONFLICT(path) DO UPDATE SET size=excluded.size,mtime=excluded.mtime,duration=excluded.duration,
+        sample_rate=excluded.sample_rate,channels=excluded.channels,bit_depth=excluded.bit_depth,fingerprint=excluded.fingerprint,
+        peaks=NULL,analysis_version=NULL,embedding_version=NULL,content_hash=NULL",
+        rusqlite::params![source,path.to_string_lossy(),path.file_stem().unwrap_or_default().to_string_lossy(),meta.len() as i64,mtime,
+            info.duration,info.sample_rate,info.channels,info.bit_depth,fingerprint])?;
+    Ok(Some(conn.query_row("SELECT id FROM samples WHERE path=?1", [path.to_string_lossy().as_ref()], |r| r.get(0))?))
+}
+
+#[cfg(test)]
+mod save_index_tests {
+    use super::*;
+    #[test]
+    fn saved_files_get_a_stable_library_id_and_overwrites_invalidate_cached_audio() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut conn = crate::db::open(&dir.path().join("library.db")).unwrap();
+        crate::db::migrate(&mut conn).unwrap();
+        conn.execute("INSERT INTO sources(path,added_at) VALUES(?1,0)", [dir.path().to_str().unwrap()]).unwrap();
+        let path = dir.path().join("Saved.wav");
+        editor::write_wav(&path, &crate::audio::Pcm { samples: vec![0.25; 100], channels: 1, sample_rate: 1000 }, Some(16), None).unwrap();
+        let id = index_saved(&conn, &path).unwrap().unwrap();
+        conn.execute("UPDATE samples SET peaks=X'01', analysis_version=1 WHERE id=?1", [id]).unwrap();
+        assert_eq!(index_saved(&conn, &path).unwrap(), Some(id));
+        let count: i64 = conn.query_row("SELECT count(*) FROM samples", [], |r| r.get(0)).unwrap();
+        assert_eq!(count, 1);
+        assert!(conn.query_row("SELECT peaks IS NULL AND analysis_version IS NULL FROM samples WHERE id=?1", [id], |r| r.get::<_, bool>(0)).unwrap());
+        let outside = tempfile::tempdir().unwrap();
+        assert_eq!(index_saved(&conn, &outside.path().join("Elsewhere.wav")).unwrap(), None);
+        assert_eq!(conn.query_row("SELECT count(*) FROM sources", [], |r| r.get::<_, i64>(0)).unwrap(), 1);
+    }
 }
 
 /// Rescans the library folder that holds `path` right away instead of waiting for

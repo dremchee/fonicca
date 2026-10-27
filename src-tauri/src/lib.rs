@@ -165,6 +165,7 @@ pub fn run() {
             updates::update_status,
             editor_commands::open_editor_window,
             editor_commands::editor_open,
+            editor_commands::editor_close,
             editor_commands::editor_apply,
             editor_commands::editor_process,
             editor_commands::editor_undo,

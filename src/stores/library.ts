@@ -14,6 +14,7 @@ import { ANALYSIS_PROGRESS_EVENT, api, MODEL_DOWNLOAD_EVENT, SCAN_PROGRESS_EVENT
 import { formatNumber } from '@/format'
 import { t } from '@/i18n'
 import { usePlayerStore } from '@/stores/player'
+import { useWaveformBackgrounds } from '@/composables/waveformBackgrounds'
 
 const PAGE_SIZE = 200
 
@@ -632,6 +633,10 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   async function init() {
+    await listen<number>('editor:saved', async ({ payload: id }) => {
+      useWaveformBackgrounds().invalidate(id)
+      await Promise.all([loadSources(), refresh({ keepSelection: true })])
+    })
     await listen<{ id: number | null }>('apollo:changed', async ({ payload }) => {
       if (payload.id != null) await Promise.all([loadSources(), loadTags(), refresh({ keepSelection: true })])
     })

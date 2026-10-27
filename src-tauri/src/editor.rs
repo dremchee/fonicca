@@ -15,6 +15,7 @@ mod loops;
 mod markers;
 mod slices;
 pub mod processing;
+pub mod saving;
 pub mod spectrogram;
 pub use loops::{zero_crossing, Loop};
 pub use markers::{append_markers, Marker};
@@ -187,6 +188,8 @@ pub struct Session {
     spectrum: Option<std::sync::Arc<spectrogram::Spectrogram>>,
     pub sample_id: i64,
     pub path: PathBuf,
+    pub original_path: PathBuf,
+    pub has_saved_target: bool,
     pub bit_depth: Option<u32>,
     original: Pcm,
     current: Pcm,
@@ -214,6 +217,9 @@ pub struct State {
     pub can_undo: bool,
     pub can_redo: bool,
     pub dirty: bool,
+    pub has_saved_target: bool,
+    pub can_replace_original: bool,
+    pub original_path: String,
     #[serde(rename = "loop")]
     pub loop_points: Option<Loop>,
     pub markers: Vec<Marker>,
@@ -236,6 +242,8 @@ impl Session {
             spectrum: None,
             sample_id,
             path: path.to_path_buf(),
+            original_path: path.to_path_buf(),
+            has_saved_target: false,
             bit_depth,
             current: Pcm { samples: pcm.samples.clone(), channels: pcm.channels, sample_rate: pcm.sample_rate },
             original: pcm,
@@ -259,6 +267,9 @@ impl Session {
             can_undo: !self.ops.is_empty(),
             can_redo: !self.redo.is_empty(),
             dirty: self.ops != self.saved,
+            has_saved_target: self.has_saved_target,
+            can_replace_original: self.original_path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("wav")),
+            original_path: self.original_path.to_string_lossy().into_owned(),
             loop_points: self.current_loop,
             markers: self.current_markers.clone(),
         }
@@ -589,12 +600,12 @@ pub fn write_wav(path: &Path, pcm: &Pcm, bit_depth: Option<u32>, loop_points: Op
     Ok(())
 }
 
-/// A free name next to `path`: "Kick (edit).wav", "Kick (edit 2).wav", …
+/// A free name next to `path`: "Kick — edited.wav", "Kick — edited 2.wav", …
 pub fn edited_path(path: &Path) -> PathBuf {
     let dir = path.parent().unwrap_or(Path::new("."));
     let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
     (1..)
-        .map(|n| dir.join(if n == 1 { format!("{stem} (edit).wav") } else { format!("{stem} (edit {n}).wav") }))
+        .map(|n| dir.join(if n == 1 { format!("{stem} — edited.wav") } else { format!("{stem} — edited {n}.wav") }))
         .find(|p| !p.exists())
         .expect("some name is free")
 }
@@ -759,9 +770,9 @@ mod tests {
         assert_eq!(spec.bits_per_sample, 16);
 
         let first = edited_path(&src);
-        assert_eq!(first.file_name().unwrap(), "Kick (edit).wav");
+        assert_eq!(first.file_name().unwrap(), "Kick — edited.wav");
         std::fs::write(&first, b"").unwrap();
-        assert_eq!(edited_path(&src).file_name().unwrap(), "Kick (edit 2).wav");
+        assert_eq!(edited_path(&src).file_name().unwrap(), "Kick — edited 2.wav");
     }
 
     fn unpack(bytes: &[u8]) -> (u32, u32, u32, u32, Vec<f32>) {

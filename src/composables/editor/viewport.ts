@@ -6,8 +6,14 @@ import { shallowRef, watch } from 'vue'
 export function useEditorViewport(frames: Ref<number>, selection: () => Span | null) {
   const viewStart = shallowRef(0)
   const viewEnd = shallowRef(1)
+  let followAfter = 0
+
+  function deferFollow() {
+    followAfter = Date.now() + 3000
+  }
 
   function fit() {
+    followAfter = 0
     viewStart.value = 0
     viewEnd.value = Math.max(1, frames.value)
   }
@@ -22,6 +28,7 @@ export function useEditorViewport(frames: Ref<number>, selection: () => Span | n
   })
 
   function zoom(factor: number, around = (viewStart.value + viewEnd.value) / 2) {
+    deferFollow()
     const span = Math.min(frames.value, Math.max(64, (viewEnd.value - viewStart.value) * factor))
     const ratio = (around - viewStart.value) / (viewEnd.value - viewStart.value)
     let start = around - span * ratio
@@ -31,8 +38,23 @@ export function useEditorViewport(frames: Ref<number>, selection: () => Span | n
   }
 
   function pan(deltaFrames: number) {
+    deferFollow()
     const span = viewEnd.value - viewStart.value
     const start = Math.max(0, Math.min(frames.value - span, viewStart.value + deltaFrames))
+    viewStart.value = start
+    viewEnd.value = start + span
+  }
+
+  /** Advance the visible window only when playback leaves it; keep the zoom. */
+  function follow(frame: number | null) {
+    if (Date.now() < followAfter || frame === null || !Number.isFinite(frame) || frames.value <= 0)
+      return
+    const point = Math.max(0, Math.min(frames.value, frame))
+    if (point >= viewStart.value && point < viewEnd.value)
+      return
+    const span = Math.min(frames.value, viewEnd.value - viewStart.value)
+    if (span <= 0) return
+    const start = Math.max(0, Math.min(frames.value - span, point - span * 0.1))
     viewStart.value = start
     viewEnd.value = start + span
   }
@@ -40,10 +62,11 @@ export function useEditorViewport(frames: Ref<number>, selection: () => Span | n
   function zoomToSelection() {
     const s = selection()
     if (s) {
+      deferFollow()
       viewStart.value = s.start
       viewEnd.value = Math.max(s.end, s.start + 64)
     }
   }
 
-  return { viewStart, viewEnd, fit, zoom, pan, zoomToSelection }
+  return { viewStart, viewEnd, fit, zoom, pan, follow, deferFollow, zoomToSelection }
 }

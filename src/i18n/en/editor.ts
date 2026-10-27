@@ -4,7 +4,16 @@ export default {
     title: '{name} — Edit',
     titleDirty: '{name} • — Edit',
   },
+  unsaved: { dontSave: 'Don’t save', title: 'Unsaved edits', description: 'Save changes to “{name}” before closing or opening another track?' },
+  panel: { expand: 'Expand editor', collapse: 'Restore editor' },
   save: {
+    as: 'Save as…',
+    selection: 'Save selection…',
+    selectionSaved: 'Selection saved as “{name}”',
+    replace: 'Replace original…',
+    replaceConfirm: 'Replace “{path}” with the edited audio? A backup will be kept.',
+    saving: 'Saving…',
+    indexWarning: 'The audio was saved, but the library could not be updated.',
     asNew: 'Save as new',
     asNewHint: 'Save as a new file next to the original',
     overwriteHint: 'Save over the original (a backup is kept)',
@@ -19,6 +28,7 @@ export default {
     action: 'Discard',
   },
   toolbar: {
+    moreTools: 'More tools',
     undo: 'Undo',
     redo: 'Redo',
     stop: 'Stop',
@@ -62,6 +72,7 @@ export default {
     snapHint: 'Snap to grid · hold ⌥ while dragging to override',
   },
   view: {
+    tempo: 'Grid tempo',
     grid: 'Grid',
     gridBeats: 'Bars and beats',
     gridTime: 'Time',

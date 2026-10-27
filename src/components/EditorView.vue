@@ -8,16 +8,15 @@ import {
   Copy,
   Crop,
   Eraser,
-  FolderOpen,
   FolderOutput,
   IterationCw,
   Magnet,
   Maximize2,
+  Minimize2,
   Music,
   Play,
   Redo2,
   Repeat,
-  Save,
   Scissors,
   Square,
   SlidersHorizontal,
@@ -27,12 +26,13 @@ import {
   VolumeX,
   ZoomIn,
   ZoomOut,
+  X,
 } from '@lucide/vue'
-import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { useLocalStorage, useResizeObserver } from '@vueuse/core'
 import { computed, nextTick, ref, shallowRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import EditorMinimap from '@/components/EditorMinimap.vue'
+import EditorSaveMenu from '@/components/EditorSaveMenu.vue'
 import EditorDisplayControls from '@/components/EditorDisplayControls.vue'
 import { useEditorSpectrogram } from '@/composables/editor/spectrogram'
 import { drawFrequencyAxis, drawSpectrogram } from '@/spectrogram'
@@ -52,6 +52,7 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
+import ToolbarOverflow from '@/components/ToolbarOverflow.vue'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -69,7 +70,7 @@ import { Toggle } from '@/components/ui/toggle'
 import { MIN_LINE_PX, useEditorGrid } from '@/composables/editor/grid'
 import { useEditorViewport } from '@/composables/editor/viewport'
 import { useFrameDraw } from '@/composables/editor/frameDraw'
-import { formatNumber, formatRate, shortPath } from '@/format'
+import { formatNumber, formatRate } from '@/format'
 import { canvasContext, drawWave } from '@/waveform-renderer'
 import { useWaveRenderer } from '@/waveform-gl'
 import { waveformLook } from '@/waveform-settings'
@@ -78,6 +79,9 @@ import { useSettingsStore } from '@/stores/settings'
 import { useBasicPitchStore } from '@/stores/basicPitch'
 
 const { t } = useI18n()
+const props = withDefaults(defineProps<{ embedded?: boolean, expanded?: boolean }>(), { embedded: false, expanded: false })
+const emit = defineEmits<{ close: [], toggleExpand: [] }>()
+const toolbarTools = ['undo', 'redo', 'play', 'loop', 'loopPoints', 'crop', 'delete', 'cut', 'copy', 'paste', 'silence', 'fadeIn', 'fadeOut', 'curve', 'normalize', 'gainDown', 'gainUp', 'reverse', 'stretch', 'lufs', 'dc', 'midi', 'slice', 'regions']
 const editor = useEditorStore()
 const settings = useSettingsStore()
 
@@ -100,6 +104,16 @@ const isSpectrogram = computed(() => displayMode.value === 'spectrogram')
 const gridMode = useLocalStorage<GridMode>('editor.gridMode', 'beats')
 const snap = useLocalStorage('editor.snap', true)
 const zeroSnap = useLocalStorage('editor.zeroSnap', true)
+const gridTempoRow = ref<HTMLElement | null>(null)
+function openGridTempo() {
+  gridMode.value = 'beats'
+  // Let the context menu restore focus before focusing the footer field.
+  setTimeout(() => {
+    const input = gridTempoRow.value?.querySelector('input')
+    input?.focus()
+    input?.select()
+  }, 0)
+}
 // Slices shown while the slicer is open.
 const slicePreview = ref<Marker[]>([])
 // Tempo of the bar grid (from the sample, editable) and where bar 1 starts, in frames.
@@ -127,13 +141,16 @@ function setView(key: WaveKey, value: unknown) {
 
 const frames = computed(() => editor.state?.frames ?? 0)
 const rate = computed(() => editor.state?.sampleRate ?? 44100)
-const { viewStart, viewEnd, fit, zoom, pan, zoomToSelection } = useEditorViewport(frames, () => editor.selection)
+const { viewStart, viewEnd, fit, zoom, pan, follow, deferFollow, zoomToSelection } = useEditorViewport(frames, () => editor.selection)
+watch(() => editor.playhead, (frame) => {
+  if (editor.playing) follow(frame)
+})
 const { data: spectrum, loading: spectrumLoading, error: spectrumError, refresh: refreshSpectrum } = useEditorSpectrogram({
   enabled: isSpectrogram, revision: computed(() => editor.revision), frames,
   start: viewStart, end: viewEnd, width, read: editor.spectrogram,
 })
 
-watch(() => editor.sample?.id, async (id) => {
+watch(() => editor.sessionVersion, async (id) => {
   if (id == null)
     return
   fit()
@@ -141,7 +158,7 @@ watch(() => editor.sample?.id, async (id) => {
   downbeat.value = 0
   await nextTick()
   canvas.value?.focus()
-})
+}, { immediate: true })
 
 useResizeObserver(box, (entries) => {
   const r = entries[0].contentRect
@@ -420,8 +437,10 @@ watchEffect(() => {
   const px = Math.round(x(f))
   el.style.transform = `translateX(${px}px)`
   label.textContent = formatTime(f / rate.value)
-  // Near the right edge the time goes to the left of the line.
-  label.style.transform = px > width.value - 72 ? 'translateX(calc(-100% - 4px))' : 'translateX(4px)'
+  // Centre on the line, clamping only when the badge reaches a viewport edge.
+  const labelWidth = label.offsetWidth
+  const left = Math.max(2, Math.min(width.value - labelWidth - 2, px - labelWidth / 2))
+  label.style.transform = `translateX(${left - px}px)`
 })
 
 // Slice markers and their regions: a line and a flag on the ruler at each marker,
@@ -691,6 +710,7 @@ async function onDoubleClick(e: MouseEvent) {
 
 // What was right-clicked: a marker's flag, the selection, or any other point,
 // which moves the cursor there like a click.
+const menuOnRuler = ref(false)
 const menu = shallowRef<{ kind: 'marker', index: number } | { kind: 'selection' } | { kind: 'point', frame: number } | null>(null)
 // The region starting at the right-clicked marker, for "skip / include".
 const menuRegion = computed(() => {
@@ -700,6 +720,7 @@ const menuRegion = computed(() => {
 })
 
 function onContextMenu(e: MouseEvent) {
+  menuOnRuler.value = onRuler(e)
   const i = markerAt(e)
   if (i >= 0) {
     menu.value = { kind: 'marker', index: i }
@@ -851,7 +872,7 @@ function onKeyDown(e: KeyboardEvent) {
   }
   else if (mod && key === 's') {
     handled()
-    editor.save(e.shiftKey || !editor.canOverwrite)
+    editor.save(e.shiftKey ? 'saveAs' : 'save')
   }
   else if (mod && key === 'a') {
     handled()
@@ -930,179 +951,153 @@ const curves: { value: Curve, label: string }[] = [
 </script>
 
 <template>
-  <div class="h-full flex flex-col overflow-hidden bg-background text-foreground">
-    <!-- Drag region under the macOS traffic lights (overlay title bar), like the main window. -->
-    <header class="h-11 shrink-0 pl-[84px] pr-3 flex items-center gap-3 border-b border-border" data-tauri-drag-region>
-      <div class="min-w-0 text-sm font-medium truncate" data-tauri-drag-region>
-        {{ editor.sample?.name }}<span class="text-muted-foreground">.{{ editor.sample?.ext }}</span>
-        <span v-if="editor.state?.dirty" class="text-primary"> •</span>
-      </div>
-      <div class="ml-auto flex items-center gap-2">
-        <Hint :text="t('editor.save.asNewHint')" shortcut="⇧⌘S">
-          <Button variant="outline" size="sm" @click="editor.save(true)">
-            {{ t('editor.save.asNew') }}
-          </Button>
-        </Hint>
-        <Hint
-          :text="editor.canOverwrite ? t('editor.save.overwriteHint') : t('editor.save.wavOnly')"
-          shortcut="⌘S"
-        >
-          <Button size="sm" :disabled="!editor.canOverwrite || !editor.state?.dirty" @click="editor.save(false)">
-            <Save /> {{ t('common.actions.save') }}
-          </Button>
-        </Hint>
-      </div>
+  <div class="h-full flex flex-col overflow-hidden bg-background text-foreground" :inert="editor.loading || editor.saving" data-editor-panel>
+    <!-- Keep a drag region for the legacy standalone editor window. -->
+    <header v-if="!props.embedded" class="h-11 shrink-0 pl-[84px] pr-3 flex items-center border-b border-border" data-tauri-drag-region>
+      <span class="min-w-0 truncate text-sm font-medium" data-tauri-drag-region>{{ editor.sample?.name }}<span class="text-muted-foreground">.{{ editor.sample?.ext }}</span><span v-if="editor.state?.dirty" class="text-primary"> •</span></span>
     </header>
 
-    <div class="h-11 shrink-0 px-3 flex items-center gap-1 border-b border-border overflow-x-auto">
-      <Hint :text="t('editor.toolbar.undo')" shortcut="⌘Z">
-        <Button variant="ghost" size="icon-sm" :disabled="!editor.state?.canUndo" @click="editor.undo()">
-          <Undo2 />
+    <div class="h-11 shrink-0 px-3 flex items-center gap-1 border-b border-border">
+      <ToolbarOverflow :items="toolbarTools">
+        <template #default="{ item }">
+          <Hint v-if="item === 'undo'" :text="t('editor.toolbar.undo')" shortcut="⌘Z">
+              <Button variant="ghost" size="icon-sm" :disabled="!editor.state?.canUndo" :aria-label="t('editor.toolbar.undo')" @click="editor.undo()">
+                <Undo2 />
+              </Button>
+          </Hint>
+          <Hint v-if="item === 'redo'" :text="t('editor.toolbar.redo')" shortcut="⇧⌘Z">
+              <Button variant="ghost" size="icon-sm" :disabled="!editor.state?.canRedo" :aria-label="t('editor.toolbar.redo')" @click="editor.redo()">
+                <Redo2 />
+              </Button>
+          </Hint>
+          <Hint v-if="item === 'play'" :text="editor.playing ? t('editor.toolbar.stop') : editor.selection ? t('editor.toolbar.playSelection') : t('editor.toolbar.playFromCursor')" :shortcut="t('editor.toolbar.space')">
+              <Button variant="ghost" size="icon-sm" :aria-label="t(editor.playing ? 'editor.toolbar.stop' : 'common.actions.play')" @click="editor.togglePlay()">
+                <component :is="editor.playing ? Square : Play" />
+              </Button>
+          </Hint>
+          <Hint v-if="item === 'loop'" :text="t('editor.toolbar.loopHint')" shortcut="L">
+              <Toggle v-model="editor.looping" size="sm" :class="toggleIcon" :aria-label="t('editor.toolbar.loop')">
+                <Repeat />
+              </Toggle>
+          </Hint>
+          <Hint v-if="item === 'loopPoints'" :text="editor.selection ? t('editor.toolbar.setLoopHint') : t('editor.toolbar.clearLoopHint')" shortcut="⇧L">
+              <Button
+                variant="ghost" size="icon-sm"
+                :class="editor.state?.loop && 'text-primary hover:text-primary'"
+                :disabled="!editor.selection && !editor.state?.loop"
+                :aria-label="t('editor.toolbar.loopPoints')"
+                @click="editor.toggleLoopPoints()"
+              >
+                <IterationCw />
+              </Button>
+          </Hint>
+          <Hint v-if="item === 'crop'" :text="t('editor.toolbar.cropHint')">
+              <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.crop')" @click="crop()">
+                <Crop />
+              </Button>
+          </Hint>
+          <Hint v-if="item === 'delete'" :text="t('editor.toolbar.deleteHint')" shortcut="⌫">
+              <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.delete')" @click="editor.remove()">
+                <Eraser />
+              </Button>
+          </Hint>
+          <Hint v-if="item === 'cut'" :text="t('editor.toolbar.cutHint')" shortcut="⌘X">
+              <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.cut')" @click="editor.cut()">
+                <Scissors />
+              </Button>
+          </Hint>
+          <Hint v-if="item === 'copy'" :text="t('editor.toolbar.copyHint')" shortcut="⌘C">
+              <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.copy')" @click="editor.copy()">
+                <Copy />
+              </Button>
+          </Hint>
+          <Hint v-if="item === 'paste'" :text="editor.selection ? t('editor.toolbar.pasteOverHint') : t('editor.toolbar.pasteHint')" shortcut="⌘V">
+              <Button variant="ghost" size="icon-sm" :disabled="!editor.clipboard" :aria-label="t('editor.toolbar.paste')" @click="editor.paste()">
+                <ClipboardPaste />
+              </Button>
+          </Hint>
+          <Hint v-if="item === 'silence'" :text="t('editor.toolbar.silenceHint')">
+              <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" @click="editor.silence()">
+                <VolumeX />
+              </Button>
+          </Hint>
+          <Hint v-if="item === 'fadeIn'" :text="t('editor.toolbar.fadeInHint')">
+              <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.fadeIn')" @click="editor.fade('in')">
+                <FadeIcon direction="in" :curve="editor.curve" />
+              </Button>
+          </Hint>
+          <Hint v-if="item === 'fadeOut'" :text="t('editor.toolbar.fadeOutHint')">
+              <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.fadeOut')" @click="editor.fade('out')">
+                <FadeIcon direction="out" :curve="editor.curve" />
+              </Button>
+          </Hint>
+          <Hint v-if="item === 'curve'" :text="t('editor.toolbar.fadeCurve')">
+              <span class="inline-flex">
+                <Select v-model="editor.curve">
+                  <SelectTrigger size="sm" class="gap-1 px-2 border-transparent bg-transparent shadow-none dark:bg-transparent hover:bg-accent" :aria-label="t('editor.toolbar.fadeCurve')">
+                    <SelectValue>
+                      <FadeIcon :curve="editor.curve" class="size-4 text-foreground" />
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem v-for="c in curves" :key="c.value" :value="c.value">
+                      <FadeIcon :curve="c.value" class="size-4" /> {{ t(c.label) }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </span>
+          </Hint>
+          <Hint v-if="item === 'normalize'" :text="t('editor.toolbar.normalizeHint')">
+              <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.normalize')" @click="editor.normalize()">
+                <ArrowUpToLine />
+              </Button>
+          </Hint>
+          <Hint v-if="item === 'gainDown'" :text="t('editor.toolbar.gainDownHint')">
+              <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.gainDownHint')" @click="editor.gain(-3)">
+                <Volume1 />
+              </Button>
+          </Hint>
+          <Hint v-if="item === 'gainUp'" :text="t('editor.toolbar.gainUpHint')">
+              <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.gainUpHint')" @click="editor.gain(3)">
+                <Volume2 />
+              </Button>
+          </Hint>
+          <Hint v-if="item === 'reverse'" :text="t('editor.toolbar.reverseHint')">
+              <Button variant="ghost" size="icon-sm" @click="editor.reverse()">
+                <ArrowLeftRight />
+              </Button>
+          </Hint>
+          <EditorProcessing v-if="item === 'stretch'" tool="stretch" />
+          <EditorProcessing v-if="item === 'lufs'" tool="lufs" />
+          <EditorProcessing v-if="item === 'dc'" tool="dc" />
+          <Hint v-if="item === 'midi'" :text="t('basicPitch.action')">
+              <Button variant="ghost" size="sm" class="px-2" :disabled="!editor.sample || !frames || editor.processing" :aria-label="t('basicPitch.action')" @click="exportMidi">
+                <Music /> MIDI
+              </Button>
+          </Hint>
+          <EditorSlicer v-if="item === 'slice'" v-model:preview="slicePreview" :beat-frames="beatFrames" :downbeat="downbeat" :zero="zeroSnap" />
+          <Hint v-if="item === 'regions'" :text="savedRegions ? t('editor.regions.saveHint', { n: formatNumber(savedRegions) }, savedRegions) : t('editor.regions.none')">
+              <Button variant="ghost" size="sm" class="px-2" :disabled="!savedRegions" :aria-label="t('editor.regions.save')" @click="editor.saveRegions()">
+                <FolderOutput />
+                <span v-if="savedRegions" class="tabular">{{ formatNumber(savedRegions) }}</span>
+              </Button>
+          </Hint>
+        </template>
+      </ToolbarOverflow>
+      <div class="shrink-0 flex items-center gap-1 pl-2 border-l border-border">
+        <EditorSaveMenu />
+        <Button v-if="props.embedded" variant="ghost" size="icon-sm" :aria-label="t(props.expanded ? 'editor.panel.collapse' : 'editor.panel.expand')" @click="emit('toggleExpand')">
+          <Minimize2 v-if="props.expanded" /><Maximize2 v-else />
         </Button>
-      </Hint>
-      <Hint :text="t('editor.toolbar.redo')" shortcut="⇧⌘Z">
-        <Button variant="ghost" size="icon-sm" :disabled="!editor.state?.canRedo" @click="editor.redo()">
-          <Redo2 />
-        </Button>
-      </Hint>
-      <Separator orientation="vertical" class="mx-1 h-5" />
-      <Hint :text="editor.playing ? t('editor.toolbar.stop') : editor.selection ? t('editor.toolbar.playSelection') : t('editor.toolbar.playFromCursor')" :shortcut="t('editor.toolbar.space')">
-        <Button variant="ghost" size="icon-sm" @click="editor.togglePlay()">
-          <component :is="editor.playing ? Square : Play" />
-        </Button>
-      </Hint>
-      <Hint :text="t('editor.toolbar.loopHint')" shortcut="L">
-        <Toggle v-model="editor.looping" size="sm" :class="toggleIcon" :aria-label="t('editor.toolbar.loop')">
-          <Repeat />
-        </Toggle>
-      </Hint>
-      <Hint :text="editor.selection ? t('editor.toolbar.setLoopHint') : t('editor.toolbar.clearLoopHint')" shortcut="⇧L">
-        <Button
-          variant="ghost" size="icon-sm"
-          :class="editor.state?.loop && 'text-primary hover:text-primary'"
-          :disabled="!editor.selection && !editor.state?.loop"
-          :aria-label="t('editor.toolbar.loopPoints')"
-          @click="editor.toggleLoopPoints()"
-        >
-          <IterationCw />
-        </Button>
-      </Hint>
-      <Separator orientation="vertical" class="mx-1 h-5" />
-      <Hint :text="t('editor.toolbar.cropHint')">
-        <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.crop')" @click="crop()">
-          <Crop />
-        </Button>
-      </Hint>
-      <Hint :text="t('editor.toolbar.deleteHint')" shortcut="⌫">
-        <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.delete')" @click="editor.remove()">
-          <Eraser />
-        </Button>
-      </Hint>
-      <Hint :text="t('editor.toolbar.cutHint')" shortcut="⌘X">
-        <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.cut')" @click="editor.cut()">
-          <Scissors />
-        </Button>
-      </Hint>
-      <Hint :text="t('editor.toolbar.copyHint')" shortcut="⌘C">
-        <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.copy')" @click="editor.copy()">
-          <Copy />
-        </Button>
-      </Hint>
-      <Hint :text="editor.selection ? t('editor.toolbar.pasteOverHint') : t('editor.toolbar.pasteHint')" shortcut="⌘V">
-        <Button variant="ghost" size="icon-sm" :disabled="!editor.clipboard" :aria-label="t('editor.toolbar.paste')" @click="editor.paste()">
-          <ClipboardPaste />
-        </Button>
-      </Hint>
-      <Hint :text="t('editor.toolbar.silenceHint')">
-        <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" @click="editor.silence()">
-          <VolumeX />
-        </Button>
-      </Hint>
-      <Separator orientation="vertical" class="mx-1 h-5" />
-      <Hint :text="t('editor.toolbar.fadeInHint')">
-        <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.fadeIn')" @click="editor.fade('in')">
-          <FadeIcon direction="in" :curve="editor.curve" />
-        </Button>
-      </Hint>
-      <Hint :text="t('editor.toolbar.fadeOutHint')">
-        <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.fadeOut')" @click="editor.fade('out')">
-          <FadeIcon direction="out" :curve="editor.curve" />
-        </Button>
-      </Hint>
-      <!-- Curve picker shown as the curve itself; the items name it too. -->
-      <!-- The tooltip wraps the whole picker: inside it, it would take the popup's anchor. -->
-      <Hint :text="t('editor.toolbar.fadeCurve')">
-        <span class="inline-flex">
-          <Select v-model="editor.curve">
-            <SelectTrigger size="sm" class="gap-1 px-2 border-transparent bg-transparent shadow-none dark:bg-transparent hover:bg-accent" :aria-label="t('editor.toolbar.fadeCurve')">
-              <SelectValue>
-                <FadeIcon :curve="editor.curve" class="size-4 text-foreground" />
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem v-for="c in curves" :key="c.value" :value="c.value">
-                <FadeIcon :curve="c.value" class="size-4" /> {{ t(c.label) }}
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </span>
-      </Hint>
-      <Separator orientation="vertical" class="mx-1 h-5" />
-      <Hint :text="t('editor.toolbar.normalizeHint')">
-        <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.normalize')" @click="editor.normalize()">
-          <ArrowUpToLine />
-        </Button>
-      </Hint>
-      <Hint :text="t('editor.toolbar.gainDownHint')">
-        <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.gainDownHint')" @click="editor.gain(-3)">
-          <Volume1 />
-        </Button>
-      </Hint>
-      <Hint :text="t('editor.toolbar.gainUpHint')">
-        <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.gainUpHint')" @click="editor.gain(3)">
-          <Volume2 />
-        </Button>
-      </Hint>
-      <Hint :text="t('editor.toolbar.reverseHint')">
-        <Button variant="ghost" size="icon-sm" @click="editor.reverse()">
-          <ArrowLeftRight />
-        </Button>
-      </Hint>
-      <Separator orientation="vertical" class="mx-1 h-5" />
-      <EditorProcessing />
-      <Hint :text="t('basicPitch.action')">
-        <Button variant="ghost" size="sm" class="px-2" :disabled="!editor.sample || !frames || editor.processing" :aria-label="t('basicPitch.action')" @click="exportMidi">
-          <Music /> MIDI
-        </Button>
-      </Hint>
-      <EditorSlicer v-model:preview="slicePreview" :beat-frames="beatFrames" :downbeat="downbeat" :zero="zeroSnap" />
-      <Hint :text="savedRegions ? t('editor.regions.saveHint', { n: formatNumber(savedRegions) }, savedRegions) : t('editor.regions.none')">
-        <Button variant="ghost" size="sm" class="px-2" :disabled="!savedRegions" :aria-label="t('editor.regions.save')" @click="editor.saveRegions()">
-          <FolderOutput />
-          <span v-if="savedRegions" class="tabular">{{ formatNumber(savedRegions) }}</span>
-        </Button>
-      </Hint>
-      <!-- Tempo of the bar grid (and of snapping), next to the edits it lines up. -->
-      <Hint :text="t('editor.toolbar.bpmHint')">
-        <Input
-          :model-value="bpm ?? ''"
-          type="number"
-          min="20"
-          max="999"
-          step="0.01"
-          :placeholder="t('editor.toolbar.bpm')"
-          :aria-label="t('editor.toolbar.bpm')"
-          class="ml-auto h-7 w-20 px-2 text-xs tabular [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-          @update:model-value="setBpm"
-        />
-      </Hint>
+        <Button v-if="props.embedded" variant="ghost" size="icon-sm" :aria-label="t('common.actions.close')" @click="emit('close')"><X /></Button>
+      </div>
     </div>
 
     <EditorMinimap
       :view-start="viewStart"
       :view-end="viewEnd"
       :hover-frame="hoverFrame"
-      @view="(a, b) => { viewStart = a; viewEnd = b }"
+      @view="(a, b) => { deferFollow(); viewStart = a; viewEnd = b }"
       @zoom="zoom"
       @fit="fit()"
     />
@@ -1225,6 +1220,10 @@ const curves: { value: Curve, label: string }[] = [
               {{ t('editor.toolbar.fit') }}<ContextMenuShortcut>0</ContextMenuShortcut>
             </ContextMenuItem>
           </template>
+          <template v-if="menuOnRuler">
+            <ContextMenuSeparator />
+            <ContextMenuItem @select="openGridTempo()">{{ t('editor.view.tempo') }}…</ContextMenuItem>
+          </template>
         </ContextMenuContent>
       </ContextMenu>
       <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
@@ -1239,6 +1238,9 @@ const curves: { value: Curve, label: string }[] = [
             <path d="M0 0H10L5 7Z" fill="currentColor" />
           </svg>
         </div>
+      </div>
+      <div v-if="editor.sample" class="pointer-events-none absolute bottom-2 left-2 max-w-[min(70%,28rem)] truncate rounded bg-background/80 px-2 py-1 text-xs font-medium text-foreground" :title="`${editor.sample.name}.${editor.sample.ext}`">
+        {{ editor.sample.name }}<span class="text-muted-foreground">.{{ editor.sample.ext }}</span><span v-if="editor.state?.dirty" class="text-primary"> •</span>
       </div>
       <div
         v-if="isSpectrogram && spectrum && !spectrumError"
@@ -1262,6 +1264,14 @@ const curves: { value: Curve, label: string }[] = [
     <footer class="h-9 shrink-0 px-4 flex items-center gap-4 border-t border-border text-xs text-muted-foreground tabular">
       <div class="min-w-0 flex-1 flex items-center gap-4 overflow-hidden">
         <span class="shrink-0">{{ t('editor.status.cursor', { time: status.cursor }) }}</span>
+        <label v-if="gridMode === 'beats'" ref="gridTempoRow" class="shrink-0 inline-flex items-center gap-2">
+          <span>{{ t('editor.view.tempo') }}</span>
+          <Input
+            :model-value="bpm ?? ''" type="number" min="20" max="999" step="0.01"
+            :placeholder="t('editor.toolbar.bpm')" :aria-label="t('editor.view.tempo')"
+            class="h-6 w-16 px-1.5 text-xs tabular" @update:model-value="setBpm"
+          />
+        </label>
         <button
           v-if="vZoom > 1.01" class="shrink-0 hover:text-foreground"
           :title="t('editor.status.vZoom')"
@@ -1273,15 +1283,7 @@ const curves: { value: Curve, label: string }[] = [
         <button v-if="status.loop" class="shrink-0 hover:text-foreground" :title="t('editor.status.selectLoop')" @click="selectLoop()">
           {{ t('editor.status.loop', { range: status.loop }) }}
         </button>
-        <button
-          class="group min-w-0 flex-1 flex items-center justify-end gap-1.5 hover:text-foreground"
-          :title="`${editor.sample?.path}\n${t('editor.status.reveal')}`"
-          @click="editor.sample && revealItemInDir(editor.sample.path)"
-        >
-          <FolderOpen class="size-3.5 shrink-0" />
-          <span class="truncate group-hover:underline">{{ editor.sample ? shortPath(editor.sample.path) : '' }}</span>
-        </button>
-        <span class="min-w-0 truncate">{{ status.length }} · {{ formatRate(rate) }} · {{ editor.state?.channels === 1 ? t('common.channels.mono') : t('common.channels.stereo') }}</span>
+        <span class="ml-auto min-w-0 truncate">{{ status.length }} · {{ formatRate(rate) }} · {{ editor.state?.channels === 1 ? t('common.channels.mono') : t('common.channels.stereo') }}</span>
       </div>
       <Separator orientation="vertical" class="h-3" />
       <!-- View controls: beat grid, snapping, look and zoom. -->
@@ -1302,19 +1304,7 @@ const curves: { value: Curve, label: string }[] = [
                   <SlidersHorizontal />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" side="top" class="w-52">
-                <template v-for="(opt, i) in viewOptions" :key="opt.key">
-                  <DropdownMenuSeparator v-if="i" />
-                  <DropdownMenuLabel class="text-xs text-muted-foreground font-normal">
-                    {{ t(opt.label) }}
-                  </DropdownMenuLabel>
-                  <DropdownMenuRadioGroup :model-value="settings.settings.editorWaveform[opt.key]" @update:model-value="setView(opt.key, $event)">
-                    <DropdownMenuRadioItem v-for="c in opt.choices" :key="c.value" :value="c.value" @select.prevent>
-                      {{ t(c.label) }}
-                    </DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                </template>
-                <DropdownMenuSeparator />
+              <DropdownMenuContent align="end" side="top" class="w-60">
                 <DropdownMenuLabel class="text-xs text-muted-foreground font-normal">
                   {{ t('editor.view.grid') }}
                 </DropdownMenuLabel>
@@ -1335,6 +1325,18 @@ const curves: { value: Curve, label: string }[] = [
                 <DropdownMenuCheckboxItem v-model="zeroSnap" @select.prevent>
                   {{ t('editor.view.zeroSnap') }}
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
+                <template v-for="(opt, i) in viewOptions" :key="opt.key">
+                  <DropdownMenuSeparator v-if="i" />
+                  <DropdownMenuLabel class="text-xs text-muted-foreground font-normal">
+                    {{ t(opt.label) }}
+                  </DropdownMenuLabel>
+                  <DropdownMenuRadioGroup :model-value="settings.settings.editorWaveform[opt.key]" @update:model-value="setView(opt.key, $event)">
+                    <DropdownMenuRadioItem v-for="c in opt.choices" :key="c.value" :value="c.value" @select.prevent>
+                      {{ t(c.label) }}
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </template>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem @select="settings.openDialog('waveform')">
                   {{ t('settings.waveform.moreSettings') }}

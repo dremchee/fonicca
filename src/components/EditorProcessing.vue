@@ -13,6 +13,7 @@ import { useEditorStore } from '@/stores/editor'
 
 // This component owns processing controls; the store owns the operation and selection.
 const { t } = useI18n()
+const props = defineProps<{ tool?: 'stretch' | 'lufs' | 'dc' }>()
 const editor = useEditorStore()
 const mode = ref<'stretch' | 'lufs' | null>(null)
 const semitones = ref<string | number>(0)
@@ -53,17 +54,17 @@ async function run() {
 </script>
 
 <template>
-  <Hint :text="t('editor.processing.stretch')">
+  <Hint v-if="!props.tool || props.tool === 'stretch'" :text="t('editor.processing.stretch')">
     <Button variant="ghost" size="icon-sm" :disabled="!editor.state?.frames || editor.processing" :aria-label="t('editor.processing.stretch')" @click="show('stretch', $event)">
       <AudioLines />
     </Button>
   </Hint>
-  <Hint :text="t('editor.processing.lufs')">
+  <Hint v-if="!props.tool || props.tool === 'lufs'" :text="t('editor.processing.lufs')">
     <Button variant="ghost" size="icon-sm" :disabled="!editor.state?.frames || editor.processing" :aria-label="t('editor.processing.lufs')" @click="show('lufs', $event)">
       <Gauge />
     </Button>
   </Hint>
-  <Hint :text="t('editor.processing.dcOffsetHint')">
+  <Hint v-if="!props.tool || props.tool === 'dc'" :text="t('editor.processing.dcOffsetHint')">
     <Button variant="ghost" size="icon-sm" :disabled="!editor.state?.frames || editor.processing" :aria-label="t('editor.processing.dcOffset')" @click="editor.removeDcOffset()">
       <MoveVertical />
     </Button>

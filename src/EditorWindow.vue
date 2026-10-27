@@ -2,6 +2,7 @@
 import { onMounted } from 'vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EditorView from '@/components/EditorView.vue'
+import EditorUnsavedDialog from '@/components/EditorUnsavedDialog.vue'
 import BasicPitchDialog from '@/components/BasicPitchDialog.vue'
 import { useBasicPitchStore } from '@/stores/basicPitch'
 import SettingsDialog from '@/components/SettingsDialog.vue'
@@ -25,6 +26,7 @@ onMounted(() => Promise.all([settings.init(), editor.init(props.sampleId), useBa
     <BasicPitchDialog />
     <SettingsDialog wave-target="editor" />
     <ConfirmDialog />
+    <EditorUnsavedDialog />
     <Toaster theme="system" position="bottom-right" />
   </TooltipProvider>
 </template>

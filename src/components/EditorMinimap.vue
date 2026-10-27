@@ -162,7 +162,7 @@ function onWheel(e: WheelEvent) {
 </script>
 
 <template>
-  <div ref="box" class="relative h-11 shrink-0 border-b border-border bg-background" :title="t('editor.minimap.hint')">
+  <div ref="box" class="relative h-7 shrink-0 border-b border-border bg-background" :title="t('editor.minimap.hint')">
     <canvas
       ref="canvas"
       class="absolute inset-0 size-full cursor-grab active:cursor-grabbing"

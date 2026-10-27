@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { onKeyStroke } from '@vueuse/core'
+import { isTauri } from '@tauri-apps/api/core'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { storeToRefs } from 'pinia'
 import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -22,11 +24,13 @@ import SampleList from '@/components/SampleList.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import TrackInfoDialog from '@/components/TrackInfoDialog.vue'
 import SourceSidebar from '@/components/SourceSidebar.vue'
-import WaveformView from '@/components/WaveformView.vue'
+import EditorView from '@/components/EditorView.vue'
+import EditorUnsavedDialog from '@/components/EditorUnsavedDialog.vue'
 import { installAppMenu } from '@/menu'
 import { useDuplicatesStore } from '@/stores/duplicates'
-import { openEditor } from '@/stores/editor'
+import { openEditor, useEditorStore } from '@/stores/editor'
 import { openTrackInfo } from '@/composables/trackInfo'
+import { useWaveformBackgrounds } from '@/composables/waveformBackgrounds'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useUpdatesStore } from '@/stores/updates'
@@ -35,29 +39,33 @@ import { useSettingsStore } from '@/stores/settings'
 const { locale } = useI18n()
 const library = useLibraryStore()
 const player = usePlayerStore()
+const editor = useEditorStore()
+const backgrounds = useWaveformBackgrounds()
 const settings = useSettingsStore()
 const duplicates = useDuplicatesStore()
 const paletteOpen = ref(false)
 const { focused } = storeToRefs(library)
-// The selected sample, or the one playing once nothing is selected.
-const shownSample = computed(() => {
-  const selected = library.scope.kind === 'duplicates'
-    ? duplicates.filteredGroups.flatMap(g => g.copies).find(c => c.id === duplicates.focusedId)
-    : focused.value
-  return selected ?? player.playingSample ?? undefined
-})
 const toolbar = useTemplateRef<InstanceType<typeof LibraryToolbar>>('toolbar')
 const search = computed(() => toolbar.value?.searchElement)
 
 onMounted(async () => {
   await Promise.all([settings.init(), library.init(), duplicates.init(), useStemsStore().init(), useApolloStore().init(), useBasicPitchStore().init()])
   void useUpdatesStore().init()
+  if (isTauri()) {
+    const win = getCurrentWindow()
+    await win.onCloseRequested((event) => {
+      if (!editor.open) return
+      event.preventDefault()
+      void editor.closeEmbedded().then((closed) => { if (closed) void win.close() })
+    })
+  }
 })
 
 // The native menu is rebuilt whenever the language changes.
 watch(locale, () => installAppMenu(() => settings.openDialog()).catch(console.error), { immediate: true })
 
 watch(() => library.scope, () => { settings.dialogOpen = false })
+watch(() => player.playingSample, sample => { if (sample) void backgrounds.prepare(sample) })
 
 // DuplicatesView replaces the list and handles its own arrows and Space.
 const inDuplicates = computed(() => library.scope.kind === 'duplicates')
@@ -66,7 +74,7 @@ const inDuplicates = computed(() => library.scope.kind === 'duplicates')
 function isTyping(e: KeyboardEvent) {
   if (settings.dialogOpen || inDuplicates.value || e.defaultPrevented)
     return true
-  if (e.target instanceof Element && e.target.closest('button, a, [role="slider"], [role="checkbox"], [role="combobox"], [role="menu"], [role="dialog"], [role="alertdialog"]'))
+  if (e.target instanceof Element && e.target.closest('[data-editor-panel], button, a, [role="slider"], [role="checkbox"], [role="combobox"], [role="menu"], [role="dialog"], [role="alertdialog"]'))
     return true
   return e.target instanceof HTMLInputElement && e.target.type !== 'checkbox'
 }
@@ -74,8 +82,10 @@ function isTyping(e: KeyboardEvent) {
 async function move(delta: number, extend: boolean) {
   await library.moveFocus(delta, extend)
   const s = library.focused
-  if (s && player.autoplay)
-    player.play(s)
+  if (s && player.autoplay) {
+    await editor.stopPlayback()
+    await player.play(s)
+  }
 }
 
 onKeyStroke('ArrowDown', (e) => {
@@ -95,7 +105,7 @@ onKeyStroke(' ', (e) => {
     return
   e.preventDefault()
   if (focused.value)
-    player.toggle(focused.value)
+    void editor.stopPlayback().then(() => { if (focused.value) return player.toggle(focused.value) })
 })
 onKeyStroke('a', (e) => {
   if ((e.metaKey || e.ctrlKey) && !isTyping(e)) {
@@ -129,7 +139,7 @@ onKeyStroke(['e', 'у'], (e) => {
 })
 onKeyStroke('Escape', (e) => {
   if (settings.dialogOpen) return
-  if (e.target instanceof Element && e.target.closest('[role="menu"], [role="dialog"], [role="alertdialog"]'))
+  if (e.target instanceof Element && e.target.closest('[data-editor-panel], [role="menu"], [role="dialog"], [role="alertdialog"]'))
     return
   if (player.playingId !== null)
     player.stop()
@@ -171,20 +181,19 @@ onKeyStroke(',', (e) => {
       <ResizablePanel id="main" :order="2" as="main" size-unit="px" :min-size="520" class="min-w-0 flex flex-col">
         <SettingsDialog embedded v-show="settings.dialogOpen" />
         <div v-show="!settings.dialogOpen" class="min-h-0 flex-1 flex flex-col">
-          <template v-if="!inDuplicates">
+          <template v-if="!inDuplicates && !editor.expanded">
             <LibraryToolbar ref="toolbar" @open-search="paletteOpen = true" />
             <FilterBar />
           </template>
           <ResizablePanelGroup direction="vertical" auto-save-id="fonicca-layout-rows" class="min-h-0 flex-1">
-            <ResizablePanel id="list" :order="1" :min-size="20" class="flex flex-col">
+            <ResizablePanel v-if="!editor.expanded" id="list" :order="1" :min-size="20" class="flex flex-col">
               <DuplicatesView v-if="inDuplicates" />
               <SampleList v-else />
             </ResizablePanel>
-            <!-- The player exists while a sample is selected, or one is still playing. -->
-            <template v-if="shownSample">
-              <ResizableHandle />
-              <ResizablePanel id="player" :order="2" size-unit="px" :default-size="196" :min-size="150" :max-size="480">
-                <WaveformView :sample="shownSample" />
+            <template v-if="editor.open">
+              <ResizableHandle v-if="!editor.expanded" />
+              <ResizablePanel id="editor" :order="2" size-unit="px" :default-size="320" :min-size="200">
+                <EditorView embedded :expanded="editor.expanded" @close="editor.closeEmbedded()" @toggle-expand="editor.expanded = !editor.expanded" />
               </ResizablePanel>
             </template>
           </ResizablePanelGroup>
@@ -198,6 +207,7 @@ onKeyStroke(',', (e) => {
     <BasicPitchDialog />
     <CommandPalette v-model:open="paletteOpen" />
     <ConfirmDialog />
+    <EditorUnsavedDialog />
     <Toaster theme="system" position="bottom-right" />
   </TooltipProvider>
 </template>

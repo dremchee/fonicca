@@ -2,15 +2,19 @@ import type { Sample } from '@/api'
 import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
+import { save as chooseSavePath } from '@tauri-apps/plugin-dialog'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { api } from '@/api'
+import { usePlayerStore } from '@/stores/player'
 import { confirm } from '@/composables/confirm'
 import { formatNumber } from '@/format'
 import { t } from '@/i18n'
 import { parseWave } from '@/waveform'
 import { parseSpectrogram } from '@/spectrogram'
+
+export type SaveMode = 'save' | 'saveAs' | 'replaceOriginal' | 'selection'
 
 export type Curve = 'linear' | 'smooth' | 'exponential'
 
@@ -32,6 +36,9 @@ export interface EditorState {
   canUndo: boolean
   canRedo: boolean
   dirty: boolean
+  hasSavedTarget: boolean
+  canReplaceOriginal: boolean
+  originalPath: string
   /** Loop points for samplers, saved in the WAV's `smpl` chunk. */
   loop: { start: number, end: number } | null
   /** Slice markers, sorted; each starts a region, saved as cue points in the WAV. */
@@ -97,7 +104,8 @@ interface ProcessedAudio { state: EditorState, start: number, end: number, loudn
 
 const editorApi = {
   openWindow: (id: number) => invoke<void>('open_editor_window', { id }),
-  open: (id: number) => invoke<{ state: EditorState, name: string, ext: string, path: string, bpm: number | null }>('editor_open', { id }),
+  open: (id: number, discardExisting = false) => invoke<{ state: EditorState, name: string, ext: string, path: string, bpm: number | null }>('editor_open', { id, discardExisting }),
+  close: (discard: boolean) => invoke<void>('editor_close', { discard }),
   apply: (op: EditOp) => invoke<EditorState>('editor_apply', { op }),
   process: (start: number, end: number, processing: AudioProcessing) => invoke<ProcessedAudio>('editor_process', { start, end, processing }),
   undo: () => invoke<EditorState>('editor_undo'),
@@ -114,18 +122,13 @@ const editorApi = {
   zeroSnap: (frames: number[], radius: number) => invoke<number[]>('editor_zero_snap', { frames, radius }),
   play: (start: number, end: number, looping: boolean) => invoke<void>('editor_play', { start, end, looping }),
   updatePlayback: (start: number, end: number, looping: boolean) => invoke<boolean>('editor_update_playback', { start, end, looping }),
-  save: (asNew: boolean) =>
-    invoke<{ path: string, backup: string | null, state: EditorState }>('editor_save', { asNew }),
+  save: (mode: SaveMode, destination?: string, range?: Span) =>
+    invoke<{ path: string, backup: string | null, state: EditorState, name: string, ext: string, bpm: number | null, inLibrary: boolean, warning: string | null }>('editor_save', { mode, destination, range }),
 }
 
-/** Opens a sample in its own editor window (from the library window). */
+/** Opens a sample in the library's embedded editor. */
 export async function openEditor(sample: Sample) {
-  try {
-    await editorApi.openWindow(sample.id)
-  }
-  catch (e) {
-    toast.error(String(e))
-  }
+  await useEditorStore().openSample(sample)
 }
 
 /** State of the editor window this page runs in. */
@@ -135,6 +138,75 @@ export const useEditorStore = defineStore('editor', () => {
   const open = computed(() => sample.value !== null)
   const loading = ref(false)
   const processing = ref(false)
+  const saving = ref(false)
+  const sessionVersion = ref(0)
+  const expanded = ref(false)
+  const unsavedPrompt = ref(false)
+  let transitioning = false
+  let decide: ((choice: 'save' | 'discard' | 'cancel') => void) | null = null
+
+  function resolveUnsaved(choice: 'save' | 'discard' | 'cancel') {
+    unsavedPrompt.value = false
+    const resolve = decide
+    decide = null
+    resolve?.(choice)
+  }
+
+  async function allowTransition(): Promise<boolean> {
+    if (loading.value || processing.value || saving.value || decide)
+      return false
+    if (!state.value?.dirty)
+      return true
+    unsavedPrompt.value = true
+    const choice = await new Promise<'save' | 'discard' | 'cancel'>(resolve => { decide = resolve })
+    if (choice === 'cancel') return false
+    if (choice === 'discard') return true
+    loading.value = true
+    try { return await save() }
+    finally { loading.value = false }
+  }
+
+  async function openSample(next: Sample) {
+    if ((sample.value?.id === next.id && sample.value.path === next.path) || transitioning) return
+    transitioning = true
+    try {
+      if (!await allowTransition()) return
+      loading.value = true
+      await usePlayerStore().stop()
+      await stopPlayback()
+      const result = await editorApi.open(next.id, !!state.value?.dirty)
+      state.value = result.state
+      sample.value = { id: next.id, name: result.name, ext: result.ext, path: result.path, bpm: result.bpm }
+      sessionVersion.value++
+      cursor.value = 0
+      selection.value = null
+      looping.value = false
+      revision.value++
+      await refreshClipboard()
+    }
+    catch (error) { toast.error(String(error)) }
+    finally { loading.value = false; transitioning = false }
+  }
+
+  async function closeEmbedded(): Promise<boolean> {
+    if (!sample.value) return true
+    if (transitioning) return false
+    transitioning = true
+    try {
+      if (!await allowTransition()) return false
+      loading.value = true
+      await stopPlayback()
+      await editorApi.close(!!state.value?.dirty)
+      sample.value = null
+      state.value = null
+      selection.value = null
+      cursor.value = 0
+      expanded.value = false
+      return true
+    }
+    catch (error) { toast.error(String(error)); return false }
+    finally { loading.value = false; transitioning = false }
+  }
   /** Bumped after every change of the audio, so the view re-reads peaks. */
   const revision = ref(0)
 
@@ -149,7 +221,7 @@ export const useEditorStore = defineStore('editor', () => {
   const clipboard = ref<ClipInfo | null>(null)
   let frame = 0
 
-  const canOverwrite = computed(() => sample.value?.ext === 'wav')
+  const canOverwrite = computed(() => !!state.value?.canReplaceOriginal)
 
   const error = ref<string | null>(null)
 
@@ -162,6 +234,7 @@ export const useEditorStore = defineStore('editor', () => {
       const r = await editorApi.open(id)
       state.value = r.state
       sample.value = { id, name: r.name, ext: r.ext, path: r.path, bpm: r.bpm }
+      sessionVersion.value++
       revision.value++
     }
     catch (e) {
@@ -186,20 +259,10 @@ export const useEditorStore = defineStore('editor', () => {
         refreshClipboard()
     })
 
-    await win.onCloseRequested(async (event) => {
-      if (state.value?.dirty) {
-        const ok = await confirm({
-          title: t('editor.discard.title'),
-          description: t('editor.discard.description', { name: sample.value?.name ?? '' }),
-          action: t('editor.discard.action'),
-          destructive: true,
-        })
-        if (!ok) {
-          event.preventDefault()
-          return
-        }
-      }
-      stopPlayback()
+    await win.onCloseRequested((event) => {
+      if (!sample.value) return
+      event.preventDefault()
+      void closeEmbedded().then(closed => { if (closed) void win.close() })
     })
   }
 
@@ -215,7 +278,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   async function apply(op: EditOp, stop = true) {
-    if (processing.value)
+    if (processing.value || saving.value)
       return
     if (stop)
       stopPlayback()
@@ -228,12 +291,12 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   async function undo() {
-    if (!processing.value && state.value?.canUndo)
+    if (!processing.value && !saving.value && state.value?.canUndo)
       after(await editorApi.undo())
   }
 
   async function redo() {
-    if (!processing.value && state.value?.canRedo)
+    if (!processing.value && !saving.value && state.value?.canRedo)
       after(await editorApi.redo())
   }
 
@@ -243,7 +306,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function crop() {
-    if (processing.value)
+    if (processing.value || saving.value)
       return
     const s = selection.value
     if (!s)
@@ -254,7 +317,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function remove() {
-    if (processing.value)
+    if (processing.value || saving.value)
       return
     const s = selection.value
     if (!s)
@@ -274,7 +337,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   async function copy() {
-    if (processing.value)
+    if (processing.value || saving.value)
       return
     const s = selection.value
     if (!s)
@@ -288,7 +351,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   async function cut() {
-    if (processing.value)
+    if (processing.value || saving.value)
       return
     if (!selection.value)
       return
@@ -298,7 +361,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   /** Pastes over the selection, or at the cursor; the pasted audio ends up selected. */
   async function paste() {
-    if (processing.value || !clipboard.value)
+    if (processing.value || saving.value || !clipboard.value)
       return
     stopPlayback()
     const s = selection.value ?? { start: cursor.value, end: cursor.value }
@@ -314,7 +377,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function silence() {
-    if (processing.value)
+    if (processing.value || saving.value)
       return
     if (selection.value)
       apply({ op: 'silence', ...selection.value })
@@ -322,7 +385,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   /** Fades the selection; without one, from the start to the cursor (in) or the cursor to the end (out). */
   function fade(direction: 'in' | 'out') {
-    if (processing.value)
+    if (processing.value || saving.value)
       return
     const frames = state.value?.frames ?? 0
     const range = selection.value
@@ -341,7 +404,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   async function processAudio(options: AudioProcessing): Promise<boolean> {
-    if (processing.value || !state.value)
+    if (processing.value || saving.value || !state.value)
       return false
     const range = target()
     stopPlayback()
@@ -388,7 +451,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   /** Saves each region not skipped as a new sample, into a folder next to the file. */
   async function saveRegions() {
-    if (processing.value)
+    if (processing.value || saving.value)
       return
     const spans = regions.value.filter(r => !r.skip && r.end > r.start).map(({ start, end }) => ({ start, end }))
     if (!spans.length)
@@ -438,6 +501,7 @@ export const useEditorStore = defineStore('editor', () => {
     const s = selection.value
     const [start, end] = s ? [s.start, s.end] : [cursor.value, state.value.frames]
     try {
+      await usePlayerStore().stop()
       await editorApi.play(start, end, looping.value && !!s)
       playing.value = true
       track()
@@ -462,10 +526,10 @@ export const useEditorStore = defineStore('editor', () => {
 
   function stopPlayback() {
     cancelAnimationFrame(frame)
-    if (playing.value)
-      api.stop()
+    const stopped = playing.value ? api.stop() : Promise.resolve()
     playing.value = false
     playhead.value = null
+    return stopped
   }
 
   function togglePlay() {
@@ -477,29 +541,65 @@ export const useEditorStore = defineStore('editor', () => {
 
   // --- Saving --------------------------------------------------------------
 
-  async function save(asNew = !canOverwrite.value) {
-    if (processing.value)
-      return
-    stopPlayback()
+  async function save(mode: SaveMode = 'save') {
+    if (!sample.value || processing.value || saving.value)
+      return false
+    if (mode === 'save' && !state.value?.dirty)
+      return true
+    const selected = selection.value ? { ...selection.value } : undefined
+    if (mode === 'selection' && !selected)
+      return false
+    saving.value = true
     try {
-      const r = await editorApi.save(asNew)
-      state.value = r.state
-      const name = r.path.split('/').pop()
-      toast.success(t(asNew ? 'editor.save.savedAs' : 'editor.save.saved', { name: name ?? '' }), {
+      let destination: string | undefined
+      if (mode === 'saveAs' || mode === 'selection') {
+        const suffix = mode === 'selection' ? ' — loop.wav' : ' — edited.wav'
+        const picked = await chooseSavePath({
+          title: t(mode === 'selection' ? 'editor.save.selection' : 'editor.save.as'),
+          defaultPath: sample.value.path.replace(/\.[^/\\.]+$/, '') + suffix,
+          filters: [{ name: 'WAV', extensions: ['wav'] }],
+        })
+        if (!picked) return false
+        destination = /\.wav$/i.test(picked) ? picked : `${picked}.wav`
+      }
+      if (mode === 'replaceOriginal') {
+        if (!canOverwrite.value || !await confirm({ title: t('editor.save.replace'),
+          description: t('editor.save.replaceConfirm', { path: state.value?.originalPath ?? '' }),
+          action: t('editor.save.replace'), destructive: true })) return false
+      }
+      await usePlayerStore().stop()
+      await stopPlayback()
+      const r = await editorApi.save(mode, destination, mode === 'selection' ? selected : undefined)
+      if (mode !== 'selection') {
+        state.value = r.state
+        sample.value = { id: r.state.sampleId, name: r.name, ext: r.ext, path: r.path, bpm: r.bpm ?? sample.value.bpm }
+      }
+      toast.success(t(mode === 'selection' ? 'editor.save.selectionSaved' : 'editor.save.saved', { name: r.name }), {
         description: r.backup ? t('editor.save.backupKept') : undefined,
       })
+      if (r.warning) toast.warning(t('editor.save.indexWarning'), { description: r.warning })
+      return true
     }
     catch (e) {
       toast.error(String(e))
+      return false
     }
+    finally { saving.value = false }
   }
 
   return {
     sample,
     state,
+    expanded,
+    unsavedPrompt,
+    resolveUnsaved,
+    openSample,
+    closeEmbedded,
     open,
     loading,
     processing,
+    saving,
+    sessionVersion,
     processAudio,
     error,
     revision,
