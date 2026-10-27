@@ -2,6 +2,8 @@
 import SettingsNavigation from '@/components/SettingsNavigation.vue'
 import UpdateSettings from '@/components/UpdateSettings.vue'
 import MeterSettings from '@/components/MeterSettings.vue'
+import AudioDeviceSettings from '@/components/AudioDeviceSettings.vue'
+import { Separator } from '@/components/ui/separator'
 import type { AppInfo, Theme, WaveformSettings } from '@/api'
 import type { Locale } from '@/i18n'
 import darkAppIcon from '../../src-tauri/icons/128x128-dark.png'
@@ -350,6 +352,11 @@ function keyLabel(k: string) {
 
           <!-- Playback -->
           <template v-else-if="section === 'playback'">
+            <section class="group-box" :aria-label="t('settings.nav.playback')">
+              <AudioDeviceSettings direction="output" />
+              <Separator />
+              <AudioDeviceSettings direction="input" />
+            </section>
             <section class="group-box">
               <label class="row">
                 <div class="row-text">

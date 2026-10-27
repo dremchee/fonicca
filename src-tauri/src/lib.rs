@@ -123,7 +123,7 @@ pub fn run() {
                 // Pick up changes made while the app was closed.
                 scanner.request(*id);
             }
-            let player = player::Player::new();
+            let player = player::Player::new(settings.get().output_device);
             app.manage(AppState {
                 stems: Default::default(),
                 basic_pitch: Default::default(),
@@ -233,6 +233,8 @@ pub fn run() {
             commands::playback_position,
             commands::playback_levels,
             commands::get_settings,
+            commands::audio_output_devices,
+            commands::audio_input_devices,
             commands::update_settings,
             commands::app_info,
             commands::delete_sound_model,

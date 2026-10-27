@@ -5,6 +5,8 @@ use std::sync::{mpsc, Arc, Mutex};
 use std::time::Duration;
 
 use rodio::{Decoder, DeviceSinkBuilder, Player as RodioPlayer};
+use rodio::cpal::{self, traits::{DeviceTrait, HostTrait}};
+use serde::Serialize;
 use rodio::mixer::Mixer;
 
 use crate::error::{Error, Result};
@@ -17,7 +19,9 @@ const MAX_ADJUST_SECONDS: f64 = 60.0;
 /// Preview player. The output device lives on its own thread (cpal streams are not
 /// `Send` on every platform); only the mixer handle is shared.
 pub struct Player {
-    mixer: Option<Mixer>,
+    mixer: Mutex<Option<Mixer>>,
+    output: Option<mpsc::Sender<OutputRequest>>,
+    device_id: Mutex<Option<String>>,
     current: Mutex<Option<RodioPlayer>>,
     volume: Mutex<f32>,
     /// Maps playback time to time in the file, so positions and seeks stay in
@@ -25,6 +29,63 @@ pub struct Player {
     timing: Mutex<Timing>,
     /// Levels of what is playing, for the level meter.
     meter: Arc<MeterTap>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AudioDevice {
+    pub id: String,
+    pub name: String,
+    pub is_default: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputDevices {
+    pub devices: Vec<AudioDevice>,
+    pub active_device_id: Option<String>,
+}
+
+/// Lists capture devices without opening a microphone stream or recording audio.
+pub fn input_devices() -> Result<Vec<AudioDevice>> {
+    let host = cpal::default_host();
+    let default_id = host.default_input_device().and_then(|d| d.id().ok());
+    Ok(host.input_devices().map_err(|e| Error::Audio(e.to_string()))?
+        .filter_map(|device| {
+            let id = device.id().ok()?;
+            let name = device.description().ok()?.name().to_owned();
+            Some(AudioDevice { is_default: Some(&id) == default_id.as_ref(), id: id.to_string(), name })
+        }).collect())
+}
+
+pub fn validate_input_device(id: Option<&str>, devices: &[AudioDevice]) -> Result<()> {
+    if id.is_none_or(|id| devices.iter().any(|device| device.id == id)) {
+        Ok(())
+    } else {
+        Err(Error::Audio("input device is not available".into()))
+    }
+}
+
+struct OutputRequest {
+    id: Option<String>,
+    reply: mpsc::Sender<Result<(Mixer, Option<String>)>>,
+}
+
+fn open_output(id: Option<&str>) -> Result<(rodio::MixerDeviceSink, Option<String>)> {
+    let host = cpal::default_host();
+    let device = if let Some(id) = id {
+        host.output_devices().map_err(|e| Error::Audio(e.to_string()))?
+            .find(|d| d.id().ok().is_some_and(|v| v.to_string() == id))
+            .ok_or_else(|| Error::Audio("output device is not available".into()))?
+    } else {
+        host.default_output_device().ok_or_else(|| Error::Audio("no output device".into()))?
+    };
+    let device_id = device.id().ok().map(|v| v.to_string());
+    let mut sink = DeviceSinkBuilder::from_device(device)
+        .and_then(|b| b.open_sink_or_fallback())
+        .map_err(|e| Error::Audio(e.to_string()))?;
+    sink.log_on_drop(false);
+    Ok((sink, device_id))
 }
 
 #[derive(Clone, Copy)]
@@ -49,27 +110,45 @@ impl Timing {
 }
 
 impl Player {
-    pub fn new() -> Self {
-        let (tx, rx) = mpsc::channel();
+    pub fn new(preferred_device: Option<String>) -> Self {
+        let (ready_tx, ready_rx) = mpsc::channel();
+        let (tx, rx) = mpsc::channel::<OutputRequest>();
         std::thread::Builder::new()
             .name("audio-output".into())
-            .spawn(move || match DeviceSinkBuilder::open_default_sink() {
-                Ok(mut sink) => {
-                    sink.log_on_drop(false);
-                    let _ = tx.send(Some(sink.mixer().clone()));
-                    // Keep the stream alive for the lifetime of the app.
-                    loop {
-                        std::thread::park();
+            .spawn(move || {
+                // A disconnected saved interface must not prevent app startup.
+                let initial = open_output(preferred_device.as_deref()).or_else(|error| {
+                    eprintln!("failed to open preferred audio output: {error}");
+                    open_output(None)
+                });
+                let mut sink = match initial {
+                    Ok((sink, id)) => {
+                        let _ = ready_tx.send((Some(sink.mixer().clone()), id));
+                        Some(sink)
                     }
+                    Err(error) => {
+                        eprintln!("failed to open audio output: {error}");
+                        let _ = ready_tx.send((None, None));
+                        None
+                    }
+                };
+                while let Ok(request) = rx.recv() {
+                    // Open first: a failed switch leaves the previous stream alive.
+                    let result = open_output(request.id.as_deref()).map(|(next, id)| {
+                        let mixer = next.mixer().clone();
+                        sink = Some(next);
+                        (mixer, id)
+                    });
+                    let _ = request.reply.send(result);
                 }
-                Err(e) => {
-                    eprintln!("failed to open audio output: {e}");
-                    let _ = tx.send(None);
-                }
+                drop(sink);
             })
             .expect("spawn audio thread");
+        let (mixer, id) = ready_rx.recv().unwrap_or((None, None));
         Self {
-            mixer: rx.recv().ok().flatten(),
+            mixer: Mutex::new(mixer),
+            output: Some(tx),
+            device_id: Mutex::new(id),
             current: Mutex::new(None),
             volume: Mutex::new(1.0),
             timing: Mutex::new(Timing::PLAIN),
@@ -77,10 +156,36 @@ impl Player {
         }
     }
 
+    pub fn output_devices(&self) -> Result<OutputDevices> {
+        let host = cpal::default_host();
+        let default_id = host.default_output_device().and_then(|d| d.id().ok());
+        let devices = host.output_devices().map_err(|e| Error::Audio(e.to_string()))?
+            .filter_map(|device| {
+                let id = device.id().ok()?;
+                let name = device.description().ok()?.name().to_owned();
+                Some(AudioDevice { is_default: Some(&id) == default_id.as_ref(), id: id.to_string(), name })
+            }).collect();
+        Ok(OutputDevices { devices, active_device_id: self.device_id.lock().unwrap().clone() })
+    }
+
+    /// Preview and editor share this route. Successful changes stop playback.
+    pub fn set_output_device(&self, id: Option<String>) -> Result<()> {
+        let mut mixer = self.mixer.lock().unwrap();
+        let tx = self.output.as_ref().ok_or_else(|| Error::Audio("audio output thread unavailable".into()))?;
+        let (reply, rx) = mpsc::channel();
+        tx.send(OutputRequest { id, reply }).map_err(|e| Error::Audio(e.to_string()))?;
+        let (next, id) = rx.recv().map_err(|e| Error::Audio(e.to_string()))??;
+        self.stop();
+        *mixer = Some(next);
+        *self.device_id.lock().unwrap() = id;
+        Ok(())
+    }
+
     /// Plays from `start` (seconds in the file). Returns the adjustment actually
     /// applied: none for files too long to render up front.
     pub fn play(&self, path: &Path, start: f64, adjust: Adjust) -> Result<Adjust> {
-        let mixer = self.mixer.as_ref().ok_or_else(|| Error::Audio("no output device".into()))?;
+        let output = self.mixer.lock().unwrap();
+        let mixer = output.as_ref().ok_or_else(|| Error::Audio("no output device".into()))?;
         if !adjust.is_none() {
             let pcm = crate::audio::decode(path, MAX_ADJUST_SECONDS + 0.5)?;
             if (pcm.frames() as f64) < MAX_ADJUST_SECONDS * pcm.sample_rate as f64 {
@@ -145,7 +250,8 @@ impl Player {
 
     fn play_buffer_from(&self, pcm: &crate::audio::Pcm, start: usize, end: usize, looping: bool, position: usize) -> Result<()> {
         use rodio::Source;
-        let mixer = self.mixer.as_ref().ok_or_else(|| Error::Audio("no output device".into()))?;
+        let output = self.mixer.lock().unwrap();
+        let mixer = output.as_ref().ok_or_else(|| Error::Audio("no output device".into()))?;
         let ch = pcm.channels.max(1);
         let (start, end) = (start.min(pcm.frames()), end.min(pcm.frames()));
         if end <= start {
@@ -238,12 +344,91 @@ mod tests {
     use super::*;
 
     #[test]
+    fn recording_input_validation_accepts_system_and_available_devices_only() {
+        let devices = vec![AudioDevice { id: "test:microphone".into(), name: "Microphone".into(), is_default: true }];
+        assert!(validate_input_device(None, &[]).is_ok());
+        assert!(validate_input_device(Some("test:microphone"), &devices).is_ok());
+        assert!(validate_input_device(Some("test:missing"), &devices).is_err());
+    }
+
+    #[test]
+    #[ignore = "requires an available system audio output"]
+    fn system_output_can_be_listed_selected_and_reopened() {
+        let player = Player::new(Some("missing:disconnected-interface".into()));
+        let inputs = input_devices().unwrap();
+        assert!(!inputs.is_empty());
+        assert!(inputs.iter().all(|device| !device.id.is_empty() && !device.name.is_empty()));
+        let outputs = player.output_devices().unwrap();
+        assert!(!outputs.devices.is_empty());
+        let active = outputs.active_device_id.unwrap();
+        assert!(outputs.devices.iter().any(|d| d.id == active));
+        player.set_output_device(Some(active.clone())).unwrap();
+        assert_eq!(player.output_devices().unwrap().active_device_id, Some(active));
+        assert!(player.set_output_device(Some("missing:unknown-interface".into())).is_err());
+        player.set_output_device(None).unwrap();
+        assert!(player.output_devices().unwrap().active_device_id.is_some());
+    }
+
+    #[test]
+    fn device_switch_stops_playback_but_keeps_volume() {
+        let (mixer, _output) = rodio::mixer::mixer(
+            std::num::NonZero::new(1).unwrap(), std::num::NonZero::new(48000).unwrap(),
+        );
+        let (tx, rx) = mpsc::channel::<OutputRequest>();
+        let replacement = mixer.clone();
+        let worker = std::thread::spawn(move || {
+            let request = rx.recv().unwrap();
+            assert_eq!(request.id.as_deref(), Some("test:interface"));
+            request.reply.send(Ok((replacement, request.id))).unwrap();
+        });
+        let player = Player {
+            mixer: Mutex::new(Some(mixer)), output: Some(tx), device_id: Mutex::new(None),
+            current: Mutex::new(None), volume: Mutex::new(0.35),
+            timing: Mutex::new(Timing::PLAIN), meter: Arc::default(),
+        };
+        let pcm = crate::audio::Pcm { samples: vec![0.25; 48000], channels: 1, sample_rate: 48000 };
+        player.play_buffer(&pcm, 0, 48000, true).unwrap();
+        assert!(player.position().is_some());
+        player.set_output_device(Some("test:interface".into())).unwrap();
+        assert!(player.position().is_none());
+        assert!(!player.resume());
+        assert_eq!(*player.volume.lock().unwrap(), 0.35);
+        assert_eq!(player.device_id.lock().unwrap().as_deref(), Some("test:interface"));
+        player.play_buffer(&pcm, 0, 48000, false).unwrap();
+        assert!(player.position().is_some());
+        worker.join().unwrap();
+    }
+
+    #[test]
+    fn failed_device_switch_keeps_the_previous_source_and_output() {
+        let (mixer, _output) = rodio::mixer::mixer(
+            std::num::NonZero::new(1).unwrap(), std::num::NonZero::new(48000).unwrap(),
+        );
+        let (tx, rx) = mpsc::channel::<OutputRequest>();
+        let worker = std::thread::spawn(move || {
+            let request = rx.recv().unwrap();
+            request.reply.send(Err(Error::Audio("device unavailable".into()))).unwrap();
+        });
+        let player = Player {
+            mixer: Mutex::new(Some(mixer)), output: Some(tx), device_id: Mutex::new(Some("test:old".into())),
+            current: Mutex::new(None), volume: Mutex::new(0.5),
+            timing: Mutex::new(Timing::PLAIN), meter: Arc::default(),
+        };
+        let pcm = crate::audio::Pcm { samples: vec![0.25; 48000], channels: 1, sample_rate: 48000 };
+        player.play_buffer(&pcm, 0, 48000, true).unwrap();
+        assert!(player.set_output_device(Some("test:missing".into())).is_err());
+        assert!(player.position().is_some());
+        assert_eq!(player.device_id.lock().unwrap().as_deref(), Some("test:old"));
+        worker.join().unwrap();
+    }
+
+    #[test]
     fn resizing_editor_range_preserves_position_and_uses_new_loop_bounds() {
         let (mixer, mut output) = rodio::mixer::mixer(
             std::num::NonZero::new(1).unwrap(), std::num::NonZero::new(48000).unwrap(),
         );
         let player = Player {
-            mixer: Some(mixer), current: Mutex::new(None), volume: Mutex::new(1.0),
+            mixer: Mutex::new(Some(mixer)), output: None, device_id: Mutex::new(None), current: Mutex::new(None), volume: Mutex::new(1.0),
             timing: Mutex::new(Timing::PLAIN), meter: Arc::default(),
         };
         let pcm = crate::audio::Pcm { samples: vec![0.25; 48000 * 4], channels: 1, sample_rate: 48000 };
@@ -268,7 +453,7 @@ mod tests {
             std::num::NonZero::new(1).unwrap(), std::num::NonZero::new(48000).unwrap(),
         );
         let player = Player {
-            mixer: Some(mixer), current: Mutex::new(None), volume: Mutex::new(1.0),
+            mixer: Mutex::new(Some(mixer)), output: None, device_id: Mutex::new(None), current: Mutex::new(None), volume: Mutex::new(1.0),
             timing: Mutex::new(Timing::PLAIN), meter: Arc::default(),
         };
         let pcm = crate::audio::Pcm { samples: vec![0.25; 48000 * 4], channels: 1, sample_rate: 48000 };
@@ -294,7 +479,7 @@ mod tests {
             std::num::NonZero::new(1).unwrap(), std::num::NonZero::new(48000).unwrap(), vec![0.25; 48000],
         ));
         let player = Player {
-            mixer: Some(mixer), current: Mutex::new(Some(sink)), volume: Mutex::new(1.0),
+            mixer: Mutex::new(Some(mixer)), output: None, device_id: Mutex::new(None), current: Mutex::new(Some(sink)), volume: Mutex::new(1.0),
             timing: Mutex::new(Timing { scale: 0.5, offset: 2.0, loop_len: None, phase: 0.0 }), meter: Arc::default(),
         };
         for _ in 0..4800 { output.next(); }

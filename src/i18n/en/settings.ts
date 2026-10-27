@@ -2,7 +2,7 @@ export default {
   nav: {
     general: 'General',
     library: 'Library',
-    playback: 'Playback',
+    playback: 'Audio',
     waveform: 'Waveform',
     themes: 'Themes',
     analysis: 'Analysis',
@@ -41,6 +41,21 @@ export default {
     import: 'Import…',
   },
   playback: {
+    input: 'Recording input',
+    inputDesc: 'Microphone or line input on your audio interface.',
+    inputUnavailable: 'The saved input is disconnected. Connect it or choose another device.',
+    noInput: 'No audio input available.',
+
+    output: 'Output device',
+    outputDesc: 'Used by the preview player and audio editor. Changing the device stops playback.',
+    systemOutput: 'System default',
+    refreshOutputs: 'Refresh devices',
+    activeOutput: 'Active output: {name}',
+    outputUnavailable: 'The saved device is unavailable. Using the system output.',
+    noOutput: 'No audio output available.',
+    savedOutput: 'Saved device (unavailable)',
+    loadingOutputs: 'Loading devices…',
+
     meter: 'Level meter',
     meterDesc: 'Choose how stereo output levels appear in the preview player.',
     meterStyles: { arcs: 'Stereo arcs', dots: 'Light dots', spectrum: 'Spectrum', bars: 'Continuous', segments: 'Segmented', vertical: 'Vertical', compact: 'Compact' },

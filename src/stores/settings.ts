@@ -22,6 +22,8 @@ const DEFAULTS: Settings = {
   autoplay: true,
   volume: 1,
   meterStyle: 'bars',
+  outputDevice: null,
+  inputDevice: null,
   analysisThreads: null,
   stemsFolder: null,
   syncEnabled: false,

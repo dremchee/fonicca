@@ -122,6 +122,17 @@ export interface WaveformSettings {
 
 export type MeterStyle = 'arcs' | 'dots' | 'spectrum' | 'bars' | 'segments' | 'vertical' | 'compact'
 
+export interface AudioDevice {
+  id: string
+  name: string
+  isDefault: boolean
+}
+
+export interface AudioOutputDevices {
+  devices: AudioDevice[]
+  activeDeviceId: string | null
+}
+
 export interface Settings extends WaveformSettings {
   theme: Theme
   /** Colour theme id: built-in or one of `customThemes`. */
@@ -135,6 +146,10 @@ export interface Settings extends WaveformSettings {
   /** Preview volume, 0..1. */
   volume: number
   meterStyle: MeterStyle
+  /** Persistent system output id; null uses the system default. */
+  outputDevice: string | null
+  /** Preferred microphone/interface input for recording. */
+  inputDevice: string | null
   /** Analysis threads; null picks half the cores. */
   analysisThreads: number | null
   stemsFolder: string | null
@@ -305,6 +320,8 @@ export const api = {
   downloadSoundModel: () => invoke<void>('download_sound_model'),
   deleteSoundModel: () => invoke<void>('delete_sound_model'),
   getSettings: () => invoke<Settings>('get_settings'),
+  audioOutputDevices: () => invoke<AudioOutputDevices>('audio_output_devices'),
+  audioInputDevices: () => invoke<AudioDevice[]>('audio_input_devices'),
   updateSettings: (settings: Settings) => invoke<Settings>('update_settings', { settings }),
   appInfo: () => invoke<AppInfo>('app_info'),
   exportTheme: (path: string, theme: CustomTheme) => invoke<void>('export_theme', { path, theme }),

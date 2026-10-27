@@ -466,14 +466,41 @@ pub fn get_settings(state: State<'_, AppState>) -> Settings {
     state.settings.get()
 }
 
+#[tauri::command(async)]
+pub fn audio_output_devices(state: State<'_, AppState>) -> Result<crate::player::OutputDevices> {
+    state.player.output_devices()
+}
+
+#[tauri::command(async)]
+pub fn audio_input_devices() -> Result<Vec<crate::player::AudioDevice>> {
+    crate::player::input_devices()
+}
+
 /// Sent to every window with the new settings after they change.
 pub const SETTINGS_EVENT: &str = "settings-changed";
 
 /// Saves the full settings object and applies what changed. Returns what was stored
 /// (out-of-range values clamped).
-#[tauri::command]
+#[tauri::command(async)]
 pub fn update_settings(app: tauri::AppHandle, state: State<'_, AppState>, settings: Settings) -> Result<Settings> {
-    let (prev, next) = state.settings.replace(settings)?;
+    let _update = state.settings.update_guard();
+    let previous = state.settings.get();
+    if previous.input_device != settings.input_device && settings.input_device.is_some() {
+        crate::player::validate_input_device(settings.input_device.as_deref(), &crate::player::input_devices()?)?;
+    }
+    let output_changed = previous.output_device != settings.output_device;
+    if output_changed {
+        state.player.set_output_device(settings.output_device.clone())?;
+    }
+    let (prev, next) = match state.settings.replace(settings) {
+        Ok(saved) => saved,
+        Err(error) => {
+            if output_changed {
+                let _ = state.player.set_output_device(previous.output_device);
+            }
+            return Err(error);
+        }
+    };
     apply_settings(&app, &state, Some(&prev), &next)?;
     // Editor windows keep their own copy of the settings.
     let _ = tauri::Emitter::emit(&app, SETTINGS_EVENT, &next);

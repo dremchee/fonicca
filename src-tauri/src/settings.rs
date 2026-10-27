@@ -202,6 +202,10 @@ pub struct Settings {
     /// Preview volume, 0..=1.
     pub volume: f32,
     pub meter_style: MeterStyle,
+    /// Persistent system device id; None uses the default output.
+    pub output_device: Option<String>,
+    /// Preferred capture device for future recording; None uses the system input.
+    pub input_device: Option<String>,
     /// Analysis threads; `None` picks half the cores.
     pub analysis_threads: Option<usize>,
     /// None saves stems beside the original.
@@ -238,6 +242,8 @@ impl Default for Settings {
             autoplay: true,
             volume: 1.0,
             meter_style: MeterStyle::Bars,
+            output_device: None,
+            input_device: None,
             analysis_threads: None,
             stems_folder: None,
             sync_enabled: false,
@@ -327,6 +333,7 @@ pub fn default_threads() -> usize {
 }
 
 pub struct SettingsStore {
+    updates: Mutex<()>,
     path: PathBuf,
     current: Mutex<Settings>,
 }
@@ -354,7 +361,12 @@ impl SettingsStore {
             }),
             Err(_) => Settings::default(),
         };
-        Self { path, current: Mutex::new(current.sanitized()) }
+        Self { path, current: Mutex::new(current.sanitized()), updates: Mutex::new(()) }
+    }
+
+    /// Serialize apply-and-save operations from different windows.
+    pub fn update_guard(&self) -> std::sync::MutexGuard<'_, ()> {
+        self.updates.lock().unwrap()
     }
 
     pub fn get(&self) -> Settings {
@@ -394,6 +406,32 @@ mod tests {
             danger: c("#ff0000"),
             wave: c("#555555"),
         }
+    }
+
+    #[test]
+    fn audio_output_preference_is_backward_compatible_and_persistent() {
+        let old: Settings = serde_json::from_str("{}").unwrap();
+        assert_eq!(old.output_device, None);
+        assert_eq!(old.input_device, None);
+        let dir = std::env::temp_dir().join(format!("fonicca-audio-settings-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings.json");
+        let store = SettingsStore::load(path.clone());
+        let mut next = store.get();
+        next.output_device = Some("coreaudio:interface-uid".into());
+        next.input_device = Some("coreaudio:microphone-uid".into());
+        store.replace(next).unwrap();
+        let reopened = SettingsStore::load(path.clone());
+        assert_eq!(reopened.get().output_device.as_deref(), Some("coreaudio:interface-uid"));
+        assert_eq!(reopened.get().input_device.as_deref(), Some("coreaudio:microphone-uid"));
+        let mut next = reopened.get();
+        next.output_device = None;
+        next.input_device = None;
+        reopened.replace(next).unwrap();
+        let saved = SettingsStore::load(path).get();
+        assert_eq!(saved.output_device, None);
+        assert_eq!(saved.input_device, None);
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]
