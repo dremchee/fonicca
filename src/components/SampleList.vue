@@ -4,7 +4,7 @@ import { useTagColors } from '@/composables/tagColors'
 import type { Sample } from '@/api'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { AudioLines, ChevronRight, FolderPlus, Layers, Pause, Play, SearchX, Sparkles, Star, Tag, Volume2, X } from '@lucide/vue'
-import { onKeyStroke, useEventListener } from '@vueuse/core'
+import { onKeyStroke, useElementSize, useEventListener, useScroll } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, ref, watch } from 'vue'
 import { isTauri } from '@tauri-apps/api/core'
@@ -48,6 +48,11 @@ const { total, focusIndex, selectedIds, scope } = storeToRefs(library)
 const { visibility: columnVisibility } = useSampleColumns()
 const visibleColumns = computed(() => SAMPLE_COLUMNS.filter(column => columnVisibility.value[column.id]))
 const tableViewport = ref<HTMLElement | null>(null)
+const tableContent = ref<HTMLElement | null>(null)
+const { x: horizontalScroll } = useScroll(tableViewport)
+const { width: viewportSize } = useElementSize(tableViewport)
+const { width: contentSize } = useElementSize(tableContent)
+const pinnedRight = computed(() => `${Math.max(0, contentSize.value - viewportSize.value - horizontalScroll.value)}px`)
 const { tableStyle, resizingColumn, preview: previewColumnWidth, commit: commitColumnWidth, cancel: cancelColumnResize, reset: resetColumnWidths } = useSampleColumnWidths(visibleColumns, tableViewport)
 
 const similarTo = computed(() => (scope.value.kind === 'similar' ? scope.value : null))
@@ -242,7 +247,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
       </Hint>
     </div>
     <div ref="tableViewport" class="table-viewport flex-1 min-w-0 min-h-0 overflow-x-auto">
-      <div class="table-content relative flex flex-col h-full" :style="total > 0 ? tableStyle : undefined">
+      <div ref="tableContent" class="table-content relative flex flex-col h-full" :style="[total > 0 ? tableStyle : undefined, { '--sample-pin-offset': pinnedRight }]">
         <div v-if="total > 0" class="header grid items-center px-3 h-8 border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
           <span />
           <SampleColumnHeader
@@ -377,6 +382,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
                       <span v-else-if="column.id === 'length'" class="text-right text-muted-foreground">{{ formatDuration(s.duration) }}</span>
                       <span v-else-if="column.id === 'type'" class="text-muted-foreground uppercase text-xs">{{ s.ext }}</span>
                     </template>
+                    <span class="favorite-cell grid place-items-center">
                     <Hint :text="s.favorite ? t('list.favorite.remove') : t('list.favorite.add')" shortcut="F">
                       <button
                         class="star grid place-items-center" :class="{ on: s.favorite }"
@@ -387,6 +393,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
                         <span :class="s.favorite ? 'i-lucide-star text-amber-400' : 'i-lucide-star'" class="text-xs" />
                       </button>
                     </Hint>
+                    </span>
                   </div>
                   <div
                     v-else
@@ -433,6 +440,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
   column-gap: 12px;
 }
 .row {
+  background: var(--background);
   inset-inline: 6px;
   padding-inline: calc(0.75rem - 6px);
   border-radius: 6px;
@@ -505,6 +513,15 @@ function onDragStart(e: DragEvent, sample: Sample) {
   width: 28px;
   color: var(--muted-foreground);
   opacity: 0;
+}
+.favorite-cell {
+  position: absolute;
+  inset-block: 0;
+  right: var(--sample-pin-offset, 0px);
+  width: 40px;
+  z-index: 2;
+  background: inherit;
+  border-radius: inherit;
 }
 .star.on,
 .row:hover .star,
