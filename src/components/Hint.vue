@@ -20,7 +20,7 @@ withDefaults(defineProps<{
     <TooltipTrigger as-child>
       <slot />
     </TooltipTrigger>
-    <TooltipContent :side="side" class="flex max-w-80 items-center gap-2">
+    <TooltipContent :side="side" class="flex max-w-80 items-center justify-center gap-2">
       <!-- min-w-0 lets the text shrink inside the flex row; long paths break anywhere. -->
       <span class="min-w-0 [overflow-wrap:anywhere]">{{ text }}</span>
       <Kbd v-if="shortcut">
