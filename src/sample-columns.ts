@@ -29,13 +29,13 @@ export function boundedSampleColumnWidth(id: ResizableSampleColumnId, width: num
   return Math.round(Math.min(limits.max, Math.max(limits.min, Number.isFinite(width) ? width : fallback)))
 }
 
-export function sampleTableLayout(columns: readonly typeof SAMPLE_COLUMNS[number][], widths: SampleColumnWidths, viewportWidth?: number) {
+export function sampleTableLayout(columns: readonly typeof SAMPLE_COLUMNS[number][], widths: SampleColumnWidths, viewportWidth?: number, fitToViewport = true) {
   const fixedName = widths.name != null && Number.isFinite(widths.name)
   let nameWidth = fixedName ? boundedSampleColumnWidth('name', widths.name!) : 220
   const sizes = columns.map(c => boundedSampleColumnWidth(c.id, widths[c.id] ?? c.width))
   // Playback keeps one compact slot; disclosure is absolute in the left padding.
   const overhead = 16 + 28 + 24 + (columns.length + 2) * 12
-  if (viewportWidth != null && Number.isFinite(viewportWidth) && viewportWidth > 0) {
+  if (fitToViewport && viewportWidth != null && Number.isFinite(viewportWidth) && viewportWidth > 0) {
     let overflow = Math.max(0, overhead + nameWidth + sizes.reduce((sum, size) => sum + size, 0) - Math.floor(viewportWidth))
     // Prefer keeping metadata readable by using excess name space first.
     const fromName = Math.min(overflow, nameWidth - sampleColumnLimits('name').min)

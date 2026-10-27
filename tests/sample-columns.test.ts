@@ -50,6 +50,17 @@ test('oversized metadata columns shrink to their limits before horizontal scroll
   assert.equal(tiny['--sample-columns'], '16px 160px 64px 44px 44px minmax(28px, 1fr)')
 })
 
+test('manual resizing preserves other column widths even when the table needs scrolling', () => {
+  const columns = SAMPLE_COLUMNS.filter(c => c.defaultVisible)
+  const widths = { name: 420, category: 200, bpm: 56, length: 64 }
+  const before = sampleTableLayout(columns, widths, 875, false)
+  const after = sampleTableLayout(columns, { ...widths, category: 400 }, 875, false)
+  assert.equal(before['--sample-columns'], '16px 420px 200px 56px 64px minmax(28px, 1fr)')
+  assert.equal(after['--sample-columns'], '16px 420px 400px 56px 64px minmax(28px, 1fr)')
+  assert.equal(parseInt(after.minWidth) - parseInt(before.minWidth), 200)
+  assert.ok(parseInt(after.minWidth) > 875)
+})
+
 test('saved sort preferences accept known columns and fall back safely', async () => {
   const { normalizeSampleSort } = await import('../src/sample-columns.ts')
   assert.deepEqual(normalizeSampleSort({ by: 'bpm', direction: 'desc' }), { by: 'bpm', direction: 'desc' })

@@ -3,7 +3,7 @@ import { useWaveformBackgrounds } from '@/composables/waveformBackgrounds'
 import { useTagColors } from '@/composables/tagColors'
 import type { Sample } from '@/api'
 import { useVirtualizer } from '@tanstack/vue-virtual'
-import { AudioLines, ChevronRight, FolderPlus, Layers, SearchX, Sparkles, Star, Tag, X } from '@lucide/vue'
+import { AudioLines, ChevronRight, FolderPlus, Layers, Pause, Play, SearchX, Sparkles, Star, Tag, Volume2, X } from '@lucide/vue'
 import { onKeyStroke, useEventListener } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, ref, watch } from 'vue'
@@ -24,7 +24,7 @@ import { relativeSampleDirectory, sampleDirectory, sampleColumnLimits, SAMPLE_CO
 import { Button } from '@/components/ui/button'
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { openEditor } from '@/stores/editor'
+import { openEditor, useEditorStore } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
@@ -36,6 +36,7 @@ const { tagStyle } = useTagColors()
 const backgrounds = useWaveformBackgrounds()
 const library = useLibraryStore()
 const player = usePlayerStore()
+const editor = useEditorStore()
 const settings = useSettingsStore()
 const stems = useStemsStore()
 const stemProgress = computed(() => activeStemProgress(stems.progress))
@@ -50,11 +51,6 @@ const tableViewport = ref<HTMLElement | null>(null)
 const { tableStyle, resizingColumn, preview: previewColumnWidth, commit: commitColumnWidth, cancel: cancelColumnResize, reset: resetColumnWidths } = useSampleColumnWidths(visibleColumns, tableViewport)
 
 const similarTo = computed(() => (scope.value.kind === 'similar' ? scope.value : null))
-
-// Lets a tooltip wrap a long path at its slashes rather than inside a folder name.
-function breakablePath(path: string) {
-  return path.replaceAll('/', '/\u200B')
-}
 
 // What to say when the list is empty depends on why it is empty.
 const empty = computed(() => {
@@ -157,9 +153,25 @@ async function onMouseDown(e: MouseEvent, index: number, sample: Sample) {
   else {
     await library.clickRow(index, { shift: e.shiftKey, toggle })
   }
-  // The second press belongs to opening the editor, not starting playback again.
-  if (player.autoplay && !e.shiftKey && e.detail < 2 && player.playingId !== sample.id)
-    player.play(sample)
+  // A click on an available waveform seeks; a second press opens the editor.
+  if (!e.shiftKey && !toggle && e.detail < 2) {
+    const target = e.target instanceof Element ? e.target : null
+    const name = target?.closest<HTMLElement>('.track-name')
+    const wave = name && backgrounds.pathFor(sample) && sample.duration && !target?.closest('button')
+    await editor.stopPlayback()
+    if (wave && name) {
+      const rect = name.getBoundingClientRect()
+      const start = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width)) * sample.duration!
+      if (player.playingId === sample.id && !player.paused)
+        await player.seek(sample, start)
+      else
+        await player.play(sample, start)
+    }
+    else if (player.playingId !== sample.id || player.paused) {
+      await player.play(sample)
+    }
+    void backgrounds.prepare(sample)
+  }
 }
 
 function onClick(index: number) {
@@ -168,7 +180,13 @@ function onClick(index: number) {
   collapseOnClick = -1
 }
 
-// Double-click opens the sample in its editor window.
+async function toggleRowPlayback(sample: Sample) {
+  await editor.stopPlayback()
+  await player.toggle(sample)
+  void backgrounds.prepare(sample)
+}
+
+// Double-click opens the sample in the embedded editor.
 function onDoubleClick(index: number) {
   const s = library.sampleAt(index)
   if (s)
@@ -298,17 +316,27 @@ function onDragStart(e: DragEvent, sample: Sample) {
                     @dblclick="onDoubleClick(item.index)"
                     @dragstart="onDragStart($event, s)"
                   >
-                    <span class="track-icon grid place-items-center">
-                      <span v-if="player.isPlaying(s.id)" class="i-lucide-volume-2 text-primary text-xs" aria-hidden="true" />
-                      <CategoryIcon v-else :category="s.category" :stem="s.stemKind" class="size-3.5 text-muted-foreground" />
+                    <span class="track-icon relative grid place-items-center">
+                      <Volume2 v-if="player.isPlaying(s.id)" class="track-icon-display track-volume size-3.5 text-primary" aria-hidden="true" />
+                      <CategoryIcon v-else :category="s.category" :stem="s.stemKind" class="track-icon-display size-3.5 text-muted-foreground" aria-hidden="true" />
+                      <button
+                        type="button" class="track-play absolute grid place-items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        :aria-label="t(player.isPlaying(s.id) ? 'common.actions.pause' : 'common.actions.play')"
+                        :aria-pressed="player.isPlaying(s.id)" :draggable="false"
+                        @mousedown.stop @dblclick.stop @click.stop="toggleRowPlayback(s)"
+                      >
+                        <Pause v-if="player.isPlaying(s.id)" class="size-3.5 fill-current" />
+                        <Play v-else class="size-3.5 fill-current" />
+                      </button>
                     </span>
                     <span class="track-name relative isolate flex items-center gap-2 min-w-0 h-full overflow-hidden">
                       <svg v-if="backgrounds.pathFor(s)" class="row-waveform pointer-events-none absolute inset-0 -z-1 size-full" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
                         <path :d="backgrounds.pathFor(s)" fill="currentColor" />
                       </svg>
-                      <Hint :text="breakablePath(s.path)" side="top">
-                        <span class="truncate">{{ s.stemKind ? t(`stems.instruments.${s.stemKind}`) : s.name }}</span>
-                      </Hint>
+                      <svg v-if="backgrounds.pathFor(s) && player.playingId === s.id && s.duration" class="row-waveform row-waveform-played pointer-events-none absolute inset-0 -z-1 size-full" viewBox="0 0 1000 100" preserveAspectRatio="none" :style="{ clipPath: `inset(0 ${100 - Math.min(100, Math.max(0, player.position / s.duration * 100))}% 0 0)` }" aria-hidden="true">
+                        <path :d="backgrounds.pathFor(s)" fill="currentColor" />
+                      </svg>
+                      <span class="truncate">{{ s.stemKind ? t(`stems.instruments.${s.stemKind}`) : s.name }}</span>
                       <SampleStemProgress v-if="stemProgress?.sourceId === s.id" :progress="stemProgress" :name="s.name" />
                       <SampleStemProgress v-if="apolloProgress?.sourceId === s.id" :progress="apolloProgress" :name="s.name" namespace="apollo" />
                       <Hint v-if="s.similarity != null && s.id !== similarTo?.id" :text="t('list.similar.howSimilar')" side="top">
@@ -388,6 +416,16 @@ function onDragStart(e: DragEvent, sample: Sample) {
 <style scoped>
 .row-waveform { opacity: 0.1; }
 .row.playing .row-waveform { opacity: 0.14; }
+.row-waveform-played { color: var(--primary); opacity: 0.35; }
+.row.playing .row-waveform-played { color: var(--primary-foreground); opacity: 0.45; }
+.track-volume :deep(path:first-child) { fill: currentColor; }
+.track-play { width: 24px; height: 24px; opacity: 0; }
+.row:hover .track-play, .track-play:focus-visible { opacity: 1; }
+.row:hover .track-icon-display, .track-icon:focus-within .track-icon-display { opacity: 0; }
+@media (hover: none) {
+  .track-play { opacity: 1; }
+  .track-icon-display { opacity: 0; }
+}
 .header,
 .row,
 .column-guides {
