@@ -4,7 +4,7 @@ export function updateCommand(cmd: string, args: any): unknown {
   if (cmd === 'update_status') return { configured: preview, development: false, supported: true, editorsOpen: false, busy: false }
   if (!preview) return undefined
   if (cmd === 'plugin:updater|check') return {
-    rid: 800, currentVersion: '0.1.0', version: '0.2.0', body: 'Improved playback and waveform preview.', rawJson: {},
+    rid: 800, currentVersion: '0.1.0', version: '0.2.0', body: '## Changes\n\n- Sign macOS app bundles and verify release signatures (648fc4f)\n- Add release command for version bumps and changelog generation (00d34b8)', rawJson: {},
   }
   if (cmd === 'plugin:updater|download') return new Promise(resolve => {
     let chunks = 0

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Download, RefreshCw } from '@lucide/vue'
+import { ChevronRight, Download, RefreshCw } from '@lucide/vue'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { formatSize } from '@/format'
+import ReleaseNotes from '@/components/ReleaseNotes.vue'
 import { useUpdatesStore } from '@/stores/updates'
 
 const { t } = useI18n()
@@ -48,9 +49,12 @@ const status = computed(() => {
       <progress class="w-full h-1.5 accent-primary" :value="updates.percent ?? undefined" max="100" :aria-label="t('updates.downloading')" />
     </div>
     <p v-if="updates.state.phase === 'ready'" class="text-xs text-muted-foreground">{{ t('updates.ready') }}</p>
-    <details v-if="updates.state.notes" class="text-xs">
-      <summary class="cursor-pointer text-muted-foreground">{{ t('updates.notes') }}</summary>
-      <p class="mt-2 whitespace-pre-wrap break-words select-text">{{ updates.state.notes }}</p>
+    <details v-if="updates.state.notes" class="group border-t pt-3">
+      <summary class="flex w-fit cursor-pointer list-none items-center gap-1.5 rounded-sm text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+        <ChevronRight class="size-3.5 shrink-0 group-open:rotate-90" aria-hidden="true" />
+        {{ t('updates.notes') }}
+      </summary>
+      <ReleaseNotes class="mt-3" :notes="updates.state.notes" />
     </details>
     <div v-if="updates.state.error" role="alert" class="text-xs text-destructive">
       <p>{{ t('updates.failed') }}</p>
