@@ -30,7 +30,7 @@ A `v*` tag creates or updates a **draft GitHub Release** once all three platform
 builds succeed. The draft contains the five installer formats, a `SHA256SUMS.txt` checksum file, and
 automatically generated release notes. Publish it manually after checking it.
 
-These builds are not distribution-signed or notarized. Branch and pull-request
+macOS bundles have an ad-hoc signature that is verified in CI, including inside the updater archive. They are not Apple-notarized; Windows installers are not distribution-signed. Branch and pull-request
 builds need no signing secrets. Release tags require `TAURI_SIGNING_PRIVATE_KEY`
 to produce signed updater packages. The release job receives `contents: write`
 via the built-in `GITHUB_TOKEN` to publish a draft in this repository.
@@ -38,31 +38,41 @@ Updater signatures are separate from Apple notarization and Windows code signing
 
 ## Release by tag
 
-1. Set the same version in `package.json`, `[package].version` in
-   `src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`, and the `fonicca` package
-   entry in `src-tauri/Cargo.lock` (Cargo can synchronize its lockfile with
-   `cargo update --workspace --manifest-path src-tauri/Cargo.toml`).
-2. Check the intended tag locally, then commit and push the changes:
+From a clean `main` branch, use the release command:
 
-   ```sh
-   pnpm release:check v0.1.1
-   git add package.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json
-   git commit -m "Release 0.1.1"
-   git push origin main
-   git tag -a v0.1.1 -m "Fonicca 0.1.1"
-   git push origin v0.1.1
-   ```
+```sh
+pnpm release patch --dry-run  # preview the next version and changelog
+pnpm release patch --push     # prepare the release and start CI
+```
 
-3. Optionally add `docs/releases/v<version>.md` before tagging. CI uses this file
-   as the draft description and the in-app update notes. If it is missing, the
-   same-repository release uses automatically generated notes.
-4. Wait for **Desktop builds**, then open the draft from the release job summary
-   or the repository's Releases page. Review the installers and notes, then choose
-   **Publish release**.
+Use `minor` or `major` instead of `patch`, or supply a stable version explicitly
+(e.g. `pnpm release 0.2.0 --push`). The default is `patch`.
 
-The example assumes the version has already been changed to `0.1.1`; it does not
-bump versions for you. CI checks all four files before starting expensive builds
-and rejects a tag that does not exactly match `v<app version>`.
+The command:
+
+1. Checks that the working tree is clean, the current version tag is an ancestor
+   of `HEAD`, the new tag is unused, and the four application versions match.
+2. Builds release notes from non-merge commit subjects since the current version
+   tag. Use meaningful commit messages: these become user-visible update notes.
+3. Runs frontend tests and the TypeScript/production build before changing files.
+4. Updates `package.json`, `src-tauri/Cargo.toml`, the application entry in
+   `src-tauri/Cargo.lock`, and `src-tauri/tauri.conf.json`.
+5. Prepends an entry to `CHANGELOG.md`, writes `docs/releases/v<version>.md`,
+   and creates a release commit and annotated version tag.
+6. With `--push`, atomically pushes `main` and the new tag to `origin`. Without
+   this flag, everything stays local. If the push fails, the command prints a
+   retry command; the local release commit and tag are retained.
+
+`--dry-run` only previews the plan; it does not run checks, edit files, commit,
+create tags or push. CI uses the generated release notes for the GitHub draft
+and in-app updater. Native compilation and installer checks run in CI.
+
+Wait for **Desktop builds**, then open the draft from the release job summary or
+GitHub Releases. Review the installers and notes, then choose **Publish release**.
+The command starts the release workflow; it does not publish the draft itself.
+
+For manual releases, keep the same version in all four files, add release notes,
+run `pnpm release:check v<version>`, commit, and push an annotated `v<version>` tag.
 
 Prerelease versions such as `0.2.0-beta.1` use the tag `v0.2.0-beta.1`; their release
 draft is marked as a prerelease. A manual run on a branch only runs checks;
