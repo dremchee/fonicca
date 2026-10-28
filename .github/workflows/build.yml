@@ -177,11 +177,17 @@ jobs:
       - name: Verify macOS updater archive
         if: runner.os == 'macOS'
         run: |
+          app="src-tauri/target/${{ matrix.target }}/release/bundle/macos/Fonicca.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
           archive="src-tauri/target/${{ matrix.target }}/release/bundle/macos/Fonicca.app.tar.gz"
           if [[ ! -s "$archive" || ! -s "$archive.sig" ]]; then
             echo 'Missing signed macOS updater archive; build both app and dmg targets.' >&2
             exit 1
           fi
+          extracted="$(mktemp -d)"
+          trap 'rm -rf "$extracted"' EXIT
+          tar -xzf "$archive" -C "$extracted"
+          codesign --verify --deep --strict --verbose=2 "$extracted/Fonicca.app"
 
       - name: Upload installers
         id: upload
