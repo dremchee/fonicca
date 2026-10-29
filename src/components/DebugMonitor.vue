@@ -6,10 +6,11 @@ import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { debugBytes, debugMonitorOpen, useDebugSampler } from '@/composables/debugMonitor'
 import { useEditorStore } from '@/stores/editor'
+import EditorPerformanceMetrics from '@/components/editor/EditorPerformanceMetrics.vue'
 
 const { t } = useI18n()
 const editor = useEditorStore()
-const { snapshot, history, error, paused, baseline, peak, reset } = useDebugSampler()
+const { snapshot, history, timings, heapBytes, error, paused, baseline, peak, reset } = useDebugSampler()
 const header = useTemplateRef<HTMLElement>('header')
 const panel = useTemplateRef<HTMLElement>('panel')
 const { width, height } = useWindowSize()
@@ -84,6 +85,7 @@ const cursor = computed(() => {
           <div><dt>{{ t('debug.cursor') }}</dt><dd>{{ cursor }}</dd></div>
         </dl>
         <p v-else class="text-xs text-muted-foreground">{{ t(editor.loading ? 'debug.waiting' : 'debug.noTrack') }}</p>
+        <EditorPerformanceMetrics :timings="timings" :heap-bytes="heapBytes" />
         <p class="monitor-note">{{ t('debug.note') }}</p>
       </div>
     </section>

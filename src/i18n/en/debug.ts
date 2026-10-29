@@ -11,6 +11,10 @@ export default {
   busy: 'Processing audio — session counters temporarily unavailable.',
   waiting: 'Loading track…', noTrack: 'Open a track to inspect its audio storage.',
   error: 'Could not update measurements. Retrying…',
+  timings: 'Operation timings · ms', operation: 'Operation', calls: 'Calls',
+  timingsNote: 'p50 / p95 of the last 60 calls. Requests include IPC and native work; draw measures CPU submission, not GPU completion.',
+  noTimings: 'Use the editor to collect timings.', jsHeap: 'JavaScript heap',
+  heapNote: 'Only available in supporting browsers; this is not total WebView memory.',
   note: 'RSS covers the Rust process; WebView processes are separate. PCM counts only this editor session, including undo/redo, without shared copies. Disk pages can also use RAM. CPU: 100% = one core. Wave time includes peak generation, not drawing.',
   status: { loading: 'Loading', saving: 'Saving', processing: 'Processing', playing: 'Playing', ready: 'Ready', idle: 'No track' },
 }

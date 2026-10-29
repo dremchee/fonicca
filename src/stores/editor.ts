@@ -15,6 +15,7 @@ import { confirm } from '@/composables/confirm'
 import { formatNumber } from '@/format'
 import { t } from '@/i18n'
 import { parseWave } from '@/waveform'
+import { editorTimings } from '@/editor-performance'
 import { parseSpectrogram } from '@/spectrogram'
 
 export type SaveMode = 'save' | 'saveAs' | 'replaceOriginal' | 'selection'
@@ -88,28 +89,35 @@ export type AudioProcessing
 export interface LoudnessReport { before: number, after: number, gainDb: number, limited: boolean }
 interface ProcessedAudio { state: EditorState, start: number, end: number, loudness: LoudnessReport | null }
 
+function invokeEditor<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  const op = args?.op
+  const name = command === 'editor_apply' && op && typeof op === 'object' && 'op' in op
+    ? `${command}.${String(op.op)}` : command
+  return editorTimings.measure(name, () => invoke<T>(command, args))
+}
+
 const editorApi = {
-  openWindow: (id: number) => invoke<void>('open_editor_window', { id }),
-  open: (id: number, discardExisting = false) => invoke<{ state: EditorState, name: string, ext: string, path: string, bpm: number | null }>('editor_open', { id, discardExisting }),
-  close: (discard: boolean) => invoke<void>('editor_close', { discard }),
-  apply: (op: EditOp) => invoke<EditorState>('editor_apply', { op }),
-  process: (start: number, end: number, processing: AudioProcessing) => invoke<ProcessedAudio>('editor_process', { start, end, processing }),
-  undo: () => invoke<EditorState>('editor_undo'),
-  redo: () => invoke<EditorState>('editor_redo'),
+  openWindow: (id: number) => invokeEditor<void>('open_editor_window', { id }),
+  open: (id: number, discardExisting = false) => invokeEditor<{ state: EditorState, name: string, ext: string, path: string, bpm: number | null }>('editor_open', { id, discardExisting }),
+  close: (discard: boolean) => invokeEditor<void>('editor_close', { discard }),
+  apply: (op: EditOp) => invokeEditor<EditorState>('editor_apply', { op }),
+  process: (start: number, end: number, processing: AudioProcessing) => invokeEditor<ProcessedAudio>('editor_process', { start, end, processing }),
+  undo: () => invokeEditor<EditorState>('editor_undo'),
+  redo: () => invokeEditor<EditorState>('editor_redo'),
   wave: async (start: number, end: number, columns: number, split: boolean, bands: boolean): Promise<Wave> => {
-    return parseWave(await invoke<ArrayBuffer>('editor_wave', { start, end, columns, split, bands }))
+    return parseWave(await invokeEditor<ArrayBuffer>('editor_wave', { start, end, columns, split, bands }))
   },
-  spectrogram: async (start: number, end: number, columns: number) => parseSpectrogram(await invoke<ArrayBuffer>('editor_spectrogram', { start, end, columns })),
-  slices: (start: number, end: number, by: SliceBy, zero: boolean) => invoke<Span[]>('editor_slices', { start, end, by, zero }),
-  exportSlices: (spans: Span[]) => invoke<{ dir: string, count: number, inLibrary: boolean }>('editor_export_slices', { spans }),
-  copy: (start: number, end: number) => invoke<ClipInfo | null>('editor_copy', { start, end }),
-  clipboard: () => invoke<ClipInfo | null>('editor_clipboard'),
-  paste: (start: number, end: number) => invoke<{ state: EditorState, start: number, end: number }>('editor_paste', { start, end }),
-  zeroSnap: (frames: number[], radius: number) => invoke<number[]>('editor_zero_snap', { frames, radius }),
-  play: (start: number, end: number, looping: boolean) => invoke<void>('editor_play', { start, end, looping }),
-  updatePlayback: (start: number, end: number, looping: boolean) => invoke<boolean>('editor_update_playback', { start, end, looping }),
+  spectrogram: async (start: number, end: number, columns: number) => parseSpectrogram(await invokeEditor<ArrayBuffer>('editor_spectrogram', { start, end, columns })),
+  slices: (start: number, end: number, by: SliceBy, zero: boolean) => invokeEditor<Span[]>('editor_slices', { start, end, by, zero }),
+  exportSlices: (spans: Span[]) => invokeEditor<{ dir: string, count: number, inLibrary: boolean }>('editor_export_slices', { spans }),
+  copy: (start: number, end: number) => invokeEditor<ClipInfo | null>('editor_copy', { start, end }),
+  clipboard: () => invokeEditor<ClipInfo | null>('editor_clipboard'),
+  paste: (start: number, end: number) => invokeEditor<{ state: EditorState, start: number, end: number }>('editor_paste', { start, end }),
+  zeroSnap: (frames: number[], radius: number) => invokeEditor<number[]>('editor_zero_snap', { frames, radius }),
+  play: (start: number, end: number, looping: boolean) => invokeEditor<void>('editor_play', { start, end, looping }),
+  updatePlayback: (start: number, end: number, looping: boolean) => invokeEditor<boolean>('editor_update_playback', { start, end, looping }),
   save: (mode: SaveMode, destination?: string, range?: Span) =>
-    invoke<{ path: string, backup: string | null, state: EditorState, name: string, ext: string, bpm: number | null, inLibrary: boolean, warning: string | null }>('editor_save', { mode, destination, range }),
+    invokeEditor<{ path: string, backup: string | null, state: EditorState, name: string, ext: string, bpm: number | null, inLibrary: boolean, warning: string | null }>('editor_save', { mode, destination, range }),
 }
 
 /** Opens a sample in the library's embedded editor. */

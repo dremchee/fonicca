@@ -1,4 +1,5 @@
 import { onScopeDispose } from 'vue'
+import { editorTimings } from '../../editor-performance.ts'
 
 /** Coalesce canvas invalidations into one draw per animation frame. */
 export function useFrameDraw(draw: () => void) {
@@ -16,7 +17,7 @@ export function useFrameDraw(draw: () => void) {
       return
     pending = requestAnimationFrame(() => {
       pending = undefined
-      draw()
+      editorTimings.measureSync('editor.draw', draw)
     })
   }
 }

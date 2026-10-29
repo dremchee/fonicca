@@ -1,6 +1,7 @@
 import { useDocumentVisibility, useStorage } from '@vueuse/core'
 import { computed, onScopeDispose, shallowRef, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { editorTimings, type TimingSummary } from '@/editor-performance'
 
 export interface EditorDiagnostics {
   sampleId: number
@@ -29,6 +30,8 @@ export const debugMonitorOpen = useStorage('fonicca.debug-monitor', false)
 export function useDebugSampler() {
   const snapshot = shallowRef<DebugSnapshot | null>(null)
   const history = shallowRef<number[]>([])
+  const timings = shallowRef<TimingSummary[]>([])
+  const heapBytes = shallowRef<number | null>(null)
   const error = shallowRef(false)
   const paused = shallowRef(false)
   const baseline = shallowRef<number | null>(null)
@@ -43,6 +46,8 @@ export function useDebugSampler() {
     baseline.value = snapshot.value?.processBytes ?? null
     peak.value = baseline.value
     history.value = []
+    editorTimings.reset()
+    timings.value = []
   }
   async function poll(version: number) {
     if (!active.value || version !== generation) return
@@ -52,6 +57,10 @@ export function useDebugSampler() {
         const next = await invoke<DebugSnapshot>('debug_snapshot')
         if (version !== generation) return
         snapshot.value = next
+        timings.value = editorTimings.snapshot()
+        // Chromium-only JS heap estimate, not total WebView process RSS.
+        const memory = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory
+        heapBytes.value = memory?.usedJSHeapSize ?? null
         error.value = false
         if (next.processBytes !== null) {
           baseline.value ??= next.processBytes
@@ -70,7 +79,7 @@ export function useDebugSampler() {
     if (active.value) void poll(version)
   }, { immediate: true })
   onScopeDispose(() => { generation++; clearTimeout(timer) })
-  return { snapshot, history, error, paused, baseline, peak, reset }
+  return { snapshot, history, timings, heapBytes, error, paused, baseline, peak, reset }
 }
 
 export function debugBytes(bytes: number | null | undefined): string {
