@@ -2,7 +2,8 @@
 containing the two pinned files from xycld/BS-RoFormer-ONNX revision below.
 The upstream graph puts a 62-element shape/split INT64 tensor in external data;
 ONNX Runtime cannot read it during shape inference. Embed that constant only.
-No learned float weights are bundled. Output is src-tauri/resources/bs-roformer.onnx.
+No learned float weights are bundled. Output is --cache/bs-roformer-native.onnx; copy the verified graph into
+model-packs/v1 before publishing that version of the model pack.
 """
 from pathlib import Path
 import argparse,hashlib,onnx

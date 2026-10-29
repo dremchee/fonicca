@@ -26,12 +26,13 @@ https://github.com/ZFTurbo/Music-Source-Separation-Training/releases/tag/v1.0.0
 SHA-256 49d51472769e34a2501cd1da782346a3212555c3a5619fc2c53507445528d816
 TFC-TDF code: KUIELAB and Roman Solovyev; ONNX spectral source (MIT):
 https://github.com/ZFTurbo/MSS_ONNX_TensorRT/tree/43d939e7671d8ff6cf1922f98c2f2e4b56908e47
-Fonicca's bundled spectral graph references the original checkpoint's tensor
+Fonicca's separately downloaded spectral graph references the original checkpoint's tensor
 byte ranges. Users need no Python/PyTorch. Checkpoint is never unpickled by the
 app. See docs/research/export-mdx23c-onnx.py and mdx23c-onnx-manifest.json.
 The repository's MIT code license alone is not a separate grant for training
 data or every pretrained checkpoint; no commercial clearance is asserted here.
 
-All weights download separately. Fonicca implements external STFT/iSTFT,
+All weights and graphs download separately. Prepared graph files are published
+in model-packs/v1 in the Fonicca repository; neither graph is embedded in the app. Fonicca implements external STFT/iSTFT,
 overlap-add, stereo/mono handling, residual instrumental and safe WAV export.
 Fonicca performs no independent normalization of the two output tracks.

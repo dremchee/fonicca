@@ -2,6 +2,7 @@
 PyYAML. Download the checkpoint URL in vocal-models-NOTICE.txt into --cache as
 mdx23c.ckpt first. Downloads pinned MIT source, never runs in the application.
 The 319 learned initializers reference the unchanged official checkpoint.
+Output is --cache/mdx23c.onnx; copy the verified graph into model-packs/v1.
 """
 from pathlib import Path
 import torch,onnx,numpy as np,yaml,sys,hashlib,zipfile,struct,json,types
