@@ -91,8 +91,11 @@ export default {
     opening: 'Loading track and waveform…',
   },
   minimap: {
-    hint: 'Drag to move the view · scroll to zoom · double-click to show everything',
+    hint: 'Drag the middle to pan · drag the handles to zoom · scroll to zoom · double-click to fit',
     label: 'Overview of the whole file',
+    move: 'Move visible range',
+    start: 'Visible range start',
+    end: 'Visible range end',
   },
   status: {
     cursor: 'Cursor {time}',

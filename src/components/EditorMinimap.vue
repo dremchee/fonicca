@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { dragMinimapRange, type MinimapDrag } from '@/editor-minimap'
 import type { Wave } from '@/stores/editor'
-import { useResizeObserver } from '@vueuse/core'
-import { ref, shallowRef, watch, watchEffect } from 'vue'
+import { usePixelCanvas } from '@/composables/pixelCanvas'
+import { computed, onBeforeUnmount, ref, shallowRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
@@ -28,34 +29,58 @@ const settings = useSettingsStore()
 const box = ref<HTMLElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
 useWaveRenderer(canvas)
-const size = ref({ width: 0, height: 0 })
 const wave = shallowRef<Wave | null>(null)
-
-useResizeObserver(box, (entries) => {
-  const r = entries[0].contentRect
-  size.value = { width: Math.floor(r.width), height: Math.floor(r.height) }
-})
+const { geometry, style: canvasStyle, snapX, snapY, pixelRatio } = usePixelCanvas(box)
+const line = computed(() => 1 / geometry.value.ratio)
+const dotSize = computed(() => Math.round(5 * geometry.value.ratio) / geometry.value.ratio)
 
 const frames = () => editor.state?.frames ?? 0
+const minimumSpan = computed(() => Math.min(64, frames()))
+const startX = computed(() => snapX(geometry.value.left + props.viewStart / Math.max(1, frames()) * geometry.value.width))
+const endX = computed(() => snapX(geometry.value.left + props.viewEnd / Math.max(1, frames()) * geometry.value.width))
+const grips = computed(() => {
+  const limit = Math.max(0, geometry.value.width - 12)
+  const clamp = (x: number) => Math.max(0, Math.min(limit, x))
+  if (endX.value - startX.value >= 24) return [clamp(startX.value - 6), clamp(endX.value - 6)]
+  const centre = Math.max(12, Math.min(geometry.value.width - 12, (startX.value + endX.value) / 2))
+  return [clamp(centre - 12), clamp(centre)]
+})
+const windowStyle = computed(() => ({
+  transform: `translate(${startX.value}px, ${geometry.value.top + line.value}px)`,
+  width: `${Math.max(2 * line.value, endX.value - startX.value)}px`,
+  height: `${Math.max(line.value, geometry.value.height - 2 * line.value)}px`,
+  borderWidth: `${line.value}px`,
+}))
+function dotStyle(index: number) {
+  return {
+    left: `${snapX(grips.value[index]! + (12 - dotSize.value) / 2) - grips.value[index]!}px`,
+    top: `${snapY(geometry.value.top + (geometry.value.height - dotSize.value) / 2)}px`,
+    width: `${dotSize.value}px`, height: `${dotSize.value}px`,
+  }
+}
+const timeAt = (frame: number) => {
+  const seconds = frame / Math.max(1, editor.state?.sampleRate ?? 1)
+  return `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(3).padStart(6, '0')}`
+}
 
 let request = 0
-watch([() => editor.revision, () => size.value.width, () => settings.settings.editorWaveform.waveColors], async () => {
-  const n = frames()
-  if (!n || !size.value.width)
-    return
+watch([() => editor.loading, () => editor.revision, () => geometry.value.width, pixelRatio, () => settings.settings.editorWaveform.waveColors], async () => {
   const req = ++request
-  const columns = Math.min(4096, Math.round(size.value.width * (window.devicePixelRatio || 1)))
-  const data = await editor.wave(0, n, columns, false, settings.settings.editorWaveform.waveColors === 'frequency')
-  if (req === request)
-    wave.value = data
+  const n = frames()
+  if (editor.loading || !n || !geometry.value.width) { wave.value = null; return }
+  const columns = Math.min(4096, Math.round(geometry.value.width * geometry.value.ratio))
+  try {
+    const data = await editor.wave(0, n, columns, false, settings.settings.editorWaveform.waveColors === 'frequency')
+    if (req === request) wave.value = data
+  }
+  catch { if (req === request) wave.value = null }
 }, { immediate: true })
 
 function draw() {
   const el = canvas.value
-  const { width: w, height: h } = size.value
+  const { width: w, height: h, ratio: dpr } = geometry.value
   if (!el || !w)
     return
-  const dpr = window.devicePixelRatio || 1
   const ctx = canvasContext(el, w, h, dpr)
   const style = getComputedStyle(el)
   const color = (name: string) => style.getPropertyValue(name).trim()
@@ -86,15 +111,12 @@ function draw() {
   ctx.fillRect(0, 0, a, h)
   ctx.fillRect(b, 0, w - b, h)
   ctx.globalAlpha = 1
-  ctx.strokeStyle = color('--primary')
-  ctx.lineWidth = 1
-  ctx.strokeRect(a + 0.5, 0.5, b - a - 1, h - 1)
 }
 
 watch(
-  [wave, size, () => props.viewStart, () => props.viewEnd, () => editor.selection, () => settings.settings, () => settings.themeRevision],
+  [wave, geometry, () => props.viewStart, () => props.viewEnd, () => editor.selection, () => settings.settings, () => settings.themeRevision],
   draw,
-  { deep: true },
+  { deep: true, flush: 'post' },
 )
 
 // Same marks as the main view, as elements over the canvas so playback redraws
@@ -102,7 +124,7 @@ watch(
 const cursorEl = ref<HTMLElement | null>(null)
 const playheadEl = ref<HTMLElement | null>(null)
 const hoverEl = ref<HTMLElement | null>(null)
-const at = (f: number) => `${(f / Math.max(1, frames())) * 100}%`
+const at = (f: number) => `${snapX(geometry.value.left + (f / Math.max(1, frames())) * geometry.value.width)}px`
 watchEffect(() => {
   const el = hoverEl.value
   if (!el)
@@ -127,50 +149,100 @@ watchEffect(() => {
 })
 
 function frameAt(clientX: number) {
-  const rect = canvas.value!.getBoundingClientRect()
+  const rect = canvas.value?.getBoundingClientRect()
+  if (!rect?.width) return 0
   return Math.min(frames(), Math.max(0, ((clientX - rect.left) / rect.width) * frames()))
 }
 
-// Drag the window to pan; a press outside it first centres the window there.
-function onMouseDown(e: MouseEvent) {
-  if (e.button !== 0)
-    return
-  e.preventDefault()
-  const span = props.viewEnd - props.viewStart
-  const at = frameAt(e.clientX)
-  const inside = at >= props.viewStart && at <= props.viewEnd
-  const grab = inside ? at - props.viewStart : span / 2
-  const moveTo = (clientX: number) => {
-    const start = Math.max(0, Math.min(frames() - span, frameAt(clientX) - grab))
-    emit('view', start, start + span)
-  }
-  if (!inside)
-    moveTo(e.clientX)
-  const move = (ev: MouseEvent) => moveTo(ev.clientX)
-  const up = () => {
-    window.removeEventListener('mousemove', move)
-    window.removeEventListener('mouseup', up)
-  }
-  window.addEventListener('mousemove', move)
-  window.addEventListener('mouseup', up)
+const dragging = shallowRef<MinimapDrag | null>(null)
+let drag: { pointer: number, origin: number, start: number, end: number } | null = null
+function stopDrag() {
+  const pointer = drag?.pointer
+  drag = null
+  dragging.value = null
+  if (pointer !== undefined && box.value?.hasPointerCapture(pointer)) box.value.releasePointerCapture(pointer)
 }
+function onPointerDown(e: PointerEvent) {
+  if (e.button !== 0 || !e.isPrimary || !frames() || editor.loading) return
+  const edge = (e.target as Element).closest<HTMLElement>('[data-edge]')?.dataset.edge
+  const mode: MinimapDrag = edge === 'start' || edge === 'end' ? edge : 'move'
+  const point = frameAt(e.clientX)
+  let start = props.viewStart
+  let end = props.viewEnd
+  // Clicking outside the visible range centres it there before the drag starts.
+  if (mode === 'move' && (point < start || point > end)) {
+    const span = end-start
+    start = Math.max(0, Math.min(frames()-span, point-span/2))
+    end = start+span
+    emit('view', start, end)
+  }
+  drag = { pointer: e.pointerId, origin: point, start, end }
+  dragging.value = mode
+  box.value?.setPointerCapture(e.pointerId)
+}
+function onPointerMove(e: PointerEvent) {
+  if (!drag || e.pointerId !== drag.pointer || !dragging.value) return
+  emit('view', ...dragMinimapRange(drag.start, drag.end, dragging.value, frameAt(e.clientX)-drag.origin, frames()))
+}
+function onKey(e: KeyboardEvent, mode: MinimapDrag) {
+  const direction = ['ArrowLeft', 'ArrowDown'].includes(e.key) ? -1 : ['ArrowRight', 'ArrowUp'].includes(e.key) ? 1 : 0
+  if (!direction && e.key !== 'Home' && e.key !== 'End') return
+  e.preventDefault()
+  e.stopPropagation()
+  const step = Math.max(1, (props.viewEnd-props.viewStart) * (e.shiftKey ? 0.1 : 0.01))
+  const delta = e.key === 'Home' ? -frames() : e.key === 'End' ? frames() : step*direction
+  emit('view', ...dragMinimapRange(props.viewStart, props.viewEnd, mode, delta, frames()))
+}
+function onDoubleClick(e: MouseEvent) {
+  if (!(e.target as Element).closest('[data-edge]')) emit('fit')
+}
+watch([() => editor.sample?.id, () => editor.state?.frames], stopDrag)
+onBeforeUnmount(() => { request++; stopDrag() })
 
 function onWheel(e: WheelEvent) {
   e.preventDefault()
-  emit('zoom', Math.exp(e.deltaY * 0.01), frameAt(e.clientX))
+  if (frames()) emit('zoom', Math.exp(e.deltaY * 0.01), frameAt(e.clientX))
 }
 </script>
 
 <template>
-  <div ref="box" class="relative h-7 shrink-0 border-b border-border bg-background" :title="t('editor.minimap.hint')">
-    <canvas
-      ref="canvas"
-      class="absolute inset-0 size-full cursor-grab active:cursor-grabbing"
-      :aria-label="t('editor.minimap.label')"
-      @mousedown="onMouseDown"
-      @wheel="onWheel"
-      @dblclick="emit('fit')"
-    />
+  <div
+    ref="box"
+    class="minimap relative h-7 shrink-0 border-b border-border bg-background"
+    :class="{ 'is-dragging': dragging }"
+    :title="t('editor.minimap.hint')"
+    @pointerdown="onPointerDown"
+    @pointermove="onPointerMove"
+    @pointerup="stopDrag"
+    @pointercancel="stopDrag"
+    @lostpointercapture="stopDrag"
+    @wheel="onWheel"
+    @dblclick="onDoubleClick"
+  >
+    <canvas ref="canvas" class="absolute" :style="canvasStyle" :aria-label="t('editor.minimap.label')" />
+    <template v-if="frames() && geometry.width">
+      <div
+        class="view-window"
+        :style="windowStyle"
+        tabindex="0" role="slider" aria-orientation="horizontal"
+        :aria-label="t('editor.minimap.move')"
+        :aria-valuemin="0" :aria-valuemax="Math.max(0, frames()-(viewEnd-viewStart))" :aria-valuenow="viewStart"
+        :aria-valuetext="`${timeAt(viewStart)} – ${timeAt(viewEnd)}`"
+        @keydown="onKey($event, 'move')"
+      />
+      <button
+        v-for="(edge, index) in (['start', 'end'] as const)" :key="edge"
+        type="button" class="resize-handle" :data-edge="edge" :class="{ active: dragging === edge }"
+        :style="{ transform: `translateX(${grips[index]}px)` }"
+        role="slider" aria-orientation="horizontal"
+        :aria-label="t(`editor.minimap.${edge}`)"
+        :aria-valuemin="edge === 'start' ? 0 : viewStart+minimumSpan"
+        :aria-valuemax="edge === 'start' ? viewEnd-minimumSpan : frames()"
+        :aria-valuenow="edge === 'start' ? viewStart : viewEnd"
+        :aria-valuetext="timeAt(edge === 'start' ? viewStart : viewEnd)"
+        @keydown="onKey($event, edge)"
+      ><span :style="dotStyle(index)" aria-hidden="true" /></button>
+    </template>
     <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       <div ref="cursorEl" class="absolute inset-y-0 w-px bg-foreground/60" />
       <div ref="hoverEl" class="absolute inset-y-0 w-px bg-foreground/35" style="display: none" />
@@ -178,3 +250,14 @@ function onWheel(e: WheelEvent) {
     </div>
   </div>
 </template>
+
+<style scoped>
+.minimap { touch-action: none; user-select: none; cursor: grab; }
+.minimap.is-dragging { cursor: grabbing; }
+.view-window { position: absolute; left: 0; top: 0; border: 1px solid var(--primary); border-radius: 2px; background: color-mix(in srgb, var(--primary) 2%, transparent); }
+.view-window:focus-visible { outline: 2px solid var(--ring); outline-offset: -3px; }
+.resize-handle { position: absolute; left: 0; z-index: 2; top: 0; bottom: 0; width: 12px; border: 0; padding: 0; background: transparent; color: var(--primary); cursor: ew-resize; outline: none; }
+.resize-handle > span { position: absolute; border-radius: 50%; background: currentColor; opacity: 0.8; pointer-events: none; }
+.resize-handle:hover > span, .resize-handle.active > span, .resize-handle:focus-visible > span { opacity: 1; }
+.resize-handle:focus-visible > span { outline: 2px solid var(--ring); outline-offset: 2px; }
+</style>
