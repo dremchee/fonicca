@@ -1,4 +1,5 @@
 //! Tauri commands for embedded and standalone editor sessions, keyed by window label.
+use crate::audio::AudioRead;
 
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
@@ -27,7 +28,7 @@ pub(crate) fn transcription_audio(state: &AppState, window: &Window, range: edit
             || (range.end-range.start) as f64 / pcm.sample_rate as f64 > 600.0 {
             return Err(Error::Other("select a non-empty fragment up to 10 minutes".into()));
         }
-        Ok(crate::audio::Pcm { samples: pcm.samples[range.start * pcm.channels..range.end * pcm.channels].to_vec(),
+        Ok(crate::audio::Pcm { samples: pcm.range(range.start * pcm.channels..range.end * pcm.channels).into_owned(),
             channels: pcm.channels, sample_rate: pcm.sample_rate })
     })
 }
@@ -78,7 +79,9 @@ pub async fn editor_open(state: State<'_, AppState>, window: Window, id: i64, di
             [id],
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
         )?;
-    let session = Session::open(id, Path::new(&path), bit_depth)?;
+    let decode_path = path.clone();
+    let session = tauri::async_runtime::spawn_blocking(move || Session::open(id, Path::new(&decode_path), bit_depth))
+        .await.map_err(|e| Error::Other(e.to_string()))??;
     let s = session.state();
     let mut sessions = state.editor.lock().unwrap();
     if !discard_existing.unwrap_or(false) && sessions.get(window.label()).is_some_and(|s| s.state().dirty) {
@@ -107,9 +110,14 @@ pub fn release(app: &AppHandle, label: &str) {
 }
 
 #[tauri::command]
-pub fn editor_apply(state: State<'_, AppState>, window: Window, op: Op) -> Result<EditorState> {
+pub async fn editor_apply(state: State<'_, AppState>, window: Window, op: Op) -> Result<EditorState> {
+    let (mut audio, revision) = with_session(&state, &window, |s| Ok((s.audio().clone(), s.revision())))?;
+    let (audio, op) = tauri::async_runtime::spawn_blocking(move || -> Result<_> {
+        audio.try_apply(&op)?;
+        Ok((audio, op))
+    }).await.map_err(|e| Error::Other(format!("audio processing failed: {e}")))??;
     with_session(&state, &window, |s| {
-        s.apply(op);
+        s.apply_rendered(revision, op, audio)?;
         Ok(s.state())
     })
 }
@@ -134,8 +142,9 @@ pub async fn editor_process(
         if start >= end || end > pcm.frames() {
             return Err(Error::Other("select a non-empty range inside the file".into()));
         }
+        editor::memory::check_samples((end-start).saturating_mul(pcm.channels),editor::memory::pcm_budget())?;
         Ok((crate::audio::Pcm {
-            samples: pcm.samples[start * pcm.channels..end * pcm.channels].to_vec(),
+            samples: pcm.range(start * pcm.channels..end * pcm.channels).into_owned(),
             channels: pcm.channels, sample_rate: pcm.sample_rate,
         }, s.revision(), pcm.frames()))
     })?;
@@ -165,18 +174,22 @@ pub fn editor_redo(state: State<'_, AppState>, window: Window) -> Result<EditorS
 
 /// Waveform data for `[start, end)` (see `editor::wave`), as raw bytes.
 #[tauri::command]
-pub fn editor_wave(
-    state: State<'_, AppState>,
-    window: Window,
-    start: usize,
-    end: usize,
-    columns: usize,
-    split: bool,
-    bands: bool,
+pub async fn editor_wave(
+    state: State<'_, AppState>, window: Window,
+    start: usize, end: usize, columns: usize, split: bool, bands: bool,
 ) -> Result<tauri::ipc::Response> {
-    with_session(&state, &window, |s| {
-        Ok(tauri::ipc::Response::new(s.wave(start, end, columns.clamp(1, 16384), split, bands)))
-    })
+    let (audio, revision) = with_session(&state, &window, |s| Ok((s.audio().clone(), s.audio_revision())))?;
+    let (bytes, elapsed) = tauri::async_runtime::spawn_blocking(move || {
+        let started = std::time::Instant::now();
+        let bytes = audio.wave(start, end, columns.clamp(1, 16384), split, bands);
+        (bytes, started.elapsed().as_micros() as u64)
+    }).await.map_err(|e| Error::Other(format!("waveform generation failed: {e}")))?;
+    if let Ok(sessions) = state.editor.try_lock() {
+        if let Some(session) = sessions.get(window.label()) { session.record_wave_time(revision, elapsed); }
+    }
+    // A stale request is harmless: the frontend compares its revision before
+    // displaying it, and unchanged source caches remain useful in undo history.
+    Ok(tauri::ipc::Response::new(bytes))
 }
 
 /// Build the analysis once per audio revision without holding the session lock.
@@ -188,7 +201,7 @@ pub async fn editor_spectrogram(
         let cached = s.spectrogram();
         let pcm = if cached.is_none() {
             let audio = s.audio();
-            Some(crate::audio::Pcm { samples: audio.samples.clone(), channels: audio.channels, sample_rate: audio.sample_rate })
+            Some(audio.clone())
         } else { None };
         Ok((cached, pcm, s.audio_revision()))
     })?;
@@ -206,8 +219,13 @@ pub async fn editor_spectrogram(
 
 /// Copies `[start, end)` to the clipboard shared by all editor windows.
 #[tauri::command]
-pub fn editor_copy(state: State<'_, AppState>, window: Window, start: usize, end: usize) -> Result<Option<editor::clipboard::ClipInfo>> {
-    with_session(&state, &window, |s| Ok(editor::clipboard::copy(s.audio(), start, end).then(editor::clipboard::info).flatten()))
+pub async fn editor_copy(state: State<'_, AppState>, window: Window, start: usize, end: usize) -> Result<Option<editor::clipboard::ClipInfo>> {
+    let audio = with_session(&state, &window, |s| Ok(s.audio().clone()))?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let frames = end.min(audio.frames()).saturating_sub(start.min(audio.frames()));
+        editor::memory::check_samples(frames.saturating_mul(audio.channels), editor::memory::pcm_budget())?;
+        Ok(editor::clipboard::copy(&audio, start, end).then(editor::clipboard::info).flatten())
+    }).await.map_err(|e| Error::Other(format!("copying audio failed: {e}")))?
 }
 
 #[tauri::command]
@@ -230,12 +248,15 @@ pub struct Pasted {
 pub fn editor_paste(state: State<'_, AppState>, window: Window, start: usize, end: usize) -> Result<Pasted> {
     with_session(&state, &window, |s| {
         let pcm = s.audio();
-        let samples = editor::clipboard::take_as(pcm.channels, pcm.sample_rate)
+        let samples = editor::clipboard::take_as(pcm.channels, pcm.sample_rate)?
             .ok_or_else(|| Error::Other("the clipboard is empty".into()))?;
         let frames = samples.len() / pcm.channels.max(1);
         let start = start.min(pcm.frames());
         let end = end.clamp(start, pcm.frames());
-        s.apply(Op::Replace { start, end, samples: std::sync::Arc::new(samples) });
+        let result_frames = pcm.frames().checked_sub(end - start).and_then(|n| n.checked_add(frames))
+            .ok_or_else(|| Error::Other("audio length is too large".into()))?;
+        editor::memory::check_growth(pcm.frames(), result_frames, pcm.channels)?;
+        s.try_apply(Op::Replace { start, end, samples: std::sync::Arc::new(samples) })?;
         Ok(Pasted { state: s.state(), start, end: start + frames })
     })
 }
@@ -397,15 +418,10 @@ pub fn editor_export_slices(state: State<'_, AppState>, window: Window, spans: V
             .expect("some name is free");
         std::fs::create_dir_all(&dir)?;
         let audio = s.audio();
-        let ch = audio.channels.max(1);
         let width = spans.len().to_string().len().max(2);
         for (i, span) in spans.iter().enumerate() {
             let (a, b) = (span.start.min(audio.frames()), span.end.min(audio.frames()));
-            let pcm = crate::audio::Pcm {
-                samples: audio.samples[a * ch..b.max(a) * ch].to_vec(),
-                channels: audio.channels,
-                sample_rate: audio.sample_rate,
-            };
+            let pcm = audio.slice_frames(a,b.max(a));
             editor::write_wav(&dir.join(format!("{stem} {:0width$}.wav", i + 1)), &pcm, s.bit_depth, None)?;
         }
         Ok(dir)

@@ -169,12 +169,19 @@ export const useEditorStore = defineStore('editor', () => {
   async function openSample(next: Sample) {
     if ((sample.value?.id === next.id && sample.value.path === next.path) || transitioning) return
     transitioning = true
+    let previous: { sample: EditedFile | null, state: EditorState | null } | null = null
+    let opened = false
     try {
       if (!await allowTransition()) return
+      previous = { sample: sample.value, state: state.value }
       loading.value = true
+      // Mount the editor before decoding audio, using the known file metadata.
+      sample.value = { id: next.id, name: next.name, ext: next.ext, path: next.path, bpm: next.bpm }
+      state.value = null
       await usePlayerStore().stop()
       await stopPlayback()
-      const result = await editorApi.open(next.id, !!state.value?.dirty)
+      const result = await editorApi.open(next.id, !!previous.state?.dirty)
+      opened = true
       state.value = result.state
       sample.value = { id: next.id, name: result.name, ext: result.ext, path: result.path, bpm: result.bpm }
       sessionVersion.value++
@@ -184,7 +191,14 @@ export const useEditorStore = defineStore('editor', () => {
       revision.value++
       await refreshClipboard()
     }
-    catch (error) { toast.error(String(error)) }
+    catch (error) {
+      if (previous && !opened) {
+        sample.value = previous.sample
+        state.value = previous.state
+        revision.value++
+      }
+      toast.error(String(error))
+    }
     finally { loading.value = false; transitioning = false }
   }
 
@@ -220,6 +234,7 @@ export const useEditorStore = defineStore('editor', () => {
   /** The clipboard shared by all editor windows; re-read when this one gets focus. */
   const clipboard = ref<ClipInfo | null>(null)
   let frame = 0
+  let playbackVersion = 0
 
   const canOverwrite = computed(() => !!state.value?.canReplaceOriginal)
 
@@ -277,27 +292,27 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
-  async function apply(op: EditOp, stop = true) {
-    if (processing.value || saving.value)
-      return
-    if (stop)
-      stopPlayback()
+  async function changeAudio(action: () => Promise<EditorState>, stop = true) {
+    if (loading.value || processing.value || saving.value) return
+    processing.value = true
     try {
-      after(await editorApi.apply(op))
+      if (stop) await stopPlayback()
+      after(await action())
     }
-    catch (e) {
-      toast.error(String(e))
-    }
+    catch (e) { toast.error(String(e)) }
+    finally { processing.value = false }
   }
 
-  async function undo() {
-    if (!processing.value && !saving.value && state.value?.canUndo)
-      after(await editorApi.undo())
+  function apply(op: EditOp, stop = true) {
+    return changeAudio(() => editorApi.apply(op), stop)
   }
 
-  async function redo() {
-    if (!processing.value && !saving.value && state.value?.canRedo)
-      after(await editorApi.redo())
+  function undo() {
+    if (state.value?.canUndo) return changeAudio(() => editorApi.undo())
+  }
+
+  function redo() {
+    if (state.value?.canRedo) return changeAudio(() => editorApi.redo())
   }
 
   /** The selection, or the whole file when nothing is selected. */
@@ -351,12 +366,15 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   async function cut() {
-    if (processing.value || saving.value)
-      return
-    if (!selection.value)
-      return
-    await copy()
-    remove()
+    const s = selection.value && { ...selection.value }
+    if (!s || s.end <= s.start) return
+    await changeAudio(async () => {
+      clipboard.value = await editorApi.copy(s.start, s.end)
+      const next = await editorApi.apply({ op: 'delete', ...s })
+      selection.value = null
+      cursor.value = s.start
+      return next
+    })
   }
 
   /** Pastes over the selection, or at the cursor; the pasted audio ends up selected. */
@@ -478,11 +496,11 @@ export const useEditorStore = defineStore('editor', () => {
 
   // --- Playback ------------------------------------------------------------
 
-  function track() {
+  function track(version: number) {
     cancelAnimationFrame(frame)
     const tick = async () => {
       const pos = await api.playbackPosition()
-      if (!playing.value)
+      if (version !== playbackVersion || !playing.value)
         return
       if (pos === null) {
         stopPlayback()
@@ -498,24 +516,32 @@ export const useEditorStore = defineStore('editor', () => {
   async function play() {
     if (!state.value)
       return
+    const version = ++playbackVersion
+    cancelAnimationFrame(frame)
     const s = selection.value
     const [start, end] = s ? [s.start, s.end] : [cursor.value, state.value.frames]
     try {
       await usePlayerStore().stop()
+      if (version !== playbackVersion) return
       await editorApi.play(start, end, looping.value && !!s)
+      if (version !== playbackVersion) return
       playing.value = true
-      track()
+      playhead.value = start
+      track(version)
     }
     catch (e) {
-      toast.error(String(e))
+      if (version === playbackVersion) toast.error(String(e))
     }
   }
 
   async function updatePlaybackRange() {
     const range = selection.value
     if (!playing.value || !range) return
+    const version = playbackVersion
     try {
-      if (!await editorApi.updatePlayback(range.start, range.end, looping.value)) {
+      const active = await editorApi.updatePlayback(range.start, range.end, looping.value)
+      if (version !== playbackVersion) return
+      if (!active) {
         cancelAnimationFrame(frame)
         playing.value = false
         playhead.value = null
@@ -525,6 +551,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function stopPlayback() {
+    playbackVersion++
     cancelAnimationFrame(frame)
     const stopped = playing.value ? api.stop() : Promise.resolve()
     playing.value = false

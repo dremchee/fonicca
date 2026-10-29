@@ -88,7 +88,7 @@ export default {
   },
   waveform: {
     label: 'Waveform: drag to select, ⌘-scroll to zoom',
-    opening: 'Opening…',
+    opening: 'Loading track and waveform…',
   },
   minimap: {
     hint: 'Drag to move the view · scroll to zoom · double-click to show everything',

@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::Deserialize;
 
 use super::{append_markers, write_wav, Loop, Marker, Session, Span};
-use crate::audio::Pcm;
+#[cfg(test)] use crate::audio::Pcm;
 use crate::error::{Error, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
@@ -46,7 +46,7 @@ pub fn save_session(session: &mut Session, backups: &Path, mode: SaveMode, desti
         let Span { start, end } = range.ok_or_else(|| Error::Other("select a non-empty fragment".into()))?;
         let pcm = session.audio();
         if start >= end || end > pcm.frames() { return Err(Error::Other("select a non-empty fragment inside the file".into())); }
-        selected = Pcm { samples: pcm.samples[start * pcm.channels..end * pcm.channels].to_vec(), channels: pcm.channels, sample_rate: pcm.sample_rate };
+        selected = pcm.slice_frames(start,end);
         let lp = session.loop_points().map(|lp| Loop { start: lp.start.clamp(start, end) - start, end: lp.end.clamp(start, end) - start }).filter(|lp| lp.start < lp.end);
         let markers = session.markers().iter().filter(|m| m.frame >= start && m.frame < end).map(|m| Marker { frame: m.frame - start, skip: m.skip }).collect::<Vec<_>>();
         (&selected, lp, markers)

@@ -152,10 +152,31 @@ fn probe_riff(path: &Path) -> Option<AudioInfo> {
 }
 
 /// Decoded PCM, interleaved.
+#[derive(Clone)]
 pub struct Pcm {
     pub samples: Vec<f32>,
     pub channels: usize,
     pub sample_rate: u32,
+}
+
+/// Read-only audio shared by contiguous analysis buffers and editor pieces.
+pub trait AudioRead {
+    fn channels(&self) -> usize;
+    fn sample_rate(&self) -> u32;
+    fn sample_count(&self) -> usize;
+    fn sample(&self, index: usize) -> f32;
+    fn sample_with_cursor(&self,index:usize,_cursor:&mut usize)->f32 {self.sample(index)}
+    fn range(&self, range: std::ops::Range<usize>) -> std::borrow::Cow<'_, [f32]>;
+    fn iter_samples(&self) -> impl Iterator<Item=&f32>;
+    fn frames(&self) -> usize { self.sample_count() / self.channels().max(1) }
+}
+impl AudioRead for Pcm {
+    fn channels(&self)->usize {self.channels}
+    fn sample_rate(&self)->u32 {self.sample_rate}
+    fn sample_count(&self)->usize {self.samples.len()}
+    fn sample(&self,i:usize)->f32 {self.samples[i]}
+    fn range(&self,r:std::ops::Range<usize>)->std::borrow::Cow<'_,[f32]> {std::borrow::Cow::Borrowed(&self.samples[r])}
+    fn iter_samples(&self)->impl Iterator<Item=&f32> {self.samples.iter()}
 }
 
 impl Pcm {
@@ -171,6 +192,16 @@ impl Pcm {
 
 /// Decodes up to `max_seconds` of audio into memory.
 pub fn decode(path: &Path, max_seconds: f64) -> Result<Pcm> {
+    decode_with_limits(path, max_seconds, None)
+}
+
+/// Decode the complete track, failing before its PCM allocation exceeds the budget.
+/// Unlike duration-limited analysis, an oversized editor file is never truncated.
+pub fn decode_bounded(path: &Path, max_bytes: usize) -> Result<Pcm> {
+    decode_with_limits(path, f64::INFINITY, Some(max_bytes))
+}
+
+fn decode_with_limits(path: &Path, max_seconds: f64, max_bytes: Option<usize>) -> Result<Pcm> {
     let mut format = open_format(path)?;
     let track = format
         .tracks()
@@ -187,6 +218,7 @@ pub fn decode(path: &Path, max_seconds: f64) -> Result<Pcm> {
         let packet = match format.next_packet() {
             Ok(p) => p,
             Err(SymphoniaError::IoError(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(SymphoniaError::ResetRequired) if max_bytes.is_some() => return Err(Error::Audio("the audio stream changed format; the editor cannot load it in full".into())),
             Err(SymphoniaError::ResetRequired) => break,
             Err(e) => return Err(e.into()),
         };
@@ -199,6 +231,9 @@ pub fn decode(path: &Path, max_seconds: f64) -> Result<Pcm> {
             Err(e) => return Err(e.into()),
         };
         let spec = *decoded.spec();
+        if max_bytes.is_some() && pcm.sample_rate != 0 && (pcm.sample_rate != spec.rate || pcm.channels != spec.channels.count().max(1)) {
+            return Err(Error::Audio("the audio stream changed format; the editor cannot load it in full".into()));
+        }
         pcm.channels = spec.channels.count().max(1);
         pcm.sample_rate = spec.rate;
         let sb = buf.get_or_insert_with(|| SampleBuffer::new(decoded.capacity() as u64, spec));
@@ -206,6 +241,14 @@ pub fn decode(path: &Path, max_seconds: f64) -> Result<Pcm> {
             *sb = SampleBuffer::new(decoded.capacity() as u64, spec);
         }
         sb.copy_interleaved_ref(decoded);
+        if let Some(budget) = max_bytes {
+            let required = pcm.samples.len().checked_add(sb.samples().len()).ok_or_else(|| Error::Audio("decoded audio is too large".into()))?;
+            crate::editor::memory::check_samples(required, budget)?;
+            if required > pcm.samples.capacity() {
+                let capacity = required.max(pcm.samples.capacity().saturating_mul(2)).min(budget / size_of::<f32>());
+                pcm.samples.try_reserve_exact(capacity - pcm.samples.len()).map_err(|_| Error::Audio("not enough memory to decode this track".into()))?;
+            }
+        }
         pcm.samples.extend_from_slice(sb.samples());
         if pcm.frames() as f64 >= max_seconds * pcm.sample_rate as f64 {
             break;
@@ -220,6 +263,15 @@ pub fn decode(path: &Path, max_seconds: f64) -> Result<Pcm> {
 /// Decodes the whole file in chunks, calling `f(interleaved, channels, sample_rate)`
 /// for each, without keeping the audio in memory.
 pub fn stream(path: &Path, mut f: impl FnMut(&[f32], usize, u32)) -> Result<()> {
+    stream_with(path, |samples,ch,rate| { f(samples,ch,rate); Ok(()) },false)
+}
+
+/// Complete streaming decode with an abortable sink, used by the disk-backed editor.
+pub fn try_stream(path:&Path,f:impl FnMut(&[f32],usize,u32)->Result<()>)->Result<()> {
+    stream_with(path,f,true)
+}
+
+fn stream_with(path:&Path,mut f:impl FnMut(&[f32],usize,u32)->Result<()>,strict:bool)->Result<()> {
     let mut format = open_format(path)?;
     let track = format
         .tracks()
@@ -230,10 +282,12 @@ pub fn stream(path: &Path, mut f: impl FnMut(&[f32], usize, u32)) -> Result<()> 
     let mut decoder =
         symphonia::default::get_codecs().make(&track.codec_params, &DecoderOptions::default())?;
     let mut buf: Option<SampleBuffer<f32>> = None;
+    let mut format_spec=None;
     loop {
         let packet = match format.next_packet() {
             Ok(p) => p,
             Err(SymphoniaError::IoError(e)) if e.kind() == std::io::ErrorKind::UnexpectedEof => break,
+            Err(SymphoniaError::ResetRequired) if strict => return Err(Error::Audio("the audio stream changed format; the editor cannot load it in full".into())),
             Err(SymphoniaError::ResetRequired) => break,
             Err(e) => return Err(e.into()),
         };
@@ -247,12 +301,16 @@ pub fn stream(path: &Path, mut f: impl FnMut(&[f32], usize, u32)) -> Result<()> 
         };
         let spec = *decoded.spec();
         let channels = spec.channels.count().max(1);
+        if strict && format_spec.is_some_and(|previous| previous!=(channels,spec.rate)) {
+            return Err(Error::Audio("the audio stream changed format; the editor cannot load it in full".into()));
+        }
+        format_spec=Some((channels,spec.rate));
         let sb = buf.get_or_insert_with(|| SampleBuffer::new(decoded.capacity() as u64, spec));
         if sb.capacity() < decoded.capacity() * channels {
             *sb = SampleBuffer::new(decoded.capacity() as u64, spec);
         }
         sb.copy_interleaved_ref(decoded);
-        f(sb.samples(), channels, spec.rate);
+        f(sb.samples(), channels, spec.rate)?;
     }
     Ok(())
 }

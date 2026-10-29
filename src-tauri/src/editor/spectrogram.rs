@@ -1,6 +1,7 @@
 //! Cached, log-frequency STFT over current editor audio. Columns are max-pooled
 //! for the viewport so narrow transients survive zooming out.
-use crate::audio::Pcm;
+use crate::audio::AudioRead;
+#[cfg(test)] use crate::audio::Pcm;
 use crate::error::{Error, Result};
 use realfft::RealFftPlanner;
 
@@ -18,13 +19,15 @@ pub struct Spectrogram {
 }
 
 impl Spectrogram {
-    pub fn build(pcm: &Pcm) -> Result<Self> {
-        if pcm.sample_rate == 0 || pcm.channels == 0 {
+    pub(super) fn cache_bytes(&self) -> usize { self.values.capacity() }
+
+    pub fn build(pcm: &impl AudioRead) -> Result<Self> {
+        if pcm.sample_rate() == 0 || pcm.channels() == 0 {
             return Err(Error::Audio("invalid audio format for spectrogram".into()));
         }
         // About 85 ms of frequency resolution, 75% overlap. The time step and
         // cache size stay comparable at different sample rates (under 32 MB/20 min).
-        let fft_size = ((pcm.sample_rate as f64 * 0.085) as usize)
+        let fft_size = ((pcm.sample_rate() as f64 * 0.085) as usize)
             .next_power_of_two()
             .clamp(512, 16384);
         let hop = (fft_size / 4).max(pcm.frames().div_ceil(131072));
@@ -34,18 +37,18 @@ impl Spectrogram {
         let window: Vec<f32> = (0..fft_size)
             .map(|i| 0.5 - 0.5 * (std::f32::consts::TAU * i as f32 / fft_size as f32).cos())
             .collect();
-        let normalization = (2.0 / window.iter().sum::<f32>()).powi(2) / pcm.channels as f32;
+        let normalization = (2.0 / window.iter().sum::<f32>()).powi(2) / pcm.channels() as f32;
         let mut input = fft.make_input_vec();
         let mut spectrum = fft.make_output_vec();
         let mut scratch = fft.make_scratch_vec();
         let mut power = vec![0.0f32; spectrum.len()];
-        let max_hz = pcm.sample_rate as f64 / 2.0;
+        let max_hz = pcm.sample_rate() as f64 / 2.0;
         let min_hz = 20.0f64.min(max_hz / 16.0);
         let bands: Vec<_> = (0..BINS)
             .map(|bin| {
                 let hz = |i| min_hz * (max_hz / min_hz).powf(i as f64 / BINS as f64);
-                let low = hz(bin) * fft_size as f64 / pcm.sample_rate as f64;
-                let high = hz(bin + 1) * fft_size as f64 / pcm.sample_rate as f64;
+                let low = hz(bin) * fft_size as f64 / pcm.sample_rate() as f64;
+                let high = hz(bin + 1) * fft_size as f64 / pcm.sample_rate() as f64;
                 let lo = (low.ceil() as usize).clamp(1, fft_size / 2);
                 let hi = (high.floor() as usize).clamp(1, fft_size / 2);
                 if lo <= hi {
@@ -59,11 +62,14 @@ impl Spectrogram {
         for column in 0..columns {
             power.fill(0.0);
             let centre = column * hop;
-            for channel in 0..pcm.channels {
+            let first=centre.saturating_sub(fft_size/2).min(pcm.frames());
+            let last=(centre+fft_size-fft_size/2).min(pcm.frames());
+            let window_samples=pcm.range(first*pcm.channels()..last*pcm.channels());
+            for channel in 0..pcm.channels() {
                 for (i, sample) in input.iter_mut().enumerate() {
                     let frame = centre as isize + i as isize - (fft_size / 2) as isize;
                     let value = if frame >= 0 && (frame as usize) < pcm.frames() {
-                        pcm.samples[frame as usize * pcm.channels + channel]
+                        window_samples[(frame as usize-first)*pcm.channels()+channel]
                     } else {
                         0.0
                     };
@@ -91,7 +97,7 @@ impl Spectrogram {
         }
         Ok(Self {
             frames: pcm.frames(),
-            sample_rate: pcm.sample_rate,
+            sample_rate: pcm.sample_rate(),
             fft_size,
             hop,
             columns,

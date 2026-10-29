@@ -46,6 +46,9 @@ trash = "5.2.9"
 lofty = "0.25.4"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+sysinfo = { version = "0.38.4", default-features = false, features = ["system"] }
+memmap2 = "0.9.12"
+tempfile = "3.27.0"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
@@ -56,8 +59,6 @@ opt-level = 3
 panic = "abort"
 strip = true
 
-[dev-dependencies]
-tempfile = "3.27.0"
 
 # Audio decoding is ~70x slower unoptimized; optimize dependencies even in dev builds,
 # and our own per-sample analysis loops a little.

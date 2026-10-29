@@ -3,7 +3,8 @@
 use serde::{Deserialize, Serialize};
 
 use super::zero_crossing;
-use crate::audio::Pcm;
+use crate::audio::AudioRead;
+#[cfg(test)] use crate::audio::Pcm;
 
 /// A slice, `[start, end)` frames.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -35,10 +36,10 @@ const ZERO_RADIUS_S: f64 = 0.01;
 const MIN_SLICE_S: f64 = 0.01;
 
 /// Slices of `[start, end)`. Cuts between neighbouring slices move to zero crossings when `zero` is set.
-pub fn slices(pcm: &Pcm, start: usize, end: usize, by: SliceBy, zero: bool) -> Vec<Span> {
+pub fn slices(pcm: &impl AudioRead, start: usize, end: usize, by: SliceBy, zero: bool) -> Vec<Span> {
     let frames = pcm.frames();
     let (start, end) = (start.min(frames), end.min(frames).max(start.min(frames)));
-    let sr = pcm.sample_rate.max(1) as f64;
+    let sr = pcm.sample_rate().max(1) as f64;
     let min_len = (MIN_SLICE_S * sr) as usize;
     if end - start < min_len.max(2) {
         return Vec::new();
@@ -107,15 +108,15 @@ fn levels(start: usize, end: usize, signal: impl Fn(usize) -> f32) -> Vec<f32> {
         .collect()
 }
 
-fn mix(pcm: &Pcm, f: usize) -> f32 {
-    let ch = pcm.channels.max(1);
-    pcm.samples[f * ch..(f + 1) * ch].iter().sum::<f32>() / ch as f32
+fn mix(pcm: &impl AudioRead, f: usize) -> f32 {
+    let ch = pcm.channels().max(1);
+    pcm.range(f * ch..(f + 1) * ch).iter().sum::<f32>() / ch as f32
 }
 
 /// Attack positions: rises of the high-passed level (the first difference brings out
 /// clicks and hits over sustained low end) well above its recent past, a few ms early
 /// so the slice keeps the very start of the hit.
-fn onsets(pcm: &Pcm, start: usize, end: usize, sensitivity: f32, min_gap: usize) -> Vec<usize> {
+fn onsets(pcm: &impl AudioRead, start: usize, end: usize, sensitivity: f32, min_gap: usize) -> Vec<usize> {
     let diff = |f: usize| if f > 0 { mix(pcm, f) - mix(pcm, f - 1) } else { 0.0 };
     let level = levels(start, end, diff);
     let peak = level.iter().copied().fold(f32::MIN, f32::max);
@@ -123,7 +124,7 @@ fn onsets(pcm: &Pcm, start: usize, end: usize, sensitivity: f32, min_gap: usize)
     let rise = 0.6 - 0.5 * sensitivity.clamp(0.0, 1.0);
     // Ignore what is more than 50 dB under the loudest part.
     let floor = peak - 2.5;
-    let pre_roll = (pcm.sample_rate as usize / 200).min(HOP); // 5 ms
+    let pre_roll = (pcm.sample_rate() as usize / 200).min(HOP); // 5 ms
     let lookback = 8; // ~45 ms at 44.1 kHz
     let mut out: Vec<usize> = Vec::new();
     for i in 1..level.len() {
@@ -150,7 +151,7 @@ fn onsets(pcm: &Pcm, start: usize, end: usize, sensitivity: f32, min_gap: usize)
 }
 
 /// The parts louder than `threshold_db`, joined across silences shorter than `min_silence`.
-fn sounding(pcm: &Pcm, start: usize, end: usize, threshold_db: f32, min_silence: usize) -> Vec<Span> {
+fn sounding(pcm: &impl AudioRead, start: usize, end: usize, threshold_db: f32, min_silence: usize) -> Vec<Span> {
     let level = levels(start, end, |f| mix(pcm, f));
     let threshold = threshold_db / 20.0;
     let mut spans: Vec<Span> = Vec::new();

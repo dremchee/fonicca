@@ -5,7 +5,7 @@ use std::sync::Mutex;
 
 use serde::Serialize;
 
-use crate::audio::Pcm;
+use crate::audio::{AudioRead, Pcm};
 
 static CLIPBOARD: Mutex<Option<Pcm>> = Mutex::new(None);
 
@@ -19,14 +19,14 @@ pub struct ClipInfo {
 }
 
 /// Copies `[start, end)` of `pcm` to the clipboard; false for an empty range.
-pub fn copy(pcm: &Pcm, start: usize, end: usize) -> bool {
-    let ch = pcm.channels.max(1);
+pub fn copy(pcm: &impl AudioRead, start: usize, end: usize) -> bool {
+    let ch = pcm.channels().max(1);
     let frames = pcm.frames();
     let (start, end) = (start.min(frames), end.min(frames));
     if end <= start {
         return false;
     }
-    let clip = Pcm { samples: pcm.samples[start * ch..end * ch].to_vec(), channels: pcm.channels, sample_rate: pcm.sample_rate };
+    let clip = Pcm { samples: pcm.range(start * ch..end * ch).into_owned(), channels: pcm.channels(), sample_rate: pcm.sample_rate() };
     *CLIPBOARD.lock().unwrap() = Some(clip);
     true
 }
@@ -40,8 +40,13 @@ pub fn info() -> Option<ClipInfo> {
 }
 
 /// The clipboard's audio in the given format (interleaved), ready to splice in.
-pub fn take_as(channels: usize, sample_rate: u32) -> Option<Vec<f32>> {
-    CLIPBOARD.lock().unwrap().as_ref().map(|c| convert(c, channels, sample_rate))
+pub fn take_as(channels: usize, sample_rate: u32) -> crate::error::Result<Option<Vec<f32>>> {
+    let clipboard=CLIPBOARD.lock().unwrap();
+    let Some(clip)=clipboard.as_ref() else {return Ok(None)};
+    let output_frames=(clip.frames() as f64 * sample_rate.max(1) as f64 / clip.sample_rate.max(1) as f64).round().max(1.0) as usize;
+    let count=clip.frames().max(output_frames).saturating_mul(channels.max(1));
+    super::memory::check_samples(count,super::memory::pcm_budget()/2)?;
+    Ok(Some(convert(clip,channels,sample_rate)))
 }
 
 /// Converts audio to another channel count (mono is copied to every channel, more
@@ -114,6 +119,6 @@ mod tests {
         assert!(!copy(&p, 5, 5));
         assert!(copy(&p, 2, 5));
         assert_eq!(info(), Some(ClipInfo { frames: 3, channels: 1, sample_rate: 1000 }));
-        assert_eq!(take_as(1, 1000).unwrap(), [2.0, 3.0, 4.0]);
+        assert_eq!(take_as(1, 1000).unwrap().unwrap(), [2.0, 3.0, 4.0]);
     }
 }

@@ -9,6 +9,7 @@ mod clap;
 mod commands;
 mod db;
 mod duplicates;
+mod diagnostics;
 mod editor;
 mod editor_commands;
 mod error;
@@ -159,6 +160,7 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            diagnostics::debug_snapshot,
             basic_pitch::basic_pitch_status,
             basic_pitch::basic_pitch_start,
             basic_pitch::basic_pitch_cancel,

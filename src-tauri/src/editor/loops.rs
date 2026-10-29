@@ -6,7 +6,8 @@ use std::path::Path;
 use serde::Serialize;
 
 use super::Op;
-use crate::audio::Pcm;
+use crate::audio::AudioRead;
+#[cfg(test)] use crate::audio::Pcm;
 use crate::error::Result;
 
 /// Loop points as `[start, end)` frames.
@@ -68,14 +69,14 @@ pub fn moved_loop(lp: Option<Loop>, op: &Op, frames: usize, channels: usize) -> 
 /// The zero crossing of the mixed-down signal nearest to `frame`, within `radius`
 /// frames; `frame` itself when there is none. Of the two frames around a sign
 /// change, the one closer to zero. The end of the file counts as an edge of its own.
-pub fn zero_crossing(pcm: &Pcm, frame: usize, radius: usize) -> usize {
-    let ch = pcm.channels.max(1);
+pub fn zero_crossing(pcm: &impl AudioRead, frame: usize, radius: usize) -> usize {
+    let ch = pcm.channels().max(1);
     let frames = pcm.frames();
     let frame = frame.min(frames);
     if frames < 2 || frame == frames {
         return frame;
     }
-    let mix = |f: usize| pcm.samples[f * ch..(f + 1) * ch].iter().sum::<f32>();
+    let mix = |f: usize| pcm.range(f * ch..(f + 1) * ch).iter().sum::<f32>();
     // A crossing between frames f and f + 1.
     let crossing = |f: usize| {
         let (a, b) = (mix(f), mix(f + 1));
@@ -233,7 +234,7 @@ mod tests {
         let mut s = Session::open(1, &path, Some(16)).unwrap();
         s.apply(Op::Replace { start: 10, end: 20, samples: std::sync::Arc::new(vec![0.5; 5]) });
         assert_eq!(s.state().frames, 95);
-        assert_eq!(&s.audio().samples[9..16], &[s.audio().samples[9], 0.5, 0.5, 0.5, 0.5, 0.5, s.audio().samples[15]]);
+        assert_eq!(s.audio().range(9..16).as_ref(), &[s.audio().samples[9], 0.5, 0.5, 0.5, 0.5, 0.5, s.audio().samples[15]]);
         assert!((s.audio().samples[15] - 0.021).abs() < 1e-3, "frame 20 follows the pasted part");
         s.undo();
         assert_eq!(s.state().frames, 100);

@@ -1,16 +1,21 @@
-//! Single-file audio editor. Edits are kept as a list of operations on top of
-//! the decoded original, so undo is unlimited and the file on disk is untouched
-//! until saved.
+//! Single-file audio editor with immutable shared audio pieces and snapshot
+//! undo/redo. Only changed spans allocate new sample blocks. Disk files remain
+//! untouched until saving.
 
 use std::path::{Path, PathBuf};
-use std::sync::OnceLock;
 
 use serde::{Deserialize, Serialize};
 
-use crate::audio::{self, Pcm};
+use crate::audio::{AudioRead, Pcm};
+#[cfg(test)] use crate::audio;
+use blocks::BlockAudio;
 use crate::error::{Error, Result};
 
 pub mod clipboard;
+pub mod blocks;
+mod storage;
+pub mod diagnostics;
+pub mod memory;
 mod loops;
 mod markers;
 mod slices;
@@ -21,8 +26,6 @@ pub use loops::{zero_crossing, Loop};
 pub use markers::{append_markers, Marker};
 pub use slices::{slices, SliceBy, Span};
 
-/// Files longer than this are not opened (the whole file is kept in memory).
-const MAX_SECONDS: f64 = 20.0 * 60.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -183,6 +186,8 @@ fn next_revision() -> u64 {
 
 /// An open file with its edit history.
 pub struct Session {
+    opened_ms: f64,
+    last_wave_us: std::sync::atomic::AtomicU64,
     revision: u64,
     audio_revision: u64,
     spectrum: Option<std::sync::Arc<spectrogram::Spectrogram>>,
@@ -191,20 +196,17 @@ pub struct Session {
     pub original_path: PathBuf,
     pub has_saved_target: bool,
     pub bit_depth: Option<u32>,
-    original: Pcm,
-    current: Pcm,
+    current: BlockAudio,
+    history: Vec<AudioSnapshot>,
+    future: Vec<AudioSnapshot>,
     /// Loop points read from the file, and after the edits.
-    original_loop: Option<Loop>,
     current_loop: Option<Loop>,
     /// Slice markers read from the file, and after the edits.
-    original_markers: Vec<Marker>,
     current_markers: Vec<Marker>,
     ops: Vec<Op>,
     redo: Vec<Op>,
     /// Ops at the last save, i.e. what is on disk.
     saved: Vec<Op>,
-    /// Peaks of `current` for wide wave requests, built on first use after each change.
-    pyramid: OnceLock<Pyramid>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -225,18 +227,21 @@ pub struct State {
     pub markers: Vec<Marker>,
 }
 
+struct AudioSnapshot { audio: BlockAudio, loop_points: Option<Loop>, markers: Vec<Marker> }
+
 impl Session {
     pub fn open(sample_id: i64, path: &Path, bit_depth: Option<u32>) -> Result<Self> {
-        let pcm = audio::decode(path, MAX_SECONDS + 1.0)?;
-        if pcm.frames() as f64 > MAX_SECONDS * pcm.sample_rate as f64 {
-            return Err(Error::Other("files longer than 20 minutes cannot be edited".into()));
-        }
-        let frames = pcm.frames();
+        let opened_at = std::time::Instant::now();
+        let (data,channels,sample_rate)=storage::decode(path,memory::pcm_budget())?;
+        let audio=BlockAudio::from_storage(data,channels,sample_rate);
+        let frames = audio.frames();
         let original_loop = loops::read_smpl_loop(path)
             .map(|l| Loop { start: l.start.min(frames), end: l.end.min(frames) })
             .filter(|l| l.end > l.start);
         let original_markers = markers::normalized(markers::read_markers(path), frames);
         Ok(Self {
+            opened_ms: opened_at.elapsed().as_secs_f64() * 1000.0,
+            last_wave_us: std::sync::atomic::AtomicU64::new(0),
             revision: next_revision(),
             audio_revision: next_revision(),
             spectrum: None,
@@ -245,16 +250,14 @@ impl Session {
             original_path: path.to_path_buf(),
             has_saved_target: false,
             bit_depth,
-            current: Pcm { samples: pcm.samples.clone(), channels: pcm.channels, sample_rate: pcm.sample_rate },
-            original: pcm,
-            original_loop,
+            current: audio,
+            history: Vec::new(),
+            future: Vec::new(),
             current_loop: original_loop,
             current_markers: original_markers.clone(),
-            original_markers,
             ops: Vec::new(),
             redo: Vec::new(),
             saved: Vec::new(),
-            pyramid: OnceLock::new(),
         })
     }
 
@@ -281,8 +284,7 @@ impl Session {
         if self.revision != revision {
             return Err(Error::Other("the audio changed during processing; please try again".into()));
         }
-        self.apply(op);
-        Ok(())
+        self.try_apply(op)
     }
 
     pub fn audio_revision(&self) -> u64 { self.audio_revision }
@@ -310,7 +312,7 @@ impl Session {
         &self.current_markers
     }
 
-    pub fn audio(&self) -> &Pcm {
+    pub fn audio(&self) -> &BlockAudio {
         &self.current
     }
 
@@ -318,55 +320,65 @@ impl Session {
         self.current_loop
     }
 
-    fn apply_op(&mut self, op: &Op) {
-        self.current_loop = loops::moved_loop(self.current_loop, op, self.current.frames(), self.current.channels);
-        self.current_markers = markers::moved_markers(&self.current_markers, op, self.current.frames(), self.current.channels);
-        apply(&mut self.current, op);
+    pub fn try_apply(&mut self, op: Op) -> Result<()> {
+        let mut rendered = self.current.clone();
+        rendered.try_apply(&op)?;
+        self.commit_audio(op, rendered);
+        Ok(())
     }
 
-    pub fn apply(&mut self, op: Op) {
-        self.apply_op(&op);
+    /// Commit a worker's immutable output only if its source is still current.
+    pub fn apply_rendered(&mut self, revision: u64, op: Op, rendered: BlockAudio) -> Result<()> {
+        if self.revision != revision { return Err(Error::Other("the audio changed during processing; please try again".into())); }
+        self.commit_audio(op, rendered);
+        Ok(())
+    }
+    fn commit_audio(&mut self, op: Op, rendered: BlockAudio) {
+        let previous = self.snapshot();
+        let frames = self.current.frames(); let channels = self.current.channels;
+        self.current_loop = loops::moved_loop(previous.loop_points, &op, frames, channels);
+        self.current_markers = markers::moved_markers(&previous.markers, &op, frames, channels);
+        self.history.push(previous);
         self.invalidate_spectrogram(&op);
-        self.ops.push(op);
-        self.redo.clear();
-        self.pyramid = OnceLock::new();
+        self.current = rendered;
+        self.ops.push(op); self.redo.clear(); self.future.clear();
         self.revision = next_revision();
     }
+    #[cfg(test)]
+    pub fn apply(&mut self,op:Op) {self.try_apply(op).unwrap();}
 
+    fn snapshot(&self) -> AudioSnapshot { AudioSnapshot {audio:self.current.clone(),loop_points:self.current_loop,markers:self.current_markers.clone()} }
+    fn restore(&mut self,snapshot:AudioSnapshot) {self.current=snapshot.audio;self.current_loop=snapshot.loop_points;self.current_markers=snapshot.markers;self.revision=next_revision();}
     pub fn undo(&mut self) {
-        let Some(op) = self.ops.pop() else { return };
+        let Some(op)=self.ops.pop() else {return};
         self.invalidate_spectrogram(&op);
         self.redo.push(op);
-        // Re-render from the original: ops are cheap compared to keeping snapshots.
-        self.current = Pcm {
-            samples: self.original.samples.clone(),
-            channels: self.original.channels,
-            sample_rate: self.original.sample_rate,
-        };
-        self.current_loop = self.original_loop;
-        self.current_markers = self.original_markers.clone();
-        for op in std::mem::take(&mut self.ops) {
-            self.apply_op(&op);
-            self.ops.push(op);
-        }
-        self.pyramid = OnceLock::new();
-        self.revision = next_revision();
+        self.future.push(self.snapshot());
+        let previous=self.history.pop().expect("one snapshot per edit");
+        self.restore(previous);
     }
-
     pub fn redo(&mut self) {
-        if let Some(op) = self.redo.pop() {
-            self.apply_op(&op);
+        if let Some(op)=self.redo.pop() {
             self.invalidate_spectrogram(&op);
             self.ops.push(op);
-            self.pyramid = OnceLock::new();
-            self.revision = next_revision();
+            self.history.push(self.snapshot());
+            let next=self.future.pop().expect("one snapshot per undone edit");
+            self.restore(next);
         }
     }
 
-    /// Wave data of the current audio (see [`wave`]), wide ranges from the pyramid.
+    pub fn record_wave_time(&self, revision: u64, microseconds: u64) {
+        if self.audio_revision == revision {
+            self.last_wave_us.store(microseconds.max(1), std::sync::atomic::Ordering::Relaxed);
+        }
+    }
+
+    #[cfg(test)]
     pub fn wave(&self, start: usize, end: usize, columns: usize, split: bool, bands: bool) -> Vec<u8> {
-        let pyramid = self.pyramid.get_or_init(|| Pyramid::build(&self.current));
-        wave_with(&self.current, Some(pyramid), start, end, columns, split, bands)
+        let started = std::time::Instant::now();
+        let result = self.current.wave(start, end, columns, split, bands);
+        self.record_wave_time(self.audio_revision, started.elapsed().as_micros() as u64);
+        result
     }
 
     pub fn mark_saved(&mut self) {
@@ -410,24 +422,26 @@ struct PeakLevel {
 }
 
 impl Pyramid {
-    pub fn build(pcm: &Pcm) -> Self {
-        let ch = pcm.channels.max(1);
+    pub fn build(pcm: &impl AudioRead) -> Self {
+        let ch = pcm.channels().max(1);
         let lanes = ch + 1;
         let frames = pcm.frames();
         let blocks = frames.div_ceil(PEAK_BASE);
         let mut data = vec![0.0f32; lanes * blocks * PEAK_FIELDS];
         // The same two one-pole low-passes as the direct path, run once over the file.
-        let coef = |hz: f32| 1.0 - (-std::f32::consts::TAU * hz / pcm.sample_rate.max(1) as f32).exp();
+        let coef = |hz: f32| 1.0 - (-std::f32::consts::TAU * hz / pcm.sample_rate().max(1) as f32).exp();
         let (a1, a2) = (coef(250.0), coef(4000.0));
         for lane in 0..lanes {
+            let mut samples=pcm.iter_samples();
             let (mut lp1, mut lp2) = (0.0f32, 0.0f32);
             for blk in 0..blocks {
                 let acc = &mut data[(lane * blocks + blk) * PEAK_FIELDS..(lane * blocks + blk + 1) * PEAK_FIELDS];
                 acc[0] = f32::MAX;
                 acc[1] = f32::MIN;
-                for f in blk * PEAK_BASE..((blk + 1) * PEAK_BASE).min(frames) {
-                    let frame = &pcm.samples[f * ch..(f + 1) * ch];
-                    let x = if lane == 0 { frame.iter().sum::<f32>() / ch as f32 } else { frame[lane - 1] };
+                for _ in blk * PEAK_BASE..((blk + 1) * PEAK_BASE).min(frames) {
+                    let mut x=0.0;
+                    for c in 0..ch {let value=*samples.next().expect("complete audio frame");if lane==0 {x+=value;}else if c==lane-1 {x=value;}}
+                    if lane==0 {x/=ch as f32;}
                     lp1 += a1 * (x - lp1);
                     lp2 += a2 * (x - lp2);
                     acc[0] = acc[0].min(x);
@@ -481,8 +495,8 @@ pub(crate) fn push_level(out: &mut Vec<u8>, v: f32) {
     out.extend_from_slice(&((v.clamp(-1.0, 1.0) * i16::MAX as f32).round() as i16).to_le_bytes());
 }
 
-fn wave_with(pcm: &Pcm, pyramid: Option<&Pyramid>, start: usize, end: usize, columns: usize, split: bool, bands: bool) -> Vec<u8> {
-    let ch = pcm.channels.max(1);
+fn wave_with(pcm: &impl AudioRead, pyramid: Option<&Pyramid>, start: usize, end: usize, columns: usize, split: bool, bands: bool) -> Vec<u8> {
+    let ch = pcm.channels().max(1);
     let frames = pcm.frames();
     let (start, end) = (start.min(frames), end.min(frames).max(start.min(frames)));
     let lanes = if split { ch } else { 1 };
@@ -518,7 +532,7 @@ fn wave_with(pcm: &Pcm, pyramid: Option<&Pyramid>, start: usize, end: usize, col
         return out;
     }
     let value = |f: usize, lane: usize| -> f32 {
-        let frame = &pcm.samples[f * ch..(f + 1) * ch];
+        let frame = pcm.range(f * ch..(f + 1) * ch);
         if split { frame[lane] } else { frame.iter().sum::<f32>() / ch as f32 }
     };
 
@@ -531,7 +545,7 @@ fn wave_with(pcm: &Pcm, pyramid: Option<&Pyramid>, start: usize, end: usize, col
         }
         // Three bands from two one-pole low-passes (250 Hz and 4 kHz), warmed up
         // on a little audio before the range so the first columns are settled.
-        let coef = |hz: f32| 1.0 - (-std::f32::consts::TAU * hz / pcm.sample_rate as f32).exp();
+        let coef = |hz: f32| 1.0 - (-std::f32::consts::TAU * hz / pcm.sample_rate() as f32).exp();
         let (a1, a2) = (coef(250.0), coef(4000.0));
         let (mut lp1, mut lp2) = (0.0f32, 0.0f32);
         if bands {
@@ -570,32 +584,32 @@ fn wave_with(pcm: &Pcm, pyramid: Option<&Pyramid>, start: usize, end: usize, col
 
 /// Writes a WAV file: integer PCM at the source bit depth (8/16/24), otherwise
 /// 32-bit float. Integer samples are clipped. Loop points go into a `smpl` chunk.
-pub fn write_wav(path: &Path, pcm: &Pcm, bit_depth: Option<u32>, loop_points: Option<Loop>) -> Result<()> {
+pub fn write_wav(path: &Path, pcm: &impl AudioRead, bit_depth: Option<u32>, loop_points: Option<Loop>) -> Result<()> {
     let err = |e: hound::Error| Error::Other(format!("writing WAV: {e}"));
     let bits = match bit_depth {
         Some(b @ (8 | 16 | 24)) => b as u16,
         _ => 32,
     };
     let spec = hound::WavSpec {
-        channels: pcm.channels as u16,
-        sample_rate: pcm.sample_rate,
+        channels: pcm.channels() as u16,
+        sample_rate: pcm.sample_rate(),
         bits_per_sample: bits,
         sample_format: if bits == 32 { hound::SampleFormat::Float } else { hound::SampleFormat::Int },
     };
     let mut w = hound::WavWriter::create(path, spec).map_err(err)?;
     if bits == 32 {
-        for &s in &pcm.samples {
+        for &s in pcm.iter_samples() {
             w.write_sample(s).map_err(err)?;
         }
     } else {
         let max = ((1i64 << (bits - 1)) - 1) as f32;
-        for &s in &pcm.samples {
+        for &s in pcm.iter_samples() {
             w.write_sample((s.clamp(-1.0, 1.0) * max).round() as i32).map_err(err)?;
         }
     }
     w.finalize().map_err(err)?;
     if let Some(lp) = loop_points {
-        loops::append_smpl(path, lp, pcm.sample_rate)?;
+        loops::append_smpl(path, lp, pcm.sample_rate())?;
     }
     Ok(())
 }
@@ -614,6 +628,30 @@ pub fn edited_path(path: &Path) -> PathBuf {
 mod tests {
     use super::*;
 
+    #[test]
+    #[ignore = "manual editor latency benchmark"]
+    fn benchmark_edit_wave_latency() {
+        let frames = 44100 * 180;
+        let pcm = Pcm { samples: (0..frames*2).map(|i| (i as f32 * 0.01).sin() * 0.5).collect(), channels: 2, sample_rate: 44100 };
+        let dir = tempfile::tempdir().unwrap(); let path = dir.path().join("latency.wav");
+        write_wav(&path, &pcm, Some(32), None).unwrap(); drop(pcm);
+        let mut session = Session::open(1, &path, Some(32)).unwrap();
+        let t = std::time::Instant::now(); session.wave(0, frames, 1600, true, false);
+        eprintln!("BENCH first_wave_ms={:.2}", t.elapsed().as_secs_f64()*1000.0);
+        for action in 0..4 {
+            let t = std::time::Instant::now();
+            match action {
+                0 => session.try_apply(Op::FadeOut { start: frames-44100, end: frames, curve: Curve::Smooth }).unwrap(),
+                1 => session.undo(),
+                2 => session.try_apply(Op::Delete { start: 44101, end: 88202 }).unwrap(),
+                _ => session.undo(),
+            }
+            let edit = t.elapsed().as_secs_f64()*1000.0;
+            session.wave(0, session.audio().frames(), 1600, true, false);
+            eprintln!("BENCH action={action} edit_ms={edit:.2} edit_plus_wave_ms={:.2}", t.elapsed().as_secs_f64()*1000.0);
+        }
+    }
+
     fn ramp(frames: usize, channels: usize) -> Pcm {
         // Frame i holds (i + 1) / 100 in every channel.
         let samples = (0..frames).flat_map(|i| std::iter::repeat_n((i + 1) as f32 / 100.0, channels)).collect();
@@ -622,6 +660,78 @@ mod tests {
 
     fn mono(pcm: &Pcm) -> Vec<f32> {
         pcm.samples.chunks(pcm.channels).map(|f| f[0]).collect()
+    }
+
+    #[test]
+    fn undo_redo_restore_shared_snapshots_including_metadata() {
+        let dir=tempfile::tempdir().unwrap();let path=dir.path().join("shared.wav");
+        write_wav(&path,&ramp(1000,2),Some(32),None).unwrap();
+        let mut session=Session::open(1,&path,Some(32)).unwrap();
+        let original=session.audio().clone();
+        session.apply(Op::SetLoop{start:10,end:500});
+        assert!(original.samples.same_snapshot(&session.audio().samples));
+        session.apply(Op::Gain{start:20,end:40,db:-6.0});
+        let modified=session.audio().clone();
+        session.undo();
+        assert!(original.samples.same_snapshot(&session.audio().samples));
+        assert_eq!(session.loop_points(),Some(Loop{start:10,end:500}));
+        session.redo();
+        assert!(modified.samples.same_snapshot(&session.audio().samples));
+        session.undo();session.undo();
+        assert!(original.samples.same_snapshot(&session.audio().samples));
+        assert_eq!(session.loop_points(),None);
+        assert!(!session.state().dirty);
+        session.apply(Op::Crop{start:10,end:100});
+        assert!(!session.state().can_redo);
+        assert_eq!(session.audio().frames(),90);
+    }
+
+    #[test]
+    fn worker_output_is_committed_once_and_stale_output_cannot_overwrite_new_edits() {
+        let dir = tempfile::tempdir().unwrap(); let path = dir.path().join("worker.wav");
+        write_wav(&path, &ramp(1000,2), Some(32), None).unwrap();
+        let mut session = Session::open(1, &path, Some(32)).unwrap();
+        let version = session.revision(); let mut audio = session.audio().clone();
+        let op = Op::Gain { start: 100, end: 500, db: -6.0 };
+        audio.try_apply(&op).unwrap(); let expected = audio.samples.clone();
+        session.apply_rendered(version, op.clone(), audio.clone()).unwrap();
+        assert_eq!(session.audio().samples, expected);
+        let revision = session.revision(); let history = session.history.len();
+        assert!(session.apply_rendered(version, op, audio).is_err());
+        assert_eq!(session.revision(), revision); assert_eq!(session.history.len(), history);
+        session.undo(); assert_eq!(session.audio().samples, ramp(1000,2).samples);
+    }
+
+    #[test]
+    fn failed_edit_keeps_audio_metadata_and_undo_history() {
+        let dir=tempfile::tempdir().unwrap();let path=dir.path().join("unchanged.wav");
+        write_wav(&path,&ramp(100,2),Some(32),None).unwrap();
+        let mut session=Session::open(1,&path,Some(32)).unwrap();
+        session.apply(Op::SetLoop{start:10,end:50});
+        let before=session.snapshot();let revision=session.revision();let history=session.history.len();
+        let bad=Op::Replace{start:10,end:20,samples:std::sync::Arc::new(vec![0.5])};
+        assert!(session.try_apply(bad).is_err());
+        assert!(before.audio.samples.same_snapshot(&session.audio().samples));
+        assert_eq!(before.loop_points,session.loop_points());
+        assert_eq!(session.revision(),revision);assert_eq!(session.history.len(),history);
+    }
+
+    #[test]
+    fn opens_a_complete_track_longer_than_twenty_minutes() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("long.wav");
+        let spec = hound::WavSpec { channels: 1, sample_rate: 1000, bits_per_sample: 16, sample_format: hound::SampleFormat::Int };
+        let mut writer = hound::WavWriter::create(&path, spec).unwrap();
+        let frames = 21 * 60 * 1000;
+        for i in 0..frames { writer.write_sample(if i == frames - 1 {1234_i16} else {0}).unwrap(); }
+        writer.finalize().unwrap();
+        let session = Session::open(1, &path, Some(16)).unwrap();
+        assert_eq!(session.audio().frames(), frames);
+        assert!(session.audio().samples.last().unwrap().abs() > 0.01);
+        // A byte budget rejects the same file, rather than returning a prefix.
+        assert!(audio::decode_bounded(&path, 1024).is_err());
+        let exact = audio::decode_bounded(&path, frames * size_of::<f32>()).unwrap();
+        assert_eq!(exact.frames(), frames);
     }
 
     #[test]

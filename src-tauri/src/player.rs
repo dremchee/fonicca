@@ -1,3 +1,4 @@
+use crate::audio::AudioRead;
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -106,6 +107,28 @@ impl Timing {
     fn source_time(&self, played: f64) -> f64 {
         let t = played * self.scale + self.phase;
         self.offset + self.loop_len.filter(|l| *l > 0.0).map_or(t, |l| t % l)
+    }
+}
+
+/// Immutable source snapshot: no range copy when starting, looping or seeking.
+#[derive(Clone)]
+struct SharedSource<A> { audio:A,start:usize,end:usize,position:usize,begin:usize,looping:bool,cursor:usize }
+impl<A:AudioRead> Iterator for SharedSource<A> {
+    type Item=f32;
+    fn next(&mut self)->Option<f32> {if self.position>=self.end {if self.looping && self.start<self.end {self.position=self.start}else{return None}}let sample=self.audio.sample_with_cursor(self.position,&mut self.cursor);self.position+=1;Some(sample)}
+    fn size_hint(&self)->(usize,Option<usize>) {if self.looping {(0,None)}else{let n=self.end-self.position;(n,Some(n))}}
+}
+impl<A:AudioRead+Clone> rodio::Source for SharedSource<A> {
+    fn current_span_len(&self)->Option<usize> {Some(if self.looping && self.position==self.end {self.end-self.start}else{self.end-self.position})}
+    fn channels(&self)->std::num::NonZero<u16> {std::num::NonZero::new(self.audio.channels() as u16).unwrap()}
+    fn sample_rate(&self)->std::num::NonZero<u32> {std::num::NonZero::new(self.audio.sample_rate()).unwrap()}
+    fn total_duration(&self)->Option<Duration> {if self.looping {None}else{Some(Duration::from_secs_f64((self.end-self.begin) as f64/self.audio.channels().max(1) as f64/self.audio.sample_rate() as f64))}}
+    fn try_seek(&mut self,pos:Duration)->std::result::Result<(),rodio::source::SeekError> {
+        let ch=self.audio.channels().max(1);
+        let offset=(pos.as_secs_f64()*self.audio.sample_rate() as f64) as usize;
+        let target=self.begin.saturating_add(offset.saturating_mul(ch));
+        self.position=if self.looping {self.start+(target-self.start)%(self.end-self.start)}else{target.min(self.end)};
+        Ok(())
     }
 }
 
@@ -230,14 +253,14 @@ impl Player {
 
     /// Plays frames `[start, end)` of an in-memory buffer (the editor), optionally
     /// looping. Positions are reported in seconds of the buffer.
-    pub fn play_buffer(&self, pcm: &crate::audio::Pcm, start: usize, end: usize, looping: bool) -> Result<()> {
+    pub fn play_buffer<A:AudioRead+Clone+Send+Sync+'static>(&self, pcm: &A, start: usize, end: usize, looping: bool) -> Result<()> {
         self.play_buffer_from(pcm, start, end, looping, start)
     }
 
     /// Changes an editor region without moving the playhead back to its beginning.
-    pub fn update_buffer_range(&self, pcm: &crate::audio::Pcm, start: usize, end: usize, looping: bool) -> Result<bool> {
+    pub fn update_buffer_range<A:AudioRead+Clone+Send+Sync+'static>(&self, pcm: &A, start: usize, end: usize, looping: bool) -> Result<bool> {
         let Some(seconds) = self.position() else { return Ok(false) };
-        let position = (seconds * pcm.sample_rate as f64).round() as usize;
+        let position = (seconds * pcm.sample_rate() as f64).round() as usize;
         let end = end.min(pcm.frames());
         if end <= start || (position >= end && !looping) {
             self.stop();
@@ -248,28 +271,22 @@ impl Player {
         Ok(true)
     }
 
-    fn play_buffer_from(&self, pcm: &crate::audio::Pcm, start: usize, end: usize, looping: bool, position: usize) -> Result<()> {
-        use rodio::Source;
+    fn play_buffer_from<A:AudioRead+Clone+Send+Sync+'static>(&self, pcm: &A, start: usize, end: usize, looping: bool, position: usize) -> Result<()> {
         let output = self.mixer.lock().unwrap();
         let mixer = output.as_ref().ok_or_else(|| Error::Audio("no output device".into()))?;
-        let ch = pcm.channels.max(1);
+        let ch = pcm.channels().max(1);
         let (start, end) = (start.min(pcm.frames()), end.min(pcm.frames()));
         if end <= start {
             return Ok(());
         }
-        let channels = std::num::NonZero::new(ch as u16).ok_or_else(|| Error::Audio("no channels".into()))?;
-        let rate = std::num::NonZero::new(pcm.sample_rate).ok_or_else(|| Error::Audio("no sample rate".into()))?;
-        let buffer = rodio::buffer::SamplesBuffer::new(channels, rate, pcm.samples[start * ch..end * ch].to_vec());
+        let _channels = std::num::NonZero::new(ch as u16).ok_or_else(|| Error::Audio("no channels".into()))?;
+        let _rate = std::num::NonZero::new(pcm.sample_rate()).ok_or_else(|| Error::Audio("no sample rate".into()))?;
+        let buffer = SharedSource {audio:pcm.clone(),start:start*ch,end:end*ch,position:position*ch,begin:position*ch,looping,cursor:0};
         let player = RodioPlayer::connect_new(mixer);
         player.set_volume(*self.volume.lock().unwrap());
-        let sr = pcm.sample_rate as f64;
+        let sr = pcm.sample_rate() as f64;
         let phase = position.saturating_sub(start) as f64 / sr;
-        let skip = Duration::from_secs_f64(phase);
-        if looping {
-            player.append(Metered::new(buffer.repeat_infinite().skip_duration(skip), Arc::clone(&self.meter)));
-        } else {
-            player.append(Metered::new(buffer.skip_duration(skip), Arc::clone(&self.meter)));
-        }
+        player.append(Metered::new(buffer, Arc::clone(&self.meter)));
         *self.timing.lock().unwrap() = Timing {
             scale: 1.0,
             offset: start as f64 / sr,
@@ -342,6 +359,22 @@ impl Player {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn shared_source_keeps_old_audio_and_seeks_and_loops_without_range_copies() {
+        use rodio::Source;
+        let mut audio=crate::editor::blocks::BlockAudio::from(crate::audio::Pcm {samples:vec![0.1,0.2,0.3,0.4,0.5,0.6],channels:2,sample_rate:2});
+        let mut source=SharedSource {audio:audio.clone(),start:0,end:6,position:2,begin:2,looping:true,cursor:0};
+        assert!(source.audio.samples.shares_storage(&audio.samples));
+        audio.apply(&crate::editor::Op::Silence{start:0,end:3});
+        assert_eq!(source.next(),Some(0.3));
+        assert_eq!(source.by_ref().take(5).collect::<Vec<_>>(),vec![0.4,0.5,0.6,0.1,0.2]);
+        source.try_seek(Duration::from_secs_f64(0.5)).unwrap();
+        assert_eq!(source.next(),Some(0.5));
+        let mut finite=SharedSource {audio:source.audio.clone(),start:2,end:6,position:2,begin:2,looping:false,cursor:0};
+        finite.try_seek(Duration::from_secs(99)).unwrap();
+        assert_eq!(finite.next(),None);
+    }
 
     #[test]
     fn recording_input_validation_accepts_system_and_available_devices_only() {

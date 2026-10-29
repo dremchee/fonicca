@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Spinner } from '@/components/ui/spinner'
 import type { GridMode } from '@/composables/editor/grid'
 import type { Curve, Marker, Wave } from '@/stores/editor'
 import {
@@ -91,6 +92,9 @@ useWaveRenderer(canvas)
 const width = ref(0)
 const height = ref(0)
 const wave = shallowRef<Wave | null>(null)
+const waveError = ref<string | null>(null)
+watch(() => editor.sample?.id, () => { wave.value = null; waveError.value = null }, { flush: 'sync' })
+const openingWave = computed(() => editor.loading || (!isSpectrogram.value && !!editor.state?.frames && !wave.value && !waveError.value))
 // Vertical zoom (⌥-scroll); 1 = full scale.
 const vZoom = ref(1)
 const RULER = 18
@@ -206,7 +210,7 @@ async function readWave() {
   try {
     do {
       readAgain = false
-      if (isSpectrogram.value || !editor.open || width.value === 0 || waveFits())
+      if (isSpectrogram.value || editor.loading || !editor.state?.frames || !editor.open || width.value === 0 || waveFits())
         continue
       const n = editor.state?.frames ?? 0
       const span = viewEnd.value - viewStart.value
@@ -216,17 +220,20 @@ async function readWave() {
       const columns = Math.min(16384, Math.round(width.value * (window.devicePixelRatio || 1) * (end - start) / span))
       const key = waveKey()
       const s = settings.settings.editorWaveform
+      waveError.value = null
       const data = await editor.wave(start, end, columns, s.waveChannels === 'split', s.waveColors === 'frequency')
+      if (editor.loading || key !== waveKey()) { readAgain = true; continue }
       waveRange = { start, end, key }
       wave.value = data
     } while (readAgain)
   }
+  catch (error) { waveError.value = String(error) }
   finally {
     reading = false
   }
 }
 
-watch([isSpectrogram, () => editor.revision, viewStart, viewEnd, width, () => settings.settings.editorWaveform.waveChannels, () => settings.settings.editorWaveform.waveColors], readWave)
+watch([() => editor.loading, isSpectrogram, () => editor.revision, viewStart, viewEnd, width, () => settings.settings.editorWaveform.waveChannels, () => settings.settings.editorWaveform.waveColors], readWave)
 
 const x = (frame: number) => ((frame - viewStart.value) / (viewEnd.value - viewStart.value)) * width.value
 
@@ -951,7 +958,7 @@ const curves: { value: Curve, label: string }[] = [
 </script>
 
 <template>
-  <div class="h-full flex flex-col overflow-hidden bg-background text-foreground" :inert="editor.loading || editor.saving" data-editor-panel>
+  <div class="h-full flex flex-col overflow-hidden bg-background text-foreground" :inert="editor.loading || editor.saving" :aria-busy="openingWave" data-editor-panel>
     <!-- Keep a drag region for the legacy standalone editor window. -->
     <header v-if="!props.embedded" class="h-11 shrink-0 pl-[84px] pr-3 flex items-center border-b border-border" data-tauri-drag-region>
       <span class="min-w-0 truncate text-sm font-medium" data-tauri-drag-region>{{ editor.sample?.name }}<span class="text-muted-foreground">.{{ editor.sample?.ext }}</span><span v-if="editor.state?.dirty" class="text-primary"> •</span></span>
@@ -1251,8 +1258,13 @@ const curves: { value: Curve, label: string }[] = [
         <span class="w-12 h-1.5 rounded-full" style="background: linear-gradient(90deg, #080511, #6f2687, #e44f55, #fc9d39, #fcfabe)" />
         <span>0 dB</span>
       </div>
-      <div v-if="editor.loading" class="absolute inset-0 grid place-items-center text-muted-foreground text-sm">
+      <div v-if="openingWave" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/95 text-muted-foreground text-sm" role="status" aria-live="polite">
+        <Spinner class="size-6 text-primary" aria-hidden="true" />
         {{ t('editor.waveform.opening') }}
+      </div>
+      <div v-else-if="waveError" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/95 text-destructive text-sm px-6 text-center" role="alert">
+        {{ waveError }}
+        <Button variant="outline" size="sm" @click="readWave">{{ t('editor.spectrogram.retry') }}</Button>
       </div>
       <div v-else-if="editor.error" class="absolute inset-0 grid place-items-center text-destructive text-sm px-6 text-center">
         {{ editor.error }}

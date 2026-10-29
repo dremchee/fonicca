@@ -1,6 +1,7 @@
 //! Render expensive edits once off-thread and keep their result in undo history.
 use super::Op;
 use crate::audio::Pcm;
+#[cfg(test)] use crate::audio::AudioRead;
 use crate::error::{Error, Result};
 use ebur128::{EbuR128, Mode};
 use serde::{Deserialize, Serialize};
@@ -74,11 +75,8 @@ pub fn render(
                 ));
             }
             let output_frames = (frames as f64 * ratio).round().max(1.0) as usize;
-            if total_frames - frames + output_frames > pcm.sample_rate as usize * 20 * 60 {
-                return Err(invalid(
-                    "the result would be longer than the editor's 20-minute limit",
-                ));
-            }
+            let result_frames = total_frames.checked_sub(frames).and_then(|n| n.checked_add(output_frames)).ok_or_else(|| invalid("invalid audio length"))?;
+            super::memory::check_growth(total_frames, result_frames, pcm.channels)?;
             let output = stretch(&pcm, semitones, ratio)?;
             Ok(Rendered {
                 end: start + output.frames(),
@@ -225,6 +223,12 @@ mod tests {
     }
 
     #[test]
+    fn stretching_a_short_selection_in_a_long_track_is_allowed() {
+        let output=render(sine(0.01,0.2),0,48000*60*21,Processing::Stretch { semitones:0.0,ratio:2.0 });
+        assert!(output.is_ok());
+    }
+
+    #[test]
     fn pitch_and_duration_are_independent_and_preserve_channels() {
         let mono = sine(1.0, 0.2);
         let stereo = Pcm {
@@ -304,7 +308,7 @@ mod tests {
         let original = sine(2.0, 0.05);
         let (_dir, mut s) = session(&original);
         let input = Pcm {
-            samples: s.audio().samples[24000..72000].to_vec(),
+            samples: s.audio().range(24000..72000).into_owned(),
             channels: 1,
             sample_rate: 48000,
         };
@@ -321,15 +325,15 @@ mod tests {
         let report = result.loudness.unwrap();
         assert!(!report.limited);
         assert!((report.after + 18.0).abs() < 0.1);
-        let before = s.audio().samples.clone();
+        let before = s.audio().samples.iter().copied().collect::<Vec<_>>();
         s.apply(result.op);
-        assert_eq!(s.audio().samples[..24000], before[..24000]);
-        assert_eq!(s.audio().samples[72000..], before[72000..]);
+        assert_eq!(*s.audio().range(0..24000), before[..24000]);
+        assert_eq!(*s.audio().range(72000..s.audio().samples.len()), before[72000..]);
         s.undo();
         assert_eq!(s.audio().samples, before);
         s.redo();
         let measured = integrated(&Pcm {
-            samples: s.audio().samples[24000..72000].to_vec(),
+            samples: s.audio().range(24000..72000).into_owned(),
             channels: 1,
             sample_rate: 48000,
         })
@@ -422,7 +426,7 @@ mod tests {
             render(
                 sine(1.0, 0.2),
                 0,
-                48000 * 1200,
+                usize::MAX / 2,
                 Processing::Stretch {
                     semitones: 0.0,
                     ratio: 2.0
@@ -455,7 +459,7 @@ mod tests {
                 },
             ],
         });
-        let before = s.audio().samples.clone();
+        let before = s.audio().samples.iter().copied().collect::<Vec<_>>();
         let result = render(
             Pcm {
                 samples: before[12000..36000].to_vec(),
@@ -472,8 +476,8 @@ mod tests {
         .unwrap();
         s.apply(result.op);
         assert_eq!(s.audio().frames(), 72000);
-        assert_eq!(s.audio().samples[..12000], before[..12000]);
-        assert_eq!(s.audio().samples[60000..], before[36000..]);
+        assert_eq!(*s.audio().range(0..12000), before[..12000]);
+        assert_eq!(*s.audio().range(60000..s.audio().samples.len()), before[36000..]);
         assert_eq!(
             s.loop_points(),
             Some(Loop {
