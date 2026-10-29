@@ -1,5 +1,4 @@
-/** Bounded page retention and request scheduling, independent of Vue and Tauri.
- * Large selections stream IDs through mapRange rather than retaining every row. */
+/** Bounded page retention and request scheduling, independent of Vue and Tauri. */
 interface Options<Row> {
   pages: Map<number, Row[]>
   fetch: (page: number) => Promise<Row[]>
@@ -93,18 +92,6 @@ export function createLibraryPages<Row>(options: Options<Row>) {
     trim()
     await Promise.all([...viewport].map(page => load(page, false)))
   }
-  async function mapRange<Value>(start: number, end: number, select: (row: Row) => Value): Promise<Value[]> {
-    const current = version, values: Value[] = []
-    for (const page of pageNumbers(start, end)) {
-      const rows = await load(page)
-      if (current !== version || disposed) return []
-      if (!rows) continue
-      const first = Math.max(0, start - page * pageSize)
-      const last = Math.min(rows.length, end - page * pageSize + 1)
-      for (const row of rows.slice(first, last)) values.push(select(row))
-    }
-    return values
-  }
   async function refreshCached(page: number) {
     if (pages.has(page)) await load(page, false, true)
   }
@@ -117,5 +104,5 @@ export function createLibraryPages<Row>(options: Options<Row>) {
   const sampleAt = (index: number) => index >= 0 ? pages.get(Math.floor(index / pageSize))?.[index % pageSize] : undefined
   const diagnostics = () => ({ retainedPages: pages.size, retainedRows: [...pages.values()].reduce((sum, rows) => sum + rows.length, 0), active, queued: queue.length, maxPages, concurrency })
   trim()
-  return { sampleAt, ensureRange, ensureVisibleRange, mapRange, refreshCached, clear, dispose, diagnostics }
+  return { sampleAt, ensureRange, ensureVisibleRange, refreshCached, clear, dispose, diagnostics }
 }

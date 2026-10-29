@@ -8,11 +8,11 @@ unit test alone does not establish an improvement in interactive performance.
 
 - [ ] Baseline: short/long audio workloads, library scrolling/search, bounded
   operation telemetry, separate native/renderer memory interpretation.
-- [ ] Editor: extract waveform loading/rendering, pointer selection/markers,
+- [x] Editor: extract waveform loading/rendering, pointer selection/markers,
   shortcuts and toolbar; clarify view/store ownership; verify interaction parity.
 - [ ] Audio: measure copying/locks/recomputation; optimize the demonstrated
   bottleneck, including evaluating stretch and LUFS; compare identical workloads.
-- [ ] Library: separate navigation, pagination and selection; bound page retention;
+- [x] Library: separate navigation, pagination and selection; bound page retention;
   test stale requests and inspect slow SQL query plans on a large fixture.
 - [ ] Jobs/models: one authoritative model catalog; share polling/cancellation
   mechanics while keeping model-specific DSP implementations separate.
@@ -122,8 +122,8 @@ Third pass, 2026-10-30:
 - Page retention is capped at 12 × 200 rows. Four page requests can run at once;
   queued obsolete scroll requests are dropped, old-scope responses are ignored,
   and background refreshes cannot resurrect evicted pages. A focused page stays
-  available. Large shift selections stream IDs through pages instead of retaining
-  all row objects. Tests also cover immediate retry, new-scope/select-all races,
+  available. Large shift selections request only IDs in the required range instead
+  of retaining all row objects. Tests also cover immediate retry, new-scope/select-all races,
   delayed keyboard focus and disposal.
 - Opt-in SQL baseline on isolated 32k/100k databases:
   [raw timings and plans](research/library-query-baseline.json). On the 100k
@@ -144,7 +144,7 @@ Third pass, 2026-10-30:
   not been established and needs profiling separately from native SQL.
 - Browser editor check after drawing extraction: drag selection, marker creation
   and fade rendered correctly; checked console had zero errors. Current checks:
-  110 frontend tests, 193 native tests passing (37 opt-in tests ignored), and
+  110 frontend tests, 194 native tests passing (37 opt-in tests ignored), and
   `pnpm build` succeeds. The build still reports a >500kB JavaScript chunk.
 
 Repeat native library measurements with:
@@ -155,7 +155,31 @@ cargo test --manifest-path src-tauri/Cargo.toml --locked --lib \
   library_workload_benchmark -- --ignored --nocapture --test-threads=1
 ```
 
+SQL follow-up:
+
+- Added a schema migration for an index matching natural-name/path ordering.
+  Collapsed groups use a direct index walk for an unfiltered library and resolve
+  matching IDs first for selective scopes. Expanded groups keep their existing
+  CTE. Empty metadata ordering and parent/child semantics remain unchanged.
+- Differential tests compare collapsed results, counts, pages and ID ranges
+  against the existing CTE for eight sorts in both directions, including matching
+  children in another source, nested relations, favorites, tags and collections.
+  Saved stem migration tests now select their historical migration explicitly.
+- `sample_ids` accepts optional offset/limit. Shift selection makes one ID-range
+  request; select-all retains its existing all-IDs behavior. This avoids hundreds
+  of serial row-page requests for a large selection. Browser fixture check:
+  100,000 selected, 37 DOM sample rows rendered.
+- [Three-run comparison](research/library-query-comparison.json), 100k entries,
+  10k stem links and about 33k tag assignments. Median grouped first/middle/last
+  page: 82/344/464 → 0.75/10.4/25.0 ms. Flat list: 24/324/461 → 0.62/2.75/4.65 ms.
+  Filtered cases and raw repetitions are retained too; directory differences are
+  small. These synthetic local measurements do not establish browser FPS.
+- For reproducibility, `FONICCA_LIBRARY_BENCH_RELATIONS=1` enables links/tags.
+  `FONICCA_LIBRARY_BENCH_REFERENCE=1` drops the new index and uses the previous
+  materialized-root query with no expanded parent present. Run reference and
+  optimized workloads sequentially after compilation; do not run UI profiling
+  or other builds concurrently with their query measurements.
+
 Still pending: full WebView-process memory measurements, long-frame profiling,
-SQL improvements with realistic stem/tag fixtures, shared job/model refactoring
-and release checks. The six-item completion checklist remains open until its
-full evidence is present.
+shared job/model refactoring and release checks. The remaining completion items
+stay open until their full evidence is present.

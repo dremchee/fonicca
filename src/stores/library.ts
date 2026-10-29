@@ -254,7 +254,7 @@ export const useLibraryStore = defineStore('library', () => {
     focusIndex, anchorIndex, selectedIds,
     total: () => total.value, identity: () => `${navigationRevision}:${generation}`,
     sampleAt, ensureRange,
-    rangeIds: (a, b) => pageCache.mapRange(Math.min(a, b), Math.max(a, b), sample => sample.id),
+    rangeIds: (a, b) => api.sampleIds(filter.value, Math.min(a, b), Math.abs(b - a) + 1),
     allIds: () => api.sampleIds(filter.value), remember: rememberSelection,
   })
   const { clickRow, moveFocus, selectAll, targetIds } = selection

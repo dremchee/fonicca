@@ -159,7 +159,7 @@ mod real_library {
     fn neighbours_report() {
         let dir = tempfile::tempdir().unwrap();
         let db_path = dir.path().join("library.db");
-        Connection::open(std::env::var("LIBRARY_DB").unwrap())
+        crate::db::open(Path::new(&std::env::var("LIBRARY_DB").unwrap()))
             .unwrap()
             .execute("VACUUM INTO ?1", [db_path.to_string_lossy()])
             .unwrap();

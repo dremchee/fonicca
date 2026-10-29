@@ -21,7 +21,8 @@ export function largeLibraryCommand(command: string, args: { filter?: SampleFilt
   for (let id = 1; id <= size; id++) if (matches(id)) ids.push(id)
   if (filter?.sortDirection === 'desc') ids.reverse()
   if (command === 'count_samples') return ids.length
-  if (command === 'sample_ids') return ids
+  if (command === 'sample_ids') return ids.slice(args.offset ?? 0,
+    args.limit == null ? undefined : (args.offset ?? 0) + args.limit)
   const rows: Sample[] = ids.slice(args.offset ?? 0, (args.offset ?? 0) + (args.limit ?? 200)).map(id => ({
     id, sourceId: 1, name: `${id % 2 ? 'Kick' : 'Snare'} ${id}`, path: `/fixture/Pack ${id % 100}/Sample ${id}.wav`,
     ext: 'wav', size: 40000, duration: 0.5, sampleRate: 44100, channels: 2, bitDepth: 24,

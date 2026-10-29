@@ -287,7 +287,7 @@ export const api = {
   countSamples: (filter: SampleFilter) => invoke<number>('count_samples', { filter }),
   listSamples: (filter: SampleFilter, offset: number, limit: number) =>
     invoke<Sample[]>('list_samples', { filter, offset, limit }),
-  sampleIds: (filter: SampleFilter) => invoke<number[]>('sample_ids', { filter }),
+  sampleIds: (filter: SampleFilter, offset = 0, limit?: number) => invoke<number[]>('sample_ids', { filter, offset, limit }),
   samplePaths: (ids: number[]) => invoke<string[]>('sample_paths', { ids }),
   sampleTags: (id: number) => invoke<TrackTags | null>('sample_tags', { id }),
   /** Embedded cover art as image bytes, empty when there is none. */

@@ -16,12 +16,6 @@ test('scrolling 100k rows retains a bounded cache and preserves the focused page
   }
   assert.equal(cache.diagnostics().retainedRows, 2400)
   assert.equal(cache.sampleAt(99999)?.id, 99999)
-  // Shift selection must remain complete even though most pages are evicted.
-  const ids = await cache.mapRange(17, 99990, row => row.id)
-  assert.equal(ids.length, 99974)
-  assert.equal(ids[0], 17)
-  assert.equal(ids.at(-1), 99990)
-  assert.ok(pages.size <= 12)
 })
 
 test('concurrency is bounded, duplicate requests coalesce and obsolete scroll requests are skipped', async () => {

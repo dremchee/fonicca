@@ -111,9 +111,9 @@ pub fn list_samples(
 }
 
 #[tauri::command]
-pub fn sample_ids(state: State<'_, AppState>, filter: Filter) -> Result<Vec<i64>> {
+pub fn sample_ids(state: State<'_, AppState>, filter: Filter, offset: Option<i64>, limit: Option<i64>) -> Result<Vec<i64>> {
     let ranking = ranking_for(&state, &filter)?;
-    library::ids_ranked(&state.db.lock().unwrap(), &filter, ranking.as_deref())
+    library::ids_range_ranked(&state.db.lock().unwrap(), &filter, ranking.as_deref(), offset.unwrap_or(0), limit)
 }
 
 #[tauri::command]

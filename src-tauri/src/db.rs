@@ -273,6 +273,13 @@ pub const MIGRATIONS: &[&str] = &[r#"
     INSERT INTO sample_stems SELECT * FROM sample_stems_old;
     DROP TABLE sample_stems_old;
     CREATE INDEX sample_stems_parent ON sample_stems(parent_id, position);
+"#, r#"
+    CREATE INDEX samples_natural_name ON samples(
+        (name IS NULL OR name = ''),
+        name COLLATE FONICCA_NATURAL,
+        path COLLATE FONICCA_NATURAL,
+        id
+    );
 "#];
 
 /// How long user data of removed files is kept for possible reattachment.
@@ -317,8 +324,9 @@ mod stem_migration_tests {
     fn instrumental_migration_keeps_existing_stem_groups() {
         let mut conn = Connection::open_in_memory().unwrap();
         conn.execute_batch("PRAGMA foreign_keys=ON").unwrap();
-        for sql in &MIGRATIONS[..MIGRATIONS.len()-1] { conn.execute_batch(sql).unwrap(); }
-        conn.pragma_update(None,"user_version",(MIGRATIONS.len()-1) as i64).unwrap();
+        let before = MIGRATIONS.iter().position(|sql| sql.contains("ALTER TABLE sample_stems RENAME TO sample_stems_old")).unwrap();
+        for sql in &MIGRATIONS[..before] { conn.execute_batch(sql).unwrap(); }
+        conn.pragma_update(None,"user_version",before as i64).unwrap();
         conn.execute_batch("INSERT INTO sources(id,path,added_at) VALUES(1,'/lib',0);
             INSERT INTO samples(id,source_id,path,name,ext,size,mtime) VALUES(1,1,'/lib/Song.wav','Song','wav',0,0),(2,1,'/lib/vocals.wav','Vocals','wav',0,0),(3,1,'/lib/instrumental.wav','Instrumental','wav',0,0);
             INSERT INTO sample_stems VALUES(2,1,'vocals',0);").unwrap();
@@ -332,8 +340,9 @@ mod stem_migration_tests {
     fn old_stem_folders_are_recovered_only_for_unambiguous_originals() {
         let mut conn = Connection::open_in_memory().unwrap();
         conn.execute_batch("PRAGMA foreign_keys=ON").unwrap();
-        for sql in &MIGRATIONS[..MIGRATIONS.len()-2] { conn.execute_batch(sql).unwrap(); }
-        conn.pragma_update(None,"user_version",(MIGRATIONS.len()-2) as i64).unwrap();
+        let before = MIGRATIONS.iter().position(|sql| sql.contains("WITH legacy AS")).unwrap();
+        for sql in &MIGRATIONS[..before] { conn.execute_batch(sql).unwrap(); }
+        conn.pragma_update(None,"user_version",before as i64).unwrap();
         conn.execute("INSERT INTO sources(id,path,added_at) VALUES(1,'/lib',0)",[]).unwrap();
         for (id,path,name) in [(1,"/lib/Song.wav","Song"),(2,"/exports/Song stems/vocals.wav","vocals"),
             (3,"/exports/Song stems 2/bass.wav","bass"),(4,"/lib/Ambiguous.wav","Ambiguous"),

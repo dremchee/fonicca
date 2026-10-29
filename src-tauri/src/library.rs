@@ -224,7 +224,9 @@ fn sort_order(f: &Filter, alias: &str) -> String {
     let direction = match f.sort_direction { SortDirection::Asc => "ASC", SortDirection::Desc => "DESC" };
     // Unknown/empty metadata stays last in either direction. Ties are stable
     // across pages, selection queries and repeated scans.
-    format!("({value} IS NULL OR {value} = '') ASC, {value} COLLATE FONICCA_NATURAL {direction}, {alias}.name COLLATE FONICCA_NATURAL ASC, {alias}.path COLLATE FONICCA_NATURAL ASC, {alias}.id ASC")
+    let name_tie = if matches!(f.sort_by, SortColumn::Name) { String::new() }
+        else { format!(", {alias}.name COLLATE FONICCA_NATURAL ASC") };
+    format!("({value} IS NULL OR {value} = '') ASC, {value} COLLATE FONICCA_NATURAL {direction}{name_tie}, {alias}.path COLLATE FONICCA_NATURAL ASC, {alias}.id ASC")
 }
 
 /// `FROM … WHERE …` and `ORDER BY` for a filter. With a similarity ranking the
@@ -236,6 +238,25 @@ fn source(f: &Filter, ranking: Option<&Ranking>) -> (String, Vec<Box<dyn ToSql>>
             let mut all: Vec<Box<dyn ToSql>> = vec![Box::new(r.ids_json())];
             all.extend(args);
             (format!("FROM samples s JOIN json_each(?) r ON r.value = s.id {filter}"), all, "ORDER BY r.key".into())
+        }
+        None if f.group_stems && f.expanded_stems.is_empty() => {
+            let from = if filter.is_empty() {
+                // Without filters, walk the name index directly. A collapsed
+                // root is an unlinked sample or the parent of an existing child.
+                "FROM samples s WHERE
+                    NOT EXISTS(SELECT 1 FROM sample_stems l WHERE l.child_id=s.id)
+                    OR EXISTS(SELECT 1 FROM sample_stems l JOIN samples child ON child.id=l.child_id
+                        WHERE l.parent_id=s.id)".to_owned()
+            } else {
+                // Resolve selective filters first (source, FTS, tags, etc.).
+                // Scanning every root through correlated filters hurts small
+                // folders/searches. IN deduplicates the matching root ids.
+                let matching = filter.replace("s.", "matched.");
+                format!("FROM samples s WHERE s.id IN (
+                    SELECT coalesce(l.parent_id,matched.id) FROM samples matched
+                    LEFT JOIN sample_stems l ON l.child_id=matched.id {matching})")
+            };
+            (from, args, format!("ORDER BY {}", sort_order(f, "s")))
         }
         None if f.group_stems => {
             let mut args = args;
@@ -345,9 +366,17 @@ pub fn ids(conn: &Connection, f: &Filter) -> Result<Vec<i64>> {
 }
 
 /// Ids of all matching samples in list order (for select-all and range selection).
+#[cfg(test)]
 pub fn ids_ranked(conn: &Connection, f: &Filter, ranking: Option<&Ranking>) -> Result<Vec<i64>> {
-    let (from, args, order) = source(f, ranking);
-    let mut stmt = conn.prepare(&format!("SELECT s.id {from} {order}"))?;
+    ids_range_ranked(conn, f, ranking, 0, None)
+}
+
+/// A shift selection needs IDs in visible order, not full row pages or every ID.
+pub fn ids_range_ranked(conn: &Connection, f: &Filter, ranking: Option<&Ranking>, offset: i64, limit: Option<i64>) -> Result<Vec<i64>> {
+    let (from, mut args, order) = source(f, ranking);
+    args.push(Box::new(limit.map_or(-1, |n| n.max(0))));
+    args.push(Box::new(offset.max(0)));
+    let mut stmt = conn.prepare(&format!("SELECT s.id {from} {order} LIMIT ? OFFSET ?"))?;
     let ids = stmt
         .query_map(params_from_iter(args_iter(&args)), |r| r.get(0))?
         .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -725,6 +754,9 @@ mod tests {
         // Similarity remains relevance-ranked even if a column preference exists.
         let ranking = Ranking { ids: vec![1,3,2], scores: Default::default() };
         assert_eq!(ids_ranked(&conn,&f,Some(&ranking)).unwrap(), vec![1,3,2]);
+        assert_eq!(ids_range_ranked(&conn,&f,Some(&ranking),1,Some(2)).unwrap(),vec![3,2]);
+        assert!(ids_range_ranked(&conn,&f,None,0,Some(0)).unwrap().is_empty());
+        assert!(ids_range_ranked(&conn,&f,None,100,Some(1)).unwrap().is_empty());
     }
 
     #[test]
@@ -753,6 +785,52 @@ mod tests {
     }
 
     #[test]
+    fn collapsed_roots_match_the_expanded_query_without_visible_children() {
+        let conn = setup();
+        conn.execute_batch("INSERT INTO sources VALUES(2,'/other',0);
+            INSERT INTO samples(id,source_id,path,name,ext,size,mtime,category,kind,bpm,favorite)
+            VALUES(10,1,'/lib/Song.wav','Song 10','wav',0,0,'guitar','long',90,0),
+                  (11,2,'/other/vocals.wav','Vocals 2','wav',0,0,'vocal','loop',120,1),
+                  (12,2,'/other/drums.wav','Drums 1','wav',0,0,'drums','oneshot',100,0),
+                  (13,1,'/lib/empty.wav','','wav',0,0,NULL,NULL,NULL,0);
+            INSERT INTO sample_stems VALUES(11,10,'vocals',0),(12,11,'drums',0);
+            INSERT INTO tags(id,name) VALUES(1,'special');
+            INSERT INTO sample_tags VALUES(11,1);
+            INSERT INTO collections(id,name,created_at) VALUES(1,'Selection',0);
+            INSERT INTO collection_items VALUES(1,12,0);").unwrap();
+        let cases = [Filter::default(),
+            Filter { query: Some("vocals".into()), ..Default::default() },
+            Filter { category: Some("vocal".into()), ..Default::default() },
+            Filter { favorites: true, ..Default::default() },
+            Filter { tag_id: Some(1), ..Default::default() },
+            Filter { collection_id: Some(1), ..Default::default() },
+            Filter { source_id: Some(2), directory: Some("/other".into()), ..Default::default() },
+            Filter { kind: Some("loop".into()), bpm_min: Some(110.0), ..Default::default() }];
+        for case in cases {
+            for by in [SortColumn::Name, SortColumn::Tags, SortColumn::Category, SortColumn::Kind,
+                SortColumn::Bpm, SortColumn::Key, SortColumn::Length, SortColumn::Type] {
+                for direction in [SortDirection::Asc, SortDirection::Desc] {
+                    let closed = Filter { group_stems: true, sort_by: by, sort_direction: direction, ..case.clone() };
+                    // The existing expanded CTE remains the reference. No group
+                    // has id -1, so its child union contributes no rows.
+                    let reference = Filter { expanded_stems: vec![-1], ..closed.clone() };
+                    let expected = ids(&conn, &reference).unwrap();
+                    assert_eq!(ids(&conn, &closed).unwrap(), expected);
+                    assert_eq!(count(&conn, &closed).unwrap(), expected.len() as i64);
+                    let paged: Vec<_> = (0..expected.len()).map(|offset| {
+                        let selected = ids_range_ranked(&conn, &closed, None, offset as i64, Some(1)).unwrap();
+                        assert_eq!(selected.len(), 1);
+                        let row = list(&conn, &closed, offset as i64, 1).unwrap()[0].id;
+                        assert_eq!(selected[0], row);
+                        row
+                    }).collect();
+                    assert_eq!(paged, expected);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn stem_groups_paginate_filter_and_select_in_visible_order() {
         let conn = setup();
         for (id, kind, position) in [(10, "vocals", 0), (11, "drums", 1)] {
@@ -771,6 +849,7 @@ mod tests {
         assert_eq!(count(&conn, &filter).unwrap(), 6);
         let page = list(&conn, &filter, index as i64+1, 1).unwrap();
         assert_eq!((page[0].id,page[0].stem_parent_id,page[0].stem_kind.as_deref()),(10,Some(1),Some("vocals")));
+        assert_eq!(ids_range_ranked(&conn, &filter, None, index as i64, Some(3)).unwrap(), vec![1,10,11]);
         filter.query = Some("vocals".into());
         assert_eq!(ids(&conn, &filter).unwrap(), vec![1,10,11]);
         filter.expanded_stems.clear();
