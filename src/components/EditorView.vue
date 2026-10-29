@@ -2,7 +2,7 @@
 import { usePixelCanvas } from '@/composables/pixelCanvas'
 import { Spinner } from '@/components/ui/spinner'
 import type { GridMode } from '@/composables/editor/grid'
-import type { Curve, Marker, Wave } from '@/stores/editor'
+import type { Curve, Marker } from '@/stores/editor'
 import {
   ArrowLeftRight,
   ArrowUpToLine,
@@ -35,6 +35,7 @@ import { useI18n } from 'vue-i18n'
 import EditorMinimap from '@/components/EditorMinimap.vue'
 import EditorSaveMenu from '@/components/EditorSaveMenu.vue'
 import EditorDisplayControls from '@/components/EditorDisplayControls.vue'
+import { useEditorWaveform } from '@/composables/editor/waveform'
 import { useEditorSpectrogram } from '@/composables/editor/spectrogram'
 import { drawFrequencyAxis, drawSpectrogram } from '@/spectrogram'
 import EditorProcessing from '@/components/EditorProcessing.vue'
@@ -92,10 +93,6 @@ useWaveRenderer(canvas)
 const { geometry: canvasGeometry, style: canvasStyle, localPixel, pixelRatio } = usePixelCanvas(box)
 const width = computed(() => canvasGeometry.value.width)
 const height = computed(() => canvasGeometry.value.height)
-const wave = shallowRef<Wave | null>(null)
-const waveError = ref<string | null>(null)
-watch(() => editor.sample?.id, () => { wave.value = null; waveError.value = null }, { flush: 'sync' })
-const openingWave = computed(() => editor.loading || (!isSpectrogram.value && !!editor.state?.frames && !wave.value && !waveError.value))
 // Vertical zoom (⌥-scroll); 1 = full scale.
 const vZoom = ref(1)
 const RULER = 18
@@ -167,68 +164,15 @@ watch(() => editor.sessionVersion, async (id) => {
 
 // --- Peaks and drawing ------------------------------------------------------
 
-// The wave is read for a range half again as wide as the view, so short pans draw
-// from what is there. A new read is needed only when the view leaves that range, the
-// zoom changes the resolution, or the audio or the options change. One read is in
-// flight at a time; the view it lags behind meanwhile is drawn stretched.
-const OVERSCAN = 1.5
-/** Frames and options `wave` was read for. */
-let waveRange = { start: 0, end: 0, key: '' }
-let reading = false
-let readAgain = false
-
-function waveKey() {
-  const s = settings.settings.editorWaveform
-  return `${editor.revision}|${s.waveChannels}|${s.waveColors}`
-}
-
-/** Whether `wave` can draw the current view at about one column per pixel. */
-function waveFits() {
-  const data = wave.value
-  const r = waveRange
-  if (!data || r.key !== waveKey() || r.start > viewStart.value || r.end < viewEnd.value)
-    return false
-  const px = width.value * (window.devicePixelRatio || 1)
-  const span = viewEnd.value - viewStart.value
-  if (data.samples)
-    return span <= px
-  const ratio = ((r.end - r.start) / data.count) / (span / px)
-  return ratio > 0.9 && ratio < 1.1
-}
-
-async function readWave() {
-  if (reading) {
-    readAgain = true
-    return
-  }
-  reading = true
-  try {
-    do {
-      readAgain = false
-      if (isSpectrogram.value || editor.loading || !editor.state?.frames || !editor.open || width.value === 0 || waveFits())
-        continue
-      const n = editor.state?.frames ?? 0
-      const span = viewEnd.value - viewStart.value
-      const wide = Math.min(n, span * OVERSCAN)
-      const start = Math.floor(Math.max(0, Math.min(n - wide, viewStart.value - (wide - span) / 2)))
-      const end = Math.ceil(Math.min(n, start + wide))
-      const columns = Math.min(16384, Math.round(width.value * (window.devicePixelRatio || 1) * (end - start) / span))
-      const key = waveKey()
-      const s = settings.settings.editorWaveform
-      waveError.value = null
-      const data = await editor.wave(start, end, columns, s.waveChannels === 'split', s.waveColors === 'frequency')
-      if (editor.loading || key !== waveKey()) { readAgain = true; continue }
-      waveRange = { start, end, key }
-      wave.value = data
-    } while (readAgain)
-  }
-  catch (error) { waveError.value = String(error) }
-  finally {
-    reading = false
-  }
-}
-
-watch([() => editor.loading, isSpectrogram, () => editor.revision, viewStart, viewEnd, width, pixelRatio, () => settings.settings.editorWaveform.waveChannels, () => settings.settings.editorWaveform.waveColors], readWave)
+const { data: wave, range: waveRange, error: waveError, refresh: readWave } = useEditorWaveform({
+  enabled: computed(() => !isSpectrogram.value && !editor.loading && editor.open),
+  identity: computed(() => `${editor.sample?.id}:${editor.sessionVersion}`),
+  revision: computed(() => editor.revision), frames, start: viewStart, end: viewEnd, width, pixelRatio,
+  split: computed(() => settings.settings.editorWaveform.waveChannels === 'split'),
+  bands: computed(() => settings.settings.editorWaveform.waveColors === 'frequency'),
+  read: editor.wave,
+})
+const openingWave = computed(() => editor.loading || (!isSpectrogram.value && !!editor.state?.frames && !wave.value && !waveError.value))
 
 const x = (frame: number) => ((frame - viewStart.value) / (viewEnd.value - viewStart.value)) * width.value
 
@@ -293,8 +237,8 @@ function draw() {
     const look = { ...waveformLook(settings.settings.editorWaveform), zoom: vZoom.value, lineColor: color('--border'), color: color('--wave-strong') }
     // The wave covers its own range (see readWave), placed under the view.
     const data = wave.value
-    const left = pixel(x(waveRange.start))
-    const area = { top: pixel(RULER), width: pixel(x(waveRange.end)) - left, height: h - pixel(RULER), dpr }
+    const left = pixel(x(waveRange.value.start))
+    const area = { top: pixel(RULER), width: pixel(x(waveRange.value.end)) - left, height: h - pixel(RULER), dpr }
     const placed = (l: typeof look) => {
       ctx.save()
       ctx.translate(left, 0)
