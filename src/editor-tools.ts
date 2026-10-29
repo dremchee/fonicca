@@ -1,0 +1,3 @@
+export const EDITOR_TOOLS = ['undo', 'redo', 'play', 'loop', 'loopPoints', 'crop', 'delete', 'cut', 'copy', 'paste', 'silence', 'fadeIn', 'fadeOut', 'curve', 'normalize', 'gainDown', 'gainUp', 'reverse', 'stretch', 'lufs', 'dc', 'midi', 'slice']
+export type EditorToolAction = 'undo' | 'redo' | 'play' | 'loopPoints' | 'crop' | 'delete' | 'cut' | 'copy' | 'paste' | 'silence' | 'fadeIn' | 'fadeOut' | 'normalize' | 'gainDown' | 'gainUp' | 'reverse' | 'midi'
+export const EDITOR_TOGGLE_CLASS = 'size-8 px-0 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 aria-pressed:bg-transparent aria-pressed:text-primary aria-pressed:hover:text-primary aria-pressed:hover:bg-accent dark:aria-pressed:hover:bg-accent/50'

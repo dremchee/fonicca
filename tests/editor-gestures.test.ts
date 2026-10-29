@@ -1,0 +1,99 @@
+import assert from 'node:assert/strict'
+import { setImmediate } from 'node:timers/promises'
+import { test } from 'node:test'
+import { effectScope, shallowRef } from 'vue'
+import { useEditorGestures, type GestureEditor } from '../src/composables/editor/gestures.ts'
+
+function mouse(type: string, x: number, overrides = {}) {
+  return Object.assign(new Event(type), { clientX: x, clientY: 30, button: 0,
+    shiftKey: false, altKey: false, detail: 1, ...overrides }) as unknown as MouseEvent
+}
+function setup(t: { after: (cleanup: () => void) => void }) {
+  const old = Object.getOwnPropertyDescriptor(globalThis, 'window')
+  const target = new EventTarget()
+  Object.defineProperty(globalThis, 'window', { value: target, configurable: true })
+  const calls = { play: 0, update: 0, markers: 0 }
+  const editor: GestureEditor = {
+    state: { loop: null, markers: [] }, regions: [], selection: null, cursor: 0, playing: false,
+    zeroSnap: async frames => frames,
+    setMarkers: () => { calls.markers++ }, stopPlayback: () => {},
+    play: () => { calls.play++ }, updatePlaybackRange: () => { calls.update++ },
+  }
+  const canvas = shallowRef({ getBoundingClientRect: () => ({ left: 0, top: 0, width: 100 }) } as HTMLCanvasElement)
+  const identity = shallowRef('first-track')
+  const zeroSnap = shallowRef(false)
+  const scope = effectScope()
+  const gestures = scope.run(() => useEditorGestures({ editor, canvas, identity, zeroSnap,
+    frames: shallowRef(1000), rate: shallowRef(1000), viewStart: shallowRef(0), viewEnd: shallowRef(1000),
+    ruler: 18, x: frame => frame / 10, snapped: frame => frame, badgeAt: () => undefined }))!
+  t.after(() => { scope.stop(); if (old) Object.defineProperty(globalThis, 'window', old); else Reflect.deleteProperty(globalThis, 'window') })
+  return { gestures, editor, calls, target, identity, zeroSnap, scope }
+}
+
+test('click auditions its position, dragging selects silently, playing range updates without restarting', async t => {
+  const v = setup(t)
+  v.gestures.onMouseDown(mouse('mousedown', 20))
+  v.target.dispatchEvent(mouse('mouseup', 20))
+  await setImmediate()
+  assert.equal(v.editor.cursor, 200)
+  assert.equal(v.calls.play, 1)
+  v.gestures.onMouseDown(mouse('mousedown', 30))
+  v.target.dispatchEvent(mouse('mousemove', 60))
+  v.target.dispatchEvent(mouse('mouseup', 65))
+  await setImmediate()
+  assert.deepEqual(v.editor.selection, { start: 300, end: 650 })
+  assert.equal(v.calls.play, 1)
+  v.editor.playing = true
+  v.gestures.onMouseDown(mouse('mousedown', 65))
+  v.target.dispatchEvent(mouse('mousemove', 75))
+  v.target.dispatchEvent(mouse('mouseup', 75))
+  await setImmediate()
+  assert.deepEqual(v.editor.selection, { start: 300, end: 750 })
+  assert.equal(v.calls.update, 1)
+  assert.equal(v.calls.play, 1)
+})
+
+test('late zero snapping cannot overwrite another session or trigger playback', async t => {
+  const v = setup(t)
+  let finish!: (frames: number[]) => void
+  v.zeroSnap.value = true
+  v.editor.zeroSnap = () => new Promise(resolve => { finish = resolve })
+  v.gestures.onMouseDown(mouse('mousedown', 20))
+  v.target.dispatchEvent(mouse('mouseup', 20))
+  v.identity.value = 'second-track'
+  v.editor.cursor = 100
+  finish([199])
+  await setImmediate()
+  assert.equal(v.editor.cursor, 100)
+  assert.equal(v.calls.play, 0)
+})
+
+test('closing the editor removes pending gesture listeners', async t => {
+  const v = setup(t)
+  v.gestures.onMouseDown(mouse('mousedown', 20))
+  v.scope.stop()
+  v.target.dispatchEvent(mouse('mousemove', 60))
+  v.target.dispatchEvent(mouse('mouseup', 60))
+  await setImmediate()
+  assert.equal(v.editor.selection, null)
+  assert.equal(v.calls.play, 0)
+})
+
+test('marker dragging stays between neighbours and a cancelled drag never commits', async t => {
+  const v = setup(t)
+  v.editor.state!.markers = [{ frame: 200, skip: true }, { frame: 400, skip: false }]
+  v.editor.setMarkers = markers => { v.editor.state!.markers = markers; v.calls.markers++ }
+  v.gestures.onMouseDown(mouse('mousedown', 20, { clientY: 5 }))
+  v.target.dispatchEvent(mouse('mousemove', 70, { clientY: 5 }))
+  v.target.dispatchEvent(mouse('mouseup', 70, { clientY: 5 }))
+  await setImmediate()
+  assert.deepEqual(v.editor.state!.markers, [{ frame: 399, skip: true }, { frame: 400, skip: false }])
+  assert.equal(v.calls.markers, 1)
+  v.gestures.onMouseDown(mouse('mousedown', 40, { clientY: 5 }))
+  v.target.dispatchEvent(mouse('mousemove', 20, { clientY: 5 }))
+  v.identity.value = 'new-track'
+  v.target.dispatchEvent(mouse('mouseup', 20, { clientY: 5 }))
+  await setImmediate()
+  assert.equal(v.calls.markers, 1)
+  assert.equal(v.gestures.draggedMarkers.value, null)
+})

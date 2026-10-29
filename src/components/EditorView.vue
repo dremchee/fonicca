@@ -2,46 +2,21 @@
 import { usePixelCanvas } from '@/composables/pixelCanvas'
 import { Spinner } from '@/components/ui/spinner'
 import type { GridMode } from '@/composables/editor/grid'
-import type { Curve, Marker } from '@/stores/editor'
-import {
-  ArrowLeftRight,
-  ArrowUpToLine,
-  ClipboardPaste,
-  Copy,
-  Crop,
-  Eraser,
-  IterationCw,
-  Magnet,
-  Maximize2,
-  Minimize2,
-  Music,
-  Play,
-  Redo2,
-  Repeat,
-  Scissors,
-  Square,
-  SlidersHorizontal,
-  Undo2,
-  Volume1,
-  Volume2,
-  VolumeX,
-  ZoomIn,
-  ZoomOut,
-  X,
-} from '@lucide/vue'
+import type { Marker } from '@/stores/editor'
+import { Magnet, Maximize2, SlidersHorizontal, ZoomIn, ZoomOut } from '@lucide/vue'
 import { useLocalStorage } from '@vueuse/core'
 import { computed, nextTick, ref, shallowRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import EditorMinimap from '@/components/EditorMinimap.vue'
-import EditorSaveMenu from '@/components/EditorSaveMenu.vue'
+import EditorToolbar from '@/components/editor/EditorToolbar.vue'
+import { EDITOR_TOGGLE_CLASS, type EditorToolAction } from '@/editor-tools'
 import EditorDisplayControls from '@/components/EditorDisplayControls.vue'
+import { createEditorShortcuts } from '@/editor-shortcuts'
+import { useEditorGestures } from '@/composables/editor/gestures'
 import { useEditorWaveform } from '@/composables/editor/waveform'
 import { useEditorSpectrogram } from '@/composables/editor/spectrogram'
 import { drawFrequencyAxis, drawSpectrogram } from '@/spectrogram'
-import EditorProcessing from '@/components/EditorProcessing.vue'
 import LevelMeter from '@/components/LevelMeter.vue'
-import EditorSlicer from '@/components/EditorSlicer.vue'
-import FadeIcon from '@/components/icons/FadeIcon.vue'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
 import {
@@ -54,7 +29,6 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 import { Input } from '@/components/ui/input'
-import ToolbarOverflow from '@/components/ToolbarOverflow.vue'
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -66,7 +40,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
 import { MIN_LINE_PX, useEditorGrid } from '@/composables/editor/grid'
@@ -83,7 +56,6 @@ import { useBasicPitchStore } from '@/stores/basicPitch'
 const { t } = useI18n()
 const props = withDefaults(defineProps<{ embedded?: boolean, expanded?: boolean }>(), { embedded: false, expanded: false })
 const emit = defineEmits<{ close: [], toggleExpand: [] }>()
-const toolbarTools = ['undo', 'redo', 'play', 'loop', 'loopPoints', 'crop', 'delete', 'cut', 'copy', 'paste', 'silence', 'fadeIn', 'fadeOut', 'curve', 'normalize', 'gainDown', 'gainUp', 'reverse', 'stretch', 'lufs', 'dc', 'midi', 'slice']
 const editor = useEditorStore()
 const settings = useSettingsStore()
 
@@ -99,7 +71,6 @@ const RULER = 18
 // Toggles look like the ghost icon buttons around them; switched on, the icon takes
 // the brand colour instead of getting a background. Styled by aria-pressed: the
 // tooltip trigger wrapping them overwrites their data-state.
-const toggleIcon = 'size-8 px-0 hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50 aria-pressed:bg-transparent aria-pressed:text-primary aria-pressed:hover:text-primary aria-pressed:hover:bg-accent dark:aria-pressed:hover:bg-accent/50'
 // Per-window preferences, not worth fields in settings.json.
 const displayMode = useLocalStorage<'waveform' | 'spectrogram'>('editor.displayMode', 'waveform')
 const isSpectrogram = computed(() => displayMode.value === 'spectrogram')
@@ -176,6 +147,7 @@ const openingWave = computed(() => editor.loading || (!isSpectrogram.value && !!
 
 const x = (frame: number) => ((frame - viewStart.value) / (viewEnd.value - viewStart.value)) * width.value
 
+
 function tickStep(span: number) {
   const steps = [0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300]
   const seconds = span / rate.value
@@ -186,6 +158,13 @@ function tickStep(span: number) {
 
 const { beatFrames, beatGrid, gridStep, gridOrigin, gridFrames, isMultiple, snapped } = useEditorGrid({
   bpm, rate, frames, width, viewStart, viewEnd, downbeat, gridMode, snap,
+})
+
+const { draggedMarkers, hoverEdge, hoverMarker, menuOnRuler, menu, menuRegion,
+  frameAt, selectLoop, playRegion, addMarkers, removeMarker, toggleSkip,
+  onDoubleClick, onContextMenu, onMouseDown, updateHover } = useEditorGestures({
+  editor, canvas, frames, rate, viewStart, viewEnd, zeroSnap, x, snapped, badgeAt, ruler: RULER,
+  identity: computed(() => `${editor.sample?.id}:${editor.sessionVersion}`),
 })
 
 const scheduleDraw = useFrameDraw(draw)
@@ -393,7 +372,6 @@ watchEffect(() => {
 // Slice markers and their regions: a line and a flag on the ruler at each marker,
 // skipped regions dimmed, the regions that will be saved numbered. While the slicer
 // is open, the markers it would place show dashed.
-const draggedMarkers = shallowRef<Marker[] | null>(null)
 const shownMarkers = computed(() => draggedMarkers.value ?? editor.state?.markers ?? [])
 // Regions Save regions would write.
 const playableRegions = computed(() => editor.regions.filter(r => !r.skip))
@@ -496,286 +474,10 @@ function badgeAt(e: MouseEvent) {
   return badges.find(b => px >= b.x && px <= b.x + b.w)
 }
 
-function playRegion(badge: { start: number, end: number }) {
-  editor.stopPlayback()
-  editor.selection = { start: badge.start, end: badge.end }
-  editor.cursor = badge.start
-  editor.play()
-}
-
-// --- Mouse ------------------------------------------------------------------
-
-function frameAt(clientX: number) {
-  const rect = canvas.value!.getBoundingClientRect()
-  const f = viewStart.value + ((clientX - rect.left) / rect.width) * (viewEnd.value - viewStart.value)
-  return Math.round(Math.min(frames.value, Math.max(0, f)))
-}
-
-// Edges move to the nearest zero crossing, so cuts and loops don't click. Within
-// 10 ms (a 50 Hz period); ⌥ inverts it, like grid snapping.
-async function toZeroCrossings(e: MouseEvent) {
-  if (zeroSnap.value === e.altKey)
-    return
-  const sel = editor.selection
-  const cursor = editor.cursor
-  try {
-    const radius = Math.round(rate.value * 0.01)
-    const [a, b] = await editor.zeroSnap(sel ? [sel.start, sel.end] : [cursor], radius)
-    // Unless the user has moved on in the meantime.
-    if (editor.selection !== sel || editor.cursor !== cursor)
-      return
-    if (sel && b > a)
-      editor.selection = { start: a, end: b }
-    editor.cursor = a
-  }
-  catch (err) {
-    console.error(err)
-  }
-}
-
-function selectLoop() {
-  const lp = editor.state?.loop
-  if (lp) {
-    editor.selection = { ...lp }
-    editor.cursor = lp.start
-  }
-}
-
-// A selection edge under the pointer (within a few pixels, in the wave area): dragging it resizes the selection.
-const EDGE_PX = 5
-const hoverEdge = ref<'start' | 'end' | null>(null)
-
-function edgeAt(e: MouseEvent): 'start' | 'end' | null {
-  const sel = editor.selection
-  const rect = canvas.value?.getBoundingClientRect()
-  if (!sel || !rect || e.clientY - rect.top < RULER)
-    return null
-  const px = e.clientX - rect.left
-  const toStart = Math.abs(px - x(sel.start))
-  const toEnd = Math.abs(px - x(sel.end))
-  if (Math.min(toStart, toEnd) > EDGE_PX)
-    return null
-  return toStart < toEnd ? 'start' : 'end'
-}
-
-// --- Markers ----------------------------------------------------------------
-
-const hoverMarker = ref(false)
-
-/** The marker whose flag is under the pointer (on the ruler, within a few pixels), or -1. */
-function markerAt(e: MouseEvent) {
-  const rect = canvas.value?.getBoundingClientRect()
-  const markers = editor.state?.markers ?? []
-  if (!rect || e.clientY - rect.top >= RULER)
-    return -1
-  const px = e.clientX - rect.left
-  let best = -1
-  let bestDistance = EDGE_PX + 1
-  markers.forEach((m, i) => {
-    const d = Math.abs(px - x(m.frame))
-    if (d < bestDistance) {
-      best = i
-      bestDistance = d
-    }
-  })
-  return best
-}
-
-const onRuler = (e: MouseEvent) => e.clientY - canvas.value!.getBoundingClientRect().top < RULER
-
-/** Moves frames to zero crossings when that snapping is on (⌥ inverts it). */
-async function zeroSnapped(at: number[], e: MouseEvent | KeyboardEvent) {
-  if (zeroSnap.value === e.altKey)
-    return at
-  try {
-    return await editor.zeroSnap(at, Math.round(rate.value * 0.01))
-  }
-  catch {
-    return at
-  }
-}
-
-/** New markers split regions; each half keeps the region's skip. */
-function addMarkers(at: number[]) {
-  const markers = editor.state?.markers ?? []
-  const added = at
-    .filter(f => f >= 0 && f < frames.value && !markers.some(m => m.frame === f))
-    .map(frame => ({ frame, skip: editor.regions.find(r => frame >= r.start && frame < r.end)?.skip ?? false }))
-  if (added.length)
-    editor.setMarkers([...markers, ...added])
-}
-
-function removeMarker(i: number) {
-  editor.setMarkers((editor.state?.markers ?? []).filter((_, j) => j !== i))
-}
-
-function toggleSkip(region: { start: number, skip: boolean }) {
-  const markers = editor.state?.markers ?? []
-  editor.setMarkers(markers.map(m => (m.frame === region.start ? { ...m, skip: !m.skip } : m)))
-}
-
-/** Drags marker `i` between its neighbours, snapping like the selection. */
-function dragMarker(e: MouseEvent, i: number) {
-  const markers = editor.state?.markers ?? []
-  const lo = i > 0 ? markers[i - 1].frame + 1 : 0
-  const hi = (markers[i + 1]?.frame ?? frames.value) - 1
-  const startX = e.clientX
-  let moved = false
-  let at = markers[i].frame
-  const place = (f: number) => markers.map((m, j) => (j === i ? { ...m, frame: f } : m))
-  const move = (ev: MouseEvent) => {
-    if (!moved && Math.abs(ev.clientX - startX) < 3)
-      return
-    moved = true
-    at = Math.min(hi, Math.max(lo, snapped(frameAt(ev.clientX), ev)))
-    draggedMarkers.value = place(at)
-  }
-  const up = async (ev: MouseEvent) => {
-    window.removeEventListener('mousemove', move)
-    window.removeEventListener('mouseup', up)
-    if (moved) {
-      const [f] = await zeroSnapped([at], ev)
-      await editor.setMarkers(place(Math.min(hi, Math.max(lo, f))))
-    }
-    draggedMarkers.value = null
-  }
-  window.addEventListener('mousemove', move)
-  window.addEventListener('mouseup', up)
-}
-
-async function onDoubleClick(e: MouseEvent) {
-  if (onRuler(e) && markerAt(e) < 0)
-    addMarkers(await zeroSnapped([snapped(frameAt(e.clientX), e)], e))
-}
-
-// --- Context menu -----------------------------------------------------------
-
-// What was right-clicked: a marker's flag, the selection, or any other point,
-// which moves the cursor there like a click.
-const menuOnRuler = ref(false)
-const menu = shallowRef<{ kind: 'marker', index: number } | { kind: 'selection' } | { kind: 'point', frame: number } | null>(null)
-// The region starting at the right-clicked marker, for "skip / include".
-const menuRegion = computed(() => {
-  const m = menu.value
-  const marker = m?.kind === 'marker' ? editor.state?.markers[m.index] : undefined
-  return marker ? editor.regions.find(r => r.start === marker.frame) : undefined
-})
-
-function onContextMenu(e: MouseEvent) {
-  menuOnRuler.value = onRuler(e)
-  const i = markerAt(e)
-  if (i >= 0) {
-    menu.value = { kind: 'marker', index: i }
-    return
-  }
-  const f = frameAt(e.clientX)
-  const s = editor.selection
-  if (s && f >= s.start && f <= s.end) {
-    menu.value = { kind: 'selection' }
-    return
-  }
-  editor.selection = null
-  editor.cursor = f
-  menu.value = { kind: 'point', frame: f }
-}
-
 function onHover(e: MouseEvent) {
   hoverBadge.value = badgeAt(e)?.start ?? null
   hoverFrame.value = frameAt(e.clientX)
-  hoverEdge.value = edgeAt(e)
-  hoverMarker.value = markerAt(e) >= 0
-}
-
-let mouseGesture = 0
-function onMouseDown(e: MouseEvent) {
-  if (e.button !== 0)
-    return
-  const gesture = ++mouseGesture
-  const badge = badgeAt(e)
-  if (badge) {
-    playRegion(badge)
-    return
-  }
-  // A marker's flag on the ruler drags it.
-  const marker = markerAt(e)
-  if (marker >= 0) {
-    dragMarker(e, marker)
-    return
-  }
-  // The loop band on the ruler selects the loop.
-  const lp = editor.state?.loop
-  if (lp && e.clientY - canvas.value!.getBoundingClientRect().top < RULER) {
-    const f = frameAt(e.clientX)
-    if (f >= lp.start && f <= lp.end) {
-      selectLoop()
-      return
-    }
-  }
-  // A region on the ruler: a click selects it, ⌥-click skips it or takes it back.
-  if (editor.regions.length && onRuler(e)) {
-    const f = frameAt(e.clientX)
-    const region = editor.regions.find(r => f >= r.start && f < r.end)
-    if (region) {
-      if (e.altKey) {
-        toggleSkip(region)
-      }
-      else {
-        editor.selection = { start: region.start, end: region.end }
-        editor.cursor = region.start
-      }
-      return
-    }
-  }
-  // Grabbing an edge keeps the other one as the anchor; otherwise a new selection starts here.
-  const edge = e.shiftKey ? null : edgeAt(e)
-  const sel = editor.selection
-  const anchor = edge && sel
-    ? (edge === 'start' ? sel.end : sel.start)
-    : e.shiftKey ? editor.cursor : snapped(frameAt(e.clientX), e)
-  const startX = e.clientX
-  let dragged = false
-  const move = (ev: MouseEvent) => {
-    if (Math.abs(ev.clientX - startX) < 3 && !dragged)
-      return
-    dragged = true
-    const f = snapped(frameAt(ev.clientX), ev)
-    editor.selection = f === anchor ? null : { start: Math.min(f, anchor), end: Math.max(f, anchor) }
-  }
-  const up = async (ev: MouseEvent) => {
-    window.removeEventListener('mousemove', move)
-    window.removeEventListener('mouseup', up)
-    // The last mousemove may lag behind the release point.
-    if (dragged)
-      move(ev)
-    // A click on an edge without moving leaves the selection as it is.
-    else if (edge)
-      return
-    if (!dragged) {
-      const f = snapped(frameAt(ev.clientX), ev)
-      if (e.shiftKey && f !== anchor)
-        editor.selection = { start: Math.min(f, anchor), end: Math.max(f, anchor) }
-      else {
-        editor.selection = null
-        editor.cursor = f
-      }
-    }
-    else if (editor.selection) {
-      editor.cursor = editor.selection.start
-    }
-    await toZeroCrossings(ev)
-    if (gesture !== mouseGesture)
-      return
-    const selected = editor.selection
-    const changedRange = selected && (!sel || selected.start !== sel.start || selected.end !== sel.end)
-    // An active audition follows the edited selection, including its new end and loop bounds.
-    if (editor.playing && changedRange)
-      void editor.updatePlaybackRange()
-    // Creating a selection while stopped remains silent; a plain click auditions the cursor.
-    else if (!dragged && !e.shiftKey && e.detail < 2 && !selected && editor.cursor < frames.value)
-      void editor.play()
-  }
-  window.addEventListener('mousemove', move)
-  window.addEventListener('mouseup', up)
+  updateHover(e)
 }
 
 // ⌘/Ctrl + wheel or pinch zooms around the pointer, ⌥ + wheel zooms vertically; plain scrolling pans.
@@ -791,65 +493,10 @@ function onWheel(e: WheelEvent) {
 
 // --- Keyboard ---------------------------------------------------------------
 
-function onKeyDown(e: KeyboardEvent) {
-  const mod = e.metaKey || e.ctrlKey
-  const key = e.key.toLowerCase()
-  const handled = () => e.preventDefault()
-  if (e.key === ' ') {
-    handled()
-    editor.togglePlay()
-  }
-  // 1…9 play regions 1–9 like pads, ⇧1…⇧9 regions 10–18 (by key position, so any layout).
-  else if (!mod && !e.altKey && /^Digit[1-9]$/.test(e.code)) {
-    const n = Number(e.code.slice(5)) + (e.shiftKey ? 9 : 0)
-    const region = playableRegions.value[n - 1]
-    if (region) {
-      handled()
-      playRegion(region)
-    }
-  }
-  else if (mod && key === 'z') {
-    handled()
-    e.shiftKey ? editor.redo() : editor.undo()
-  }
-  else if (mod && key === 's') {
-    handled()
-    editor.save(e.shiftKey ? 'saveAs' : 'save')
-  }
-  else if (mod && key === 'a') {
-    handled()
-    editor.selection = { start: 0, end: frames.value }
-  }
-  else if (e.key === 'Delete' || e.key === 'Backspace') {
-    handled()
-    editor.remove()
-  }
-  else if (e.key === 'Escape') {
-    editor.selection = null
-  }
-  else if (!mod && e.shiftKey && key === 'l') {
-    editor.toggleLoopPoints()
-  }
-  else if (!mod && key === 'l') {
-    editor.looping = !editor.looping
-  }
-  else if (!mod && (key === 'm' || key === 'ь')) {
-    const sel = editor.selection
-    addMarkers(sel ? [sel.start, sel.end] : [editor.cursor])
-  }
-  else if (!mod && key === 's') {
-    snap.value = !snap.value
-  }
-  else if (!mod && (e.key === '=' || e.key === '+')) {
-    zoom(0.5, editor.selection ? (editor.selection.start + editor.selection.end) / 2 : editor.cursor)
-  }
-  else if (!mod && e.key === '-') {
-    zoom(2)
-  }
-  else if (!mod && e.key === '0') {
-    fit()
-  }
-}
+const onKeyDown = createEditorShortcuts({
+  editor, frames: () => frames.value, regions: () => playableRegions.value,
+  playRegion, addMarkers, toggleSnap: () => { snap.value = !snap.value }, zoom, fit,
+})
 
 // Cropping moves the selection start to 0; the bars move with the audio.
 function crop() {
@@ -885,11 +532,13 @@ const status = computed(() => {
   }
 })
 
-const curves: { value: Curve, label: string }[] = [
-  { value: 'smooth', label: 'editor.curves.smooth' },
-  { value: 'linear', label: 'editor.curves.linear' },
-  { value: 'exponential', label: 'editor.curves.exponential' },
-]
+const toolbarActions: Record<EditorToolAction, () => unknown> = {
+  undo: editor.undo, redo: editor.redo, play: editor.togglePlay, loopPoints: editor.toggleLoopPoints,
+  crop, delete: editor.remove, cut: editor.cut, copy: editor.copy, paste: editor.paste,
+  silence: editor.silence, fadeIn: () => editor.fade('in'), fadeOut: () => editor.fade('out'),
+  normalize: editor.normalize, gainDown: () => editor.gain(-3), gainUp: () => editor.gain(3),
+  reverse: editor.reverse, midi: exportMidi,
+}
 </script>
 
 <template>
@@ -899,135 +548,15 @@ const curves: { value: Curve, label: string }[] = [
       <span class="min-w-0 truncate text-sm font-medium" data-tauri-drag-region>{{ editor.sample?.name }}<span class="text-muted-foreground">.{{ editor.sample?.ext }}</span><span v-if="editor.state?.dirty" class="text-primary"> •</span></span>
     </header>
 
-    <div class="h-11 shrink-0 px-3 flex items-center gap-1 border-b border-border">
-      <ToolbarOverflow :items="toolbarTools">
-        <template #default="{ item }">
-          <Hint v-if="item === 'undo'" :text="t('editor.toolbar.undo')" shortcut="⌘Z">
-              <Button variant="ghost" size="icon-sm" :disabled="!editor.state?.canUndo" :aria-label="t('editor.toolbar.undo')" @click="editor.undo()">
-                <Undo2 />
-              </Button>
-          </Hint>
-          <Hint v-if="item === 'redo'" :text="t('editor.toolbar.redo')" shortcut="⇧⌘Z">
-              <Button variant="ghost" size="icon-sm" :disabled="!editor.state?.canRedo" :aria-label="t('editor.toolbar.redo')" @click="editor.redo()">
-                <Redo2 />
-              </Button>
-          </Hint>
-          <Hint v-if="item === 'play'" :text="editor.playing ? t('editor.toolbar.stop') : editor.selection ? t('editor.toolbar.playSelection') : t('editor.toolbar.playFromCursor')" :shortcut="t('editor.toolbar.space')">
-              <Button variant="ghost" size="icon-sm" :aria-label="t(editor.playing ? 'editor.toolbar.stop' : 'common.actions.play')" @click="editor.togglePlay()">
-                <component :is="editor.playing ? Square : Play" />
-              </Button>
-          </Hint>
-          <Hint v-if="item === 'loop'" :text="t('editor.toolbar.loopHint')" shortcut="L">
-              <Toggle v-model="editor.looping" size="sm" :class="toggleIcon" :aria-label="t('editor.toolbar.loop')">
-                <Repeat />
-              </Toggle>
-          </Hint>
-          <Hint v-if="item === 'loopPoints'" :text="editor.selection ? t('editor.toolbar.setLoopHint') : t('editor.toolbar.clearLoopHint')" shortcut="⇧L">
-              <Button
-                variant="ghost" size="icon-sm"
-                :class="editor.state?.loop && 'text-primary hover:text-primary'"
-                :disabled="!editor.selection && !editor.state?.loop"
-                :aria-label="t('editor.toolbar.loopPoints')"
-                @click="editor.toggleLoopPoints()"
-              >
-                <IterationCw />
-              </Button>
-          </Hint>
-          <Hint v-if="item === 'crop'" :text="t('editor.toolbar.cropHint')">
-              <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.crop')" @click="crop()">
-                <Crop />
-              </Button>
-          </Hint>
-          <Hint v-if="item === 'delete'" :text="t('editor.toolbar.deleteHint')" shortcut="⌫">
-              <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.delete')" @click="editor.remove()">
-                <Eraser />
-              </Button>
-          </Hint>
-          <Hint v-if="item === 'cut'" :text="t('editor.toolbar.cutHint')" shortcut="⌘X">
-              <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.cut')" @click="editor.cut()">
-                <Scissors />
-              </Button>
-          </Hint>
-          <Hint v-if="item === 'copy'" :text="t('editor.toolbar.copyHint')" shortcut="⌘C">
-              <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" :aria-label="t('editor.toolbar.copy')" @click="editor.copy()">
-                <Copy />
-              </Button>
-          </Hint>
-          <Hint v-if="item === 'paste'" :text="editor.selection ? t('editor.toolbar.pasteOverHint') : t('editor.toolbar.pasteHint')" shortcut="⌘V">
-              <Button variant="ghost" size="icon-sm" :disabled="!editor.clipboard" :aria-label="t('editor.toolbar.paste')" @click="editor.paste()">
-                <ClipboardPaste />
-              </Button>
-          </Hint>
-          <Hint v-if="item === 'silence'" :text="t('editor.toolbar.silenceHint')">
-              <Button variant="ghost" size="icon-sm" :disabled="!editor.selection" @click="editor.silence()">
-                <VolumeX />
-              </Button>
-          </Hint>
-          <Hint v-if="item === 'fadeIn'" :text="t('editor.toolbar.fadeInHint')">
-              <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.fadeIn')" @click="editor.fade('in')">
-                <FadeIcon direction="in" :curve="editor.curve" />
-              </Button>
-          </Hint>
-          <Hint v-if="item === 'fadeOut'" :text="t('editor.toolbar.fadeOutHint')">
-              <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.fadeOut')" @click="editor.fade('out')">
-                <FadeIcon direction="out" :curve="editor.curve" />
-              </Button>
-          </Hint>
-          <Hint v-if="item === 'curve'" :text="t('editor.toolbar.fadeCurve')">
-              <span class="inline-flex">
-                <Select v-model="editor.curve">
-                  <SelectTrigger size="sm" class="gap-1 px-2 border-transparent bg-transparent shadow-none dark:bg-transparent hover:bg-accent" :aria-label="t('editor.toolbar.fadeCurve')">
-                    <SelectValue>
-                      <FadeIcon :curve="editor.curve" class="size-4 text-foreground" />
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem v-for="c in curves" :key="c.value" :value="c.value">
-                      <FadeIcon :curve="c.value" class="size-4" /> {{ t(c.label) }}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </span>
-          </Hint>
-          <Hint v-if="item === 'normalize'" :text="t('editor.toolbar.normalizeHint')">
-              <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.normalize')" @click="editor.normalize()">
-                <ArrowUpToLine />
-              </Button>
-          </Hint>
-          <Hint v-if="item === 'gainDown'" :text="t('editor.toolbar.gainDownHint')">
-              <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.gainDownHint')" @click="editor.gain(-3)">
-                <Volume1 />
-              </Button>
-          </Hint>
-          <Hint v-if="item === 'gainUp'" :text="t('editor.toolbar.gainUpHint')">
-              <Button variant="ghost" size="icon-sm" :aria-label="t('editor.toolbar.gainUpHint')" @click="editor.gain(3)">
-                <Volume2 />
-              </Button>
-          </Hint>
-          <Hint v-if="item === 'reverse'" :text="t('editor.toolbar.reverseHint')">
-              <Button variant="ghost" size="icon-sm" @click="editor.reverse()">
-                <ArrowLeftRight />
-              </Button>
-          </Hint>
-          <EditorProcessing v-if="item === 'stretch'" tool="stretch" />
-          <EditorProcessing v-if="item === 'lufs'" tool="lufs" />
-          <EditorProcessing v-if="item === 'dc'" tool="dc" />
-          <Hint v-if="item === 'midi'" :text="t('basicPitch.action')">
-              <Button variant="ghost" size="sm" class="px-2" :disabled="!editor.sample || !frames || editor.processing" :aria-label="t('basicPitch.action')" @click="exportMidi">
-                <Music /> MIDI
-              </Button>
-          </Hint>
-          <EditorSlicer v-if="item === 'slice'" v-model:preview="slicePreview" :beat-frames="beatFrames" :downbeat="downbeat" :zero="zeroSnap" />
-        </template>
-      </ToolbarOverflow>
-      <div class="shrink-0 flex items-center gap-1 pl-2 border-l border-border">
-        <EditorSaveMenu />
-        <Button v-if="props.embedded" variant="ghost" size="icon-sm" :aria-label="t(props.expanded ? 'editor.panel.collapse' : 'editor.panel.expand')" @click="emit('toggleExpand')">
-          <Minimize2 v-if="props.expanded" /><Maximize2 v-else />
-        </Button>
-        <Button v-if="props.embedded" variant="ghost" size="icon-sm" :aria-label="t('common.actions.close')" @click="emit('close')"><X /></Button>
-      </div>
-    </div>
+    <EditorToolbar
+      :embedded="props.embedded" :expanded="props.expanded"
+      :can-undo="!!editor.state?.canUndo" :can-redo="!!editor.state?.canRedo"
+      :has-selection="!!editor.selection" :has-loop="!!editor.state?.loop" :has-clipboard="!!editor.clipboard"
+      :playing="editor.playing" :can-export-midi="!!editor.sample && !!frames && !editor.processing"
+      :beat-frames="beatFrames" :downbeat="downbeat" :zero-snap="zeroSnap"
+      v-model:curve="editor.curve" v-model:looping="editor.looping" v-model:preview="slicePreview"
+      @action="action => toolbarActions[action]()" @close="emit('close')" @toggle-expand="emit('toggleExpand')"
+    />
 
     <EditorMinimap
       :view-start="viewStart"
@@ -1233,7 +762,7 @@ const curves: { value: Curve, label: string }[] = [
         <EditorDisplayControls v-model="displayMode" :loading="spectrumLoading" :error="spectrumError" @retry="refreshSpectrum" />
         <Separator orientation="vertical" class="mx-0.5 h-3" />
         <Hint :text="t('editor.toolbar.snapHint')" shortcut="S">
-          <Toggle v-model="snap" size="sm" :class="toggleIcon" :disabled="gridMode === 'off'" :aria-label="t('editor.toolbar.snap')">
+          <Toggle v-model="snap" size="sm" :class="EDITOR_TOGGLE_CLASS" :disabled="gridMode === 'off'" :aria-label="t('editor.toolbar.snap')">
             <Magnet />
           </Toggle>
         </Hint>
