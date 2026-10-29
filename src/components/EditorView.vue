@@ -10,7 +10,6 @@ import {
   Copy,
   Crop,
   Eraser,
-  FolderOutput,
   IterationCw,
   Magnet,
   Maximize2,
@@ -83,7 +82,7 @@ import { useBasicPitchStore } from '@/stores/basicPitch'
 const { t } = useI18n()
 const props = withDefaults(defineProps<{ embedded?: boolean, expanded?: boolean }>(), { embedded: false, expanded: false })
 const emit = defineEmits<{ close: [], toggleExpand: [] }>()
-const toolbarTools = ['undo', 'redo', 'play', 'loop', 'loopPoints', 'crop', 'delete', 'cut', 'copy', 'paste', 'silence', 'fadeIn', 'fadeOut', 'curve', 'normalize', 'gainDown', 'gainUp', 'reverse', 'stretch', 'lufs', 'dc', 'midi', 'slice', 'regions']
+const toolbarTools = ['undo', 'redo', 'play', 'loop', 'loopPoints', 'crop', 'delete', 'cut', 'copy', 'paste', 'silence', 'fadeIn', 'fadeOut', 'curve', 'normalize', 'gainDown', 'gainUp', 'reverse', 'stretch', 'lufs', 'dc', 'midi', 'slice']
 const editor = useEditorStore()
 const settings = useSettingsStore()
 
@@ -454,7 +453,6 @@ const draggedMarkers = shallowRef<Marker[] | null>(null)
 const shownMarkers = computed(() => draggedMarkers.value ?? editor.state?.markers ?? [])
 // Regions Save regions would write.
 const playableRegions = computed(() => editor.regions.filter(r => !r.skip))
-const savedRegions = computed(() => playableRegions.value.length)
 const shownRegions = computed(() => regionsOf(shownMarkers.value, frames.value))
 
 // Region number badges as last drawn, for hovering and clicking them.
@@ -657,7 +655,7 @@ async function zeroSnapped(at: number[], e: MouseEvent | KeyboardEvent) {
 function addMarkers(at: number[]) {
   const markers = editor.state?.markers ?? []
   const added = at
-    .filter(f => f > 0 && f < frames.value && !markers.some(m => m.frame === f))
+    .filter(f => f >= 0 && f < frames.value && !markers.some(m => m.frame === f))
     .map(frame => ({ frame, skip: editor.regions.find(r => frame >= r.start && frame < r.end)?.skip ?? false }))
   if (added.length)
     editor.setMarkers([...markers, ...added])
@@ -669,11 +667,7 @@ function removeMarker(i: number) {
 
 function toggleSkip(region: { start: number, skip: boolean }) {
   const markers = editor.state?.markers ?? []
-  // The part before the first marker gets a marker of its own to carry the flag.
-  if (!markers.some(m => m.frame === region.start))
-    editor.setMarkers([{ frame: region.start, skip: !region.skip }, ...markers])
-  else
-    editor.setMarkers(markers.map(m => (m.frame === region.start ? { ...m, skip: !m.skip } : m)))
+  editor.setMarkers(markers.map(m => (m.frame === region.start ? { ...m, skip: !m.skip } : m)))
 }
 
 /** Drags marker `i` between its neighbours, snapping like the selection. */
@@ -1080,12 +1074,6 @@ const curves: { value: Curve, label: string }[] = [
               </Button>
           </Hint>
           <EditorSlicer v-if="item === 'slice'" v-model:preview="slicePreview" :beat-frames="beatFrames" :downbeat="downbeat" :zero="zeroSnap" />
-          <Hint v-if="item === 'regions'" :text="savedRegions ? t('editor.regions.saveHint', { n: formatNumber(savedRegions) }, savedRegions) : t('editor.regions.none')">
-              <Button variant="ghost" size="sm" class="px-2" :disabled="!savedRegions" :aria-label="t('editor.regions.save')" @click="editor.saveRegions()">
-                <FolderOutput />
-                <span v-if="savedRegions" class="tabular">{{ formatNumber(savedRegions) }}</span>
-              </Button>
-          </Hint>
         </template>
       </ToolbarOverflow>
       <div class="shrink-0 flex items-center gap-1 pl-2 border-l border-border">

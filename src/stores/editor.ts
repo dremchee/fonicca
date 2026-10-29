@@ -1,4 +1,7 @@
 import type { Sample } from '@/api'
+import { regionsOf, type Marker } from '@/editor-regions'
+export { regionsOf } from '@/editor-regions'
+export type { Marker, Region } from '@/editor-regions'
 import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
@@ -43,23 +46,6 @@ export interface EditorState {
   loop: { start: number, end: number } | null
   /** Slice markers, sorted; each starts a region, saved as cue points in the WAV. */
   markers: Marker[]
-}
-
-/** Starts a region that runs to the next marker; `skip` leaves the region out when saving. */
-export interface Marker { frame: number, skip: boolean }
-
-/** A region between markers. */
-export interface Region { start: number, end: number, skip: boolean }
-
-/**
- * Regions of a file of `frames` frames cut at `markers`: from the start of the file
- * (when the first marker is later) to the end. None without markers.
- */
-export function regionsOf(markers: Marker[], frames: number): Region[] {
-  if (!markers.length)
-    return []
-  const starts = markers[0].frame > 0 ? [{ frame: 0, skip: false }, ...markers] : markers
-  return starts.map((m, i) => ({ start: m.frame, end: starts[i + 1]?.frame ?? frames, skip: m.skip }))
 }
 
 /**

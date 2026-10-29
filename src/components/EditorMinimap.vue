@@ -30,7 +30,7 @@ const box = ref<HTMLElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
 useWaveRenderer(canvas)
 const wave = shallowRef<Wave | null>(null)
-const { geometry, style: canvasStyle, snapX, snapY, pixelRatio } = usePixelCanvas(box)
+const { geometry, style: canvasStyle, snapX, pixelRatio } = usePixelCanvas(box)
 const line = computed(() => 1 / geometry.value.ratio)
 const dotSize = computed(() => Math.round(5 * geometry.value.ratio) / geometry.value.ratio)
 
@@ -38,26 +38,25 @@ const frames = () => editor.state?.frames ?? 0
 const minimumSpan = computed(() => Math.min(64, frames()))
 const startX = computed(() => snapX(geometry.value.left + props.viewStart / Math.max(1, frames()) * geometry.value.width))
 const endX = computed(() => snapX(geometry.value.left + props.viewEnd / Math.max(1, frames()) * geometry.value.width))
-const grips = computed(() => {
-  const limit = Math.max(0, geometry.value.width - 12)
-  const clamp = (x: number) => Math.max(0, Math.min(limit, x))
-  if (endX.value - startX.value >= 24) return [clamp(startX.value - 6), clamp(endX.value - 6)]
-  const centre = Math.max(12, Math.min(geometry.value.width - 12, (startX.value + endX.value) / 2))
-  return [clamp(centre - 12), clamp(centre)]
-})
-const windowStyle = computed(() => ({
-  transform: `translate(${startX.value}px, ${geometry.value.top + line.value}px)`,
-  width: `${Math.max(2 * line.value, endX.value - startX.value)}px`,
-  height: `${Math.max(line.value, geometry.value.height - 2 * line.value)}px`,
-  borderWidth: `${line.value}px`,
-}))
-function dotStyle(index: number) {
+const hitSize = computed(() => Math.round(12 * geometry.value.ratio) / geometry.value.ratio)
+const windowStyle = computed(() => {
+  const ratio = geometry.value.ratio
+  const dotPixels = Math.round(5 * ratio)
+  // Matching parity keeps a CSS-centred dot on physical pixels as well.
+  let heightPixels = Math.max(dotPixels, Math.round(geometry.value.height * ratio) - 2)
+  if ((heightPixels - dotPixels) % 2) heightPixels--
+  const width = Math.min(geometry.value.width, Math.max(2 * line.value, endX.value - startX.value))
+  const left = Math.max(geometry.value.left, Math.min(startX.value, geometry.value.left + geometry.value.width - width))
   return {
-    left: `${snapX(grips.value[index]! + (12 - dotSize.value) / 2) - grips.value[index]!}px`,
-    top: `${snapY(geometry.value.top + (geometry.value.height - dotSize.value) / 2)}px`,
-    width: `${dotSize.value}px`, height: `${dotSize.value}px`,
+    transform: `translate(${left}px, ${geometry.value.top + line.value}px)`,
+    width: `${width}px`,
+    height: `${heightPixels / ratio}px`,
+    '--window-line': `${line.value}px`,
+    '--dot-size': `${dotSize.value}px`,
+    '--hit-size': `${hitSize.value}px`,
+    '--edge-phase': `${(dotPixels % 2) / (2 * ratio)}px`,
   }
-}
+})
 const timeAt = (frame: number) => {
   const seconds = frame / Math.max(1, editor.state?.sampleRate ?? 1)
   return `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(3).padStart(6, '0')}`
@@ -220,10 +219,15 @@ function onWheel(e: WheelEvent) {
     @dblclick="onDoubleClick"
   >
     <canvas ref="canvas" class="absolute" :style="canvasStyle" :aria-label="t('editor.minimap.label')" />
-    <template v-if="frames() && geometry.width">
+    <div
+      v-if="frames() && geometry.width"
+      class="view-window"
+      :class="{ narrow: endX-startX < hitSize*2, 'at-start': startX-geometry.left < hitSize*1.5, 'at-end': geometry.left+geometry.width-endX < hitSize*1.5 }"
+      :style="windowStyle"
+      role="group" :aria-label="t('editor.minimap.label')"
+    >
       <div
-        class="view-window"
-        :style="windowStyle"
+        class="view-pan"
         tabindex="0" role="slider" aria-orientation="horizontal"
         :aria-label="t('editor.minimap.move')"
         :aria-valuemin="0" :aria-valuemax="Math.max(0, frames()-(viewEnd-viewStart))" :aria-valuenow="viewStart"
@@ -231,9 +235,8 @@ function onWheel(e: WheelEvent) {
         @keydown="onKey($event, 'move')"
       />
       <button
-        v-for="(edge, index) in (['start', 'end'] as const)" :key="edge"
+        v-for="edge in (['start', 'end'] as const)" :key="edge"
         type="button" class="resize-handle" :data-edge="edge" :class="{ active: dragging === edge }"
-        :style="{ transform: `translateX(${grips[index]}px)` }"
         role="slider" aria-orientation="horizontal"
         :aria-label="t(`editor.minimap.${edge}`)"
         :aria-valuemin="edge === 'start' ? 0 : viewStart+minimumSpan"
@@ -241,8 +244,8 @@ function onWheel(e: WheelEvent) {
         :aria-valuenow="edge === 'start' ? viewStart : viewEnd"
         :aria-valuetext="timeAt(edge === 'start' ? viewStart : viewEnd)"
         @keydown="onKey($event, edge)"
-      ><span :style="dotStyle(index)" aria-hidden="true" /></button>
-    </template>
+      ><span aria-hidden="true" /></button>
+    </div>
     <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
       <div ref="cursorEl" class="absolute inset-y-0 w-px bg-foreground/60" />
       <div ref="hoverEl" class="absolute inset-y-0 w-px bg-foreground/35" style="display: none" />
@@ -254,10 +257,21 @@ function onWheel(e: WheelEvent) {
 <style scoped>
 .minimap { touch-action: none; user-select: none; cursor: grab; }
 .minimap.is-dragging { cursor: grabbing; }
-.view-window { position: absolute; left: 0; top: 0; border: 1px solid var(--primary); border-radius: 2px; background: color-mix(in srgb, var(--primary) 2%, transparent); }
-.view-window:focus-visible { outline: 2px solid var(--ring); outline-offset: -3px; }
-.resize-handle { position: absolute; left: 0; z-index: 2; top: 0; bottom: 0; width: 12px; border: 0; padding: 0; background: transparent; color: var(--primary); cursor: ew-resize; outline: none; }
-.resize-handle > span { position: absolute; border-radius: 50%; background: currentColor; opacity: 0.8; pointer-events: none; }
+.view-window { position: absolute; left: 0; top: 0; background: color-mix(in srgb, var(--primary) 2%, transparent); }
+.view-window::before { content: ''; position: absolute; inset: 0; border: var(--window-line) solid var(--primary); border-radius: 2px; pointer-events: none; }
+.view-pan { position: absolute; inset: 0; }
+.view-pan:focus-visible { outline: 2px solid var(--ring); outline-offset: -3px; }
+.resize-handle { position: absolute; z-index: 2; top: 0; bottom: 0; width: var(--hit-size); display: grid; place-items: center; border: 0; padding: 0; background: transparent; color: var(--primary); cursor: ew-resize; outline: none; }
+.resize-handle[data-edge="start"] { left: calc(var(--edge-phase) - var(--hit-size) / 2); }
+.resize-handle[data-edge="end"] { right: calc(var(--edge-phase) - var(--hit-size) / 2); }
+.resize-handle > span { width: var(--dot-size); height: var(--dot-size); border-radius: 50%; background: currentColor; opacity: 0.8; pointer-events: none; }
 .resize-handle:hover > span, .resize-handle.active > span, .resize-handle:focus-visible > span { opacity: 1; }
 .resize-handle:focus-visible > span { outline: 2px solid var(--ring); outline-offset: 2px; }
+/* Tiny zoom windows keep separate grab areas; file edges keep dots inside the map. */
+.view-window.narrow .resize-handle[data-edge="start"] { left: calc(var(--edge-phase) - var(--hit-size) * 1.5); }
+.view-window.narrow .resize-handle[data-edge="end"] { right: calc(var(--edge-phase) - var(--hit-size) * 1.5); }
+.view-window.at-start .resize-handle[data-edge="start"] { left: 0; justify-items: start; }
+.view-window.at-end .resize-handle[data-edge="end"] { right: 0; justify-items: end; }
+.view-window.narrow.at-start .resize-handle[data-edge="end"] { left: var(--hit-size); right: auto; justify-items: start; }
+.view-window.narrow.at-end .resize-handle[data-edge="start"] { right: var(--hit-size); left: auto; justify-items: end; }
 </style>

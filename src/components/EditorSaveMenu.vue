@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { formatNumber } from '@/format'
 import { ChevronDown, Save } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import { useEditorStore } from '@/stores/editor'
@@ -7,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 
 const editor = useEditorStore()
 const { t } = useI18n()
+const regionCount = computed(() => editor.regions.filter(region => !region.skip && region.end > region.start).length)
 </script>
 
 <template>
@@ -30,6 +33,10 @@ const { t } = useI18n()
       </DropdownMenuItem>
       <DropdownMenuItem :disabled="!editor.selection" @select="editor.save('selection')">
         {{ t('editor.save.selection') }}
+      </DropdownMenuItem>
+      <DropdownMenuItem :disabled="!regionCount" @select="editor.saveRegions()">
+        {{ t('editor.regions.save') }}
+        <span v-if="regionCount" class="ml-auto text-xs text-muted-foreground tabular">{{ formatNumber(regionCount) }}</span>
       </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem :disabled="!editor.canOverwrite || (!editor.state?.dirty && editor.sample?.path === editor.state?.originalPath)" @select="editor.save('replaceOriginal')">
