@@ -7,7 +7,9 @@ import { Button } from '@/components/ui/button'
 import { debugBytes, debugMonitorOpen, useDebugSampler } from '@/composables/debugMonitor'
 import { useEditorStore } from '@/stores/editor'
 import EditorPerformanceMetrics from '@/components/editor/EditorPerformanceMetrics.vue'
+import type { LibraryPageDiagnostics } from '@/library-pages'
 
+const props = defineProps<{ libraryDiagnostics?: () => LibraryPageDiagnostics }>()
 const { t } = useI18n()
 const editor = useEditorStore()
 const { snapshot, history, timings, heapBytes, error, paused, baseline, peak, reset } = useDebugSampler()
@@ -28,6 +30,11 @@ watch([width, height, x, y], () => {
 })
 const status = computed(() => editor.loading ? 'loading' : editor.saving ? 'saving' : editor.processing ? 'processing' : editor.playing ? 'playing' : editor.open ? 'ready' : 'idle')
 const current = computed(() => snapshot.value?.editor)
+const library = computed(() => {
+  // Sample with the monitor, without reactive counters in the scroll path.
+  if (!snapshot.value) return undefined
+  return props.libraryDiagnostics?.()
+})
 const delta = computed(() => snapshot.value?.processBytes != null && baseline.value != null ? snapshot.value.processBytes - baseline.value : null)
 const points = computed(() => {
   const values = history.value
@@ -85,6 +92,14 @@ const cursor = computed(() => {
           <div><dt>{{ t('debug.cursor') }}</dt><dd>{{ cursor }}</dd></div>
         </dl>
         <p v-else class="text-xs text-muted-foreground">{{ t(editor.loading ? 'debug.waiting' : 'debug.noTrack') }}</p>
+        <template v-if="library">
+          <div class="section-title">{{ t('debug.library') }}</div>
+          <dl class="metric-list">
+            <div><dt>{{ t('debug.pages') }}</dt><dd>{{ library.retainedPages }} / {{ library.maxPages }}</dd></div>
+            <div><dt>{{ t('debug.rows') }}</dt><dd>{{ library.retainedRows }}</dd></div>
+            <div><dt>{{ t('debug.requests') }}</dt><dd>{{ library.active }} / {{ library.queued }}</dd></div>
+          </dl>
+        </template>
         <EditorPerformanceMetrics :timings="timings" :heap-bytes="heapBytes" />
         <p class="monitor-note">{{ t('debug.note') }}</p>
       </div>

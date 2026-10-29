@@ -1,14 +1,16 @@
-import type { SampleSort } from '@/sample-columns'
-import { normalizeSampleSort } from '@/sample-columns'
+import { useLibraryNavigation } from '@/composables/library/navigation'
+export type { Scope } from '@/library-scope'
 import { useTagColors } from '@/composables/tagColors'
-import type { AnalysisProgress, Collection, DownloadProgress, Sample, SampleFilter, SampleKind, ScanProgress, SoundModelStatus, Source, SourceFolder, Tag } from '@/api'
+import type { AnalysisProgress, Collection, DownloadProgress, Sample, SampleFilter, ScanProgress, SoundModelStatus, Source, SourceFolder, Tag } from '@/api'
 import { listen } from '@tauri-apps/api/event'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { StorageSerializers, useStorage } from '@vueuse/core'
 import type { LibrarySession } from '@/library-session'
 import { findSessionSampleIndex, parseLibrarySession, resolveSessionScope, sessionScope } from '@/library-session'
-import { computed, nextTick, reactive, ref, shallowReactive, watch } from 'vue'
+import { computed, nextTick, onScopeDispose, reactive, ref, shallowReactive, watch } from 'vue'
+import { createLibraryPages } from '@/library-pages'
+import { createLibrarySelection } from '@/library-selection'
 import { toast } from 'vue-sonner'
 import { ANALYSIS_PROGRESS_EVENT, api, MODEL_DOWNLOAD_EVENT, SCAN_PROGRESS_EVENT, startFileDrag } from '@/api'
 import { formatNumber } from '@/format'
@@ -23,18 +25,6 @@ function countSamples(n: number) {
   return t('common.count.samples', { n: formatNumber(n) }, n)
 }
 
-/** What the sidebar has selected; combined with the search query into a filter. */
-export type Scope
-  = | { kind: 'all' }
-    | { kind: 'favorites' }
-    | { kind: 'source', id: number, path?: string }
-    | { kind: 'tag', id: number }
-    | { kind: 'collection', id: number }
-    /** Samples that sound like `id`, most similar first. */
-    | { kind: 'similar', id: number, name: string }
-    /** Groups of identical files; shown by DuplicatesView instead of the list. */
-    | { kind: 'duplicates' }
-
 export const useLibraryStore = defineStore('library', () => {
   const tagColors = useTagColors()
   const sources = ref<Source[]>([])
@@ -47,20 +37,12 @@ export const useLibraryStore = defineStore('library', () => {
   let sessionReady = false
   let restoringSession = true
   let navigationRevision = 0
-  let selectionRevision = 0
-  const scope = ref<Scope>({ kind: 'all' })
-  const query = ref('')
-  const sortPreference = useStorage<SampleSort>('fonicca-sample-sort-v1', { by: 'name', direction: 'asc' })
-  const sort = computed(() => normalizeSampleSort(sortPreference.value))
-  const kindFilter = ref<SampleKind | null>(null)
-  const bpmMin = ref<number | null>(null)
-  const bpmMax = ref<number | null>(null)
-  const keyFilter = ref<string | null>(null)
-  const categoryFilter = ref<string | null>(null)
   const analysis = ref({ pending: 0, pendingEmbeddings: 0, modelReady: false, paused: false })
   const soundModel = ref<SoundModelStatus | null>(null)
   const modelDownload = ref<DownloadProgress | null>(null)
   const expandedStems = reactive(new Set<number>())
+  const { scope, query, sort, kindFilter, bpmMin, bpmMax, keyFilter, categoryFilter,
+    filter, hasAnalysisFilters, clearAnalysisFilters, setSort, findSimilar, exitSimilar } = useLibraryNavigation(expandedStems)
   const total = ref(0)
   const scans = reactive(new Map<number, ScanProgress>())
 
@@ -79,72 +61,23 @@ export const useLibraryStore = defineStore('library', () => {
   const pages: Map<number, Sample[]> = import.meta.hot?.data.pages ?? shallowReactive(new Map<number, Sample[]>())
   if (import.meta.hot)
     import.meta.hot.data.pages = pages
-  const pending = new Map<number, Promise<void>>()
   let generation = 0
 
-  const filter = computed<SampleFilter>(() => {
-    const s = scope.value
-    return {
-      sortBy: sort.value.by,
-      sortDirection: sort.value.direction,
-      groupStems: s.kind !== 'similar',
-      expandedStems: [...expandedStems],
-      query: query.value,
-      sourceId: s.kind === 'source' ? s.id : null,
-      directory: s.kind === 'source' ? s.path ?? null : null,
-      tagId: s.kind === 'tag' ? s.id : null,
-      favorites: s.kind === 'favorites',
-      collectionId: s.kind === 'collection' ? s.id : null,
-      similarTo: s.kind === 'similar' ? s.id : null,
-      kind: kindFilter.value,
-      bpmMin: bpmMin.value,
-      bpmMax: bpmMax.value,
-      key: keyFilter.value,
-      category: categoryFilter.value,
-    }
-  })
   const focused = computed(() => sampleAt(focusIndex.value))
   const isScanning = computed(() => scans.size > 0)
 
-  function sampleAt(index: number): Sample | undefined {
-    if (index < 0)
-      return undefined
-    return pages.get(Math.floor(index / PAGE_SIZE))?.[index % PAGE_SIZE]
-  }
-
-  function loadPage(page: number): Promise<void> {
-    if (pages.has(page))
-      return Promise.resolve()
-    const inflight = pending.get(page)
-    if (inflight)
-      return inflight
-    const gen = generation
-    const load = api.listSamples(filter.value, page * PAGE_SIZE, PAGE_SIZE)
-      .then((rows) => {
-        if (gen === generation)
-          pages.set(page, rows)
-      })
-      .finally(() => {
-        if (gen === generation)
-          pending.delete(page)
-      })
-    pending.set(page, load)
-    return load
-  }
-
-  /** Ensures every page covering [start, end] is loaded. */
-  async function ensureRange(start: number, end: number) {
-    const loads = []
-    for (let p = Math.floor(start / PAGE_SIZE); p <= Math.floor(end / PAGE_SIZE); p++)
-      loads.push(loadPage(p))
-    await Promise.all(loads)
-  }
+  const pageCache = createLibraryPages({
+    pages, pageSize: PAGE_SIZE,
+    fetch: page => api.listSamples(filter.value, page * PAGE_SIZE, PAGE_SIZE),
+    protectedPages: () => focusIndex.value < 0 ? [] : [Math.floor(focusIndex.value / PAGE_SIZE)],
+  })
+  const { sampleAt, ensureRange, ensureVisibleRange } = pageCache
+  onScopeDispose(pageCache.dispose)
 
   /** Reloads rows and count. Selection is kept unless the filter itself changed. */
   async function refresh({ keepSelection = false } = {}) {
     const gen = ++generation
-    pages.clear()
-    pending.clear()
+    pageCache.clear()
     if (!keepSelection) {
       focusIndex.value = -1
       anchorIndex.value = -1
@@ -168,20 +101,6 @@ export const useLibraryStore = defineStore('library', () => {
       focusIndex.value = total.value - 1
   }
 
-  /** Where to return when leaving a "find similar" view. */
-  let scopeBeforeSimilar: Scope = { kind: 'all' }
-
-  function findSimilar(sample: Sample) {
-    if (scope.value.kind !== 'similar')
-      scopeBeforeSimilar = scope.value
-    scope.value = { kind: 'similar', id: sample.id, name: sample.name }
-  }
-
-  function exitSimilar() {
-    if (scope.value.kind === 'similar')
-      scope.value = scopeBeforeSimilar
-  }
-
   watch(filter, () => navigationRevision++, { flush: 'sync' })
   watch(filter, (next, previous) => {
     // Expansion reloads below while preserving selection and keyboard focus.
@@ -193,11 +112,6 @@ export const useLibraryStore = defineStore('library', () => {
     }
     if (!restoringSession) refresh()
   }, { flush: 'sync' })
-
-  function setSort(by: SampleSort['by']) {
-    if (scope.value.kind === 'similar') return
-    sortPreference.value = { by, direction: sort.value.by === by && sort.value.direction === 'asc' ? 'desc' : 'asc' }
-  }
 
   async function refreshSorted() {
     const id = focused.value?.id
@@ -287,18 +201,6 @@ export const useLibraryStore = defineStore('library', () => {
     }
   }, { flush: 'sync', deep: true })
 
-  const hasAnalysisFilters = computed(() =>
-    kindFilter.value !== null || bpmMin.value !== null || bpmMax.value !== null || keyFilter.value !== null
-    || categoryFilter.value !== null)
-
-  function clearAnalysisFilters() {
-    kindFilter.value = null
-    bpmMin.value = null
-    bpmMax.value = null
-    keyFilter.value = null
-    categoryFilter.value = null
-  }
-
   /** Re-fetches loaded pages in place (no flashing) after background updates. */
   let reloadTimer: ReturnType<typeof setTimeout> | undefined
   function scheduleReload() {
@@ -307,17 +209,16 @@ export const useLibraryStore = defineStore('library', () => {
     reloadTimer = setTimeout(async () => {
       reloadTimer = undefined
       const gen = generation
-      // Filters on analysis results can change which rows match.
-      if (hasAnalysisFilters.value) {
-        const n = await api.countSamples(filter.value)
-        if (gen === generation)
+      try {
+        // Filters on analysis results can change which rows match.
+        if (hasAnalysisFilters.value) {
+          const n = await api.countSamples(filter.value)
+          if (gen !== generation) return
           total.value = n
+        }
+        await Promise.all([...pages.keys()].map(page => pageCache.refreshCached(page)))
       }
-      await Promise.all([...pages.keys()].map(async (page) => {
-        const rows = await api.listSamples(filter.value, page * PAGE_SIZE, PAGE_SIZE)
-        if (gen === generation)
-          pages.set(page, rows)
-      }))
+      catch (error) { console.error('Failed to refresh library rows', error) }
     }, 1500)
   }
 
@@ -349,78 +250,14 @@ export const useLibraryStore = defineStore('library', () => {
 
   // --- Selection -----------------------------------------------------------
 
-  async function idsInRange(a: number, b: number): Promise<number[]> {
-    const [from, to] = a < b ? [a, b] : [b, a]
-    await ensureRange(from, to)
-    const ids = []
-    for (let i = from; i <= to; i++) {
-      const s = sampleAt(i)
-      if (s)
-        ids.push(s.id)
-    }
-    return ids
-  }
-
-  function setSelection(ids: Iterable<number>) {
-    selectedIds.clear()
-    for (const id of ids)
-      selectedIds.add(id)
-  }
-
-  async function clickRow(index: number, { shift = false, toggle = false } = {}) {
-    selectionRevision++
-    const sample = sampleAt(index)
-    if (!sample)
-      return
-    if (shift && anchorIndex.value >= 0) {
-      setSelection(await idsInRange(anchorIndex.value, index))
-    }
-    else if (toggle) {
-      if (selectedIds.has(sample.id))
-        selectedIds.delete(sample.id)
-      else
-        selectedIds.add(sample.id)
-      anchorIndex.value = index
-    }
-    else {
-      setSelection([sample.id])
-      anchorIndex.value = index
-    }
-    focusIndex.value = index
-    rememberSelection(sample, index)
-  }
-
-  /** Moves keyboard focus; with `extend` grows the selection from the anchor. */
-  async function moveFocus(delta: number, extend = false) {
-    selectionRevision++
-    if (total.value === 0)
-      return
-    const index = focusIndex.value < 0 ? 0 : Math.max(0, Math.min(total.value - 1, focusIndex.value + delta))
-    focusIndex.value = index
-    await ensureRange(index, index)
-    if (extend && anchorIndex.value >= 0) {
-      setSelection(await idsInRange(anchorIndex.value, index))
-    }
-    else {
-      const s = sampleAt(index)
-      setSelection(s ? [s.id] : [])
-      anchorIndex.value = index
-    }
-    const sample = sampleAt(index)
-    if (sample)
-      rememberSelection(sample, index)
-  }
-
-  async function selectAll() {
-    setSelection(await api.sampleIds(filter.value))
-  }
-
-  /** Samples an action applies to: the selection, or the focused row if nothing is selected. */
-  function targetIds(): number[] {
-    if (selectedIds.size)
-      return [...selectedIds]
-    return focused.value ? [focused.value.id] : []
-  }
+  const selection = createLibrarySelection({
+    focusIndex, anchorIndex, selectedIds,
+    total: () => total.value, identity: () => `${navigationRevision}:${generation}`,
+    sampleAt, ensureRange,
+    rangeIds: (a, b) => pageCache.mapRange(Math.min(a, b), Math.max(a, b), sample => sample.id),
+    allIds: () => api.sampleIds(filter.value), remember: rememberSelection,
+  })
+  const { clickRow, moveFocus, selectAll, targetIds } = selection
 
   async function dragSamples(sample: Sample) {
     const ids = selectedIds.has(sample.id) ? [...selectedIds] : [sample.id]
@@ -643,7 +480,7 @@ export const useLibraryStore = defineStore('library', () => {
     await listen<{ ids: number[] }>('stems:changed', async ({ payload }) => {
       if (payload.ids.length) await Promise.all([loadSources(), loadTags(), loadCollections(), refresh({ keepSelection: true })])
     })
-    const initialSelectionRevision = selectionRevision
+    const initialSelectionRevision = selection.version()
     await listen<AnalysisProgress>(ANALYSIS_PROGRESS_EVENT, ({ payload }) => {
       const { updated, ...status } = payload
       analysis.value = status
@@ -673,7 +510,7 @@ export const useLibraryStore = defineStore('library', () => {
     })
     await Promise.all([loadSources(), loadTags(), loadCollections()])
     const saved = parseLibrarySession(lastSession.value)
-    const canRestore = navigationRevision === 0 && selectionRevision === initialSelectionRevision
+    const canRestore = navigationRevision === 0 && selection.version() === initialSelectionRevision
     let restoreSelection = false
     if (saved && canRestore) {
       let restored = resolveSessionScope(saved.scope, sources.value, tags.value, collections.value)
@@ -688,28 +525,28 @@ export const useLibraryStore = defineStore('library', () => {
         }
       }
       // User navigation during folder loading takes precedence over the saved view.
-      if (navigationRevision === 0 && selectionRevision === initialSelectionRevision) {
+      if (navigationRevision === 0 && selection.version() === initialSelectionRevision) {
         scope.value = restored
         restoreSelection = true
       }
     }
     const restoreRevision = navigationRevision
-    const restoreSelectionRevision = selectionRevision
+    const restoreSelectionRevision = selection.version()
     await nextTick()
     restoringSession = false
     const loading = refresh()
     const gen = generation
     await loading
     try {
-      if (saved?.sample && restoreSelection && navigationRevision === restoreRevision && selectionRevision === restoreSelectionRevision && gen === generation) {
+      if (saved?.sample && restoreSelection && navigationRevision === restoreRevision && selection.version() === restoreSelectionRevision && gen === generation) {
         const currentFilter = filter.value
         const index = await findSessionSampleIndex(saved.sample, total.value, async (index) => {
           await ensureRange(index, index)
           return gen === generation ? sampleAt(index)?.id : undefined
         }, () => gen === generation ? api.sampleIds(currentFilter) : Promise.resolve([]))
-        if (index >= 0 && gen === generation && navigationRevision === restoreRevision && selectionRevision === restoreSelectionRevision) {
+        if (index >= 0 && gen === generation && navigationRevision === restoreRevision && selection.version() === restoreSelectionRevision) {
           await ensureRange(index, index)
-          if (gen === generation && navigationRevision === restoreRevision && selectionRevision === restoreSelectionRevision && sampleAt(index)?.id === saved.sample.id)
+          if (gen === generation && navigationRevision === restoreRevision && selection.version() === restoreSelectionRevision && sampleAt(index)?.id === saved.sample.id)
             await clickRow(index)
         }
       }
@@ -762,6 +599,8 @@ export const useLibraryStore = defineStore('library', () => {
     setSort,
     sampleAt,
     ensureRange,
+    ensureVisibleRange,
+    pageDiagnostics: pageCache.diagnostics,
     refresh,
     clickRow,
     revealSample,

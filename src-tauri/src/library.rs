@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 use crate::similar::Ranking;
+#[cfg(test)]
+mod benchmarks;
 
 #[derive(Debug, Default, Clone, Copy, Deserialize)]
 #[serde(rename_all = "camelCase")]

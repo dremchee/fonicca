@@ -1,4 +1,5 @@
 export default {
+  library: 'Library cache', pages: 'Retained pages', rows: 'Retained rows', requests: 'Requests · active / queued',
   demo: 'Demo data · browser preview',
   toggle: 'Performance monitor',
   title: 'Debug monitor',

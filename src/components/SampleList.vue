@@ -123,7 +123,8 @@ watch(() => rows.value.map(row => row.sample).filter((sample): sample is Sample 
 // A scope change may keep the same row count and virtual range while clearing pages.
 watch([items, () => library.pages.size], ([list]) => {
   if (list.length)
-    library.ensureRange(list[0].index, list[list.length - 1].index)
+    void library.ensureVisibleRange(list[0].index, list[list.length - 1].index)
+      .catch(error => console.error('Failed to load visible library rows', error))
 }, { immediate: true })
 
 // Analyze what is on screen first.

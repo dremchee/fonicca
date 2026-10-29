@@ -110,6 +110,52 @@ Second pass:
   not a cross-platform speed guarantee. Short-selection stretch and LUFS were
   also measured (about 34 and 7 ms); no change was made to those algorithms.
 
-Still pending: library baseline, full WebView-process memory measurements,
-waveform drawing extraction, library/job/model refactoring and release checks.
-The six-item completion checklist remains open until its full evidence is present.
+Third pass, 2026-10-30:
+
+- Canvas scene painting moved to `editor-canvas.ts`. It receives a snapshot and
+  injected waveform/spectrogram painters, returning the region hit-test badges.
+  Vue lifecycle, audio requests and DOM cursor overlays remain with their owners.
+  Drawing tests cover selection inversion, markers, skipped regions and spectrum.
+- Library navigation/filter preferences, page scheduling and selection now have
+  separate owners. The store composes them and retains library mutations/session
+  restoration. Public navigation and selection behavior is preserved.
+- Page retention is capped at 12 × 200 rows. Four page requests can run at once;
+  queued obsolete scroll requests are dropped, old-scope responses are ignored,
+  and background refreshes cannot resurrect evicted pages. A focused page stays
+  available. Large shift selections stream IDs through pages instead of retaining
+  all row objects. Tests also cover immediate retry, new-scope/select-all races,
+  delayed keyboard focus and disposal.
+- Opt-in SQL baseline on isolated 32k/100k databases:
+  [raw timings and plans](research/library-query-baseline.json). On the 100k
+  fixture, grouped first/middle/last pages took about 91/366/469 ms. Query plans
+  use temporary sorting; this baseline has no stems, tags or embeddings and is
+  one observation per offset. It is evidence for further query work, not a SQL
+  performance improvement from this refactor.
+- Browser fixture: `/mock.html?size=100000#library-large` (also `size=32000`).
+  It constructs metadata only for requested pages and has a 25ms mock list delay;
+  search/category/basic scopes are simulated, not the full SQLite semantics.
+  The debug monitor receives an optional library diagnostics getter from `App`
+  and samples cache counts on its existing cadence.
+- [Browser observation](research/library-browser-baseline.json): 35 scroll jumps
+  retained at most 12 pages/2400 rows, with 57 DOM sample rows near row 85k and 37
+  on return to the first row. A rapid search followed by Favorites left the new
+  empty scope intact. Mock RSS is demo data and cannot establish memory savings.
+  Long tasks of 50–205ms occurred in this development run; smooth scrolling has
+  not been established and needs profiling separately from native SQL.
+- Browser editor check after drawing extraction: drag selection, marker creation
+  and fade rendered correctly; checked console had zero errors. Current checks:
+  110 frontend tests, 193 native tests passing (37 opt-in tests ignored), and
+  `pnpm build` succeeds. The build still reports a >500kB JavaScript chunk.
+
+Repeat native library measurements with:
+
+```sh
+FONICCA_LIBRARY_BENCH_OUTPUT=/tmp/fonicca-library.json \
+cargo test --manifest-path src-tauri/Cargo.toml --locked --lib \
+  library_workload_benchmark -- --ignored --nocapture --test-threads=1
+```
+
+Still pending: full WebView-process memory measurements, long-frame profiling,
+SQL improvements with realistic stem/tag fixtures, shared job/model refactoring
+and release checks. The six-item completion checklist remains open until its
+full evidence is present.

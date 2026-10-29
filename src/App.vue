@@ -208,7 +208,7 @@ onKeyStroke(',', (e) => {
     <ApolloDialog />
     <BasicPitchDialog />
     <CommandPalette v-model:open="paletteOpen" />
-    <DebugMonitor v-if="debugMonitorOpen" />
+    <DebugMonitor v-if="debugMonitorOpen" :library-diagnostics="library.pageDiagnostics" />
     <ConfirmDialog />
     <EditorUnsavedDialog />
     <Toaster theme="system" position="bottom-right" />

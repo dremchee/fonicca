@@ -1,5 +1,6 @@
 // The real App on a fake backend (mockIPC), to click through the UI in a browser.
 import { stemModels } from '@/stem-models'
+import { largeLibraryCommand } from './library-large'
 import type { DuplicateGroup, HiddenFile, StemModel } from '@/api'
 import { emit } from '@tauri-apps/api/event'
 import { updateCommand } from './updates'
@@ -39,7 +40,14 @@ let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], 
 
 export function install() {
   Object.assign(window, { isTauri: true })
+  let menuResource = 0
   mockIPC((cmd, args: any) => {
+    // Native menu resources have no DOM representation in a browser preview.
+    if (cmd === 'plugin:menu|new' || cmd === 'plugin:menu|create_default')
+      return [++menuResource, args.options?.id ?? `mock-menu-${menuResource}`]
+    if (cmd === 'plugin:menu|items') return []
+    const large = largeLibraryCommand(cmd, args)
+    if (large !== undefined) return large
     const update = updateCommand(cmd, args)
     if (update !== undefined) return update
     const midi = basicPitchCommand(cmd, args)
