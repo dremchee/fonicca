@@ -1,4 +1,4 @@
-//! Pinned optional Spleeter and SCNet model packs. Downloaded separately from the app.
+//! Pinned optional model packs. Graphs and weights download separately from the app.
 use super::{Model, check, failure};
 use crate::error::Result;
 use sha2::{Digest, Sha256};
@@ -61,14 +61,21 @@ pub const MEL_TOTAL: u64 = 464_050_097;
 const MEL_REVISION: &str = "c1aba02c00a0bee852d6754fe6ede8164f90a4b3";
 const MEL_FILES: [Artifact; 1] = [Artifact { name: "mel-roformer.fp16.onnx", size: MEL_TOTAL,
     hash: "adcbbb826f12453fbb86652b503242d565a9c81cdef1bca2fe0e54752eba91ef" }];
-pub const BS_TOTAL: u64 = 639_959_040;
+const GRAPH_BASE_URL: &str = "https://raw.githubusercontent.com/dremchee/fonicca/main/model-packs/v1";
+pub const BS_TOTAL: u64 = 639_959_040 + 4_871_339;
 const BS_REVISION: &str = "f020228f4d25616c8ff4146c339c33687c0be43f";
-const BS_FILES: [Artifact; 1] = [Artifact {
-    name: "bs_roformer_ep317_sdr12.9755.onnx.data", size: BS_TOTAL,
+const BS_FILES: [Artifact; 2] = [Artifact {
+    name: "bs-roformer-native.onnx", size: 4_871_339,
+    hash: "320e61bbb30a3bb0cba7b88c013b02b0acef444c3341667158b1bc1611664af9",
+}, Artifact {
+    name: "bs_roformer_ep317_sdr12.9755.onnx.data", size: 639_959_040,
     hash: "3f3677f7ed3801f7415db4b4c900e6e81f4f41d5b4bc83c0bf899c353b2f9995",
 }];
-pub const MDX_TOTAL: u64 = 448_101_203;
-const MDX_FILES: [Artifact; 1] = [Artifact { name: "mdx23c.ckpt", size: MDX_TOTAL,
+pub const MDX_TOTAL: u64 = 448_101_203 + 221_595;
+const MDX_FILES: [Artifact; 2] = [Artifact {
+    name: "mdx23c.onnx", size: 221_595,
+    hash: "eb6f147119a27b8dd7be4ee8069ef19de115f03656cc054693bccf23c15fa599",
+}, Artifact { name: "mdx23c.ckpt", size: 448_101_203,
     hash: "49d51472769e34a2501cd1da782346a3212555c3a5619fc2c53507445528d816" }];
 fn files(model: Model) -> &'static [Artifact] {
     match model {
@@ -194,42 +201,30 @@ pub fn ensure_for(
             include_str!("../../../docs/licenses/scnet-NOTICE.txt"),
         )?;
     }
-    let bundled = match model {
-        Model::Mdx23c => Some(("mdx23c.onnx", super::vocal::MDX_GRAPH)),
-        Model::BsRoformer => Some(("bs-roformer-native.onnx", super::vocal::BS_GRAPH)),
-        _ => None,
-    };
-    if let Some((name, bytes)) = bundled {
-        let graph = dir.join(name);
-        if std::fs::read(&graph).ok().as_deref() != Some(bytes) {
-            let partial = graph.with_extension("part");
-            std::fs::write(&partial, bytes)?;
-            std::fs::rename(partial, graph)?;
-        }
-    }
     ensure_pack(
         &dir,
         files(model),
-        |name| match model {
-            Model::Spleeter => format!(
-                "https://huggingface.co/Best-Practice/spleeter-4stems-onnx/resolve/{REVISION}/{name}"
-            ),
-            Model::ScnetLarge => format!(
-                "https://huggingface.co/audiojs/scnet-large/resolve/{SCNET_REVISION}/{name}"
-            ),
-            Model::ScnetXlIhf => {
-                format!("https://huggingface.co/Ryan5453/unblend/resolve/{XL_REVISION}/{name}")
-            }
-            Model::MelRoformer => format!("https://huggingface.co/audiojs/mel-roformer/resolve/{MEL_REVISION}/{name}"),
-            Model::BsRoformer => format!("https://huggingface.co/xycld/BS-RoFormer-ONNX/resolve/{BS_REVISION}/{name}"),
-            Model::Mdx23c => "https://github.com/ZFTurbo/Music-Source-Separation-Training/releases/download/v1.0.0/model_vocals_mdx23c_sdr_10.17.ckpt".to_owned(),
-            Model::Htdemucs => format!(
-                "https://huggingface.co/StemSplitio/htdemucs-onnx/resolve/{DEMUCS_REVISION}/{name}"
-            ),
-        },
+        |name| artifact_url(model, name),
         cancel,
         progress,
     )
+}
+
+fn artifact_url(model: Model, name: &str) -> String {
+    if (model == Model::BsRoformer && name == BS_FILES[0].name)
+        || (model == Model::Mdx23c && name == MDX_FILES[0].name)
+    {
+        return format!("{GRAPH_BASE_URL}/{name}");
+    }
+    match model {
+        Model::Spleeter => format!("https://huggingface.co/Best-Practice/spleeter-4stems-onnx/resolve/{REVISION}/{name}"),
+        Model::ScnetLarge => format!("https://huggingface.co/audiojs/scnet-large/resolve/{SCNET_REVISION}/{name}"),
+        Model::ScnetXlIhf => format!("https://huggingface.co/Ryan5453/unblend/resolve/{XL_REVISION}/{name}"),
+        Model::MelRoformer => format!("https://huggingface.co/audiojs/mel-roformer/resolve/{MEL_REVISION}/{name}"),
+        Model::BsRoformer => format!("https://huggingface.co/xycld/BS-RoFormer-ONNX/resolve/{BS_REVISION}/{name}"),
+        Model::Mdx23c => "https://github.com/ZFTurbo/Music-Source-Separation-Training/releases/download/v1.0.0/model_vocals_mdx23c_sdr_10.17.ckpt".to_owned(),
+        Model::Htdemucs => format!("https://huggingface.co/StemSplitio/htdemucs-onnx/resolve/{DEMUCS_REVISION}/{name}"),
+    }
 }
 
 pub const BASIC_PITCH_TOTAL: u64 = 230_444;
@@ -455,6 +450,90 @@ fn ensure_pack(
 #[cfg(test)]
 mod tests {
     use super::*;
+    // Serve real graph bytes locally; this exercises the application downloader
+    // without requiring the model-pack files to have been published yet.
+    fn serve_once(bytes: Vec<u8>) -> (String, std::thread::JoinHandle<()>) {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}", listener.local_addr().unwrap());
+        listener.set_nonblocking(true).unwrap();
+        let server = std::thread::spawn(move || {
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+            let mut socket = loop {
+                match listener.accept() {
+                    Ok((socket, _)) => break socket,
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                        assert!(std::time::Instant::now() < deadline, "download did not connect");
+                        std::thread::sleep(std::time::Duration::from_millis(10));
+                    }
+                    Err(e) => panic!("{e}"),
+                }
+            };
+            socket.set_nonblocking(false).unwrap();
+            socket.set_read_timeout(Some(std::time::Duration::from_secs(5))).unwrap();
+            let mut request = Vec::new();
+            let mut byte = [0];
+            while !request.ends_with(b"\r\n\r\n") {
+                assert!(request.len() < 8192);
+                socket.read_exact(&mut byte).unwrap();
+                request.push(byte[0]);
+            }
+            write!(socket, "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", bytes.len()).unwrap();
+            socket.write_all(&bytes).unwrap();
+        });
+        (url, server)
+    }
+
+    #[test]
+    fn vocal_graph_downloads_are_verified_repaired_and_reused() {
+        for model in [Model::BsRoformer, Model::Mdx23c] {
+            let artifact = &files(model)[0];
+            let source = Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../model-packs/v1").join(artifact.name);
+            assert!(valid(&source, artifact));
+            let bytes = std::fs::read(source).unwrap();
+            let root = tempfile::tempdir().unwrap();
+            let dir = directory_for(root.path(), model);
+            std::fs::create_dir_all(&dir).unwrap();
+            // Existing weights alone must not report a complete model pack.
+            for weight in &files(model)[1..] {
+                std::fs::File::create(dir.join(weight.name)).unwrap().set_len(weight.size).unwrap();
+            }
+            assert!(!installed_for(root.path(), model));
+            for corrupt in [false, true] {
+                if corrupt {
+                    let mut damaged = bytes.clone();
+                    damaged[0] ^= 1;
+                    std::fs::write(dir.join(artifact.name), damaged).unwrap();
+                }
+                let (url, server) = serve_once(bytes.clone());
+                let done = std::cell::Cell::new(0);
+                ensure_pack(&dir, std::slice::from_ref(artifact), |_| url.clone(),
+                    &AtomicBool::new(false), |n| done.set(n)).unwrap();
+                server.join().unwrap();
+                assert_eq!(done.get(), artifact.size);
+                assert!(valid(&dir.join(artifact.name), artifact));
+                assert!(installed_for(root.path(), model));
+                assert!(!dir.join(artifact.name).with_extension("part").exists());
+            }
+            ensure_pack(&dir, std::slice::from_ref(artifact), |_| panic!("cached graph downloaded again"),
+                &AtomicBool::new(false), |_| {}).unwrap();
+            assert!(artifact_url(model, artifact.name).ends_with(&format!("/model-packs/v1/{}", artifact.name)));
+        }
+    }
+
+    #[test]
+    fn bad_graph_download_is_not_installed_and_partial_file_is_removed() {
+        let artifact = &MDX_FILES[0];
+        let dir = tempfile::tempdir().unwrap();
+        let (url, server) = serve_once(vec![0; artifact.size as usize]);
+        let result = ensure_pack(dir.path(), std::slice::from_ref(artifact), |_| url.clone(),
+            &AtomicBool::new(false), |_| {});
+        server.join().unwrap();
+        assert!(result.is_err());
+        assert!(!dir.path().join(artifact.name).exists());
+        assert!(!dir.path().join(artifact.name).with_extension("part").exists());
+    }
+
     #[test]
     #[ignore = "requires VOCAL_MODELS; verifies the real pinned files, repair and removal"]
     fn real_vocal_model_packs_are_verified_and_repaired() {
@@ -469,11 +548,10 @@ mod tests {
             ensure_for(root.path(),model,&AtomicBool::new(false),|bytes| done.set(bytes)).unwrap();
             assert_eq!(done.get(),total(model));
             assert!(installed_for(root.path(),model));
-            if model == Model::Mdx23c || model == Model::BsRoformer {
-                let (name,bytes) = if model == Model::Mdx23c { ("mdx23c.onnx",super::super::vocal::MDX_GRAPH) } else { ("bs-roformer-native.onnx",super::super::vocal::BS_GRAPH) };
-                std::fs::write(dir.join(name),"broken graph").unwrap();
-                ensure_for(root.path(),model,&AtomicBool::new(false),|_| {}).unwrap();
-                assert_eq!(std::fs::read(dir.join(name)).unwrap(),bytes);
+            if matches!(model, Model::Mdx23c | Model::BsRoformer) {
+                assert!(valid(&dir.join(files(model)[0].name), &files(model)[0]));
+                std::fs::remove_file(dir.join(files(model)[0].name)).unwrap();
+                assert!(!installed_for(root.path(), model));
             }
             remove_pack(root.path(),Some(model)).unwrap();
             assert!(!dir.exists());

@@ -8,8 +8,6 @@ use ort::{
 use realfft::{RealFftPlanner, num_complex::Complex32};
 use std::{path::Path, sync::atomic::AtomicBool};
 
-pub const BS_GRAPH: &[u8] = include_bytes!("../../resources/bs-roformer.onnx");
-pub const MDX_GRAPH: &[u8] = include_bytes!("../../resources/mdx23c.onnx");
 #[derive(Clone, Copy)]
 struct Contract {
     fft: usize,
