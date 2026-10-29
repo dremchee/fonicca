@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.3] - 2026-10-29
+
+- Format updater release notes as readable sections and lists (8aaf849)
+- Fit tooltip width to centered text lines (bf38130)
+- Prevent popover autofocus from opening tooltips on mouse clicks (f7f42ce)
+- Add configurable row playback and align stem rows (06ea593)
+- Share disk-backed editor audio and reuse waveform caches (11ed86b)
+- Add draggable performance monitor and sidebar model download (edaef92)
+- Document editor optimizations and defer the sound map design (a4f1577)
+- Align editor canvases and timeline drawing to device pixels (c08b336)
+- Add minimal waveform overview resize handles (2e23d1b)
+- Limit bounded decoder helper to test builds (9b79d33)
+- Refine waveform overview controls and marker region saving (b0cd2df)
+- Add native two-track vocal and instrumental separation (484f73a)
+- Show model downloads as compact sidebar badges (97880f9)
+- Download vocal model graphs instead of embedding them (a96fab4)
+- Document external model graph distribution and publishing (458b544)
+- Add patch release command with automatic push (c1c8f63)
+
 ## [0.1.2] - 2026-10-28
 
 - Sign macOS app bundles and verify release signatures (648fc4f)
