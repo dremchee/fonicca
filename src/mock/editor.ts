@@ -108,6 +108,11 @@ function slices(start: number, end: number, by: SliceBy): Span[] {
 /** Editor commands for the mock backend; `undefined` for anything else. */
 export function editorCommand(cmd: string, args: any): unknown {
   switch (cmd) {
+    case 'debug_editor_snapshot': return {
+      sampleId, logicalBytes: currentFrames * 8, ramBytes: FRAMES * 8 + history.length * 8192,
+      diskBytes: 0, storageCount: history.length + 1, cacheBytes: 524288,
+      undoSteps: history.length, redoSteps: future.length, openedMs: 128.4, lastWaveMs: 12.6,
+    }
     case 'editor_close': return null
     case 'editor_open':
       sampleId = args.id

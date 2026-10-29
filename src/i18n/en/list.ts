@@ -72,7 +72,7 @@ export default {
     space: 'Space',
     edit: 'Edit…',
     findSimilar: 'Find similar',
-    needsSoundModel: 'Needs the sound model (filter bar → Sound model)',
+    needsSoundModel: 'Needs the sound model (sidebar → Sound model)',
     addTag: 'Add tag…',
     addToCollection: 'Add to collection',
     newCollection: 'New collection…',

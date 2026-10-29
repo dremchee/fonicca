@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import DebugMonitor from '@/components/DebugMonitor.vue'
+import { debugMonitorOpen } from '@/composables/debugMonitor'
 import { onMounted } from 'vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EditorView from '@/components/EditorView.vue'
@@ -25,6 +27,7 @@ onMounted(() => Promise.all([settings.init(), editor.init(props.sampleId), useBa
     <EditorView />
     <BasicPitchDialog />
     <SettingsDialog wave-target="editor" />
+    <DebugMonitor v-if="debugMonitorOpen" />
     <ConfirmDialog />
     <EditorUnsavedDialog />
     <Toaster theme="system" position="bottom-right" />

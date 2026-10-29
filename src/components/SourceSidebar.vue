@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import { debugMonitorOpen } from '@/composables/debugMonitor'
 import { tagColorStyle } from '@/tag-colors'
+import SoundModelDownload from '@/components/SoundModelDownload.vue'
 import SettingsNavigation from '@/components/SettingsNavigation.vue'
 import TagColorPicker from '@/components/TagColorPicker.vue'
 import type { Scope } from '@/stores/library'
-import { ChevronRight, FolderOpen, Pencil, Plus, RefreshCw, Settings, Trash2, X } from '@lucide/vue'
+import { Activity, ChevronRight, FolderOpen, Pencil, Plus, RefreshCw, Settings, Trash2, X } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { storeToRefs } from 'pinia'
 import { useStorage } from '@vueuse/core'
@@ -599,6 +601,12 @@ async function confirmDeleteTag(id: number) {
     </div>
 
     <footer v-if="!settings.dialogOpen" class="shrink-0 border-t border-border px-2 pt-1 pb-3">
+      <SoundModelDownload />
+
+      <button type="button" class="row w-full" :class="{ active: debugMonitorOpen }" :aria-pressed="debugMonitorOpen" @click="debugMonitorOpen = !debugMonitorOpen">
+        <Activity class="size-4 shrink-0" />
+        <span class="truncate">{{ t('debug.title') }}</span>
+      </button>
       <button type="button" class="row w-full" :class="{ active: settings.dialogOpen }" :aria-current="settings.dialogOpen ? 'page' : undefined" @click="settings.openDialog()">
         <Settings class="size-4 shrink-0" />
         <span>{{ t('sidebar.settings') }}</span>

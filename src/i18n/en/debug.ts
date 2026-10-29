@@ -1,0 +1,15 @@
+export default {
+  demo: 'Demo data · browser preview',
+  title: 'Debug monitor',
+  close: 'Close monitor', pause: 'Pause measurements', resume: 'Resume measurements',
+  live: 'Live · 1 s', paused: 'Measurements paused', reset: 'Reset',
+  process: 'Rust process · RSS', peak: 'Observed peak', delta: 'Change since reset', available: 'System RAM available',
+  editor: 'Editor', pcmRam: 'PCM in RAM · with history', pcmDisk: 'PCM on disk · with history',
+  logical: 'Current audio · uncompressed', cache: 'Wave / spectrum cache', storage: 'Unique audio buffers',
+  history: 'Undo / redo steps', decode: 'Open / decode', wave: 'Last wave request', cursor: 'Playback / cursor',
+  busy: 'Processing audio — session counters temporarily unavailable.',
+  waiting: 'Loading track…', noTrack: 'Open a track to inspect its audio storage.',
+  error: 'Could not update measurements. Retrying…',
+  note: 'RSS covers the Rust process; WebView processes are separate. PCM counts only this editor session, including undo/redo, without shared copies. Disk pages can also use RAM. CPU: 100% = one core. Wave time includes peak generation, not drawing.',
+  status: { loading: 'Loading', saving: 'Saving', processing: 'Processing', playing: 'Playing', ready: 'Ready', idle: 'No track' },
+}

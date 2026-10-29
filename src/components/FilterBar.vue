@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AcceptableValue } from 'reka-ui'
 import type { SampleKind } from '@/api'
-import { ChevronDown, Download, Pause, Play } from '@lucide/vue'
+import { ChevronDown, Pause, Play } from '@lucide/vue'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -24,13 +24,13 @@ import {
 import { Slider } from '@/components/ui/slider'
 import { Spinner } from '@/components/ui/spinner'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { CATEGORIES, categoryLabel, formatNumber, formatSize, kindLabel } from '@/format'
+import { CATEGORIES, categoryLabel, formatNumber, kindLabel } from '@/format'
 import { useLibraryStore } from '@/stores/library'
 
 const { t } = useI18n()
 const library = useLibraryStore()
 const { visibility: columnVisibility, resetWidths } = useSampleColumns()
-const { kindFilter, bpmMin, bpmMax, keyFilter, categoryFilter, hasAnalysisFilters, analysis, soundModel, modelDownload } = storeToRefs(library)
+const { kindFilter, bpmMin, bpmMax, keyFilter, categoryFilter, hasAnalysisFilters, analysis } = storeToRefs(library)
 
 const kinds: SampleKind[] = ['oneshot', 'loop', 'long']
 const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
@@ -60,11 +60,6 @@ const category = computed<string>({
 })
 
 const pending = computed(() => analysis.value.pending + analysis.value.pendingEmbeddings)
-const downloadPercent = computed(() => {
-  const d = modelDownload.value
-  return d && d.total ? Math.round((d.received / d.total) * 100) : 0
-})
-
 // BPM range: the slider covers the usual tempos; an end at its limit means "no bound".
 const BPM_FLOOR = 40
 const BPM_CEIL = 220
@@ -211,23 +206,6 @@ function parseBpm(e: Event): number | null {
     </Button>
 
     <div class="ml-auto min-w-0 flex items-center gap-2 text-muted-foreground tabular whitespace-nowrap">
-      <template v-if="modelDownload">
-        <Hint v-if="modelDownload.error" :text="modelDownload.error">
-          <span class="truncate text-destructive">{{ t('filters.downloadFailed') }}</span>
-        </Hint>
-        <template v-else>
-          <Spinner class="text-primary" />
-          {{ t('filters.downloadingModel', { percent: downloadPercent }) }}
-        </template>
-      </template>
-      <Hint
-        v-else-if="soundModel && !soundModel.installed"
-        :text="t('filters.soundModelHint')"
-      >
-        <Button variant="outline" size="sm" @click="library.downloadSoundModel()">
-          <Download /> {{ t('filters.soundModel', { size: formatSize(soundModel.size) }) }}
-        </Button>
-      </Hint>
       <template v-if="pending > 0">
         <Spinner v-if="!analysis.paused" class="text-primary" />
         <Hint :text="t('filters.analysisHint')">

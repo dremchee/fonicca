@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import DebugMonitor from '@/components/DebugMonitor.vue'
+import { debugMonitorOpen } from '@/composables/debugMonitor'
 import { onKeyStroke } from '@vueuse/core'
 import { isTauri } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
@@ -206,6 +208,7 @@ onKeyStroke(',', (e) => {
     <ApolloDialog />
     <BasicPitchDialog />
     <CommandPalette v-model:open="paletteOpen" />
+    <DebugMonitor v-if="debugMonitorOpen" />
     <ConfirmDialog />
     <EditorUnsavedDialog />
     <Toaster theme="system" position="bottom-right" />

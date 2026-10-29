@@ -1,4 +1,5 @@
 // All interface strings, one file per area of the app.
+import debug from './debug'
 import updates from './updates'
 import common from './common'
 import settings from './settings'
@@ -19,6 +20,7 @@ import apollo from './apollo'
 import basicPitch from './basicPitch'
 
 export default {
+  debug,
   updates,
   common,
   settings,

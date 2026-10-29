@@ -49,6 +49,12 @@ export function install() {
     if (stems !== undefined) return stems
     switch (cmd) {
       case 'editor_spectrogram': return new Promise(resolve => setTimeout(() => resolve(spectrogram(args.start, args.end, args.columns)), 80))
+      case 'debug_snapshot': return {
+        processBytes: 180 * 1024 ** 2 + Math.round(Math.sin(Date.now() / 3000) * 4 * 1024 ** 2),
+        demo: true, cpuPercent: 3.5, availableBytes: 8 * 1024 ** 3, editorBusy: false, editor: editorCommand('debug_editor_snapshot', {}),
+      }
+      case 'audio_input_devices': return []
+      case 'audio_output_devices': return { devices: [], activeDeviceId: null }
       case 'list_sources': return [{ id: 1, path: ROOT, sampleCount: 32187 }]
       case 'source_folders': return [
         { path: `${ROOT}/Drums`, sampleCount: 240 },

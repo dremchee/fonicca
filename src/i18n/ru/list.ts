@@ -74,7 +74,7 @@ export default {
     space: 'Пробел',
     edit: 'Редактировать…',
     findSimilar: 'Найти похожие',
-    needsSoundModel: 'Нужна звуковая модель (панель фильтров → Звуковая модель)',
+    needsSoundModel: 'Нужна звуковая модель (левая панель → Звуковая модель)',
     addTag: 'Добавить тег…',
     addToCollection: 'Добавить в коллекцию',
     newCollection: 'Новая коллекция…',
