@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePixelCanvas } from '@/composables/pixelCanvas'
 import { Spinner } from '@/components/ui/spinner'
 import type { GridMode } from '@/composables/editor/grid'
 import type { Curve, Marker, Wave } from '@/stores/editor'
@@ -29,7 +30,7 @@ import {
   ZoomOut,
   X,
 } from '@lucide/vue'
-import { useLocalStorage, useResizeObserver } from '@vueuse/core'
+import { useLocalStorage } from '@vueuse/core'
 import { computed, nextTick, ref, shallowRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import EditorMinimap from '@/components/EditorMinimap.vue'
@@ -89,8 +90,9 @@ const settings = useSettingsStore()
 const box = ref<HTMLElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
 useWaveRenderer(canvas)
-const width = ref(0)
-const height = ref(0)
+const { geometry: canvasGeometry, style: canvasStyle, localPixel, pixelRatio } = usePixelCanvas(box)
+const width = computed(() => canvasGeometry.value.width)
+const height = computed(() => canvasGeometry.value.height)
 const wave = shallowRef<Wave | null>(null)
 const waveError = ref<string | null>(null)
 watch(() => editor.sample?.id, () => { wave.value = null; waveError.value = null }, { flush: 'sync' })
@@ -164,12 +166,6 @@ watch(() => editor.sessionVersion, async (id) => {
   canvas.value?.focus()
 }, { immediate: true })
 
-useResizeObserver(box, (entries) => {
-  const r = entries[0].contentRect
-  width.value = Math.floor(r.width)
-  height.value = Math.floor(r.height)
-})
-
 // --- Peaks and drawing ------------------------------------------------------
 
 // The wave is read for a range half again as wide as the view, so short pans draw
@@ -233,7 +229,7 @@ async function readWave() {
   }
 }
 
-watch([() => editor.loading, isSpectrogram, () => editor.revision, viewStart, viewEnd, width, () => settings.settings.editorWaveform.waveChannels, () => settings.settings.editorWaveform.waveColors], readWave)
+watch([() => editor.loading, isSpectrogram, () => editor.revision, viewStart, viewEnd, width, pixelRatio, () => settings.settings.editorWaveform.waveChannels, () => settings.settings.editorWaveform.waveColors], readWave)
 
 const x = (frame: number) => ((frame - viewStart.value) / (viewEnd.value - viewStart.value)) * width.value
 
@@ -255,7 +251,8 @@ function draw() {
   const el = canvas.value
   if (!el || width.value === 0)
     return
-  const dpr = window.devicePixelRatio || 1
+  const dpr = canvasGeometry.value.ratio
+  const pixel = localPixel
   const w = width.value
   const h = height.value
   const ctx = canvasContext(el, w, h, dpr)
@@ -275,8 +272,8 @@ function draw() {
   // Waveform, one lane per channel (or one mixed lane), in the full brand colour.
   // The selection is the inverse: a brand-colour block with the wave in the canvas colour.
   const sel = editor.selection
-  const selX = sel ? x(sel.start) : 0
-  const selW = sel ? Math.max(1, x(sel.end) - selX) : 0
+  const selX = sel ? pixel(x(sel.start)) : 0
+  const selW = sel ? Math.max(1 / dpr, pixel(x(sel.end)) - selX) : 0
   if (isSpectrogram.value) {
     const data = spectrum.value
     ctx.save()
@@ -297,8 +294,8 @@ function draw() {
     const look = { ...waveformLook(settings.settings.editorWaveform), zoom: vZoom.value, lineColor: color('--border'), color: color('--wave-strong') }
     // The wave covers its own range (see readWave), placed under the view.
     const data = wave.value
-    const left = x(waveRange.start)
-    const area = { top: RULER, width: x(waveRange.end) - left, height: h - RULER, dpr }
+    const left = pixel(x(waveRange.start))
+    const area = { top: pixel(RULER), width: pixel(x(waveRange.end)) - left, height: h - pixel(RULER), dpr }
     const placed = (l: typeof look) => {
       ctx.save()
       ctx.translate(left, 0)
@@ -338,7 +335,7 @@ function draw() {
         ? isMultiple(rel, beatFrames.value * 4) ? 0.3 : isMultiple(rel, beatFrames.value) ? 0.16 : 0.07
         : isMultiple(rel, step * rate.value) ? 0.16 : 0.07
       ctx.globalAlpha = strength
-      ctx.fillRect(Math.round(x(f)), RULER, 1, h - RULER)
+      ctx.fillRect(pixel(x(f)), pixel(RULER), pixel(1), h - pixel(RULER))
     }
     ctx.globalAlpha = 1
   }
@@ -353,20 +350,20 @@ function draw() {
       const beat = Math.round((f - downbeat.value) / beatFrames.value)
       const bar = Math.floor(beat / 4) + 1
       const inBar = ((beat % 4) + 4) % 4
-      const px = x(f)
-      ctx.fillRect(px, RULER - 5, 1 / dpr, 5)
-      ctx.fillText(inBar ? `${bar}.${inBar + 1}` : String(bar), px + 3, 11)
+      const px = pixel(x(f))
+      ctx.fillRect(px, pixel(RULER - 5), 1 / dpr, pixel(5))
+      ctx.fillText(inBar ? `${bar}.${inBar + 1}` : String(bar), pixel(px + 3), pixel(11))
     }
   }
   else {
     for (const t of ticks) {
-      const px = x(t * rate.value)
-      ctx.fillRect(px, RULER - 5, 1 / dpr, 5)
-      ctx.fillText(formatTime(t, step < 1), px + 3, 11)
+      const px = pixel(x(t * rate.value))
+      ctx.fillRect(px, pixel(RULER - 5), 1 / dpr, pixel(5))
+      ctx.fillText(formatTime(t, step < 1), pixel(px + 3), pixel(11))
     }
   }
   ctx.fillStyle = color('--border')
-  ctx.fillRect(0, RULER, w, 1 / dpr)
+  ctx.fillRect(0, pixel(RULER), w, 1 / dpr)
 
   // Loop points: a brand-colour band at the foot of the ruler, dashed edges through the wave.
   const lp = editor.state?.loop
@@ -397,7 +394,7 @@ function draw() {
 }
 
 watch([
-  wave, spectrum, isSpectrogram, viewStart, viewEnd, width, height, vZoom, gridMode, bpm, downbeat,
+  wave, spectrum, isSpectrogram, viewStart, viewEnd, width, height, pixelRatio, vZoom, gridMode, bpm, downbeat,
   () => editor.selection?.start,
   () => editor.selection?.end,
   () => settings.settings.editorWaveform.waveStyle,
@@ -414,7 +411,7 @@ const cursorEl = ref<HTMLElement | null>(null)
 const playheadEl = ref<HTMLElement | null>(null)
 watchEffect(() => {
   if (cursorEl.value)
-    cursorEl.value.style.transform = `translateX(${Math.round(x(editor.cursor))}px)`
+    cursorEl.value.style.transform = `translateX(${localPixel(x(editor.cursor))}px)`
 })
 watchEffect(() => {
   const el = playheadEl.value
@@ -423,7 +420,7 @@ watchEffect(() => {
   const p = editor.playhead
   el.style.display = p === null ? 'none' : ''
   if (p !== null)
-    el.style.transform = `translateX(${Math.round(x(p))}px)`
+    el.style.transform = `translateX(${localPixel(x(p))}px)`
 })
 watch(() => editor.state?.loop, scheduleDraw)
 
@@ -441,7 +438,7 @@ watchEffect(() => {
   el.style.display = f === null ? 'none' : ''
   if (f === null)
     return
-  const px = Math.round(x(f))
+  const px = localPixel(x(f))
   el.style.transform = `translateX(${px}px)`
   label.textContent = formatTime(f / rate.value)
   // Centre on the line, clamping only when the badge reaches a viewport edge.
@@ -1117,7 +1114,8 @@ const curves: { value: Curve, label: string }[] = [
           <canvas
             ref="canvas"
             tabindex="0"
-            class="absolute inset-0 size-full outline-none"
+            class="absolute outline-none"
+            :style="canvasStyle"
             :class="hoverBadge !== null ? 'cursor-pointer' : hoverEdge || hoverMarker ? 'cursor-ew-resize' : 'cursor-text'"
             :aria-label="t(isSpectrogram ? 'editor.spectrogram.label' : 'editor.waveform.label')"
             @mousedown="onMouseDown"
@@ -1233,7 +1231,7 @@ const curves: { value: Curve, label: string }[] = [
           </template>
         </ContextMenuContent>
       </ContextMenu>
-      <div class="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      <div class="pointer-events-none absolute overflow-hidden" :style="canvasStyle" aria-hidden="true">
         <div ref="cursorEl" class="absolute left-0 bottom-0 w-px" :class="isSpectrogram ? 'bg-white/60' : 'bg-foreground/60'" :style="{ top: `${RULER}px` }" />
         <div ref="hoverEl" class="absolute left-0 top-0 bottom-0" style="display: none">
           <div class="absolute left-0 bottom-0 w-px" :class="isSpectrogram ? 'bg-white/35' : 'bg-foreground/35'" :style="{ top: `${RULER}px` }" />
