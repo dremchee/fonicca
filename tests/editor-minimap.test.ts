@@ -20,4 +20,3 @@ test('panning preserves zoom and stays inside the file, including short clips', 
     assert.deepEqual(dragMinimapRange(0, 0, mode, 10, 0), [0, 0])
   }
 })
-

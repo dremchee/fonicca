@@ -195,8 +195,9 @@ pub fn decode(path: &Path, max_seconds: f64) -> Result<Pcm> {
     decode_with_limits(path, max_seconds, None)
 }
 
-/// Decode the complete track, failing before its PCM allocation exceeds the budget.
-/// Unlike duration-limited analysis, an oversized editor file is never truncated.
+/// Test helper: a complete RAM decode must reject an exceeded byte budget, not truncate.
+/// The editor itself now uses streaming decode into RAM or disk-backed storage.
+#[cfg(test)]
 pub fn decode_bounded(path: &Path, max_bytes: usize) -> Result<Pcm> {
     decode_with_limits(path, f64::INFINITY, Some(max_bytes))
 }
