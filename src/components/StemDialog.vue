@@ -5,16 +5,18 @@ import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useSettingsStore } from '@/stores/settings'
 import { formatSize, shortPath } from '@/format'
 import { useStemsStore } from '@/stores/stems'
+import { stemNames, stemModelBytes } from '@/stem-models'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 const stems = useStemsStore()
 const { t } = useI18n()
 const settings = useSettingsStore()
 const folder = computed(() => settings.settings.stemsFolder || stems.sample?.path.replace(/[/\\][^/\\]+$/, '') || '')
-const names = ['vocals', 'drums', 'bass', 'other'] as const
+const names = computed(() => stemNames(stems.progress.mode))
 function choose() { stems.open = false; settings.openDialog('analysis') }
 async function edit(index: number) {
   try { await invoke('open_editor_window', { id: stems.progress.ids[index] }) }
@@ -28,14 +30,21 @@ async function edit(index: number) {
       <DialogHeader><DialogTitle>{{ t('stems.title') }}</DialogTitle><DialogDescription>{{ t('stems.description') }}</DialogDescription></DialogHeader>
       <p v-if="stems.sample" class="text-sm font-medium truncate" :title="stems.sample.path">{{ stems.sample.name }}</p>
       <div class="flex flex-col gap-2">
+        <span class="text-xs font-medium">{{ t('stems.mode') }}</span>
+        <ToggleGroup type="single" variant="outline" :model-value="stems.mode" :disabled="stems.progress.running || stems.starting" :aria-label="t('stems.mode')" @update:model-value="stems.setMode">
+          <ToggleGroupItem value="two" class="flex-1">{{ t('stems.twoTracks') }}</ToggleGroupItem>
+          <ToggleGroupItem value="four" class="flex-1">{{ t('stems.fourTracks') }}</ToggleGroupItem>
+        </ToggleGroup>
+        <p class="text-xs text-muted-foreground">{{ t(stems.mode === 'two' ? 'stems.twoDescription' : 'stems.fourDescription') }}</p>
+      </div>
+      <div class="flex flex-col gap-2">
         <label for="stem-model" class="text-xs font-medium">{{ t('stems.model') }}</label>
         <Select :model-value="stems.model" :disabled="stems.progress.running || stems.starting" @update:model-value="stems.setModel">
           <SelectTrigger id="stem-model"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="scnetXlIhf">{{ t('stems.models.scnetXlIhf') }}</SelectItem>
-            <SelectItem value="scnetLarge">{{ t('stems.models.scnetLarge') }}</SelectItem>
-            <SelectItem value="htdemucs">{{ t('stems.models.htdemucs') }}</SelectItem>
-            <SelectItem value="spleeter">{{ t('stems.models.spleeter') }}</SelectItem>
+            <SelectGroup><SelectItem v-for="model in stems.availableModels" :key="model" :value="model">
+              {{ t(`stems.models.${model}`) }} · {{ formatSize(stemModelBytes[model]) }}
+            </SelectItem></SelectGroup>
           </SelectContent>
         </Select>
         <p class="text-xs text-muted-foreground">{{ t(`stems.modelDescriptions.${stems.model}`) }}</p>

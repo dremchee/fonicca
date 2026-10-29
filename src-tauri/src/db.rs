@@ -260,6 +260,19 @@ pub const MIGRATIONS: &[&str] = &[r#"
     )
     SELECT child_id,parent_id,kind,CASE kind WHEN 'vocals' THEN 0 WHEN 'drums' THEN 1 WHEN 'bass' THEN 2 ELSE 3 END
     FROM candidates WHERE matches=1;
+"#, r#"
+    ALTER TABLE sample_stems RENAME TO sample_stems_old;
+    DROP INDEX sample_stems_parent;
+    CREATE TABLE sample_stems (
+        child_id INTEGER PRIMARY KEY REFERENCES samples(id) ON DELETE CASCADE,
+        parent_id INTEGER NOT NULL REFERENCES samples(id) ON DELETE CASCADE,
+        kind TEXT NOT NULL CHECK(kind IN ('vocals','instrumental','drums','bass','other')),
+        position INTEGER NOT NULL,
+        CHECK(child_id <> parent_id)
+    );
+    INSERT INTO sample_stems SELECT * FROM sample_stems_old;
+    DROP TABLE sample_stems_old;
+    CREATE INDEX sample_stems_parent ON sample_stems(parent_id, position);
 "#];
 
 /// How long user data of removed files is kept for possible reattachment.
@@ -301,11 +314,26 @@ pub fn migrate(conn: &mut Connection) -> Result<()> {
 mod stem_migration_tests {
     use super::*;
     #[test]
-    fn old_stem_folders_are_recovered_only_for_unambiguous_originals() {
+    fn instrumental_migration_keeps_existing_stem_groups() {
         let mut conn = Connection::open_in_memory().unwrap();
         conn.execute_batch("PRAGMA foreign_keys=ON").unwrap();
         for sql in &MIGRATIONS[..MIGRATIONS.len()-1] { conn.execute_batch(sql).unwrap(); }
         conn.pragma_update(None,"user_version",(MIGRATIONS.len()-1) as i64).unwrap();
+        conn.execute_batch("INSERT INTO sources(id,path,added_at) VALUES(1,'/lib',0);
+            INSERT INTO samples(id,source_id,path,name,ext,size,mtime) VALUES(1,1,'/lib/Song.wav','Song','wav',0,0),(2,1,'/lib/vocals.wav','Vocals','wav',0,0),(3,1,'/lib/instrumental.wav','Instrumental','wav',0,0);
+            INSERT INTO sample_stems VALUES(2,1,'vocals',0);").unwrap();
+        migrate(&mut conn).unwrap();
+        conn.execute("INSERT INTO sample_stems VALUES(3,1,'instrumental',1)",[]).unwrap();
+        assert_eq!(conn.query_row("SELECT COUNT(*) FROM sample_stems WHERE parent_id=1",[],|r|r.get::<_,i64>(0)).unwrap(),2);
+        conn.execute("DELETE FROM samples WHERE id=1",[]).unwrap();
+        assert_eq!(conn.query_row("SELECT COUNT(*) FROM sample_stems",[],|r|r.get::<_,i64>(0)).unwrap(),0);
+    }
+    #[test]
+    fn old_stem_folders_are_recovered_only_for_unambiguous_originals() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch("PRAGMA foreign_keys=ON").unwrap();
+        for sql in &MIGRATIONS[..MIGRATIONS.len()-2] { conn.execute_batch(sql).unwrap(); }
+        conn.pragma_update(None,"user_version",(MIGRATIONS.len()-2) as i64).unwrap();
         conn.execute("INSERT INTO sources(id,path,added_at) VALUES(1,'/lib',0)",[]).unwrap();
         for (id,path,name) in [(1,"/lib/Song.wav","Song"),(2,"/exports/Song stems/vocals.wav","vocals"),
             (3,"/exports/Song stems 2/bass.wav","bass"),(4,"/lib/Ambiguous.wav","Ambiguous"),

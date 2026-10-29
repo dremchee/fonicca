@@ -1,0 +1,1604 @@
+{
+  "source_revision": "43d939e7671d8ff6cf1922f98c2f2e4b56908e47",
+  "checkpoint_sha256": "49d51472769e34a2501cd1da782346a3212555c3a5619fc2c53507445528d816",
+  "graph_sha256": "eb6f147119a27b8dd7be4ee8069ef19de115f03656cc054693bccf23c15fa599",
+  "graph_bytes": 221595,
+  "embedded_bytes": 0,
+  "tensors": [
+    {
+      "name": "first_conv.weight",
+      "offset": 74240,
+      "length": 8192
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.0.tfc1.0.weight",
+      "offset": 82560,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.0.tfc1.0.bias",
+      "offset": 273491968,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.0.tfc1.2.weight",
+      "offset": 383842688,
+      "length": 589824
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.0.tdf.0.weight",
+      "offset": 391485568,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.0.tdf.0.bias",
+      "offset": 396736512,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.0.tdf.2.weight",
+      "offset": 401201536,
+      "length": 1048576
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.0.tdf.3.weight",
+      "offset": 407701760,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.0.tdf.3.bias",
+      "offset": 418985088,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.0.tdf.5.weight",
+      "offset": 428106752,
+      "length": 1048576
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.0.tfc2.0.weight",
+      "offset": 83200,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.0.tfc2.0.bias",
+      "offset": 10615936,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.0.tfc2.2.weight",
+      "offset": 41105408,
+      "length": 589824
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.0.shortcut.weight",
+      "offset": 58104192,
+      "length": 65536
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.1.tfc1.0.weight",
+      "offset": 72942848,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.1.tfc1.0.bias",
+      "offset": 118443648,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.1.tfc1.2.weight",
+      "offset": 142059008,
+      "length": 589824
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.1.tdf.0.weight",
+      "offset": 163907456,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.1.tdf.0.bias",
+      "offset": 224879360,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.1.tdf.2.weight",
+      "offset": 242927232,
+      "length": 1048576
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.1.tdf.3.weight",
+      "offset": 273492608,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.1.tdf.3.bias",
+      "offset": 299283968,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.1.tdf.5.weight",
+      "offset": 320286080,
+      "length": 1048576
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.1.tfc2.0.weight",
+      "offset": 331866880,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.1.tfc2.0.bias",
+      "offset": 345711744,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.1.tfc2.2.weight",
+      "offset": 357584896,
+      "length": 589824
+    },
+    {
+      "name": "encoder_blocks.0.tfc_tdf.blocks.1.shortcut.weight",
+      "offset": 364214656,
+      "length": 65536
+    },
+    {
+      "name": "encoder_blocks.0.downscale.conv.0.weight",
+      "offset": 370844928,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.downscale.conv.0.bias",
+      "offset": 376358016,
+      "length": 512
+    },
+    {
+      "name": "encoder_blocks.0.downscale.conv.2.weight",
+      "offset": 379511808,
+      "length": 524288
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.0.tfc1.0.weight",
+      "offset": 384432640,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.0.tfc1.0.bias",
+      "offset": 386797440,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.0.tfc1.2.weight",
+      "offset": 388595840,
+      "length": 2359296
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.0.tdf.0.weight",
+      "offset": 390955264,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.0.tdf.0.bias",
+      "offset": 390956416,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.0.tdf.2.weight",
+      "offset": 390957568,
+      "length": 262144
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.0.tdf.3.weight",
+      "offset": 391219840,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.0.tdf.3.bias",
+      "offset": 391220992,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.0.tdf.5.weight",
+      "offset": 391222144,
+      "length": 262144
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.0.tfc2.0.weight",
+      "offset": 391484416,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.0.tfc2.0.bias",
+      "offset": 391486208,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.0.tfc2.2.weight",
+      "offset": 391487360,
+      "length": 2359296
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.0.shortcut.weight",
+      "offset": 393846784,
+      "length": 262144
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.1.tfc1.0.weight",
+      "offset": 394109056,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.1.tfc1.0.bias",
+      "offset": 394110208,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.1.tfc1.2.weight",
+      "offset": 394111360,
+      "length": 2359296
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.1.tdf.0.weight",
+      "offset": 396470784,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.1.tdf.0.bias",
+      "offset": 396471936,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.1.tdf.2.weight",
+      "offset": 396473088,
+      "length": 262144
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.1.tdf.3.weight",
+      "offset": 396735360,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.1.tdf.3.bias",
+      "offset": 396737152,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.1.tdf.5.weight",
+      "offset": 396738304,
+      "length": 262144
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.1.tfc2.0.weight",
+      "offset": 397000576,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.1.tfc2.0.bias",
+      "offset": 397001728,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.1.tfc2.2.weight",
+      "offset": 397002880,
+      "length": 2359296
+    },
+    {
+      "name": "encoder_blocks.1.tfc_tdf.blocks.1.shortcut.weight",
+      "offset": 399362304,
+      "length": 262144
+    },
+    {
+      "name": "encoder_blocks.1.downscale.conv.0.weight",
+      "offset": 399624576,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.downscale.conv.0.bias",
+      "offset": 399625728,
+      "length": 1024
+    },
+    {
+      "name": "encoder_blocks.1.downscale.conv.2.weight",
+      "offset": 399626880,
+      "length": 1572864
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.0.tfc1.0.weight",
+      "offset": 401199872,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.0.tfc1.0.bias",
+      "offset": 402250240,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.0.tfc1.2.weight",
+      "offset": 402251904,
+      "length": 5308416
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.0.tdf.0.weight",
+      "offset": 407560448,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.0.tdf.0.bias",
+      "offset": 407562112,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.0.tdf.2.weight",
+      "offset": 407563776,
+      "length": 65536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.0.tdf.3.weight",
+      "offset": 407629440,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.0.tdf.3.bias",
+      "offset": 407631104,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.0.tdf.5.weight",
+      "offset": 407632768,
+      "length": 65536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.0.tfc2.0.weight",
+      "offset": 407698432,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.0.tfc2.0.bias",
+      "offset": 407700096,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.0.tfc2.2.weight",
+      "offset": 407702400,
+      "length": 5308416
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.0.shortcut.weight",
+      "offset": 413010944,
+      "length": 589824
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.1.tfc1.0.weight",
+      "offset": 413600896,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.1.tfc1.0.bias",
+      "offset": 413602560,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.1.tfc1.2.weight",
+      "offset": 413604224,
+      "length": 5308416
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.1.tdf.0.weight",
+      "offset": 418912768,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.1.tdf.0.bias",
+      "offset": 418914432,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.1.tdf.2.weight",
+      "offset": 418916096,
+      "length": 65536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.1.tdf.3.weight",
+      "offset": 418981760,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.1.tdf.3.bias",
+      "offset": 418983424,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.1.tdf.5.weight",
+      "offset": 418985728,
+      "length": 65536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.1.tfc2.0.weight",
+      "offset": 419051392,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.1.tfc2.0.bias",
+      "offset": 419053056,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.1.tfc2.2.weight",
+      "offset": 419054720,
+      "length": 5308416
+    },
+    {
+      "name": "encoder_blocks.2.tfc_tdf.blocks.1.shortcut.weight",
+      "offset": 424363264,
+      "length": 589824
+    },
+    {
+      "name": "encoder_blocks.2.downscale.conv.0.weight",
+      "offset": 424953216,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.downscale.conv.0.bias",
+      "offset": 424954880,
+      "length": 1536
+    },
+    {
+      "name": "encoder_blocks.2.downscale.conv.2.weight",
+      "offset": 424956544,
+      "length": 3145728
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.0.tfc1.0.weight",
+      "offset": 428102400,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.0.tfc1.0.bias",
+      "offset": 428104576,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.0.tfc1.2.weight",
+      "offset": 429155456,
+      "length": 9437184
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.0.tdf.0.weight",
+      "offset": 438592768,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.0.tdf.0.bias",
+      "offset": 438594944,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.0.tdf.2.weight",
+      "offset": 438597120,
+      "length": 16384
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.0.tdf.3.weight",
+      "offset": 438613632,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.0.tdf.3.bias",
+      "offset": 438615808,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.0.tdf.5.weight",
+      "offset": 438617984,
+      "length": 16384
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.0.tfc2.0.weight",
+      "offset": 438634496,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.0.tfc2.0.bias",
+      "offset": 438636672,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.0.tfc2.2.weight",
+      "offset": 438638848,
+      "length": 9437184
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.0.shortcut.weight",
+      "offset": 83840,
+      "length": 1048576
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.1.tfc1.0.weight",
+      "offset": 1132544,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.1.tfc1.0.bias",
+      "offset": 1134720,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.1.tfc1.2.weight",
+      "offset": 1136896,
+      "length": 9437184
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.1.tdf.0.weight",
+      "offset": 10574208,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.1.tdf.0.bias",
+      "offset": 10576384,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.1.tdf.2.weight",
+      "offset": 10578560,
+      "length": 16384
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.1.tdf.3.weight",
+      "offset": 10595072,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.1.tdf.3.bias",
+      "offset": 10597248,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.1.tdf.5.weight",
+      "offset": 10599424,
+      "length": 16384
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.1.tfc2.0.weight",
+      "offset": 10616576,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.1.tfc2.0.bias",
+      "offset": 10618752,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.1.tfc2.2.weight",
+      "offset": 10620928,
+      "length": 9437184
+    },
+    {
+      "name": "encoder_blocks.3.tfc_tdf.blocks.1.shortcut.weight",
+      "offset": 20058240,
+      "length": 1048576
+    },
+    {
+      "name": "encoder_blocks.3.downscale.conv.0.weight",
+      "offset": 21106944,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.downscale.conv.0.bias",
+      "offset": 21109120,
+      "length": 2048
+    },
+    {
+      "name": "encoder_blocks.3.downscale.conv.2.weight",
+      "offset": 21111296,
+      "length": 5242880
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.0.tfc1.0.weight",
+      "offset": 26354304,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.0.tfc1.0.bias",
+      "offset": 26356992,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.0.tfc1.2.weight",
+      "offset": 26359680,
+      "length": 14745600
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.0.tdf.0.weight",
+      "offset": 41695360,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.0.tdf.0.bias",
+      "offset": 41698048,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.0.tdf.2.weight",
+      "offset": 41700736,
+      "length": 4096
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.0.tdf.3.weight",
+      "offset": 41704960,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.0.tdf.3.bias",
+      "offset": 41707648,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.0.tdf.5.weight",
+      "offset": 41710336,
+      "length": 4096
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.0.tfc2.0.weight",
+      "offset": 41714560,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.0.tfc2.0.bias",
+      "offset": 41717248,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.0.tfc2.2.weight",
+      "offset": 41719936,
+      "length": 14745600
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.0.shortcut.weight",
+      "offset": 56465664,
+      "length": 1638400
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.1.tfc1.0.weight",
+      "offset": 58169856,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.1.tfc1.0.bias",
+      "offset": 58172544,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.1.tfc1.2.weight",
+      "offset": 58175232,
+      "length": 14745600
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.1.tdf.0.weight",
+      "offset": 72920960,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.1.tdf.0.bias",
+      "offset": 72923648,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.1.tdf.2.weight",
+      "offset": 72926336,
+      "length": 4096
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.1.tdf.3.weight",
+      "offset": 72930560,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.1.tdf.3.bias",
+      "offset": 72933248,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.1.tdf.5.weight",
+      "offset": 72935936,
+      "length": 4096
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.1.tfc2.0.weight",
+      "offset": 72940160,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.1.tfc2.0.bias",
+      "offset": 72943488,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.1.tfc2.2.weight",
+      "offset": 72946176,
+      "length": 14745600
+    },
+    {
+      "name": "encoder_blocks.4.tfc_tdf.blocks.1.shortcut.weight",
+      "offset": 87691904,
+      "length": 1638400
+    },
+    {
+      "name": "encoder_blocks.4.downscale.conv.0.weight",
+      "offset": 89330432,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.downscale.conv.0.bias",
+      "offset": 89333120,
+      "length": 2560
+    },
+    {
+      "name": "encoder_blocks.4.downscale.conv.2.weight",
+      "offset": 89335808,
+      "length": 7864320
+    },
+    {
+      "name": "bottleneck_block.blocks.0.tfc1.0.weight",
+      "offset": 97200256,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.0.tfc1.0.bias",
+      "offset": 97203456,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.0.tfc1.2.weight",
+      "offset": 97206656,
+      "length": 21233664
+    },
+    {
+      "name": "bottleneck_block.blocks.0.tdf.0.weight",
+      "offset": 118440448,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.0.tdf.0.bias",
+      "offset": 118444288,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.0.tdf.2.weight",
+      "offset": 118447488,
+      "length": 1024
+    },
+    {
+      "name": "bottleneck_block.blocks.0.tdf.3.weight",
+      "offset": 118448640,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.0.tdf.3.bias",
+      "offset": 118451840,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.0.tdf.5.weight",
+      "offset": 118455040,
+      "length": 1024
+    },
+    {
+      "name": "bottleneck_block.blocks.0.tfc2.0.weight",
+      "offset": 118456192,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.0.tfc2.0.bias",
+      "offset": 118459392,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.0.tfc2.2.weight",
+      "offset": 118462592,
+      "length": 21233664
+    },
+    {
+      "name": "bottleneck_block.blocks.0.shortcut.weight",
+      "offset": 139696384,
+      "length": 2359296
+    },
+    {
+      "name": "bottleneck_block.blocks.1.tfc1.0.weight",
+      "offset": 142055808,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.1.tfc1.0.bias",
+      "offset": 142648960,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.1.tfc1.2.weight",
+      "offset": 142652160,
+      "length": 21233664
+    },
+    {
+      "name": "bottleneck_block.blocks.1.tdf.0.weight",
+      "offset": 163885952,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.1.tdf.0.bias",
+      "offset": 163889152,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.1.tdf.2.weight",
+      "offset": 163892352,
+      "length": 1024
+    },
+    {
+      "name": "bottleneck_block.blocks.1.tdf.3.weight",
+      "offset": 163893504,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.1.tdf.3.bias",
+      "offset": 163896704,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.1.tdf.5.weight",
+      "offset": 163899904,
+      "length": 1024
+    },
+    {
+      "name": "bottleneck_block.blocks.1.tfc2.0.weight",
+      "offset": 163901056,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.1.tfc2.0.bias",
+      "offset": 163904256,
+      "length": 3072
+    },
+    {
+      "name": "bottleneck_block.blocks.1.tfc2.2.weight",
+      "offset": 163908096,
+      "length": 21233664
+    },
+    {
+      "name": "bottleneck_block.blocks.1.shortcut.weight",
+      "offset": 185141888,
+      "length": 2359296
+    },
+    {
+      "name": "decoder_blocks.0.upscale.conv.0.weight",
+      "offset": 187501312,
+      "length": 3072
+    },
+    {
+      "name": "decoder_blocks.0.upscale.conv.0.bias",
+      "offset": 187504512,
+      "length": 3072
+    },
+    {
+      "name": "decoder_blocks.0.upscale.conv.2.weight",
+      "offset": 187507712,
+      "length": 7864320
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.0.tfc1.0.weight",
+      "offset": 195372160,
+      "length": 5120
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.0.tfc1.0.bias",
+      "offset": 195377408,
+      "length": 5120
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.0.tfc1.2.weight",
+      "offset": 195382656,
+      "length": 29491200
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.0.tdf.0.weight",
+      "offset": 224873984,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.0.tdf.0.bias",
+      "offset": 224876672,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.0.tdf.2.weight",
+      "offset": 224880000,
+      "length": 4096
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.0.tdf.3.weight",
+      "offset": 224884224,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.0.tdf.3.bias",
+      "offset": 224886912,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.0.tdf.5.weight",
+      "offset": 224889600,
+      "length": 4096
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.0.tfc2.0.weight",
+      "offset": 224893824,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.0.tfc2.0.bias",
+      "offset": 224896512,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.0.tfc2.2.weight",
+      "offset": 224899200,
+      "length": 14745600
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.0.shortcut.weight",
+      "offset": 239644928,
+      "length": 3276800
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.1.tfc1.0.weight",
+      "offset": 242921856,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.1.tfc1.0.bias",
+      "offset": 242924544,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.1.tfc1.2.weight",
+      "offset": 243975936,
+      "length": 14745600
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.1.tdf.0.weight",
+      "offset": 258721664,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.1.tdf.0.bias",
+      "offset": 258724352,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.1.tdf.2.weight",
+      "offset": 258727040,
+      "length": 4096
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.1.tdf.3.weight",
+      "offset": 258731264,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.1.tdf.3.bias",
+      "offset": 258733952,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.1.tdf.5.weight",
+      "offset": 258736640,
+      "length": 4096
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.1.tfc2.0.weight",
+      "offset": 258740864,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.1.tfc2.0.bias",
+      "offset": 258743552,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.1.tfc2.2.weight",
+      "offset": 258746240,
+      "length": 14745600
+    },
+    {
+      "name": "decoder_blocks.0.tfc_tdf.blocks.1.shortcut.weight",
+      "offset": 273493248,
+      "length": 1638400
+    },
+    {
+      "name": "decoder_blocks.1.upscale.conv.0.weight",
+      "offset": 275131776,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.1.upscale.conv.0.bias",
+      "offset": 275134464,
+      "length": 2560
+    },
+    {
+      "name": "decoder_blocks.1.upscale.conv.2.weight",
+      "offset": 275137152,
+      "length": 5242880
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.0.tfc1.0.weight",
+      "offset": 280380160,
+      "length": 4096
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.0.tfc1.0.bias",
+      "offset": 280384384,
+      "length": 4096
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.0.tfc1.2.weight",
+      "offset": 280388608,
+      "length": 18874368
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.0.tdf.0.weight",
+      "offset": 299263104,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.0.tdf.0.bias",
+      "offset": 299265280,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.0.tdf.2.weight",
+      "offset": 299267456,
+      "length": 16384
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.0.tdf.3.weight",
+      "offset": 299284608,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.0.tdf.3.bias",
+      "offset": 299286784,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.0.tdf.5.weight",
+      "offset": 299288960,
+      "length": 16384
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.0.tfc2.0.weight",
+      "offset": 299305472,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.0.tfc2.0.bias",
+      "offset": 299307648,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.0.tfc2.2.weight",
+      "offset": 299309824,
+      "length": 9437184
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.0.shortcut.weight",
+      "offset": 308747136,
+      "length": 2097152
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.1.tfc1.0.weight",
+      "offset": 310844416,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.1.tfc1.0.bias",
+      "offset": 310846592,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.1.tfc1.2.weight",
+      "offset": 310848768,
+      "length": 9437184
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.1.tdf.0.weight",
+      "offset": 321334784,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.1.tdf.0.bias",
+      "offset": 321336960,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.1.tdf.2.weight",
+      "offset": 321339136,
+      "length": 16384
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.1.tdf.3.weight",
+      "offset": 321355648,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.1.tdf.3.bias",
+      "offset": 321357824,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.1.tdf.5.weight",
+      "offset": 321360000,
+      "length": 16384
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.1.tfc2.0.weight",
+      "offset": 321376512,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.1.tfc2.0.bias",
+      "offset": 321378688,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.1.tfc2.2.weight",
+      "offset": 321380864,
+      "length": 9437184
+    },
+    {
+      "name": "decoder_blocks.1.tfc_tdf.blocks.1.shortcut.weight",
+      "offset": 330818176,
+      "length": 1048576
+    },
+    {
+      "name": "decoder_blocks.2.upscale.conv.0.weight",
+      "offset": 331867520,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.2.upscale.conv.0.bias",
+      "offset": 331869696,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.2.upscale.conv.2.weight",
+      "offset": 331871872,
+      "length": 3145728
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.0.tfc1.0.weight",
+      "offset": 335017728,
+      "length": 3072
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.0.tfc1.0.bias",
+      "offset": 335020928,
+      "length": 3072
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.0.tfc1.2.weight",
+      "offset": 335024128,
+      "length": 10616832
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.0.tdf.0.weight",
+      "offset": 345641088,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.0.tdf.0.bias",
+      "offset": 345642752,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.0.tdf.2.weight",
+      "offset": 345644416,
+      "length": 65536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.0.tdf.3.weight",
+      "offset": 345710080,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.0.tdf.3.bias",
+      "offset": 345712384,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.0.tdf.5.weight",
+      "offset": 345714048,
+      "length": 65536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.0.tfc2.0.weight",
+      "offset": 345779712,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.0.tfc2.0.bias",
+      "offset": 345781376,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.0.tfc2.2.weight",
+      "offset": 345783040,
+      "length": 5308416
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.0.shortcut.weight",
+      "offset": 351091584,
+      "length": 1179648
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.1.tfc1.0.weight",
+      "offset": 352271360,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.1.tfc1.0.bias",
+      "offset": 352273024,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.1.tfc1.2.weight",
+      "offset": 352274688,
+      "length": 5308416
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.1.tdf.0.weight",
+      "offset": 357583232,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.1.tdf.0.bias",
+      "offset": 358174848,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.1.tdf.2.weight",
+      "offset": 358176512,
+      "length": 65536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.1.tdf.3.weight",
+      "offset": 358242176,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.1.tdf.3.bias",
+      "offset": 358243840,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.1.tdf.5.weight",
+      "offset": 358245504,
+      "length": 65536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.1.tfc2.0.weight",
+      "offset": 358311168,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.1.tfc2.0.bias",
+      "offset": 358312832,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.1.tfc2.2.weight",
+      "offset": 358314496,
+      "length": 5308416
+    },
+    {
+      "name": "decoder_blocks.2.tfc_tdf.blocks.1.shortcut.weight",
+      "offset": 363623040,
+      "length": 589824
+    },
+    {
+      "name": "decoder_blocks.3.upscale.conv.0.weight",
+      "offset": 364212992,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.3.upscale.conv.0.bias",
+      "offset": 364280320,
+      "length": 1536
+    },
+    {
+      "name": "decoder_blocks.3.upscale.conv.2.weight",
+      "offset": 364281984,
+      "length": 1572864
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.0.tfc1.0.weight",
+      "offset": 365854976,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.0.tfc1.0.bias",
+      "offset": 365857152,
+      "length": 2048
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.0.tfc1.2.weight",
+      "offset": 365859328,
+      "length": 4718592
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.0.tdf.0.weight",
+      "offset": 370578048,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.0.tdf.0.bias",
+      "offset": 370579200,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.0.tdf.2.weight",
+      "offset": 370580352,
+      "length": 262144
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.0.tdf.3.weight",
+      "offset": 370842624,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.0.tdf.3.bias",
+      "offset": 370843776,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.0.tdf.5.weight",
+      "offset": 370845568,
+      "length": 262144
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.0.tfc2.0.weight",
+      "offset": 371107840,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.0.tfc2.0.bias",
+      "offset": 371108992,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.0.tfc2.2.weight",
+      "offset": 371110144,
+      "length": 2359296
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.0.shortcut.weight",
+      "offset": 373469568,
+      "length": 524288
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.1.tfc1.0.weight",
+      "offset": 373993984,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.1.tfc1.0.bias",
+      "offset": 373995136,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.1.tfc1.2.weight",
+      "offset": 373996288,
+      "length": 2359296
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.1.tdf.0.weight",
+      "offset": 376355712,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.1.tdf.0.bias",
+      "offset": 376356864,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.1.tdf.2.weight",
+      "offset": 376358656,
+      "length": 262144
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.1.tdf.3.weight",
+      "offset": 376620928,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.1.tdf.3.bias",
+      "offset": 376622080,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.1.tdf.5.weight",
+      "offset": 376623232,
+      "length": 262144
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.1.tfc2.0.weight",
+      "offset": 376885504,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.1.tfc2.0.bias",
+      "offset": 376886656,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.1.tfc2.2.weight",
+      "offset": 376887808,
+      "length": 2359296
+    },
+    {
+      "name": "decoder_blocks.3.tfc_tdf.blocks.1.shortcut.weight",
+      "offset": 379247232,
+      "length": 262144
+    },
+    {
+      "name": "decoder_blocks.4.upscale.conv.0.weight",
+      "offset": 379509504,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.4.upscale.conv.0.bias",
+      "offset": 379510656,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.4.upscale.conv.2.weight",
+      "offset": 380036224,
+      "length": 524288
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.0.tfc1.0.weight",
+      "offset": 380560640,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.0.tfc1.0.bias",
+      "offset": 380561792,
+      "length": 1024
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.0.tfc1.2.weight",
+      "offset": 380562944,
+      "length": 1179648
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.0.tdf.0.weight",
+      "offset": 381742720,
+      "length": 512
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.0.tdf.0.bias",
+      "offset": 381743360,
+      "length": 512
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.0.tdf.2.weight",
+      "offset": 381744000,
+      "length": 1048576
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.0.tdf.3.weight",
+      "offset": 382792704,
+      "length": 512
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.0.tdf.3.bias",
+      "offset": 382793344,
+      "length": 512
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.0.tdf.5.weight",
+      "offset": 382793984,
+      "length": 1048576
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.0.tfc2.0.weight",
+      "offset": 384433792,
+      "length": 512
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.0.tfc2.0.bias",
+      "offset": 384434432,
+      "length": 512
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.0.tfc2.2.weight",
+      "offset": 384435072,
+      "length": 589824
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.0.shortcut.weight",
+      "offset": 385025024,
+      "length": 131072
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.1.tfc1.0.weight",
+      "offset": 385156224,
+      "length": 512
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.1.tfc1.0.bias",
+      "offset": 385156864,
+      "length": 512
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.1.tfc1.2.weight",
+      "offset": 385157504,
+      "length": 589824
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.1.tdf.0.weight",
+      "offset": 385747456,
+      "length": 512
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.1.tdf.0.bias",
+      "offset": 385748096,
+      "length": 512
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.1.tdf.2.weight",
+      "offset": 385748736,
+      "length": 1048576
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.1.tdf.3.weight",
+      "offset": 386798592,
+      "length": 512
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.1.tdf.3.bias",
+      "offset": 386799232,
+      "length": 512
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.1.tdf.5.weight",
+      "offset": 386799872,
+      "length": 1048576
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.1.tfc2.0.weight",
+      "offset": 387848576,
+      "length": 512
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.1.tfc2.0.bias",
+      "offset": 387849216,
+      "length": 512
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.1.tfc2.2.weight",
+      "offset": 387849856,
+      "length": 589824
+    },
+    {
+      "name": "decoder_blocks.4.tfc_tdf.blocks.1.shortcut.weight",
+      "offset": 388439808,
+      "length": 65536
+    },
+    {
+      "name": "final_conv.0.weight",
+      "offset": 388505472,
+      "length": 73728
+    },
+    {
+      "name": "final_conv.2.weight",
+      "offset": 388579328,
+      "length": 16384
+    }
+  ]
+}

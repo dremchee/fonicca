@@ -35,7 +35,7 @@ export interface TagEdit {
 
 export interface Sample {
   stemParentId?: number | null
-  stemKind?: 'vocals' | 'drums' | 'bass' | 'other' | null
+  stemKind?: 'vocals' | 'drums' | 'bass' | 'other' | 'instrumental' | null
   stemCount?: number
   id: number
   sourceId: number
@@ -83,7 +83,8 @@ export interface SoundModelStatus {
   size: number
 }
 
-export type StemModel = 'spleeter' | 'scnetLarge' | 'scnetXlIhf' | 'htdemucs'
+export type StemMode = 'two' | 'four'
+export type StemModel = 'spleeter' | 'scnetLarge' | 'scnetXlIhf' | 'htdemucs' | 'melRoformer' | 'bsRoformer' | 'mdx23c'
 
 export interface ModelStorage {
   busy: boolean

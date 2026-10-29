@@ -1,0 +1,37 @@
+Two-track vocal/instrumental separation in Fonicca (2026-10-29)
+
+Mel-Band RoFormer Kim: weights by Kimberley Jensen, architecture by Wang et al.,
+code by Phil Wang and Roman Solovyev. Original model card labels weights MIT:
+https://huggingface.co/KimberleyJSN/melbandroformer (ac9b0614ab3cd7f77219e18ba494dfd93956c348)
+ONNX FP16-weight export by audiojs (MIT), revision c1aba02c00a0bee852d6754fe6ede8164f90a4b3:
+https://huggingface.co/audiojs/mel-roformer
+Downloaded graph SHA-256 adcbbb826f12453fbb86652b503242d565a9c81cdef1bca2fe0e54752eba91ef
+
+BS-RoFormer: original weights by viperx, ep317 SDR12.9755. FP32
+ONNX conversion by xycld, revision f020228f4d25616c8ff4146c339c33687c0be43f:
+https://huggingface.co/xycld/BS-RoFormer-ONNX
+Original checkpoint: https://github.com/TRvlvr/model_repo/releases/tag/all_public_uvr_models
+Graph SHA-256 357837834747cbf3cd680bfab33f9bfd08b99d493d8dfabc84b92e59e4fcfe73
+Fonicca embeds the 496-byte INT64 split constant to make native ORT shape
+inference work; the learned FP32 weights stay in the separate download.
+Patched graph SHA-256 320e61bbb30a3bb0cba7b88c013b02b0acef444c3341667158b1bc1611664af9
+See docs/research/prepare-bs-roformer-onnx.py.
+External weights SHA-256 3f3677f7ed3801f7415db4b4c900e6e81f4f41d5b4bc83c0bf899c353b2f9995
+The export repository labels its code/tools MIT. That does not establish the
+original trainer's weight redistribution or commercial-use terms. These remain
+unconfirmed; do not describe this checkpoint as commercially cleared.
+
+MDX23C vocal/other: model_vocals_mdx23c_sdr_10.17.ckpt, ZFTurbo release v1.0.0:
+https://github.com/ZFTurbo/Music-Source-Separation-Training/releases/tag/v1.0.0
+SHA-256 49d51472769e34a2501cd1da782346a3212555c3a5619fc2c53507445528d816
+TFC-TDF code: KUIELAB and Roman Solovyev; ONNX spectral source (MIT):
+https://github.com/ZFTurbo/MSS_ONNX_TensorRT/tree/43d939e7671d8ff6cf1922f98c2f2e4b56908e47
+Fonicca's bundled spectral graph references the original checkpoint's tensor
+byte ranges. Users need no Python/PyTorch. Checkpoint is never unpickled by the
+app. See docs/research/export-mdx23c-onnx.py and mdx23c-onnx-manifest.json.
+The repository's MIT code license alone is not a separate grant for training
+data or every pretrained checkpoint; no commercial clearance is asserted here.
+
+All weights download separately. Fonicca implements external STFT/iSTFT,
+overlap-add, stereo/mono handling, residual instrumental and safe WAV export.
+Fonicca performs no independent normalization of the two output tracks.

@@ -1,4 +1,5 @@
 // The real App on a fake backend (mockIPC), to click through the UI in a browser.
+import { stemModels } from '@/stem-models'
 import type { DuplicateGroup, HiddenFile, StemModel } from '@/api'
 import { emit } from '@tauri-apps/api/event'
 import { updateCommand } from './updates'
@@ -72,6 +73,7 @@ export function install() {
         stemModelStorage('scnetLarge'),
         stemModelStorage('scnetXlIhf'),
         stemModelStorage('htdemucs'),
+        stemModelStorage('melRoformer'), stemModelStorage('bsRoformer'), stemModelStorage('mdx23c'),
         basicPitchStorage(),
         { id: 'apollo', path: '/m/apollo-v1', installed: apolloInstalled, downloading: apolloProgress != null, busy: apolloProgress != null || apolloBusy(), size: apolloInstalled ? 66541845 : Math.round((apolloProgress ?? 0) * 66541845), downloadSize: 66541845 },
       ]
@@ -107,7 +109,7 @@ export function install() {
       }
       case 'get_settings': return settings
       case 'update_settings': settings = args.settings; return settings
-      case 'app_info': return { version: '0.1.0', cores: 10, defaultThreads: 5, dbPath: '/db', dbSize: 1, modelsDir: '/m', modelsSize: clapBytes + stemModelStorage('spleeter').size + stemModelStorage('scnetLarge').size + stemModelStorage('scnetXlIhf').size + stemModelStorage('htdemucs').size + basicPitchStorage().size + 66541845, settingsPath: '/s' }
+      case 'app_info': return { version: '0.1.0', cores: 10, defaultThreads: 5, dbPath: '/db', dbSize: 1, modelsDir: '/m', modelsSize: clapBytes + stemModels.reduce((sum, id) => sum + stemModelStorage(id).size, 0) + basicPitchStorage().size + 66541845, settingsPath: '/s' }
       case 'duplicate_count': return groups.length
       case 'duplicate_groups': return structuredClone(groups)
       case 'verify_duplicates':

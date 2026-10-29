@@ -57,12 +57,28 @@ const DEMUCS_FILES: [Artifact; 1] = [Artifact {
     size: DEMUCS_TOTAL,
     hash: "68d0bf16428ef66e692cdff8a9ccf28f1ef3f69440d57e58605a4cc55fcc5e74",
 }];
+pub const MEL_TOTAL: u64 = 464_050_097;
+const MEL_REVISION: &str = "c1aba02c00a0bee852d6754fe6ede8164f90a4b3";
+const MEL_FILES: [Artifact; 1] = [Artifact { name: "mel-roformer.fp16.onnx", size: MEL_TOTAL,
+    hash: "adcbbb826f12453fbb86652b503242d565a9c81cdef1bca2fe0e54752eba91ef" }];
+pub const BS_TOTAL: u64 = 639_959_040;
+const BS_REVISION: &str = "f020228f4d25616c8ff4146c339c33687c0be43f";
+const BS_FILES: [Artifact; 1] = [Artifact {
+    name: "bs_roformer_ep317_sdr12.9755.onnx.data", size: BS_TOTAL,
+    hash: "3f3677f7ed3801f7415db4b4c900e6e81f4f41d5b4bc83c0bf899c353b2f9995",
+}];
+pub const MDX_TOTAL: u64 = 448_101_203;
+const MDX_FILES: [Artifact; 1] = [Artifact { name: "mdx23c.ckpt", size: MDX_TOTAL,
+    hash: "49d51472769e34a2501cd1da782346a3212555c3a5619fc2c53507445528d816" }];
 fn files(model: Model) -> &'static [Artifact] {
     match model {
         Model::Spleeter => &FILES,
         Model::ScnetLarge => &SCNET_FILES,
         Model::ScnetXlIhf => &XL_FILES,
         Model::Htdemucs => &DEMUCS_FILES,
+        Model::MelRoformer => &MEL_FILES,
+        Model::BsRoformer => &BS_FILES,
+        Model::Mdx23c => &MDX_FILES,
     }
 }
 #[cfg(test)]
@@ -75,6 +91,9 @@ pub fn directory_for(root: &Path, model: Model) -> PathBuf {
         Model::ScnetLarge => "scnet-large-v1",
         Model::ScnetXlIhf => "scnet-xl-ihf-v1",
         Model::Htdemucs => "htdemucs-v1",
+        Model::MelRoformer => "mel-roformer-kim-v1",
+        Model::BsRoformer => "bs-roformer-viperx-v1",
+        Model::Mdx23c => "mdx23c-vocals-v1",
     })
 }
 #[cfg(test)]
@@ -92,6 +111,9 @@ pub fn total(model: Model) -> u64 {
         Model::ScnetLarge => SCNET_TOTAL,
         Model::ScnetXlIhf => XL_TOTAL,
         Model::Htdemucs => DEMUCS_TOTAL,
+        Model::MelRoformer => MEL_TOTAL,
+        Model::BsRoformer => BS_TOTAL,
+        Model::Mdx23c => MDX_TOTAL,
     }
 }
 fn valid(path: &Path, f: &Artifact) -> bool {
@@ -159,6 +181,9 @@ pub fn ensure_for(
             dir.join("NOTICE.txt"),
             include_str!("../../../docs/licenses/scnet-xl-NOTICE.txt"),
         )?;
+    } else if matches!(model, Model::MelRoformer | Model::BsRoformer | Model::Mdx23c) {
+        std::fs::write(dir.join("NOTICE.txt"), include_str!("../../../docs/licenses/vocal-models-NOTICE.txt"))?;
+        std::fs::write(dir.join("LICENSE-code-MIT.txt"), include_str!("../../../docs/licenses/vocal-models-MIT.txt"))?;
     } else {
         std::fs::write(
             dir.join("LICENSE-MIT.txt"),
@@ -168,6 +193,19 @@ pub fn ensure_for(
             dir.join("NOTICE.txt"),
             include_str!("../../../docs/licenses/scnet-NOTICE.txt"),
         )?;
+    }
+    let bundled = match model {
+        Model::Mdx23c => Some(("mdx23c.onnx", super::vocal::MDX_GRAPH)),
+        Model::BsRoformer => Some(("bs-roformer-native.onnx", super::vocal::BS_GRAPH)),
+        _ => None,
+    };
+    if let Some((name, bytes)) = bundled {
+        let graph = dir.join(name);
+        if std::fs::read(&graph).ok().as_deref() != Some(bytes) {
+            let partial = graph.with_extension("part");
+            std::fs::write(&partial, bytes)?;
+            std::fs::rename(partial, graph)?;
+        }
     }
     ensure_pack(
         &dir,
@@ -182,6 +220,9 @@ pub fn ensure_for(
             Model::ScnetXlIhf => {
                 format!("https://huggingface.co/Ryan5453/unblend/resolve/{XL_REVISION}/{name}")
             }
+            Model::MelRoformer => format!("https://huggingface.co/audiojs/mel-roformer/resolve/{MEL_REVISION}/{name}"),
+            Model::BsRoformer => format!("https://huggingface.co/xycld/BS-RoFormer-ONNX/resolve/{BS_REVISION}/{name}"),
+            Model::Mdx23c => "https://github.com/ZFTurbo/Music-Source-Separation-Training/releases/download/v1.0.0/model_vocals_mdx23c_sdr_10.17.ckpt".to_owned(),
             Model::Htdemucs => format!(
                 "https://huggingface.co/StemSplitio/htdemucs-onnx/resolve/{DEMUCS_REVISION}/{name}"
             ),
@@ -309,6 +350,14 @@ pub fn remove_pack(root: &Path, model: Option<Model>) -> Result<()> {
         remove_file(&dir.join("apollo.onnx"))?;
         remove_file(&dir.join("apollo.part"))?;
     }
+    if model == Some(Model::Mdx23c) {
+        remove_file(&dir.join("mdx23c.onnx"))?;
+        remove_file(&dir.join("mdx23c.part"))?;
+    }
+    if model == Some(Model::BsRoformer) {
+        remove_file(&dir.join("bs-roformer-native.onnx"))?;
+        remove_file(&dir.join("bs-roformer-native.part"))?;
+    }
     let artifacts = model.map_or(APOLLO_FILES.as_slice(), files);
     for artifact in artifacts {
         remove_file(&dir.join(artifact.name))?;
@@ -406,6 +455,30 @@ fn ensure_pack(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    #[ignore = "requires VOCAL_MODELS; verifies the real pinned files, repair and removal"]
+    fn real_vocal_model_packs_are_verified_and_repaired() {
+        let source = PathBuf::from(std::env::var("VOCAL_MODELS").unwrap());
+        let root = tempfile::tempdir().unwrap();
+        for model in [Model::MelRoformer,Model::BsRoformer,Model::Mdx23c] {
+            let dir = directory_for(root.path(),model); std::fs::create_dir(&dir).unwrap();
+            for artifact in files(model) {
+                std::fs::copy(source.join(artifact.name),dir.join(artifact.name)).unwrap();
+            }
+            let done = std::cell::Cell::new(0);
+            ensure_for(root.path(),model,&AtomicBool::new(false),|bytes| done.set(bytes)).unwrap();
+            assert_eq!(done.get(),total(model));
+            assert!(installed_for(root.path(),model));
+            if model == Model::Mdx23c || model == Model::BsRoformer {
+                let (name,bytes) = if model == Model::Mdx23c { ("mdx23c.onnx",super::super::vocal::MDX_GRAPH) } else { ("bs-roformer-native.onnx",super::super::vocal::BS_GRAPH) };
+                std::fs::write(dir.join(name),"broken graph").unwrap();
+                ensure_for(root.path(),model,&AtomicBool::new(false),|_| {}).unwrap();
+                assert_eq!(std::fs::read(dir.join(name)).unwrap(),bytes);
+            }
+            remove_pack(root.path(),Some(model)).unwrap();
+            assert!(!dir.exists());
+        }
+    }
     #[test]
     fn deleting_packs_preserves_audio_other_models_and_unrelated_files() {
         let root = tempfile::tempdir().unwrap();

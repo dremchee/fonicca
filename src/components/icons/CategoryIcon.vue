@@ -11,7 +11,7 @@ import { categoryLabel } from '@/format'
 const props = defineProps<{ category?: string | null, stem?: Sample['stemKind'] }>()
 const aliases: Record<string, string> = { drum: 'drums', vocals: 'vocal' }
 const category = computed(() => {
-  const id = props.stem ? props.stem === 'other' ? null : props.stem : props.category
+  const id = props.stem ? (props.stem === 'other' || props.stem === 'instrumental') ? null : props.stem : props.category
   return id ? aliases[id] ?? id : null
 })
 const icons: Record<string, Component> = {

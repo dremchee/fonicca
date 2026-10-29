@@ -4,6 +4,7 @@ mod demucs;
 mod dsp;
 pub(crate) mod models;
 mod scnet;
+mod vocal;
 use crate::{
     AppState,
     audio::{self, Pcm},
@@ -36,13 +37,17 @@ pub enum Model {
     ScnetLarge,
     ScnetXlIhf,
     Htdemucs,
+    MelRoformer,
+    BsRoformer,
+    Mdx23c,
 }
 impl Model {
-    pub const ALL: [Self; 4] = [
+    pub const ALL: [Self; 7] = [
         Self::Spleeter,
         Self::ScnetLarge,
         Self::ScnetXlIhf,
         Self::Htdemucs,
+        Self::MelRoformer, Self::BsRoformer, Self::Mdx23c,
     ];
     pub fn id(self) -> &'static str {
         match self {
@@ -50,13 +55,32 @@ impl Model {
             Self::ScnetLarge => "scnetLarge",
             Self::ScnetXlIhf => "scnetXlIhf",
             Self::Htdemucs => "htdemucs",
+            Self::MelRoformer => "melRoformer",
+            Self::BsRoformer => "bsRoformer",
+            Self::Mdx23c => "mdx23c",
         }
+    }
+}
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Mode { Two, #[default] Four }
+impl Mode {
+    fn names(self) -> &'static [&'static str] {
+        match self { Self::Two => &["vocals", "instrumental"], Self::Four => &dsp::NAMES }
+    }
+    fn validate(self, model: Model) -> Result<()> {
+        let vocal_only = matches!(model, Model::MelRoformer | Model::BsRoformer | Model::Mdx23c);
+        if (self == Self::Two) != vocal_only {
+            return Err(failure("this model does not support the selected track mode"));
+        }
+        Ok(())
     }
 }
 #[derive(Default, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Progress {
     pub model: Model,
+    pub mode: Mode,
     /// Stable source identity, independent of the current library selection.
     pub source_id: Option<i64>,
     pub running: bool,
@@ -119,8 +143,11 @@ pub fn stem_start(
     state: State<'_, AppState>,
     id: i64,
     model: Option<Model>,
+    mode: Option<Mode>,
 ) -> Result<()> {
     let model = model.unwrap_or_default();
+    let mode = mode.unwrap_or_default();
+    mode.validate(model)?;
     if state.db.lock().unwrap().query_row("SELECT EXISTS(SELECT 1 FROM sample_stems WHERE child_id=?1)", [id], |r| r.get::<_, bool>(0))? {
         return Err(failure("select the original track to separate stems"));
     }
@@ -148,6 +175,7 @@ pub fn stem_start(
     state.stems.cancel.store(false, Ordering::Relaxed);
     *state.stems.status.lock().unwrap() = Progress {
         model,
+        mode,
         source_id: Some(id),
         running: true,
         stage: "preparing".into(),
@@ -162,7 +190,7 @@ pub fn stem_start(
         let (_model_lease, _processing_lease) = (model_lease, processing_lease);
         let state = app.state::<AppState>();
         let jobs = &state.stems;
-        let result = run(&state, Path::new(&path), &folder, model);
+        let result = run(&state, Path::new(&path), &folder, model, mode);
         let mut status = jobs.status.lock().unwrap();
         status.running = false;
         match result {
@@ -211,6 +239,7 @@ fn separate_to_folder(
 ) -> Result<Vec<PathBuf>> {
     separate_to_folder_with_model(Model::Spleeter, model_dir, source, parent, cancel, progress)
 }
+#[cfg(test)]
 fn separate_to_folder_with_model(
     model: Model,
     model_dir: &Path,
@@ -219,6 +248,13 @@ fn separate_to_folder_with_model(
     cancel: &AtomicBool,
     progress: impl Fn(f64),
 ) -> Result<Vec<PathBuf>> {
+    separate_to_folder_mode(model, Mode::Four, model_dir, source, parent, cancel, progress)
+}
+fn separate_to_folder_mode(
+    model: Model, mode: Mode, model_dir: &Path, source: &Path, parent: &Path,
+    cancel: &AtomicBool, progress: impl Fn(f64),
+) -> Result<Vec<PathBuf>> {
+    mode.validate(model)?;
     let info = audio::probe(source)?;
     if info.duration.is_some_and(|d| d > 600.0) || info.channels.is_some_and(|c| c > 2) {
         return Err(failure("use a mono or stereo file up to 10 minutes"));
@@ -256,32 +292,22 @@ fn separate_to_folder_with_model(
         bits_per_sample: 32,
         sample_format: hound::SampleFormat::Float,
     };
-    let mut writers = dsp::NAMES
+    let mut writers = mode.names()
         .iter()
         .map(|n| {
             hound::WavWriter::create(working.path.join(format!("{n}.wav")), spec).map_err(failure)
         })
         .collect::<Result<Vec<_>>>()?;
-    if model == Model::Htdemucs {
-        let mut separator = demucs::Separator::load(model_dir)?;
-        separator.separate(&pcm, cancel, &progress, |stems| {
-            for (writer, stem) in writers.iter_mut().zip(stems) {
-                for sample in stem {
-                    writer.write_sample(*sample).map_err(failure)?;
-                }
-            }
-            Ok(())
-        })?;
+    let mut written = 0;
+    let mut emit = |stems: &[Vec<f32>]| {
+        write_block(&mut writers, mode, &pcm, &mut written, stems)
+    };
+    if matches!(model, Model::MelRoformer | Model::BsRoformer | Model::Mdx23c) {
+        vocal::Separator::load(model_dir, model)?.separate(&pcm, cancel, &progress, &mut emit)?;
+    } else if model == Model::Htdemucs {
+        demucs::Separator::load(model_dir)?.separate(&pcm, cancel, &progress, &mut emit)?;
     } else if matches!(model, Model::ScnetLarge | Model::ScnetXlIhf) {
-        let mut separator = scnet::Separator::load_for(model_dir, model)?;
-        separator.separate(&pcm, cancel, &progress, |stems| {
-            for (writer, stem) in writers.iter_mut().zip(stems) {
-                for sample in stem {
-                    writer.write_sample(*sample).map_err(failure)?;
-                }
-            }
-            Ok(())
-        })?;
+        scnet::Separator::load_for(model_dir, model)?.separate(&pcm, cancel, &progress, &mut emit)?;
     } else {
         let mut separator = dsp::Separator::load(model_dir)?;
         const BLOCK: usize = 8 * dsp::RATE as usize;
@@ -298,7 +324,8 @@ fn separate_to_folder_with_model(
                 sample_rate: dsp::RATE,
             };
             let stems = separator.separate(&block, || check(cancel))?;
-            for (i, (writer, mut samples)) in writers.iter_mut().zip(stems).enumerate() {
+            let mut output = Vec::with_capacity(4);
+            for (i, mut samples) in stems.into_iter().enumerate() {
                 let begin = (start - left) * 2;
                 let finish = (end - left) * 2;
                 let blend = (tails[i].len() / 2).min((end - start).min(4096));
@@ -310,24 +337,56 @@ fn separate_to_folder_with_model(
                             tails[i][at] * (1.0 - weight) + samples[begin + at] * weight;
                     }
                 }
-                for sample in &samples[begin..finish] {
-                    writer.write_sample(*sample).map_err(failure)?;
-                }
+                output.push(samples[begin..finish].to_vec());
                 tails[i] = samples[finish..((end - left + 4096).min(right - left)) * 2].to_vec();
             }
+            emit(&output)?;
             progress(end as f64 / pcm.frames() as f64);
         }
     }
+    if written != pcm.frames() { return Err(failure("incomplete stem output")); }
     for writer in writers {
         writer.finalize().map_err(failure)?;
     }
     check(cancel)?;
-    publish_stems(&working.path, parent, &stem)
+    publish_stems_named(&working.path, parent, &stem, mode.names())
+}
+
+// All backends emit interleaved stereo, vocals first. Derive the two-stem
+// residual after overlap-add, preserving the source mix without normalization.
+fn write_block<W: std::io::Write + std::io::Seek>(
+    writers: &mut [hound::WavWriter<W>], mode: Mode, pcm: &Pcm,
+    written: &mut usize, stems: &[Vec<f32>],
+) -> Result<()> {
+    let vocals = stems.first().ok_or_else(|| failure("missing vocals"))?;
+    let frames = vocals.len() / 2;
+    if vocals.len() % 2 != 0 || *written + frames > pcm.frames()
+        || stems.iter().any(|s| s.len() != vocals.len() || s.iter().any(|v| !v.is_finite()))
+        || writers.len() != mode.names().len() || (mode == Mode::Four && stems.len() != 4) {
+        return Err(failure("invalid stem output"));
+    }
+    if mode == Mode::Two {
+        for (i, &vocal) in vocals.iter().enumerate() {
+            writers[0].write_sample(vocal).map_err(failure)?;
+            let source = pcm.samples[(*written + i / 2) * pcm.channels + (i % 2).min(pcm.channels - 1)];
+            writers[1].write_sample(source - vocal).map_err(failure)?;
+        }
+    } else {
+        for (writer, stem) in writers.iter_mut().zip(stems) {
+            for &sample in stem { writer.write_sample(sample).map_err(failure)?; }
+        }
+    }
+    *written += frames;
+    Ok(())
 }
 
 /// Publish one track per directory, never reusing an existing destination.
 /// Repeated separations choose a new numbered directory for the complete set.
+#[cfg(test)]
 fn publish_stems(working: &Path, parent: &Path, name: &str) -> Result<Vec<PathBuf>> {
+    publish_stems_named(working, parent, name, &dsp::NAMES)
+}
+fn publish_stems_named(working: &Path, parent: &Path, name: &str, names: &[&str]) -> Result<Vec<PathBuf>> {
     for version in 1.. {
         let suffix = if version == 1 { String::new() } else { format!(" {version}") };
         let folder = parent.join(format!("{name}{suffix}"));
@@ -336,11 +395,11 @@ fn publish_stems(working: &Path, parent: &Path, name: &str) -> Result<Vec<PathBu
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
             Err(e) => return Err(e.into()),
         }
-        let paths: Vec<_> = dsp::NAMES.iter()
+        let paths: Vec<_> = names.iter()
             .map(|kind| folder.join(format!("{name} - {kind}.wav"))).collect();
         let mut published = Vec::new();
         let result: std::io::Result<()> = (|| {
-            for (kind, target) in dsp::NAMES.iter().zip(&paths) {
+            for (kind, target) in names.iter().zip(&paths) {
                 // create_new is supported on removable drives too. Never claim
                 // or clean up a destination that belonged to another process.
                 let mut output = std::fs::OpenOptions::new().write(true).create_new(true).open(target)?;
@@ -368,6 +427,7 @@ fn run(
     source: &Path,
     parent: &Path,
     model: Model,
+    mode: Mode,
 ) -> Result<(Vec<String>, Vec<i64>)> {
     let jobs = &state.stems;
     jobs.update("downloading", 0.0);
@@ -376,7 +436,7 @@ fn run(
     })?;
     jobs.update("separating", 0.0);
     let paths =
-        separate_to_folder_with_model(model, &model_dir, source, parent, &jobs.cancel, |p| {
+        separate_to_folder_mode(model, mode, &model_dir, source, parent, &jobs.cancel, |p| {
             jobs.update("separating", p)
         })?;
     jobs.update("importing", 1.0);
@@ -387,7 +447,7 @@ fn run(
     let ids = import(state, &paths)?;
     let conn = crate::db::open(&state.db_path)?;
     let parent_id: i64 = conn.query_row("SELECT id FROM samples WHERE path=?1", [source.to_string_lossy().as_ref()], |r| r.get(0))?;
-    link_stems(&conn, parent_id, &ids)?;
+    link_stems_named(&conn, parent_id, &ids, mode.names())?;
     Ok((
         paths
             .iter()
@@ -396,9 +456,14 @@ fn run(
         ids,
     ))
 }
+#[cfg(test)]
 fn link_stems(conn: &rusqlite::Connection, parent_id: i64, ids: &[i64]) -> Result<()> {
+    link_stems_named(conn, parent_id, ids, &dsp::NAMES)
+}
+fn link_stems_named(conn: &rusqlite::Connection, parent_id: i64, ids: &[i64], names: &[&str]) -> Result<()> {
+    if ids.len() != names.len() { return Err(failure("stem identity mismatch")); }
     let tx = conn.unchecked_transaction()?;
-    for (position, (id, kind)) in ids.iter().zip(dsp::NAMES).enumerate() {
+    for (position, (id, kind)) in ids.iter().zip(names).enumerate() {
         tx.execute("INSERT INTO sample_stems(child_id,parent_id,kind,position) VALUES(?1,?2,?3,?4)
           ON CONFLICT(child_id) DO UPDATE SET parent_id=excluded.parent_id,kind=excluded.kind,position=excluded.position",
           rusqlite::params![id,parent_id,kind,position as i64])?;
@@ -458,6 +523,76 @@ fn import(state: &AppState, paths: &[PathBuf]) -> Result<Vec<i64>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    #[ignore = "requires VOCAL_MODELS and STEM_AUDIO; real two-WAV export and cancellation"]
+    fn real_two_track_file_export_preserves_source_and_residual() {
+        let models = PathBuf::from(std::env::var("VOCAL_MODELS").unwrap());
+        let source = PathBuf::from(std::env::var("STEM_AUDIO").unwrap());
+        let original = std::fs::read(&source).unwrap();
+        let mut pcm = audio::decode(&source,600.0).unwrap();
+        crate::batch::resample(&mut pcm,dsp::RATE).unwrap();
+        for model in [Model::MelRoformer,Model::Mdx23c] {
+            let dir = tempfile::tempdir().unwrap();
+            let model_dir = &models;
+            let paths = separate_to_folder_mode(model,Mode::Two,&model_dir,&source,dir.path(),&AtomicBool::new(false),|_| {}).unwrap();
+            assert_eq!(paths.len(),2);
+            assert_eq!(std::fs::read_dir(paths[0].parent().unwrap()).unwrap().count(),2);
+            let vocals = audio::decode(&paths[0],600.0).unwrap();
+            let instrumental = audio::decode(&paths[1],600.0).unwrap();
+            assert_eq!(vocals.frames(),pcm.frames()); assert_eq!(instrumental.frames(),pcm.frames());
+            for i in 0..vocals.samples.len() {
+                let original = pcm.samples[(i/2)*pcm.channels+(i%2).min(pcm.channels-1)];
+                assert!((vocals.samples[i]+instrumental.samples[i]-original).abs()<2e-6);
+            }
+            let cancel = AtomicBool::new(true);
+            assert!(separate_to_folder_mode(model,Mode::Two,&model_dir,&source,dir.path(),&cancel,|_| cancel.store(true,Ordering::Relaxed)).is_err());
+            assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(),1);
+            assert_eq!(std::fs::read(&source).unwrap(),original);
+            eprintln!("{model:?}: two WAVs, exact residual, original preserved, cancelled files removed");
+        }
+    }
+    #[test]
+    fn two_track_output_is_vocals_and_exact_source_residual() {
+        for channels in [1, 2] {
+            let pcm = Pcm { samples: (0..12*channels).map(|i| i as f32 * 0.06 - 0.3).collect(), channels, sample_rate: dsp::RATE };
+            let spec = hound::WavSpec { channels: 2, sample_rate: dsp::RATE, bits_per_sample: 32, sample_format: hound::SampleFormat::Float };
+            let dir = tempfile::tempdir().unwrap();
+            let files = [dir.path().join("vocals.wav"), dir.path().join("instrumental.wav")];
+            let mut writers = files.iter().map(|path| hound::WavWriter::create(path,spec).unwrap()).collect::<Vec<_>>();
+            let mut written = 0;
+            for count in [4, 8] {
+                let vocal = vec![0.125; count*2];
+                write_block(&mut writers,Mode::Two,&pcm,&mut written,&[vocal,vec![999.0;count*2]]).unwrap();
+            }
+            assert_eq!(written, 12);
+            for writer in writers { writer.finalize().unwrap(); }
+            let read = |path: &Path| hound::WavReader::open(path).unwrap().samples::<f32>().map(|v| v.unwrap()).collect::<Vec<_>>();
+            let vocal = read(&files[0]); let instrumental = read(&files[1]);
+            assert_eq!(vocal.len(),24);
+            for i in 0..24 {
+                let source = pcm.samples[(i/2)*channels + (i%2).min(channels-1)];
+                assert_eq!(vocal[i],0.125);
+                assert!((vocal[i] + instrumental[i] - source).abs() < 1e-6);
+            }
+            // Published two-track files have their own kinds and never overwrite a previous set.
+            let work = tempfile::tempdir().unwrap(); let parent = tempfile::tempdir().unwrap();
+            for name in Mode::Two.names() { std::fs::write(work.path().join(format!("{name}.wav")),name).unwrap(); }
+            let paths = publish_stems_named(work.path(),parent.path(),"Song",Mode::Two.names()).unwrap();
+            assert_eq!(paths.len(),2);
+            assert!(paths[1].ends_with("Song - instrumental.wav"));
+        }
+    }
+    #[test]
+    fn vocal_only_models_reject_four_track_requests() {
+        for model in [Model::MelRoformer,Model::BsRoformer,Model::Mdx23c] {
+            assert!(Mode::Four.validate(model).is_err());
+            assert!(Mode::Two.validate(model).is_ok());
+        }
+        for model in [Model::ScnetLarge,Model::ScnetXlIhf,Model::Spleeter,Model::Htdemucs] {
+            assert!(Mode::Two.validate(model).is_err());
+            assert!(Mode::Four.validate(model).is_ok());
+        }
+    }
     #[test]
     fn progress_keeps_source_identity_across_stages() {
         let jobs = Jobs::default();

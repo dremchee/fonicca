@@ -28,6 +28,7 @@ const groupByModel: Record<ModelStorage['id'], ModelGroup> = {
   scnetLarge: 'separation',
   scnetXlIhf: 'separation',
   htdemucs: 'separation',
+  melRoformer: 'separation', bsRoformer: 'separation', mdx23c: 'separation',
   apollo: 'restoration',
   basicPitch: 'transcription',
 }
