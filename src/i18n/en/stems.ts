@@ -1,5 +1,5 @@
 export default {
-  badge: "Stems · {n}",
+  badge: "{n}",
   expand: "Show stems for {name}",
   collapse: "Hide stems for {name}",
   folderSettings: "Settings…",

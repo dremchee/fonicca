@@ -1,6 +1,6 @@
 import type en from '../en/stems'
 export default {
-  badge: "Стемы · {n}",
+  badge: "{n}",
   expand: "Показать стемы: {name}",
   collapse: "Скрыть стемы: {name}",
   folderSettings: "Настройки…",

@@ -32,7 +32,7 @@ let playStart: number | null = null
 let playFrom = 0
 let playLoaded = false
 let preferred: string[] = []
-let clapInstalled = location.hash === '#models'
+let clapInstalled = location.hash === '#models' || location.hash === '#model-downloads' || location.hash === '#stem-processing'
 let clapBytes = clapInstalled ? 34301667 : 0
 let clapDownloading = false
 let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], language: 'en', watchFolders: true, autoplay: true, rowPlaybackMode: 'cursor', volume: 1, analysisThreads: null, stemsFolder: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme', editorWaveform: { waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' } }

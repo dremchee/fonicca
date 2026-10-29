@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { debugMonitorOpen } from '@/composables/debugMonitor'
 import { tagColorStyle } from '@/tag-colors'
-import SoundModelDownload from '@/components/SoundModelDownload.vue'
+import ModelDownloadBadges from '@/components/ModelDownloadBadges.vue'
 import SettingsNavigation from '@/components/SettingsNavigation.vue'
 import TagColorPicker from '@/components/TagColorPicker.vue'
 import type { Scope } from '@/stores/library'
@@ -601,21 +601,26 @@ async function confirmDeleteTag(id: number) {
     </div>
 
     <footer v-if="!settings.dialogOpen" class="shrink-0 border-t border-border px-2 pt-1 pb-3">
-      <SoundModelDownload />
+      <ModelDownloadBadges />
 
-      <button type="button" class="row w-full" :class="{ active: debugMonitorOpen }" :aria-pressed="debugMonitorOpen" @click="debugMonitorOpen = !debugMonitorOpen">
-        <Activity class="size-4 shrink-0" />
-        <span class="truncate">{{ t('debug.title') }}</span>
-      </button>
-      <button type="button" class="row w-full" :class="{ active: settings.dialogOpen }" :aria-current="settings.dialogOpen ? 'page' : undefined" @click="settings.openDialog()">
-        <Settings class="size-4 shrink-0" />
-        <span>{{ t('sidebar.settings') }}</span>
-      </button>
+      <div class="flex items-center gap-1">
+        <button type="button" class="row min-w-0 flex-1" :class="{ active: settings.dialogOpen }" :aria-current="settings.dialogOpen ? 'page' : undefined" @click="settings.openDialog()">
+          <Settings class="size-4 shrink-0" />
+          <span>{{ t('sidebar.settings') }}</span>
+        </button>
+        <Hint :text="t('debug.toggle')" side="top">
+          <Button variant="ghost" size="icon-sm" class="monitor-toggle shrink-0 text-muted-foreground" :aria-label="t('debug.toggle')" :aria-pressed="debugMonitorOpen" @click="debugMonitorOpen = !debugMonitorOpen">
+            <Activity />
+          </Button>
+        </Hint>
+      </div>
     </footer>
   </aside>
 </template>
 
 <style scoped>
+.monitor-toggle[aria-pressed="true"] { background: var(--primary-soft); color: var(--primary); }
+
 .section-toggle {
   display: flex;
   align-items: center;

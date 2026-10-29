@@ -4,6 +4,7 @@ import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
+import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import Hint from '@/components/Hint.vue'
 import { formatSize } from '@/format'
@@ -25,19 +26,19 @@ async function download() {
 
 <template>
   <Hint v-if="modelDownload || (soundModel && !soundModel.installed)" :text="modelDownload?.error || t('filters.soundModelHint')">
-    <button type="button" class="model-row" :disabled="downloading" @click="download">
-      <Spinner v-if="downloading" class="size-4 shrink-0" />
-      <RotateCcw v-else-if="modelDownload?.error" class="size-4 shrink-0 text-destructive" />
-      <Download v-else class="size-4 shrink-0" />
+    <Badge as-child variant="secondary"><button type="button" class="model-row" :disabled="downloading" @click="download">
+      <Spinner v-if="downloading" class="size-3 shrink-0" />
+      <RotateCcw v-else-if="modelDownload?.error" class="size-3 shrink-0 text-destructive" />
+      <Download v-else class="size-3 shrink-0" />
       <span class="min-w-0 truncate" :class="{ 'text-destructive': modelDownload?.error }">
         {{ modelDownload?.error ? t('filters.downloadFailed') : downloading ? t('filters.downloadingModel', { percent }) : t('filters.soundModel', { size: formatSize(soundModel?.size ?? 0) }) }}
       </span>
-    </button>
+    </button></Badge>
   </Hint>
 </template>
 
 <style scoped>
-.model-row { display: flex; align-items: center; gap: 8px; width: 100%; border-radius: var(--radius); padding: 6px 8px; font-size: 13px; color: var(--muted-foreground); text-align: left; }
+.model-row { display: flex; align-items: center; gap: 6px; width: 100%; max-width: 100%; border-radius: 999px; padding: 5px 9px; font-size: 11px; color: var(--muted-foreground); text-align: left; }
 .model-row:hover:not(:disabled) { background: var(--accent); color: var(--foreground); }
 .model-row:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
 .model-row:disabled { cursor: default; }

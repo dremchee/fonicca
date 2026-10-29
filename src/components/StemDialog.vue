@@ -55,7 +55,7 @@ async function edit(index: number) {
         <div class="flex items-center gap-2"><span class="min-w-0 flex-1 truncate text-xs text-muted-foreground" :title="folder">{{ folder ? shortPath(folder) : t('stems.noFolder') }}</span><Button size="sm" variant="outline" :disabled="stems.progress.running || stems.starting" @click="choose"><Settings2 />{{ t('stems.folderSettings') }}</Button></div>
       </div>
       <p class="text-xs text-muted-foreground">{{ t('stems.limits') }}</p>
-      <div v-if="stems.progress.stage" class="flex flex-col gap-2" aria-live="polite">
+      <div v-if="stems.progress.stage && stems.progress.stage !== 'downloading'" class="flex flex-col gap-2" aria-live="polite">
         <div class="text-xs text-muted-foreground flex justify-between gap-2"><span class="truncate">{{ stems.progress.name }}</span><span v-if="stems.progress.running">{{ Math.round(stems.progress.progress * 100) }}%</span></div>
         <div v-if="stems.progress.running" class="h-1.5 bg-muted rounded-full overflow-hidden"><div class="h-full bg-primary transition-[width]" :style="{ width: `${stems.progress.progress * 100}%` }" /></div>
         <p class="text-xs">{{ stems.cancelling ? t('stems.stopping') : t(`stems.stages.${stems.progress.stage}`) }}</p>

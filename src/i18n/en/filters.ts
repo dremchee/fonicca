@@ -14,6 +14,7 @@ export default {
   category: 'Category',
   clear: 'Clear',
   downloadFailed: 'Download failed',
+  modelDownload: 'Downloading {name} · {percent}%',
   downloadingModel: 'Downloading sound model · {percent}%',
   soundModel: 'Sound model · {size}',
   soundModelHint: 'Classify unnamed samples (kick, bass, pad…) by how they sound and detect keys of tonal loops. Runs offline.',

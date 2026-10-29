@@ -16,6 +16,7 @@ export default {
   category: 'Категория',
   clear: 'Сбросить',
   downloadFailed: 'Не удалось скачать',
+  modelDownload: 'Загрузка {name} · {percent}%',
   downloadingModel: 'Загрузка звуковой модели · {percent}%',
   soundModel: 'Звуковая модель · {size}',
   soundModelHint: 'Определяет категорию семплов без понятного имени (бочка, бас, пэд…) по звучанию и тональность тональных лупов. Работает офлайн.',

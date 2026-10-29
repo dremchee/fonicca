@@ -1,5 +1,6 @@
 export default {
   demo: 'Demo data · browser preview',
+  toggle: 'Performance monitor',
   title: 'Debug monitor',
   close: 'Close monitor', pause: 'Pause measurements', resume: 'Resume measurements',
   live: 'Live · 1 s', paused: 'Measurements paused', reset: 'Reset',

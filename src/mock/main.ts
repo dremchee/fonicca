@@ -12,7 +12,7 @@ import ExportMock from './ExportMock.vue'
 import ThemesMock from './ThemesMock.vue'
 import { install } from './real-app'
 import { useStemsStore } from '@/stores/stems'
-import { stemSample } from './stems'
+import { downloadStemModel, stemSample, stemsCommand } from './stems'
 import { openBatch } from '@/composables/batch'
 import 'vue-sonner/style.css'
 import 'virtual:uno.css'
@@ -35,6 +35,8 @@ else {
   const pinia = createPinia()
   createApp(App).use(pinia).use(i18n).mount('#app')
   if (location.hash === '#stems') useStemsStore(pinia).show(stemSample)
+  if (location.hash === '#model-downloads') void downloadStemModel('melRoformer')
+  if (location.hash === '#stem-processing') stemsCommand('stem_start', { id: 1, model: 'melRoformer', mode: 'two' })
   if (location.hash === '#batch')
     openBatch([1, 2, 3])
 }
