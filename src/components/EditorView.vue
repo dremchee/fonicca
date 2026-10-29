@@ -42,8 +42,9 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
-import { MIN_LINE_PX, useEditorGrid } from '@/composables/editor/grid'
+import { useEditorGrid } from '@/composables/editor/grid'
 import { useEditorViewport } from '@/composables/editor/viewport'
+import { drawEditorCanvas, type RegionBadge } from '@/editor-canvas'
 import { useFrameDraw } from '@/composables/editor/frameDraw'
 import { formatNumber, formatRate } from '@/format'
 import { canvasContext, drawWave } from '@/waveform-renderer'
@@ -148,12 +149,6 @@ const openingWave = computed(() => editor.loading || (!isSpectrogram.value && !!
 const x = (frame: number) => ((frame - viewStart.value) / (viewEnd.value - viewStart.value)) * width.value
 
 
-function tickStep(span: number) {
-  const steps = [0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300]
-  const seconds = span / rate.value
-  return steps.find(s => (s / seconds) * width.value >= 80) ?? 600
-}
-
 // --- Grid -------------------------------------------------------------------
 
 const { beatFrames, beatGrid, gridStep, gridOrigin, gridFrames, isMultiple, snapped } = useEditorGrid({
@@ -171,148 +166,21 @@ const scheduleDraw = useFrameDraw(draw)
 
 function draw() {
   const el = canvas.value
-  if (!el || width.value === 0)
-    return
-  const dpr = canvasGeometry.value.ratio
-  const pixel = localPixel
-  const w = width.value
-  const h = height.value
-  const ctx = canvasContext(el, w, h, dpr)
+  if (!el || width.value === 0) return
+  const ctx = canvasContext(el, width.value, height.value, canvasGeometry.value.ratio)
   const style = getComputedStyle(el)
   const spectralColors: Record<string, string> = { '--foreground': '#eee8f5', '--muted-foreground': '#c9bfd6', '--border': '#554b64', '--card': '#080511', '--background': '#080511' }
-  const color = (name: string) => (isSpectrogram.value && spectralColors[name]) || style.getPropertyValue(name).trim()
-  if (isSpectrogram.value) {
-    ctx.fillStyle = '#080511'
-    ctx.fillRect(0, 0, w, h)
-  }
-  const step = tickStep(viewEnd.value - viewStart.value)
-  const first = Math.ceil(viewStart.value / rate.value / step) * step
-  const ticks: number[] = []
-  for (let t = first; t * rate.value <= viewEnd.value; t += step)
-    ticks.push(t)
-
-  // Waveform, one lane per channel (or one mixed lane), in the full brand colour.
-  // The selection is the inverse: a brand-colour block with the wave in the canvas colour.
-  const sel = editor.selection
-  const selX = sel ? pixel(x(sel.start)) : 0
-  const selW = sel ? Math.max(1 / dpr, pixel(x(sel.end)) - selX) : 0
-  if (isSpectrogram.value) {
-    const data = spectrum.value
-    ctx.save()
-    ctx.beginPath()
-    ctx.rect(0, RULER, w, Math.max(0, h - RULER))
-    ctx.clip()
-    if (data)
-      drawSpectrogram(ctx, data, { left: x(data.start), top: RULER, width: x(data.end) - x(data.start), height: h - RULER })
-    if (sel) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.14)'
-      ctx.fillRect(selX, RULER, selW, h - RULER)
-      ctx.strokeStyle = '#eee8f5'
-      ctx.strokeRect(selX + 0.5, RULER, selW - 1, h - RULER)
-    }
-    ctx.restore()
-  }
-  else if (wave.value) {
-    const look = { ...waveformLook(settings.settings.editorWaveform), zoom: vZoom.value, lineColor: color('--border'), color: color('--wave-strong') }
-    // The wave covers its own range (see readWave), placed under the view.
-    const data = wave.value
-    const left = pixel(x(waveRange.value.start))
-    const area = { top: pixel(RULER), width: pixel(x(waveRange.value.end)) - left, height: h - pixel(RULER), dpr }
-    const placed = (l: typeof look) => {
-      ctx.save()
-      ctx.translate(left, 0)
-      drawWave(ctx, data, area, l)
-      ctx.restore()
-    }
-    ctx.save()
-    ctx.beginPath()
-    ctx.rect(0, 0, w, h)
-    ctx.clip()
-    placed(look)
-    ctx.restore()
-    if (sel) {
-      ctx.save()
-      ctx.beginPath()
-      ctx.rect(selX, RULER, selW, h - RULER)
-      ctx.clip()
-      ctx.fillStyle = color('--primary')
-      ctx.fillRect(selX, RULER, selW, h - RULER)
-      // Frequency colours stay as they are; the theme colour flips to the canvas colour.
-      placed({ ...look, color: color('--card'), lineColor: color('--card'), channelColors: [null, null] })
-      ctx.restore()
-    }
-  }
-  else if (sel) {
-    ctx.fillStyle = color('--primary-soft')
-    ctx.fillRect(selX, RULER, selW, h - RULER)
-  }
-
-  // Grid over the wave, so it reads on the wave and the selection alike: bars
-  // strongest, then beats (or ruler ticks), then subdivisions.
-  if (gridMode.value !== 'off') {
-    ctx.fillStyle = color('--foreground')
-    for (const f of gridFrames(gridStep(MIN_LINE_PX))) {
-      const rel = f - gridOrigin()
-      const strength = beatGrid.value
-        ? isMultiple(rel, beatFrames.value * 4) ? 0.3 : isMultiple(rel, beatFrames.value) ? 0.16 : 0.07
-        : isMultiple(rel, step * rate.value) ? 0.16 : 0.07
-      ctx.globalAlpha = strength
-      ctx.fillRect(pixel(x(f)), pixel(RULER), pixel(1), h - pixel(RULER))
-    }
-    ctx.globalAlpha = 1
-  }
-
-  // Ruler, set off from the wave by a line: bar numbers ("3", "3.2") on the bar
-  // grid, otherwise time.
-  ctx.fillStyle = color('--muted-foreground')
-  ctx.font = '10px system-ui, sans-serif'
-  if (beatGrid.value) {
-    const labelStep = gridStep(48)
-    for (const f of gridFrames(labelStep)) {
-      const beat = Math.round((f - downbeat.value) / beatFrames.value)
-      const bar = Math.floor(beat / 4) + 1
-      const inBar = ((beat % 4) + 4) % 4
-      const px = pixel(x(f))
-      ctx.fillRect(px, pixel(RULER - 5), 1 / dpr, pixel(5))
-      ctx.fillText(inBar ? `${bar}.${inBar + 1}` : String(bar), pixel(px + 3), pixel(11))
-    }
-  }
-  else {
-    for (const t of ticks) {
-      const px = pixel(x(t * rate.value))
-      ctx.fillRect(px, pixel(RULER - 5), 1 / dpr, pixel(5))
-      ctx.fillText(formatTime(t, step < 1), pixel(px + 3), pixel(11))
-    }
-  }
-  ctx.fillStyle = color('--border')
-  ctx.fillRect(0, pixel(RULER), w, 1 / dpr)
-
-  // Loop points: a brand-colour band at the foot of the ruler, dashed edges through the wave.
-  const lp = editor.state?.loop
-  if (lp) {
-    const a = x(lp.start)
-    const b = x(lp.end)
-    ctx.fillStyle = color('--primary')
-    ctx.fillRect(a, RULER - 4, Math.max(1, b - a), 4)
-    ctx.strokeStyle = color('--foreground')
-    ctx.globalAlpha = 0.7
-    ctx.setLineDash([3, 3])
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    for (const px of [Math.round(a) + 0.5, Math.round(b) - 0.5]) {
-      ctx.moveTo(px, RULER)
-      ctx.lineTo(px, h)
-    }
-    ctx.stroke()
-    ctx.setLineDash([])
-    ctx.globalAlpha = 1
-  }
-  drawSlices(ctx, w, h, color)
-  if (isSpectrogram.value)
-    drawFrequencyAxis(ctx, rate.value, w, RULER, h - RULER)
-
-  // Cursor and playhead are elements over the canvas (see cursorEl, playheadEl):
-  // moving them, every frame while playing, redraws nothing here.
+  badges = drawEditorCanvas(ctx, {
+    viewport: { width: width.value, height: height.value, ratio: canvasGeometry.value.ratio,
+      ruler: RULER, start: viewStart.value, end: viewEnd.value, rate: rate.value },
+    grid: { mode: gridMode.value, beatGrid: beatGrid.value, beatFrames: beatFrames.value,
+      downbeat: downbeat.value, gridStep, gridFrames, gridOrigin, isMultiple },
+    wave: wave.value, waveRange: waveRange.value, look: waveformLook(settings.settings.editorWaveform),
+    zoom: vZoom.value, spectral: isSpectrogram.value, spectrum: spectrum.value,
+    selection: editor.selection, loop: editor.state?.loop ?? null, regions: shownRegions.value,
+    markers: shownMarkers.value, slicePreview: slicePreview.value, hoverBadge: hoverBadge.value,
+    color: name => (isSpectrogram.value && spectralColors[name]) || style.getPropertyValue(name).trim(),
+  }, { drawWave, drawSpectrogram, drawFrequencyAxis })
 }
 
 watch([
@@ -378,83 +246,10 @@ const playableRegions = computed(() => editor.regions.filter(r => !r.skip))
 const shownRegions = computed(() => regionsOf(shownMarkers.value, frames.value))
 
 // Region number badges as last drawn, for hovering and clicking them.
-let badges: { start: number, end: number, x: number, w: number }[] = []
+let badges: RegionBadge[] = []
 const BADGE_H = 14
 
-function drawSlices(ctx: CanvasRenderingContext2D, w: number, h: number, color: (name: string) => string) {
-  const regions = shownRegions.value
-  badges = []
-  ctx.fillStyle = color('--card')
-  ctx.globalAlpha = 0.65
-  for (const r of regions) {
-    if (r.skip)
-      ctx.fillRect(x(r.start), RULER, x(r.end) - x(r.start), h - RULER)
-  }
-  ctx.globalAlpha = 1
 
-  ctx.font = '600 10px system-ui, sans-serif'
-  let n = 0
-  let lastLabel = -Infinity
-  for (const r of regions) {
-    if (!r.skip)
-      n++
-    const px = Math.round(x(r.start))
-    if (px < -40 || px > w)
-      continue
-    ctx.fillStyle = color('--foreground')
-    // The start of the file is no marker of its own.
-    if (r.start > 0 || shownMarkers.value[0]?.frame === 0) {
-      ctx.fillRect(px, 0, 1, h)
-      ctx.beginPath()
-      ctx.moveTo(px, 0)
-      ctx.lineTo(px + 6, 3)
-      ctx.lineTo(px, 6)
-      ctx.closePath()
-      ctx.fill()
-    }
-    if (r.skip)
-      continue
-    const label = String(n)
-    const lw = Math.max(BADGE_H, ctx.measureText(label).width + 6)
-    if (px - lastLabel < lw + 4)
-      continue
-    lastLabel = px
-    badges.push({ start: r.start, end: r.end, x: px, w: lw })
-    ctx.fillRect(px, RULER + 1, lw, BADGE_H)
-    ctx.fillStyle = color('--background')
-    // Hovered: a play button.
-    if (hoverBadge.value === r.start) {
-      const cx = px + lw / 2
-      const cy = RULER + 1 + BADGE_H / 2
-      ctx.beginPath()
-      ctx.moveTo(cx - 2.5, cy - 4)
-      ctx.lineTo(cx + 4, cy)
-      ctx.lineTo(cx - 2.5, cy + 4)
-      ctx.closePath()
-      ctx.fill()
-    }
-    else {
-      ctx.fillText(label, px + (lw - ctx.measureText(label).width) / 2, RULER + 12)
-    }
-  }
-
-  if (slicePreview.value.length) {
-    ctx.strokeStyle = color('--foreground')
-    ctx.globalAlpha = 0.6
-    ctx.setLineDash([4, 3])
-    ctx.beginPath()
-    for (const m of slicePreview.value) {
-      const px = Math.round(x(m.frame)) + 0.5
-      if (px >= 0 && px <= w) {
-        ctx.moveTo(px, RULER)
-        ctx.lineTo(px, h)
-      }
-    }
-    ctx.stroke()
-    ctx.setLineDash([])
-    ctx.globalAlpha = 1
-  }
-}
 watch([slicePreview, shownMarkers, () => editor.state?.markers], scheduleDraw)
 
 // A region's number badge turns into a play button under the pointer; a click plays
