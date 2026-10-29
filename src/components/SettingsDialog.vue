@@ -32,6 +32,7 @@ import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { api } from '@/api'
 import Hint from '@/components/Hint.vue'
+import RowPlaybackSettings from '@/components/RowPlaybackSettings.vue'
 import ThemesSettings from '@/components/ThemesSettings.vue'
 import ModelsSettings from '@/components/ModelsSettings.vue'
 import StemStorageSettings from '@/components/StemStorageSettings.vue'
@@ -388,6 +389,7 @@ function keyLabel(k: string) {
                 </div>
               </div>
             </section>
+            <RowPlaybackSettings :mode="settings.rowPlaybackMode" @change="store.update({ rowPlaybackMode: $event })" />
             <MeterSettings />
           </template>
 

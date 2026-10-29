@@ -186,6 +186,18 @@ pub enum MeterStyle {
     Bars,
 }
 
+/// How a library row click chooses the preview start position.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum RowPlaybackMode {
+    Start,
+    Selected,
+    Alt,
+    #[default]
+    #[serde(other)]
+    Cursor,
+}
+
 /// Missing or unknown fields fall back to defaults, so older and newer files both load.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
@@ -199,6 +211,7 @@ pub struct Settings {
     pub watch_folders: bool,
     /// Play a sample when the focus moves to it with the arrow keys.
     pub autoplay: bool,
+    pub row_playback_mode: RowPlaybackMode,
     /// Preview volume, 0..=1.
     pub volume: f32,
     pub meter_style: MeterStyle,
@@ -240,6 +253,7 @@ impl Default for Settings {
             language: Language::En,
             watch_folders: true,
             autoplay: true,
+            row_playback_mode: RowPlaybackMode::Cursor,
             volume: 1.0,
             meter_style: MeterStyle::Bars,
             output_device: None,
@@ -485,6 +499,22 @@ mod tests {
         assert_eq!(legacy.meter_style, MeterStyle::Spectrum);
         let unknown: Settings = serde_json::from_value(serde_json::json!({"meterStyle": "future-style"})).unwrap();
         assert_eq!(unknown.meter_style, MeterStyle::Bars);
+    }
+
+    #[test]
+    fn row_playback_modes_default_and_persist() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("settings.json");
+        let store = SettingsStore::load(path.clone());
+        assert_eq!(store.get().row_playback_mode, RowPlaybackMode::Cursor);
+        for (name, expected) in [("cursor", RowPlaybackMode::Cursor), ("start", RowPlaybackMode::Start),
+            ("selected", RowPlaybackMode::Selected), ("alt", RowPlaybackMode::Alt)] {
+            let settings: Settings = serde_json::from_value(serde_json::json!({"rowPlaybackMode": name})).unwrap();
+            store.replace(settings).unwrap();
+            assert_eq!(SettingsStore::load(path.clone()).get().row_playback_mode, expected);
+        }
+        let settings: Settings = serde_json::from_value(serde_json::json!({"rowPlaybackMode": "future-mode"})).unwrap();
+        assert_eq!(settings.row_playback_mode, RowPlaybackMode::Cursor);
     }
 
     #[test]

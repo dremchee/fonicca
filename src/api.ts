@@ -1,3 +1,4 @@
+import type { RowPlaybackMode } from '@/row-playback'
 import type { Locale } from '@/i18n'
 import type { CustomTheme } from '@/themes'
 import { Channel, invoke } from '@tauri-apps/api/core'
@@ -143,6 +144,7 @@ export interface Settings extends WaveformSettings {
   watchFolders: boolean
   /** Play a sample when the focus moves to it with the arrow keys. */
   autoplay: boolean
+  rowPlaybackMode: RowPlaybackMode
   /** Preview volume, 0..1. */
   volume: number
   meterStyle: MeterStyle

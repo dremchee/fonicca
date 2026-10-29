@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { rowClickSeeks } from '@/row-playback'
 import { useWaveformBackgrounds } from '@/composables/waveformBackgrounds'
 import { useTagColors } from '@/composables/tagColors'
 import type { Sample } from '@/api'
@@ -144,6 +145,7 @@ let collapseOnClick = -1
 async function onMouseDown(e: MouseEvent, index: number, sample: Sample) {
   if (e.button !== 0)
     return
+  const fromCursor = rowClickSeeks(settings.settings.rowPlaybackMode, library.focused?.id === sample.id, e.altKey)
   collapseOnClick = -1
   const toggle = e.metaKey || e.ctrlKey
   if (!e.shiftKey && !toggle && selectedIds.value.size > 1 && selectedIds.value.has(sample.id)) {
@@ -153,11 +155,12 @@ async function onMouseDown(e: MouseEvent, index: number, sample: Sample) {
   else {
     await library.clickRow(index, { shift: e.shiftKey, toggle })
   }
-  // A click on an available waveform seeks; a second press opens the editor.
+  // Row-click preferences decide whether an available waveform seeks.
+  // A second press opens the editor without a second playback action.
   if (!e.shiftKey && !toggle && e.detail < 2) {
     const target = e.target instanceof Element ? e.target : null
     const name = target?.closest<HTMLElement>('.track-name')
-    const wave = name && backgrounds.pathFor(sample) && sample.duration && !target?.closest('button')
+    const wave = fromCursor && name && backgrounds.pathFor(sample) && sample.duration && !target?.closest('button')
     await editor.stopPlayback()
     if (wave && name) {
       const rect = name.getBoundingClientRect()
@@ -167,7 +170,7 @@ async function onMouseDown(e: MouseEvent, index: number, sample: Sample) {
       else
         await player.play(sample, start)
     }
-    else if (player.playingId !== sample.id || player.paused) {
+    else if (settings.settings.rowPlaybackMode !== 'cursor' || player.playingId !== sample.id || player.paused) {
       await player.play(sample)
     }
     void backgrounds.prepare(sample)
@@ -480,12 +483,6 @@ function onDragStart(e: DragEvent, sample: Sample) {
 }
 .header {
   flex-shrink: 0;
-}
-.stem-child .track-icon {
-  transform: translateX(12px);
-}
-.stem-child .track-name {
-  padding-left: 12px;
 }
 .row.stem-parent,
 .row.stem-child {

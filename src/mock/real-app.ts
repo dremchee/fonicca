@@ -34,7 +34,7 @@ let preferred: string[] = []
 let clapInstalled = location.hash === '#models'
 let clapBytes = clapInstalled ? 34301667 : 0
 let clapDownloading = false
-let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], language: 'en', watchFolders: true, autoplay: true, volume: 1, analysisThreads: null, stemsFolder: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme', editorWaveform: { waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' } }
+let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], language: 'en', watchFolders: true, autoplay: true, rowPlaybackMode: 'cursor', volume: 1, analysisThreads: null, stemsFolder: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme', editorWaveform: { waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' } }
 
 export function install() {
   Object.assign(window, { isTauri: true })

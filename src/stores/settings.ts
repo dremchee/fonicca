@@ -20,6 +20,7 @@ const DEFAULTS: Settings = {
   language: 'en',
   watchFolders: true,
   autoplay: true,
+  rowPlaybackMode: 'cursor',
   volume: 1,
   meterStyle: 'bars',
   outputDevice: null,

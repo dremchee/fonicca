@@ -41,6 +41,14 @@ export default {
     import: 'Import…',
   },
   playback: {
+    rowClick: {
+      title: 'Clicking a track',
+      description: 'Choose where playback starts when you click a row. Seeking requires a loaded waveform; double-click still opens the editor.',
+      cursor: { title: 'From the click position', description: 'Click the waveform of any track to play from that point. Default.' },
+      start: { title: 'Always from the beginning', description: 'Every row click starts the track at 0:00, including repeated clicks.' },
+      selected: { title: 'New track from the beginning', description: 'A new selection starts at 0:00. Click the selected track’s waveform again to seek.' },
+      alt: { title: 'Option / Alt + click to seek', description: 'Click to start at 0:00. Hold ⌥ Option / Alt while clicking the waveform to play from that point.' },
+    },
     input: 'Recording input',
     inputDesc: 'Microphone or line input on your audio interface.',
     inputUnavailable: 'The saved input is disconnected. Connect it or choose another device.',
