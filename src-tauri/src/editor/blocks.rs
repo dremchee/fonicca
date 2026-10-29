@@ -290,18 +290,26 @@ impl BlockAudio {
         }
         let mut peak = 0.0_f32;
         let mut means = vec![0.0_f64; ch];
+        // Walk contiguous source pieces once; indexing each sample would search
+        // the piece table repeatedly after cuts and pastes.
         if matches!(op, Op::Normalize { .. } | Op::DcOffset { .. }) {
-            for f in a..b {
-                for c in 0..ch {
-                    let s = self.samples[f * ch + c];
-                    peak = peak.max(s.abs());
-                    means[c] += s as f64;
+            for piece in self.samples.parts(a * ch..b * ch) {
+                let values = &piece.data[piece.range];
+                if matches!(op, Op::Normalize { .. }) {
+                    peak = values.iter().fold(peak, |max, sample| max.max(sample.abs()));
+                } else {
+                    for frame in values.chunks_exact(ch) {
+                        for (mean, sample) in means.iter_mut().zip(frame) { *mean += *sample as f64; }
+                    }
                 }
             }
         }
-        for mean in &mut means {
-            *mean /= (b - a) as f64;
-        }
+        for mean in &mut means { *mean /= (b - a) as f64; }
+        let constant_gain = match op {
+            Op::Gain { db, .. } => super::db_to_gain(*db),
+            Op::Normalize { peak_db, .. } if peak > 1e-9 => super::db_to_gain(*peak_db) / peak,
+            _ => 1.0,
+        };
         let mut rendered = Builder::new(super::memory::pcm_budget().min(RAM_CEILING));
         for start in (a..b).step_by(BLOCK_FRAMES) {
             let end = (start + BLOCK_FRAMES).min(b);
@@ -318,34 +326,28 @@ impl BlockAudio {
             } else {
                 self.range(start * ch..end * ch).into_owned()
             };
-            for (i, frame) in values.chunks_exact_mut(ch).enumerate() {
-                let f = start + i;
-                let gain = match op {
-                    Op::Gain { db, .. } => super::db_to_gain(*db),
-                    Op::Normalize { peak_db, .. } if peak > 1e-9 => {
-                        super::db_to_gain(*peak_db) / peak
-                    }
-                    Op::FadeIn { curve, .. } | Op::FadeOut { curve, .. } => {
-                        let t = if b - a > 1 {
-                            (f - a) as f32 / (b - a - 1) as f32
-                        } else {
-                            1.0
-                        };
-                        curve.gain(if matches!(op, Op::FadeIn { .. }) {
-                            t
-                        } else {
-                            1.0 - t
-                        })
-                    }
-                    _ => 1.0,
-                };
-                for (c, s) in frame.iter_mut().enumerate() {
-                    match op {
-                        Op::Silence { .. } => *s = 0.0,
-                        Op::DcOffset { .. } => *s = (*s as f64 - means[c]) as f32,
-                        _ => *s *= gain,
+            // Dispatch once per block. Gains and dB conversions are invariant
+            // over the selection; only fades need a gain for each frame.
+            match op {
+                Op::Gain { .. } | Op::Normalize { .. } => {
+                    values.iter_mut().for_each(|sample| *sample *= constant_gain);
+                }
+                Op::Silence { .. } => values.fill(0.0),
+                Op::DcOffset { .. } => {
+                    for frame in values.chunks_exact_mut(ch) {
+                        for (sample, mean) in frame.iter_mut().zip(&means) { *sample = (*sample as f64 - mean) as f32; }
                     }
                 }
+                Op::FadeIn { curve, .. } | Op::FadeOut { curve, .. } => {
+                    let fade_in = matches!(op, Op::FadeIn { .. });
+                    let denominator = (b - a - 1) as f32;
+                    for (i, frame) in values.chunks_exact_mut(ch).enumerate() {
+                        let t = if b - a > 1 { (start + i - a) as f32 / denominator } else { 1.0 };
+                        let gain = curve.gain(if fade_in { t } else { 1.0 - t });
+                        frame.iter_mut().for_each(|sample| *sample *= gain);
+                    }
+                }
+                _ => {}, // Reverse was performed above; no arithmetic is needed.
             }
             rendered.append(&values)?;
         }
@@ -368,6 +370,25 @@ mod tests {
     use super::*;
     use crate::editor::{Curve, apply};
     use std::collections::HashSet;
+    #[test]
+    fn normalization_and_dc_scan_fragmented_multichannel_ranges_without_changing_results() {
+        for channels in [1, 2, 3, 6] {
+            let source = Pcm { samples: (0..40000 * channels).map(|n| (n as f32 * 0.03).sin() * 0.6 + 0.1).collect(), channels, sample_rate: 48000 };
+            let mut blocks = BlockAudio::from(source.clone());
+            let mut flat = source;
+            for op in [
+                Op::Delete { start: 123, end: 456 },
+                Op::Replace { start: 500, end: 500, samples: Arc::new(vec![0.25; channels * 111]) },
+                Op::Normalize { start: 17, end: 35000, peak_db: -1.0 },
+                Op::DcOffset { start: 18, end: 33000 },
+            ] {
+                apply(&mut flat, &op);
+                blocks.try_apply(&op).unwrap();
+                assert!(blocks.samples.iter().zip(&flat.samples).all(|(a,b)| (a-b).abs() < 1e-6), "{channels} channels, {op:?}");
+            }
+        }
+    }
+
     fn owned_bytes(a: &BlockAudio, b: &BlockAudio) -> usize {
         let mut seen = HashSet::new();
         a.samples

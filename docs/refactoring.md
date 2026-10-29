@@ -87,6 +87,29 @@ request count, retained pages, first-page latency and long frames.
   appeared in the monitor, browser console had no errors on the checked page.
   Screenshot: local `output/playwright/refactor-editor-monitor.png` (not shipped).
 
+Second pass:
+
+- Selection/marker/context-menu gestures now live in `composables/editor/gestures.ts`.
+  Scope/session changes remove pending window listeners and invalidate delayed
+  zero-crossing results. Tests cover audition clicks, silent drag selection,
+  updating an active range without restarting, marker bounds and disposal.
+- Keyboard mapping moved to `editor-shortcuts.ts`, with tests for modifier keys,
+  Russian marker shortcut and shifted sampler-pad numbering.
+- `EditorToolbar` receives state flags and emits typed actions. Curve, loop mode
+  and slice preview use explicit two-way models. Audio operations remain in the
+  editor store; dialogs continue owning their own specialized behavior.
+- Browser mock: drag selection and M markers worked; extracted toolbar fade
+  invoked an edit; at 680px width the overflow menu and Save remained available.
+- Block effects dispatch once per block instead of per channel/sample. Constant
+  gain conversions are hoisted, normalization and DC analysis scan contiguous
+  pieces and compute only their required statistic. Multi-channel fragmented
+  edits are checked against the contiguous reference implementation.
+- [Raw before/after results](research/editor-effects-comparison.json): for the
+  identical 180-second workload, median normalization 300.5 → 158.4 ms, gain
+  165.6 → 139.4 ms, full fade 184.5 → 173.3 ms. These are three local repetitions,
+  not a cross-platform speed guarantee. Short-selection stretch and LUFS were
+  also measured (about 34 and 7 ms); no change was made to those algorithms.
+
 Still pending: library baseline, full WebView-process memory measurements,
-remaining editor boundaries, measured audio optimization, library/job/model
-refactoring and release checks. The six-item completion checklist remains open.
+waveform drawing extraction, library/job/model refactoring and release checks.
+The six-item completion checklist remains open until its full evidence is present.

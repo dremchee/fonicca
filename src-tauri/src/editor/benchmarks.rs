@@ -65,6 +65,20 @@ fn editor_workload_benchmark() {
             timed(&mut samples, "undo_delete", || session.undo());
             timed(&mut samples, "fade_full", || session.try_apply(Op::FadeOut { start: 0, end: frames, curve: Curve::Smooth }).unwrap());
             timed(&mut samples, "undo_full_fade", || session.undo());
+            timed(&mut samples, "gain_full", || session.try_apply(Op::Gain { start: 0, end: frames, db: -3.0 }).unwrap());
+            session.undo();
+            timed(&mut samples, "normalize_full", || session.try_apply(Op::Normalize { start: 0, end: frames, peak_db: -1.0 }).unwrap());
+            session.undo();
+            for (name, processing) in [
+                ("stretch_short", super::processing::Processing::Stretch { semitones: 0.0, ratio: 1.1 }),
+                ("lufs_short", super::processing::Processing::Lufs { target: -18.0, ceiling: -1.0 }),
+            ] {
+                timed(&mut samples, name, || {
+                    let audio = session.audio();
+                    let pcm = crate::audio::Pcm { samples: audio.range(0..frames.min(3 * rate) * 2).into_owned(), channels: 2, sample_rate: 44100 };
+                    super::processing::render(pcm, 0, frames, processing).unwrap()
+                });
+            }
             timed(&mut samples, "save", || super::write_wav(&root.path().join("output.wav"), session.audio(), Some(32), None).unwrap());
             memory = serde_json::to_value(session.diagnostics()).unwrap();
         }

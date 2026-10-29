@@ -1,0 +1,570 @@
+{
+  "schema": 1,
+  "sourceBase": "a3fdebcb495dec93654118bccc343cbda712426d",
+  "change": "Dispatch per block, hoist constant gains, scan contiguous pieces for normalization/DC.",
+  "limitations": "Three warm-filesystem repetitions on the same macOS ARM64 machine. 180-second runs use identical extended workloads. 1200-second comparison with the original baseline has fewer reference operations; do not treat differences as statistically established speedups. Short stretch/LUFS measurements include copying the selected three seconds and rendering, not the whole file.",
+  "before": {
+    "arch": "aarch64",
+    "note": "Sequential warm-filesystem runs; no audio device or WebView. Wave includes cache generation. Storage is not process RSS.",
+    "os": "macos",
+    "profile": "dev-test",
+    "scenarios": [
+      {
+        "channels": 2,
+        "operations": {
+          "delete": {
+            "p50Ms": 0.001916,
+            "p95Ms": 0.003084,
+            "samplesMs": [
+              0.003084,
+              0.0015,
+              0.001916
+            ]
+          },
+          "fade_full": {
+            "p50Ms": 184.47341600000001,
+            "p95Ms": 185.481542,
+            "samplesMs": [
+              184.47341600000001,
+              184.08891599999998,
+              185.481542
+            ]
+          },
+          "fade_short": {
+            "p50Ms": 0.9946659999999999,
+            "p95Ms": 1.00725,
+            "samplesMs": [
+              1.00725,
+              0.9055829999999999,
+              0.9946659999999999
+            ]
+          },
+          "gain_full": {
+            "p50Ms": 165.61837500000001,
+            "p95Ms": 167.159875,
+            "samplesMs": [
+              165.61837500000001,
+              167.159875,
+              164.98725
+            ]
+          },
+          "lufs_short": {
+            "p50Ms": 7.026291,
+            "p95Ms": 7.2009170000000005,
+            "samplesMs": [
+              7.2009170000000005,
+              7.016,
+              7.026291
+            ]
+          },
+          "normalize_full": {
+            "p50Ms": 300.544125,
+            "p95Ms": 301.178833,
+            "samplesMs": [
+              299.68962500000004,
+              301.178833,
+              300.544125
+            ]
+          },
+          "open_decode": {
+            "p50Ms": 173.73475,
+            "p95Ms": 175.36825,
+            "samplesMs": [
+              175.36825,
+              173.73475,
+              171.078834
+            ]
+          },
+          "redo_fade": {
+            "p50Ms": 0.000292,
+            "p95Ms": 0.000375,
+            "samplesMs": [
+              0.000292,
+              0.00029099999999999997,
+              0.000375
+            ]
+          },
+          "save": {
+            "p50Ms": 109.095292,
+            "p95Ms": 131.64245799999998,
+            "samplesMs": [
+              131.64245799999998,
+              109.095292,
+              108.887667
+            ]
+          },
+          "stretch_short": {
+            "p50Ms": 32.930417,
+            "p95Ms": 33.058125000000004,
+            "samplesMs": [
+              33.058125000000004,
+              32.606875,
+              32.930417
+            ]
+          },
+          "undo_delete": {
+            "p50Ms": 0.00020800000000000001,
+            "p95Ms": 0.00020800000000000001,
+            "samplesMs": [
+              0.00020800000000000001,
+              0.000167,
+              0.00020800000000000001
+            ]
+          },
+          "undo_fade": {
+            "p50Ms": 0.00075,
+            "p95Ms": 0.016541999999999998,
+            "samplesMs": [
+              0.016541999999999998,
+              0.00075,
+              0.000583
+            ]
+          },
+          "undo_full_fade": {
+            "p50Ms": 0.00045900000000000004,
+            "p95Ms": 0.002291,
+            "samplesMs": [
+              0.002291,
+              0.000458,
+              0.00045900000000000004
+            ]
+          },
+          "wave_after_fade": {
+            "p50Ms": 3.548458,
+            "p95Ms": 3.68025,
+            "samplesMs": [
+              3.438041,
+              3.548458,
+              3.68025
+            ]
+          },
+          "wave_cached": {
+            "p50Ms": 1.0665419999999999,
+            "p95Ms": 1.067041,
+            "samplesMs": [
+              1.067041,
+              1.0665419999999999,
+              1.064875
+            ]
+          },
+          "wave_first": {
+            "p50Ms": 148.094417,
+            "p95Ms": 149.371917,
+            "samplesMs": [
+              149.371917,
+              147.63858299999998,
+              148.094417
+            ]
+          },
+          "wave_pan": {
+            "p50Ms": 1.0584170000000002,
+            "p95Ms": 1.234459,
+            "samplesMs": [
+              1.058167,
+              1.234459,
+              1.0584170000000002
+            ]
+          },
+          "wave_zoom": {
+            "p50Ms": 0.9974160000000001,
+            "p95Ms": 0.9996670000000001,
+            "samplesMs": [
+              0.9974160000000001,
+              0.9996670000000001,
+              0.959083
+            ]
+          }
+        },
+        "repetitions": 3,
+        "sampleRate": 44100,
+        "seconds": 180,
+        "storage": {
+          "cacheBytes": 14121744,
+          "diskBytes": 127008000,
+          "lastWaveMs": 3.68,
+          "logicalBytes": 63504000,
+          "openedMs": 171.076875,
+          "ramBytes": 2097152,
+          "redoSteps": 1,
+          "sampleId": 1,
+          "storageCount": 3,
+          "undoSteps": 1
+        }
+      }
+    ],
+    "schema": 1
+  },
+  "after": {
+    "arch": "aarch64",
+    "note": "Sequential warm-filesystem runs; no audio device or WebView. Wave includes cache generation. Storage is not process RSS.",
+    "os": "macos",
+    "profile": "dev-test",
+    "scenarios": [
+      {
+        "channels": 2,
+        "operations": {
+          "delete": {
+            "p50Ms": 0.00475,
+            "p95Ms": 0.0055,
+            "samplesMs": [
+              0.00475,
+              0.0055,
+              0.003125
+            ]
+          },
+          "fade_full": {
+            "p50Ms": 173.268959,
+            "p95Ms": 205.40125,
+            "samplesMs": [
+              205.40125,
+              173.268959,
+              168.85929099999998
+            ]
+          },
+          "fade_short": {
+            "p50Ms": 0.5,
+            "p95Ms": 0.57625,
+            "samplesMs": [
+              0.5,
+              0.57625,
+              0.45037499999999997
+            ]
+          },
+          "gain_full": {
+            "p50Ms": 139.36120799999998,
+            "p95Ms": 153.09375,
+            "samplesMs": [
+              153.09375,
+              139.36120799999998,
+              131.695459
+            ]
+          },
+          "lufs_short": {
+            "p50Ms": 7.328333000000001,
+            "p95Ms": 7.401458,
+            "samplesMs": [
+              7.401458,
+              7.328333000000001,
+              7.0220839999999995
+            ]
+          },
+          "normalize_full": {
+            "p50Ms": 158.441917,
+            "p95Ms": 323.392791,
+            "samplesMs": [
+              323.392791,
+              158.441917,
+              145.385833
+            ]
+          },
+          "open_decode": {
+            "p50Ms": 180.67529199999998,
+            "p95Ms": 230.326208,
+            "samplesMs": [
+              230.326208,
+              179.23504200000002,
+              180.67529199999998
+            ]
+          },
+          "redo_fade": {
+            "p50Ms": 0.000292,
+            "p95Ms": 0.000375,
+            "samplesMs": [
+              0.000375,
+              0.000292,
+              0.00025
+            ]
+          },
+          "save": {
+            "p50Ms": 115.574209,
+            "p95Ms": 180.596083,
+            "samplesMs": [
+              180.596083,
+              115.574209,
+              111.33504099999999
+            ]
+          },
+          "stretch_short": {
+            "p50Ms": 33.859291,
+            "p95Ms": 36.502832999999995,
+            "samplesMs": [
+              36.502832999999995,
+              33.859291,
+              33.101625000000006
+            ]
+          },
+          "undo_delete": {
+            "p50Ms": 0.000125,
+            "p95Ms": 0.000125,
+            "samplesMs": [
+              0.000125,
+              0.000125,
+              8.3e-05
+            ]
+          },
+          "undo_fade": {
+            "p50Ms": 0.000958,
+            "p95Ms": 0.005875,
+            "samplesMs": [
+              0.005875,
+              0.000958,
+              0.000916
+            ]
+          },
+          "undo_full_fade": {
+            "p50Ms": 0.0005,
+            "p95Ms": 0.0005,
+            "samplesMs": [
+              0.000458,
+              0.0005,
+              0.0005
+            ]
+          },
+          "wave_after_fade": {
+            "p50Ms": 3.930292,
+            "p95Ms": 12.794625,
+            "samplesMs": [
+              12.794625,
+              3.930292,
+              3.9091250000000004
+            ]
+          },
+          "wave_cached": {
+            "p50Ms": 1.292167,
+            "p95Ms": 1.822541,
+            "samplesMs": [
+              1.822541,
+              1.2581669999999998,
+              1.292167
+            ]
+          },
+          "wave_first": {
+            "p50Ms": 161.50983399999998,
+            "p95Ms": 214.719042,
+            "samplesMs": [
+              214.719042,
+              161.50983399999998,
+              148.84466700000002
+            ]
+          },
+          "wave_pan": {
+            "p50Ms": 1.236375,
+            "p95Ms": 1.256208,
+            "samplesMs": [
+              1.256208,
+              1.229708,
+              1.236375
+            ]
+          },
+          "wave_zoom": {
+            "p50Ms": 0.980208,
+            "p95Ms": 1.005042,
+            "samplesMs": [
+              0.980208,
+              0.971834,
+              1.005042
+            ]
+          }
+        },
+        "repetitions": 3,
+        "sampleRate": 44100,
+        "seconds": 180,
+        "storage": {
+          "cacheBytes": 14121744,
+          "diskBytes": 127008000,
+          "lastWaveMs": 3.908,
+          "logicalBytes": 63504000,
+          "openedMs": 180.673167,
+          "ramBytes": 2097152,
+          "redoSteps": 1,
+          "sampleId": 1,
+          "storageCount": 3,
+          "undoSteps": 1
+        }
+      },
+      {
+        "channels": 2,
+        "operations": {
+          "delete": {
+            "p50Ms": 0.0045000000000000005,
+            "p95Ms": 0.0050420000000000005,
+            "samplesMs": [
+              0.004458,
+              0.0045000000000000005,
+              0.0050420000000000005
+            ]
+          },
+          "fade_full": {
+            "p50Ms": 1060.8799589999999,
+            "p95Ms": 1216.7984999999999,
+            "samplesMs": [
+              1216.7984999999999,
+              1055.4287499999998,
+              1060.8799589999999
+            ]
+          },
+          "fade_short": {
+            "p50Ms": 0.416833,
+            "p95Ms": 0.533625,
+            "samplesMs": [
+              0.533625,
+              0.41637500000000005,
+              0.416833
+            ]
+          },
+          "gain_full": {
+            "p50Ms": 873.472458,
+            "p95Ms": 886.043667,
+            "samplesMs": [
+              849.625792,
+              886.043667,
+              873.472458
+            ]
+          },
+          "lufs_short": {
+            "p50Ms": 7.015541,
+            "p95Ms": 7.3096250000000005,
+            "samplesMs": [
+              6.947708,
+              7.3096250000000005,
+              7.015541
+            ]
+          },
+          "normalize_full": {
+            "p50Ms": 994.176792,
+            "p95Ms": 1045.587917,
+            "samplesMs": [
+              1045.587917,
+              994.176792,
+              955.7604170000001
+            ]
+          },
+          "open_decode": {
+            "p50Ms": 1259.5752499999999,
+            "p95Ms": 1341.066,
+            "samplesMs": [
+              1259.5752499999999,
+              1341.066,
+              1231.353959
+            ]
+          },
+          "redo_fade": {
+            "p50Ms": 0.000542,
+            "p95Ms": 0.0006670000000000001,
+            "samplesMs": [
+              0.000375,
+              0.000542,
+              0.0006670000000000001
+            ]
+          },
+          "save": {
+            "p50Ms": 771.988875,
+            "p95Ms": 797.217167,
+            "samplesMs": [
+              766.979417,
+              797.217167,
+              771.988875
+            ]
+          },
+          "stretch_short": {
+            "p50Ms": 33.417958,
+            "p95Ms": 34.108292,
+            "samplesMs": [
+              34.108292,
+              33.417958,
+              33.140083000000004
+            ]
+          },
+          "undo_delete": {
+            "p50Ms": 0.000125,
+            "p95Ms": 0.00020800000000000001,
+            "samplesMs": [
+              0.00020800000000000001,
+              0.000125,
+              0.000125
+            ]
+          },
+          "undo_fade": {
+            "p50Ms": 0.002541,
+            "p95Ms": 0.012542,
+            "samplesMs": [
+              0.001375,
+              0.012542,
+              0.002541
+            ]
+          },
+          "undo_full_fade": {
+            "p50Ms": 0.000709,
+            "p95Ms": 0.00075,
+            "samplesMs": [
+              0.00075,
+              0.000709,
+              0.000583
+            ]
+          },
+          "wave_after_fade": {
+            "p50Ms": 4.395042,
+            "p95Ms": 4.492375,
+            "samplesMs": [
+              4.395042,
+              4.492375,
+              4.366292
+            ]
+          },
+          "wave_cached": {
+            "p50Ms": 1.53075,
+            "p95Ms": 1.742167,
+            "samplesMs": [
+              1.53075,
+              1.530084,
+              1.742167
+            ]
+          },
+          "wave_first": {
+            "p50Ms": 1024.552208,
+            "p95Ms": 1305.657708,
+            "samplesMs": [
+              1305.657708,
+              987.3820410000001,
+              1024.552208
+            ]
+          },
+          "wave_pan": {
+            "p50Ms": 1.692833,
+            "p95Ms": 1.763083,
+            "samplesMs": [
+              1.686208,
+              1.692833,
+              1.763083
+            ]
+          },
+          "wave_zoom": {
+            "p50Ms": 0.9746670000000001,
+            "p95Ms": 0.9764170000000001,
+            "samplesMs": [
+              0.9746670000000001,
+              0.969083,
+              0.9764170000000001
+            ]
+          }
+        },
+        "repetitions": 3,
+        "sampleRate": 44100,
+        "seconds": 1200,
+        "storage": {
+          "cacheBytes": 92839572,
+          "diskBytes": 846720000,
+          "lastWaveMs": 4.365,
+          "logicalBytes": 423360000,
+          "openedMs": 1231.342709,
+          "ramBytes": 2097152,
+          "redoSteps": 1,
+          "sampleId": 1,
+          "storageCount": 3,
+          "undoSteps": 1
+        }
+      }
+    ],
+    "schema": 1
+  }
+}
