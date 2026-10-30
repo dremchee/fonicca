@@ -4,6 +4,7 @@ import type { Marker, Region } from './editor-regions.ts'
 import type { Spectrogram } from './spectrogram.ts'
 import type { GridMode } from './composables/editor/grid.ts'
 import { MIN_LINE_PX } from './composables/editor/grid.ts'
+import { LOOP_FLAG_SIZE, LOOP_FLAG_WIDTH, loopLabelBox } from './editor-loop-controls.ts'
 
 export interface RegionBadge { start: number, end: number, x: number, w: number }
 export interface EditorCanvasScene {
@@ -19,6 +20,8 @@ export interface EditorCanvasScene {
   spectrum: Spectrogram | null
   selection: { start: number, end: number } | null
   loop: { start: number, end: number } | null
+  loopLabel?: string
+  loopPlaying?: boolean
   regions: Region[]
   markers: Marker[]
   slicePreview: Marker[]
@@ -63,7 +66,10 @@ function render(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, painter
 
   // Waveform, one lane per channel (or one mixed lane), in the full brand colour.
   // The selection is the inverse: a brand-colour block with the wave in the canvas colour.
-  const sel = scene.selection
+  // An idle saved loop stays translucent; during playback it uses selection inversion.
+  const selected = scene.selection
+  const lp = scene.loop
+  const sel = selected && lp && selected.start === lp.start && selected.end === lp.end && !scene.loopPlaying ? null : selected
   const selX = sel ? pixel(x(sel.start)) : 0
   const selW = sel ? Math.max(1 / dpr, pixel(x(sel.end)) - selX) : 0
   if (scene.spectral) {
@@ -117,6 +123,13 @@ function render(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, painter
     ctx.fillRect(selX, RULER, selW, h - RULER)
   }
 
+  if (lp && !scene.loopPlaying) {
+    ctx.fillStyle = color('--primary')
+    ctx.globalAlpha = 0.14
+    ctx.fillRect(pixel(x(lp.start)), RULER, pixel(x(lp.end)) - pixel(x(lp.start)), h - RULER)
+    ctx.globalAlpha = 1
+  }
+
   // Grid over the wave, so it reads on the wave and the selection alike: bars
   // strongest, then beats (or ruler ticks), then subdivisions.
   if (scene.grid.mode !== 'off') {
@@ -157,29 +170,34 @@ function render(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, painter
   ctx.fillStyle = color('--border')
   ctx.fillRect(0, pixel(RULER), w, 1 / dpr)
 
-  // Loop points: a brand-colour band at the foot of the ruler, dashed edges through the wave.
-  const lp = scene.loop
-  if (lp) {
-    const a = x(lp.start)
-    const b = x(lp.end)
-    ctx.fillStyle = color('--primary')
-    ctx.fillRect(a, RULER - 4, Math.max(1, b - a), 4)
-    // Small end grips show that the saved loop band can be resized.
-    for (const px of [a, b]) ctx.fillRect(pixel(px - 2), RULER - 8, pixel(4), 8)
-    ctx.strokeStyle = color('--foreground')
-    ctx.globalAlpha = 0.7
-    ctx.setLineDash([3, 3])
-    ctx.lineWidth = 1
-    ctx.beginPath()
-    for (const px of [Math.round(a) + 0.5, Math.round(b) - 0.5]) {
-      ctx.moveTo(px, RULER)
-      ctx.lineTo(px, h)
-    }
-    ctx.stroke()
-    ctx.setLineDash([])
-    ctx.globalAlpha = 1
-  }
   const badges = drawSlices(ctx, scene, x, color)
+  // Flags align with the top edge of the ruler; their lines continue through the wave.
+  if (lp) {
+    const a = pixel(x(lp.start)), b = pixel(x(lp.end))
+    ctx.save()
+    ctx.fillStyle = color('--foreground')
+    for (const [px, direction] of [[a, 1], [b, -1]]) {
+      ctx.fillRect(direction < 0 ? px - 1 / dpr : px, LOOP_FLAG_SIZE + 2, 1 / dpr, h - LOOP_FLAG_SIZE - 2)
+      ctx.beginPath()
+      ctx.moveTo(px, 0)
+      ctx.lineTo(pixel(px + direction * LOOP_FLAG_WIDTH), 0)
+      ctx.lineTo(px, LOOP_FLAG_SIZE)
+      ctx.closePath()
+      ctx.fill()
+    }
+    const label = loopLabelBox(a, b, w, RULER)
+    if (label) {
+      ctx.beginPath()
+      ctx.roundRect(pixel(label.x), label.y, label.width, label.height, 2)
+      ctx.fill()
+      ctx.fillStyle = color('--background')
+      ctx.font = '500 10px system-ui, sans-serif'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText(scene.loopLabel ?? 'Loop', pixel(label.x + label.width / 2), label.y + label.height / 2)
+    }
+    ctx.restore()
+  }
   if (scene.spectral)
     drawFrequencyAxis(ctx, rate, w, RULER, h - RULER)
 
@@ -190,6 +208,7 @@ function render(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, painter
 function drawSlices(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, x: (frame: number) => number, color: (name: string) => string) {
   const { width: w, height: h, ruler: RULER } = scene.viewport
   const regions = scene.regions
+  const loopLabel = scene.loop ? loopLabelBox(x(scene.loop.start), x(scene.loop.end), w, RULER) : null
   const badges: RegionBadge[] = []
   ctx.fillStyle = color('--card')
   ctx.globalAlpha = 0.65
@@ -211,11 +230,11 @@ function drawSlices(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, x: 
     ctx.fillStyle = color('--foreground')
     // The start of the file is no marker of its own.
     if (r.start > 0 || scene.markers[0]?.frame === 0) {
-      ctx.fillRect(px, 0, 1, h)
+      ctx.fillRect(px, LOOP_FLAG_SIZE, 1, h - LOOP_FLAG_SIZE)
       ctx.beginPath()
       ctx.moveTo(px, 0)
-      ctx.lineTo(px + 6, 3)
-      ctx.lineTo(px, 6)
+      ctx.lineTo(px + LOOP_FLAG_WIDTH, 0)
+      ctx.lineTo(px, LOOP_FLAG_SIZE)
       ctx.closePath()
       ctx.fill()
     }
@@ -223,15 +242,20 @@ function drawSlices(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, x: 
       continue
     const label = String(n)
     const lw = Math.max(BADGE_H, ctx.measureText(label).width + 6)
-    if (px - lastLabel < lw + 4)
+    let labelX = px + 4
+    if (loopLabel && labelX < loopLabel.x + loopLabel.width && labelX + lw > loopLabel.x)
+      labelX = loopLabel.x + loopLabel.width + 4
+    if (labelX - lastLabel < lw + 4 || labelX + lw > w)
       continue
-    lastLabel = px
-    badges.push({ start: r.start, end: r.end, x: px, w: lw })
-    ctx.fillRect(px, RULER + 1, lw, BADGE_H)
+    lastLabel = labelX
+    badges.push({ start: r.start, end: r.end, x: labelX, w: lw })
+    ctx.beginPath()
+    ctx.roundRect(labelX, RULER + 1, lw, BADGE_H, 2)
+    ctx.fill()
     ctx.fillStyle = color('--background')
     // Hovered: a play button.
     if (scene.hoverBadge === r.start) {
-      const cx = px + lw / 2
+      const cx = labelX + lw / 2
       const cy = RULER + 1 + BADGE_H / 2
       ctx.beginPath()
       ctx.moveTo(cx - 2.5, cy - 4)
@@ -241,7 +265,7 @@ function drawSlices(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, x: 
       ctx.fill()
     }
     else {
-      ctx.fillText(label, px + (lw - ctx.measureText(label).width) / 2, RULER + 12)
+      ctx.fillText(label, labelX + (lw - ctx.measureText(label).width) / 2, RULER + 12)
     }
   }
 

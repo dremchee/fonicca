@@ -1,6 +1,7 @@
 import type { Ref } from 'vue'
 import type { Marker, Region } from '../../editor-regions.ts'
 import type { Span } from '../../stores/editor.ts'
+import { loopBoundaryAt, loopLabelBox } from '../../editor-loop-controls.ts'
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue'
 
 export interface GestureEditor {
@@ -9,6 +10,7 @@ export interface GestureEditor {
   selection: Span | null
   cursor: number
   playing: boolean
+  looping: boolean
   loading?: boolean
   processing?: boolean
   saving?: boolean
@@ -106,6 +108,7 @@ export function useEditorGestures(options: Options) {
   // A selection edge under the pointer (within a few pixels, in the wave area): dragging it resizes the selection.
   const EDGE_PX = 5
   const hoverEdge = ref<'start' | 'end' | null>(null)
+  const hoverLoopLabel = ref(false)
 
   function edgeAt(e: MouseEvent): 'start' | 'end' | null {
     const sel = editor.selection
@@ -128,9 +131,16 @@ export function useEditorGestures(options: Options) {
     const sel = editor.selection
     if (edgeAt(e) && sel && (sel.start !== lp.start || sel.end !== lp.end)) return null
     const px = e.clientX - rect.left
-    const start = Math.abs(px - x(lp.start))
-    const end = Math.abs(px - x(lp.end))
-    return Math.min(start, end) <= EDGE_PX ? (start < end ? 'start' : 'end') : null
+    return loopBoundaryAt(px, e.clientY - rect.top, x(lp.start), x(lp.end), RULER, EDGE_PX)
+  }
+
+  function loopLabelAt(e: MouseEvent) {
+    const lp = draggedLoop.value ?? editor.state?.loop
+    const rect = canvas.value?.getBoundingClientRect()
+    if (!lp || !rect) return false
+    const label = loopLabelBox(x(lp.start), x(lp.end), rect.width, RULER)
+    const px = e.clientX - rect.left, py = e.clientY - rect.top
+    return !!label && px >= label.x && px <= label.x + label.width && py >= label.y && py <= label.y + label.height
   }
 
   /** Preview each move; commit saved loop metadata once, as one undo step. */
@@ -141,6 +151,7 @@ export function useEditorGestures(options: Options) {
     const previousSelection = editor.selection
     const previousCursor = editor.cursor
     const startX = e.clientX
+    const pointerOffset = e.clientX - (canvas.value!.getBoundingClientRect().left + x(original[edge]))
     let moved = false
     const clamp = (frame: number) => edge === 'start'
       ? Math.max(0, Math.min(original.end - 1, frame))
@@ -155,7 +166,7 @@ export function useEditorGestures(options: Options) {
     const move = (ev: MouseEvent) => {
       if (!moved && Math.abs(ev.clientX - startX) < 3) return
       moved = true
-      preview(snapped(frameAt(ev.clientX), ev))
+      preview(snapped(frameAt(ev.clientX - pointerOffset), ev))
     }
     const up = async (ev: MouseEvent) => {
       releaseListeners()
@@ -183,17 +194,19 @@ export function useEditorGestures(options: Options) {
 
   const hoverMarker = ref(false)
 
-  /** The marker whose flag is under the pointer (on the ruler, within a few pixels), or -1. */
+  /** A marker's flag or vertical line anywhere in the wave, within a few pixels. */
   function markerAt(e: MouseEvent) {
     const rect = canvas.value?.getBoundingClientRect()
-    const markers = editor.state?.markers ?? []
-    if (!rect || e.clientY - rect.top >= RULER)
+    const markers = draggedMarkers.value ?? editor.state?.markers ?? []
+    if (!rect || editor.loading || editor.processing || editor.saving)
       return -1
     const px = e.clientX - rect.left
     let best = -1
     let bestDistance = EDGE_PX + 1
     markers.forEach((m, i) => {
-      const d = Math.abs(px - x(m.frame))
+      const offset = px - x(m.frame)
+      const onFlag = e.clientY - rect.top >= 0 && e.clientY - rect.top <= 7 && offset >= 0 && offset <= 7
+      const d = onFlag ? 0 : Math.abs(offset)
       if (d < bestDistance) {
         best = i
         bestDistance = d
@@ -243,6 +256,7 @@ export function useEditorGestures(options: Options) {
     const lo = i > 0 ? markers[i - 1].frame + 1 : 0
     const hi = (markers[i + 1]?.frame ?? frames.value) - 1
     const startX = e.clientX
+    const pointerOffset = e.clientX - (canvas.value!.getBoundingClientRect().left + x(markers[i].frame))
     let moved = false
     let at = markers[i].frame
     const place = (f: number) => markers.map((m, j) => (j === i ? { ...m, frame: f } : m))
@@ -250,12 +264,13 @@ export function useEditorGestures(options: Options) {
       if (!moved && Math.abs(ev.clientX - startX) < 3)
         return
       moved = true
-      at = Math.min(hi, Math.max(lo, snapped(frameAt(ev.clientX), ev)))
+      at = Math.min(hi, Math.max(lo, snapped(frameAt(ev.clientX - pointerOffset), ev)))
       draggedMarkers.value = place(at)
     }
     const up = async (ev: MouseEvent) => {
       releaseListeners()
       if (moved) {
+        move(ev)
         const [f] = await zeroSnapped([at], ev)
         if (gesture !== mouseGesture) return
         await editor.setMarkers(place(Math.min(hi, Math.max(lo, f))))
@@ -309,14 +324,21 @@ export function useEditorGestures(options: Options) {
       return
     cancelGesture()
     const gesture = mouseGesture
+    const loopEdge = e.shiftKey ? null : loopEdgeAt(e)
+    if (!loopEdge && loopLabelAt(e)) {
+      if (editor.loading || editor.processing || editor.saving) return
+      selectLoop()
+      editor.looping = true
+      void editor.play()
+      return
+    }
     const badge = badgeAt(e)
     if (badge) {
       playRegion(badge)
       return
     }
-    // A marker's flag on the ruler drags it.
-    const marker = markerAt(e)
-    const loopEdge = e.shiftKey ? null : loopEdgeAt(e)
+    // Both the flag and the vertical line can drag a marker.
+    const marker = e.shiftKey && !onRuler(e) ? -1 : markerAt(e)
     const y = e.clientY - canvas.value!.getBoundingClientRect().top
     if (marker >= 0 && (!loopEdge || y < RULER - 4)) {
       dragMarker(e, marker)
@@ -402,13 +424,15 @@ export function useEditorGestures(options: Options) {
 
 
   function updateHover(event: MouseEvent) {
-    hoverEdge.value = loopEdgeAt(event) ?? edgeAt(event)
+    const loopEdge = loopEdgeAt(event)
+    hoverLoopLabel.value = !loopEdge && loopLabelAt(event)
+    hoverEdge.value = loopEdge ?? edgeAt(event)
     hoverMarker.value = markerAt(event) >= 0
   }
   watch(options.identity, cancelGesture, { flush: 'sync' })
   watch(() => editor.state?.loop, () => { if (draggedLoop.value) cancelGesture() }, { flush: 'sync' })
   onScopeDispose(cancelGesture)
-  return { draggedMarkers, draggedLoop, hoverEdge, hoverMarker, menuOnRuler, menu, menuRegion,
+  return { draggedMarkers, draggedLoop, hoverEdge, hoverMarker, hoverLoopLabel, menuOnRuler, menu, menuRegion,
     frameAt, selectLoop, playRegion, addMarkers, removeMarker, toggleSkip,
     onDoubleClick, onContextMenu, onMouseDown, updateHover }
 }

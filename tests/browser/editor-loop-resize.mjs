@@ -41,9 +41,9 @@ export async function checkLoopResize(page) {
     // The ruler grip must also work when no selection is present.
     await page.evaluate(() => { document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('editor').selection = null })
     await page.keyboard.down('Alt')
-    await page.mouse.move(box.x + box.width * .2, box.y + 16)
+    await page.mouse.move(box.x + box.width * .2 + 7, box.y + 3)
     await page.mouse.down()
-    await page.mouse.move(box.x + box.width * .1, box.y + 16, { steps: 4 })
+    await page.mouse.move(box.x + box.width * .1 + 7, box.y + 3, { steps: 4 })
     await page.mouse.up()
     await page.keyboard.up('Alt')
     await page.waitForFunction(() => window.__loopResize.saved.length === 2 && !document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('editor').processing)

@@ -164,7 +164,7 @@ const { beatFrames, beatGrid, gridStep, gridOrigin, gridFrames, isMultiple, snap
   bpm, rate, frames, width, viewStart, viewEnd, downbeat, gridMode, snap,
 })
 
-const { draggedMarkers, draggedLoop, hoverEdge, hoverMarker, menuOnRuler, menu, menuRegion,
+const { draggedMarkers, draggedLoop, hoverEdge, hoverMarker, hoverLoopLabel, menuOnRuler, menu, menuRegion,
   frameAt, selectLoop, playRegion, addMarkers, removeMarker, toggleSkip,
   onDoubleClick, onContextMenu, onMouseDown, updateHover } = useEditorGestures({
   editor, canvas, frames, rate, viewStart, viewEnd, zeroSnap, x, snapped, badgeAt, ruler: RULER,
@@ -187,7 +187,7 @@ function draw() {
       downbeat: downbeat.value, gridStep, gridFrames, gridOrigin, isMultiple },
     wave: wave.value, waveRange: waveRange.value, look: waveformLook(settings.settings.editorWaveform),
     zoom: vZoom.value, spectral: isSpectrogram.value, spectrum: spectrum.value,
-    selection: editor.selection, loop: shownLoop.value, regions: shownRegions.value,
+    selection: editor.selection, loop: shownLoop.value, loopLabel: t('editor.waveform.loopLabel'), loopPlaying: editor.playing && editor.looping, regions: shownRegions.value,
     markers: shownMarkers.value, slicePreview: slicePreview.value, hoverBadge: hoverBadge.value,
     color: name => (isSpectrogram.value && spectralColors[name]) || style.getPropertyValue(name).trim(),
   }, { drawWave, drawSpectrogram, drawFrequencyAxis })
@@ -195,6 +195,8 @@ function draw() {
 
 watch([
   wave, spectrum, isSpectrogram, viewStart, viewEnd, width, height, pixelRatio, vZoom, gridMode, bpm, downbeat,
+  () => editor.playing,
+  () => editor.looping,
   () => editor.selection?.start,
   () => editor.selection?.end,
   () => settings.settings.editorWaveform.waveStyle,
@@ -384,7 +386,7 @@ const toolbarActions: Record<EditorToolAction, () => unknown> = {
             tabindex="0"
             class="absolute outline-none"
             :style="canvasStyle"
-            :class="hoverBadge !== null ? 'cursor-pointer' : hoverEdge || hoverMarker ? 'cursor-ew-resize' : 'cursor-text'"
+            :class="hoverBadge !== null || hoverLoopLabel ? 'cursor-pointer' : hoverEdge || hoverMarker ? 'cursor-ew-resize' : 'cursor-text'"
             :aria-label="t(isSpectrogram ? 'editor.spectrogram.label' : 'editor.waveform.label')"
             @mousedown="onMouseDown"
             @copy.prevent="editor.copy()"
@@ -393,7 +395,7 @@ const toolbarActions: Record<EditorToolAction, () => unknown> = {
             @dblclick="onDoubleClick"
             @contextmenu="onContextMenu"
             @mousemove="onHover"
-            @mouseleave="hoverEdge = null; hoverMarker = false; hoverFrame = null; hoverBadge = null"
+            @mouseleave="hoverEdge = null; hoverMarker = false; hoverLoopLabel = false; hoverFrame = null; hoverBadge = null"
             @wheel="onWheel"
             @keydown="onKeyDown"
           />

@@ -37,7 +37,7 @@ test('explicit markers own numbered badges, skipped regions have no playable bad
   v.scene.markers = [{ frame: 1000, skip: false }, { frame: 3000, skip: true }]
   v.scene.regions = [{ start: 1000, end: 3000, skip: false }, { start: 3000, end: 4000, skip: true }]
   const badges = drawEditorCanvas(v.ctx, v.scene, v.painters)
-  assert.deepEqual(badges, [{ start: 1000, end: 3000, x: 100, w: 14 }])
+  assert.deepEqual(badges, [{ start: 1000, end: 3000, x: 104, w: 14 }])
   assert.ok(v.calls.some(c => c.name === 'fillText' && c.args[0] === '1'))
   v.scene.hoverBadge = 1000
   v.calls.length = 0
@@ -55,4 +55,40 @@ test('spectrogram uses its own painter/axis and an empty viewport paints nothing
   v.scene.viewport.end = 0
   assert.deepEqual(drawEditorCanvas(v.ctx, v.scene, v.painters), [])
   assert.deepEqual(v.calls, [])
+})
+
+test('saved loop uses a translucent range, solid corner flags and a label without inverting the wave', () => {
+  const v = setup()
+  v.scene.loop = { ...v.scene.selection! }
+  drawEditorCanvas(v.ctx, v.scene, v.painters)
+  assert.equal(v.painted.length, 1)
+  assert.ok(v.calls.some(c => c.name === 'fillText' && c.args[0] === 'Loop'))
+  assert.ok(v.calls.some(c => c.name === 'lineTo' && c.args[0] === 107 && c.args[1] === 0))
+  assert.ok(v.calls.some(c => c.name === 'lineTo' && c.args[0] === 193 && c.args[1] === 0))
+  assert.ok(v.calls.some(c => c.name === 'lineTo' && c.args[0] === 100 && c.args[1] === 7))
+  assert.ok(!v.calls.some(c => c.name === 'setLineDash' && JSON.stringify(c.args[0]) === '[3,3]'))
+  v.scene.selection = { start: 2200, end: 2600 }
+  v.painted.length = 0
+  drawEditorCanvas(v.ctx, v.scene, v.painters)
+  assert.equal(v.painted.length, 2)
+})
+
+test('slice numbers remain clickable beside a loop label at the same boundary', () => {
+  const v = setup()
+  v.scene.loop = { start: 1000, end: 3000 }
+  v.scene.regions = [{ start: 1000, end: 3000, skip: false }]
+  const badges = drawEditorCanvas(v.ctx, v.scene, v.painters)
+  assert.equal(badges[0].x, 144)
+})
+
+test('playing a saved loop inverts its waveform like a selected marker region', () => {
+  const v = setup()
+  v.scene.loop = { ...v.scene.selection! }
+  v.scene.loopPlaying = true
+  drawEditorCanvas(v.ctx, v.scene, v.painters)
+  assert.deepEqual(v.painted, [{ kind: 'wave', color: '--wave-strong' }, { kind: 'wave', color: '--card' }])
+  v.scene.loopPlaying = false
+  v.painted.length = 0
+  drawEditorCanvas(v.ctx, v.scene, v.painters)
+  assert.equal(v.painted.length, 1)
 })

@@ -95,6 +95,7 @@ export default {
     exponential: 'Exponential',
   },
   waveform: {
+    loopLabel: 'Loop',
     label: 'Waveform: drag to select, ⌘-scroll to zoom',
     opening: 'Loading track and waveform…',
   },
