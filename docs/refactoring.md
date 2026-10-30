@@ -360,6 +360,47 @@ WebView memory observation:
   fixture host was stopped and the normal debug binary was rebuilt without its
   test identifier or temporary app-data configuration.
 
-Still pending: foreground WebView/editor memory measurements; an audit of the
-remaining synchronous save/export, paste and transcription preparation paths;
-and release checks. Completion items remain open until their full evidence exists.
+Clipboard/paste follow-up:
+
+- Clipboard snapshots now share immutable samples. A same-format paste reuses
+  that allocation across its audio pieces, operations and undo history. Capturing
+  a paste no longer holds either the clipboard or session mutex during conversion.
+  Later clipboard copies cannot change an in-flight paste. The old clip is freed
+  after releasing the clipboard mutex.
+- Rate/channel conversion retains the final output and at most 16,385 frames of
+  remapping scratch, instead of a full second remapped clip. Global interpolation
+  positions preserve the previous float samples, including block boundaries,
+  one-frame inputs, endpoint clamping and multi-channel mixing.
+- Paste runs on a blocking worker and commits against the captured session
+  revision. Newer edits, undo or reopening invalidate a late result. The frontend
+  uses its existing processing guard during paste; errors preserve selection,
+  cursor and state and release that guard for retry.
+- [Three alternating observations per mode](research/editor-paste-comparison.json),
+  30/180/1200-second fixtures: same-format 1200-second insertion reduced median
+  core phases from 338.0 ms to 0.034 ms and retained unique PCM storage including
+  the clipboard from 1,270,080,000 to 846,720,000 bytes. This storage includes the
+  mapped source; it is not a reduction in process RSS by that amount.
+- Conversion has a measured tradeoff: stereo 44.1 kHz to mono 48 kHz took median
+  467.5 → 555.7 ms for the 1200-second clip. Its full remapped intermediate was
+  removed and work no longer holds the editor mutex (median capture + commit
+  0.0033 ms in this fixture), but conversion itself did not become faster.
+  Measurements exclude IPC, worker queueing, state DTO assembly and freeing an
+  existing redo branch; they do not prove UI latency or peak RSS savings.
+- Differential native tests check samples, range clamping, loops/markers, single
+  undo/redo, sharing across repeated pastes and stale sessions. The allocation
+  sharing regression was observed failing against the original clipboard code.
+  `tests/browser/editor-paste.mjs` checks the real store against delayed/rejected
+  mock IPC: duplicate edits, session transitions, selection preservation and retry.
+  It is an opt-in browser check for `/mock.html#editor`, not a native audio test.
+- Verification: 201 native tests pass (39 opt-in cases ignored), `cargo check`,
+  124 frontend tests and production build pass. Eight paste integration checks
+  pass in the development browser mock. The >500 kB chunk warning remains.
+
+Repeat the paste workload with the same duration/repetition variables as the
+processing workload, but filter on `editor_paste_lock_benchmark`. Set
+`FONICCA_LOCK_BENCH_REFERENCE=1` for the old sequence. To alternate runs, use
+`FONICCA_BENCH_REPEATS=1` and retain three runs per mode.
+
+Still pending: foreground WebView/editor memory measurements; synchronous
+save/export, slicing and transcription preparation paths; and release checks.
+Completion items remain open until their full evidence exists.

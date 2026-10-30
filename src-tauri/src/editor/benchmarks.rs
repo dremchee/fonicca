@@ -5,21 +5,25 @@ use serde_json::json;
 use std::{collections::BTreeMap, io::Write, path::Path, time::Instant};
 
 fn fixture(path: &Path, seconds: u32) {
-    let rate = 44_100u32;
-    let bytes = seconds.checked_mul(rate).unwrap().checked_mul(8).unwrap();
+    fixture_format(path, seconds, 2, 44_100);
+}
+
+fn fixture_format(path: &Path, seconds: u32, channels: u32, rate: u32) {
+    let frame_bytes = channels * 4;
+    let bytes = seconds.checked_mul(rate).unwrap().checked_mul(frame_bytes).unwrap();
     let mut writer = std::io::BufWriter::new(std::fs::File::create(path).unwrap());
     writer.write_all(b"RIFF").unwrap();
     writer.write_all(&(36 + bytes).to_le_bytes()).unwrap();
     writer.write_all(b"WAVEfmt ").unwrap();
-    for value in [16u32, 0x0002_0003, rate, rate * 8, 0x0020_0008] {
+    for value in [16u32, channels << 16 | 3, rate, rate * frame_bytes, 32 << 16 | frame_bytes] {
         writer.write_all(&value.to_le_bytes()).unwrap();
     }
     writer.write_all(b"data").unwrap();
     writer.write_all(&bytes.to_le_bytes()).unwrap();
-    let mut block = Vec::with_capacity(rate as usize * 8);
+    let mut block = Vec::with_capacity((rate * frame_bytes) as usize);
     for frame in 0..rate {
         let t = frame as f32 / rate as f32;
-        for frequency in [220.0, 330.0] {
+        for frequency in (0..channels).map(|channel| 220.0 + channel as f32 * 110.0) {
             let amplitude = 0.1 + 0.5 * (-12.0 * t).exp();
             block.extend_from_slice(&(amplitude * (t * frequency * std::f32::consts::TAU).sin()).to_le_bytes());
         }
@@ -189,6 +193,78 @@ fn editor_processing_lock_benchmark() {
         "profile": if cfg!(debug_assertions) { "dev-test" } else { "release-test" },
         "os": std::env::consts::OS, "arch": std::env::consts::ARCH,
         "note": "Sequential synthetic stereo 44.1kHz float WAV. Native test-process RSS includes mmap pages/allocator retention; it is not PCM heap or WebView memory. Uncontended real Mutex; command-equivalent phases exclude IPC/UI and queue delay.",
+        "observations": observations });
+    let text = serde_json::to_string_pretty(&report).unwrap();
+    if let Ok(path) = std::env::var("FONICCA_LOCK_BENCH_OUTPUT") { std::fs::write(path, &text).unwrap(); }
+    println!("{text}");
+}
+
+#[test]
+#[ignore = "opt-in command-equivalent paste conversion, storage and lock workload"]
+fn editor_paste_lock_benchmark() {
+    let reference = std::env::var("FONICCA_LOCK_BENCH_REFERENCE").is_ok_and(|value| value == "1");
+    let durations = std::env::var("FONICCA_BENCH_SECONDS").unwrap_or_else(|_| "30,180".into());
+    let repeats: usize = std::env::var("FONICCA_BENCH_REPEATS").unwrap_or_else(|_| "3".into()).parse().unwrap();
+    assert!((1..=20).contains(&repeats));
+    let root = tempfile::tempdir().unwrap();
+    let mut system = sysinfo::System::new();
+    let mut observations = Vec::new();
+    for seconds in durations.split(',').map(|n| n.parse::<u32>().unwrap()) {
+        assert!((1..=1200).contains(&seconds));
+        let input = root.path().join("input.wav");
+        fixture(&input, seconds);
+        let formats = [("identity", 2, 44100), ("stereo_to_mono_48k", 1, 48000)];
+        for (case, channels, sample_rate) in formats {
+            fixture_format(&root.path().join(format!("{case}.wav")), seconds, channels, sample_rate);
+        }
+        for repetition in 0..repeats {
+            for (case, channels, sample_rate) in formats {
+                let before_open = rss(&mut system);
+                let source = Session::open(1, &input, Some(32)).unwrap();
+                let clip = super::clipboard::Clip::from_range(source.audio(), 0, source.audio().frames()).unwrap();
+                drop(source);
+                let target = root.path().join(format!("{case}.wav"));
+                let session = std::sync::Mutex::new(Session::open(2, &target, Some(32)).unwrap());
+                let position = session.lock().unwrap().audio().frames() / 2;
+                let before_paste = rss(&mut system);
+                let phases = if reference {
+                    let (shares_clipboard, paste_lock) = locked(&session, |session| {
+                        let audio = session.audio();
+                        let output_frames = (clip.info().frames as f64 * sample_rate as f64 / 44100.0).round().max(1.0) as usize;
+                        super::memory::check_samples(clip.info().frames.max(output_frames) * channels as usize, super::memory::pcm_budget() / 2).unwrap();
+                        let samples = std::sync::Arc::new(super::clipboard::reference_convert(&clip, channels as usize, sample_rate));
+                        let shared = clip.shares_samples(&samples);
+                        let result_frames = audio.frames() + samples.len() / channels as usize;
+                        super::memory::check_growth(audio.frames(), result_frames, channels as usize).unwrap();
+                        session.try_apply(Op::Replace { start: position, end: position, samples }).unwrap();
+                        shared
+                    });
+                    json!({ "pasteLock": paste_lock, "workerMs": 0.0, "sharesClipboard": shares_clipboard })
+                } else {
+                    let (snapshot, capture_lock) = locked(&session, |session| super::paste::Snapshot::new(session, clip.clone(), position, position));
+                    let started = Instant::now();
+                    let output = snapshot.render().unwrap();
+                    let worker_ms = started.elapsed().as_secs_f64() * 1000.0;
+                    let shares_clipboard = matches!(&output.op, Op::Replace { samples, .. } if clip.shares_samples(samples));
+                    let (_, commit_lock) = locked(&session, |session| session.apply_rendered(output.revision, output.op, output.audio).unwrap());
+                    json!({ "captureLock": capture_lock, "workerMs": worker_ms, "commitLock": commit_lock, "sharesClipboard": shares_clipboard })
+                };
+                let storage = serde_json::to_value(session.lock().unwrap().diagnostics()).unwrap();
+                let clipboard_bytes = clip.info().frames * 2 * 4;
+                let stored_pcm = storage["ramBytes"].as_u64().unwrap() + storage["diskBytes"].as_u64().unwrap()
+                    + if phases["sharesClipboard"] == true { 0 } else { clipboard_bytes as u64 };
+                let after_paste = rss(&mut system);
+                let (_, undo_lock) = locked(&session, Session::undo);
+                observations.push(json!({ "seconds": seconds, "repetition": repetition + 1, "case": case,
+                    "targetChannels": channels, "targetSampleRate": sample_rate, "phases": phases, "undoLock": undo_lock,
+                    "clipboardBytes": clipboard_bytes, "storageAfterPaste": storage, "uniqueStoredPcmBytesIncludingClipboard": stored_pcm,
+                    "rssBytes": { "beforeOpen": before_open, "beforePaste": before_paste, "afterPaste": after_paste, "afterUndo": rss(&mut system) } }));
+            }
+        }
+    }
+    let report = json!({ "schema": 1, "implementation": if reference { "ba2ac2e synchronous paste" } else { "immutable clipboard worker" },
+        "profile": if cfg!(debug_assertions) { "dev-test" } else { "release-test" }, "os": std::env::consts::OS, "arch": std::env::consts::ARCH,
+        "note": "Synthetic private stereo float WAV; same source, target format and owned clipboard per mode. Reference conversion runs inside the paste lock; candidate conversion and splicing run on the worker. Uncontended mutex phases exclude IPC/UI/queue delay. Clipboard storage is external to session diagnostics and shares its PCM with candidate identity paste. Native RSS includes mmap pages/allocator retention, not WebView memory.",
         "observations": observations });
     let text = serde_json::to_string_pretty(&report).unwrap();
     if let Ok(path) = std::env::var("FONICCA_LOCK_BENCH_OUTPUT") { std::fs::write(path, &text).unwrap(); }

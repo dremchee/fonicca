@@ -12,6 +12,7 @@ use blocks::BlockAudio;
 use crate::error::{Error, Result};
 
 pub mod clipboard;
+pub mod paste;
 pub mod blocks;
 mod storage;
 pub mod diagnostics;

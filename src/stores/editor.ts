@@ -373,19 +373,14 @@ export const useEditorStore = defineStore('editor', () => {
 
   /** Pastes over the selection, or at the cursor; the pasted audio ends up selected. */
   async function paste() {
-    if (processing.value || saving.value || !clipboard.value)
-      return
-    stopPlayback()
+    if (!clipboard.value) return
     const s = selection.value ?? { start: cursor.value, end: cursor.value }
-    try {
+    await changeAudio(async () => {
       const r = await editorApi.paste(s.start, s.end)
-      after(r.state)
       selection.value = r.end > r.start ? { start: r.start, end: r.end } : null
       cursor.value = r.start
-    }
-    catch (e) {
-      toast.error(String(e))
-    }
+      return r.state
+    })
   }
 
   function silence() {

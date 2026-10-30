@@ -1,0 +1,1630 @@
+{
+  "schema": 1,
+  "observedAt": "2026-10-30T04:30:08.079574+00:00",
+  "sourceBase": "ba2ac2eb99a7ac456a949052d2d2d8814bc49638",
+  "environment": {
+    "os": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "cpu": "Apple M1 Pro",
+    "profile": "Cargo dev-test, crate opt-level 1, dependencies opt-level 3"
+  },
+  "sourceSha256": {
+    "src-tauri/src/editor/clipboard.rs": "b988745c3d9247528aeae2c22ff2aebdd70dd980f3e1a8a897b60bc35d2d0922",
+    "src-tauri/src/editor/paste.rs": "b5149608bbe56ccb0bd0919b17b971735bfe6f997a09269948568620a6e9e175",
+    "src-tauri/src/editor/benchmarks.rs": "a516ea9441eccda161eb91432f36dc8c45e18f35fe2f65cbcce3cae57936cf36",
+    "src-tauri/src/editor_commands.rs": "75978c759bfb184ed469bf508e1f562f23fede964e59100680ecd2154c71da20",
+    "src/stores/editor.ts": "b23dd1d6a664270bf467d57859a659edee4497edab26a7779f592cb88c4bfcee"
+  },
+  "method": {
+    "order": [
+      "reference",
+      "candidate",
+      "reference",
+      "candidate",
+      "reference",
+      "candidate"
+    ],
+    "durationsSeconds": [
+      30,
+      180,
+      1200
+    ],
+    "repetitionsPerCase": 3,
+    "reference": "Previous ba2ac2e conversion and paste sequence, retained as a test-only reference in the same compiled binary. Clipboard stores identical immutable samples; it is local to avoid other clipboard users.",
+    "workload": "Private synthetic float WAVs; stereo 44.1 kHz clipboard, same-format or mono 48 kHz target; full clipboard inserted halfway through target. Source/target open and clipboard copy excluded. Actual uncontended session Mutex with conversion/growth/splicing under lock in reference, immutable capture/worker/guarded commit in candidate.",
+    "limits": [
+      "No UI, IPC, worker queue delay, clipboard contention, or playback device. State DTO/dirty-state comparison and disposal of a pre-existing redo branch are excluded.",
+      "Three alternating local observations; no p95 or cross-platform guarantee.",
+      "Stored PCM byte counts deduplicate clipboard sharing and include mapped storage. They are not RAM or process RSS.",
+      "RSS samples at phase boundaries include mapped pages and allocator retention; they can miss transient allocations and exclude WebView processes."
+    ]
+  },
+  "implementations": {
+    "reference": {
+      "description": "ba2ac2e synchronous paste",
+      "note": "Synthetic private stereo float WAV; same source, target format and owned clipboard per mode. Reference conversion runs inside the paste lock; candidate conversion and splicing run on the worker. Uncontended mutex phases exclude IPC/UI/queue delay. Clipboard storage is external to session diagnostics and shares its PCM with candidate identity paste. Native RSS includes mmap pages/allocator retention, not WebView memory.",
+      "observations": [
+        {
+          "case": "identity",
+          "clipboardBytes": 10584000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 7.343917,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 1,
+          "rssBytes": {
+            "afterPaste": 47333376,
+            "afterUndo": 47382528,
+            "beforeOpen": 13369344,
+            "beforePaste": 47005696
+          },
+          "seconds": 30,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 0,
+            "lastWaveMs": null,
+            "logicalBytes": 21168000,
+            "openedMs": 10.007792,
+            "ramBytes": 29458368,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.000792,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 40042368
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 10584000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 11.5875,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 1,
+          "rssBytes": {
+            "afterPaste": 74907648,
+            "afterUndo": 74924032,
+            "beforeOpen": 47415296,
+            "beforePaste": 63815680
+          },
+          "seconds": 30,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 0,
+            "lastWaveMs": null,
+            "logicalBytes": 11520000,
+            "openedMs": 6.37275,
+            "ramBytes": 15197184,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.000625,
+            "waitMs": 0.000166
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 25781184
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 63504000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 51.023958,
+              "waitMs": 8.4e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 1,
+          "rssBytes": {
+            "afterPaste": 269565952,
+            "afterUndo": 269565952,
+            "beforeOpen": 75300864,
+            "beforePaste": 206045184
+          },
+          "seconds": 180,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 63504000,
+            "lastWaveMs": null,
+            "logicalBytes": 127008000,
+            "openedMs": 179.55491700000002,
+            "ramBytes": 63504000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.0007080000000000001,
+            "waitMs": 8.4e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 190512000
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 63504000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 64.50066699999999,
+              "waitMs": 0.000125
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 1,
+          "rssBytes": {
+            "afterPaste": 337756160,
+            "afterUndo": 337772544,
+            "beforeOpen": 269565952,
+            "beforePaste": 336740352
+          },
+          "seconds": 180,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 34560000,
+            "lastWaveMs": null,
+            "logicalBytes": 69120000,
+            "openedMs": 100.587042,
+            "ramBytes": 34560000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.004292,
+            "waitMs": 4.2e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 132624000
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 423360000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 395.527625,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 1,
+          "rssBytes": {
+            "afterPaste": 973127680,
+            "afterUndo": 973144064,
+            "beforeOpen": 337772544,
+            "beforePaste": 526417920
+          },
+          "seconds": 1200,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 423360000,
+            "lastWaveMs": null,
+            "logicalBytes": 846720000,
+            "openedMs": 1340.9760419999998,
+            "ramBytes": 423360000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.000833,
+            "waitMs": 0.000167
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 1270080000
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 423360000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 514.644667,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 1,
+          "rssBytes": {
+            "afterPaste": 1042137088,
+            "afterUndo": 1042137088,
+            "beforeOpen": 973144064,
+            "beforePaste": 725549056
+          },
+          "seconds": 1200,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 230400000,
+            "lastWaveMs": null,
+            "logicalBytes": 460800000,
+            "openedMs": 680.457958,
+            "ramBytes": 230400000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.0007080000000000001,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 884160000
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 10584000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 7.397208,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 2,
+          "rssBytes": {
+            "afterPaste": 48594944,
+            "afterUndo": 48644096,
+            "beforeOpen": 13647872,
+            "beforePaste": 48267264
+          },
+          "seconds": 30,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 0,
+            "lastWaveMs": null,
+            "logicalBytes": 21168000,
+            "openedMs": 10.185457999999999,
+            "ramBytes": 29458368,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.000584,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 40042368
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 10584000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 11.268833,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 2,
+          "rssBytes": {
+            "afterPaste": 76201984,
+            "afterUndo": 76201984,
+            "beforeOpen": 48676864,
+            "beforePaste": 65093632
+          },
+          "seconds": 30,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 0,
+            "lastWaveMs": null,
+            "logicalBytes": 11520000,
+            "openedMs": 6.286708,
+            "ramBytes": 15197184,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.0006659999999999999,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 25781184
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 63504000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 47.789125,
+              "waitMs": 0.000125
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 2,
+          "rssBytes": {
+            "afterPaste": 270467072,
+            "afterUndo": 270467072,
+            "beforeOpen": 76201984,
+            "beforePaste": 206929920
+          },
+          "seconds": 180,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 63504000,
+            "lastWaveMs": null,
+            "logicalBytes": 127008000,
+            "openedMs": 207.69475,
+            "ramBytes": 63504000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.0007080000000000001,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 190512000
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 63504000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 63.804542000000005,
+              "waitMs": 8.4e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 2,
+          "rssBytes": {
+            "afterPaste": 338673664,
+            "afterUndo": 338673664,
+            "beforeOpen": 270467072,
+            "beforePaste": 337641472
+          },
+          "seconds": 180,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 34560000,
+            "lastWaveMs": null,
+            "logicalBytes": 69120000,
+            "openedMs": 98.57000000000001,
+            "ramBytes": 34560000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.00075,
+            "waitMs": 4.2e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 132624000
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 423360000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 338.014458,
+              "waitMs": 8.4e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 2,
+          "rssBytes": {
+            "afterPaste": 1252638720,
+            "afterUndo": 1252655104,
+            "beforeOpen": 338690048,
+            "beforePaste": 829243392
+          },
+          "seconds": 1200,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 423360000,
+            "lastWaveMs": null,
+            "logicalBytes": 846720000,
+            "openedMs": 1227.410625,
+            "ramBytes": 423360000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.000584,
+            "waitMs": 0.000125
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 1270080000
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 423360000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 467.511208,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 2,
+          "rssBytes": {
+            "afterPaste": 1531494400,
+            "afterUndo": 1531494400,
+            "beforeOpen": 1252655104,
+            "beforePaste": 1319796736
+          },
+          "seconds": 1200,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 230400000,
+            "lastWaveMs": null,
+            "logicalBytes": 460800000,
+            "openedMs": 694.818666,
+            "ramBytes": 230400000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.0005,
+            "waitMs": 8.4e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 884160000
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 10584000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 7.4829170000000005,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 3,
+          "rssBytes": {
+            "afterPaste": 47333376,
+            "afterUndo": 47382528,
+            "beforeOpen": 13369344,
+            "beforePaste": 47005696
+          },
+          "seconds": 30,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 0,
+            "lastWaveMs": null,
+            "logicalBytes": 21168000,
+            "openedMs": 10.262209,
+            "ramBytes": 29458368,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.0005,
+            "waitMs": 4.1e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 40042368
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 10584000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 11.348,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 3,
+          "rssBytes": {
+            "afterPaste": 74956800,
+            "afterUndo": 74973184,
+            "beforeOpen": 47415296,
+            "beforePaste": 63848448
+          },
+          "seconds": 30,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 0,
+            "lastWaveMs": null,
+            "logicalBytes": 11520000,
+            "openedMs": 6.218292,
+            "ramBytes": 15197184,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.00075,
+            "waitMs": 8.4e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 25781184
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 63504000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 49.224958,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 3,
+          "rssBytes": {
+            "afterPaste": 270483456,
+            "afterUndo": 270483456,
+            "beforeOpen": 75268096,
+            "beforePaste": 206962688
+          },
+          "seconds": 180,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 63504000,
+            "lastWaveMs": null,
+            "logicalBytes": 127008000,
+            "openedMs": 172.781292,
+            "ramBytes": 63504000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.000625,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 190512000
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 63504000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 63.942584,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 3,
+          "rssBytes": {
+            "afterPaste": 338673664,
+            "afterUndo": 338673664,
+            "beforeOpen": 270483456,
+            "beforePaste": 337657856
+          },
+          "seconds": 180,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 34560000,
+            "lastWaveMs": null,
+            "logicalBytes": 69120000,
+            "openedMs": 99.076208,
+            "ramBytes": 34560000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.0006670000000000001,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 132624000
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 423360000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 333.66225,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 3,
+          "rssBytes": {
+            "afterPaste": 1252605952,
+            "afterUndo": 1252622336,
+            "beforeOpen": 338673664,
+            "beforePaste": 829210624
+          },
+          "seconds": 1200,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 423360000,
+            "lastWaveMs": null,
+            "logicalBytes": 846720000,
+            "openedMs": 1325.103458,
+            "ramBytes": 423360000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.000541,
+            "waitMs": 0.000125
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 1270080000
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 423360000,
+          "phases": {
+            "pasteLock": {
+              "heldMs": 453.10058300000003,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": false,
+            "workerMs": 0.0
+          },
+          "repetition": 3,
+          "rssBytes": {
+            "afterPaste": 1531461632,
+            "afterUndo": 1531461632,
+            "beforeOpen": 1252622336,
+            "beforePaste": 1319763968
+          },
+          "seconds": 1200,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 230400000,
+            "lastWaveMs": null,
+            "logicalBytes": 460800000,
+            "openedMs": 682.0645,
+            "ramBytes": 230400000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.000541,
+            "waitMs": 0.000125
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 884160000
+        }
+      ]
+    },
+    "candidate": {
+      "description": "immutable clipboard worker",
+      "note": "Synthetic private stereo float WAV; same source, target format and owned clipboard per mode. Reference conversion runs inside the paste lock; candidate conversion and splicing run on the worker. Uncontended mutex phases exclude IPC/UI/queue delay. Clipboard storage is external to session diagnostics and shares its PCM with candidate identity paste. Native RSS includes mmap pages/allocator retention, not WebView memory.",
+      "observations": [
+        {
+          "case": "identity",
+          "clipboardBytes": 10584000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 4.2e-05,
+              "waitMs": 0.00025
+            },
+            "commitLock": {
+              "heldMs": 0.004334,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": true,
+            "workerMs": 0.032583
+          },
+          "repetition": 1,
+          "rssBytes": {
+            "afterPaste": 47284224,
+            "afterUndo": 47333376,
+            "beforeOpen": 13336576,
+            "beforePaste": 46956544
+          },
+          "seconds": 30,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 0,
+            "lastWaveMs": null,
+            "logicalBytes": 21168000,
+            "openedMs": 10.028083,
+            "ramBytes": 29458368,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.0005,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 29458368
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 10584000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.000125,
+              "waitMs": 0.000125
+            },
+            "commitLock": {
+              "heldMs": 0.0025,
+              "waitMs": 0.00033299999999999996
+            },
+            "sharesClipboard": false,
+            "workerMs": 14.05775
+          },
+          "repetition": 1,
+          "rssBytes": {
+            "afterPaste": 69681152,
+            "afterUndo": 69697536,
+            "beforeOpen": 47366144,
+            "beforePaste": 63799296
+          },
+          "seconds": 30,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 0,
+            "lastWaveMs": null,
+            "logicalBytes": 11520000,
+            "openedMs": 6.087208,
+            "ramBytes": 15197184,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.0005,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 25781184
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 63504000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.000167,
+              "waitMs": 8.3e-05
+            },
+            "commitLock": {
+              "heldMs": 0.002125,
+              "waitMs": 8.4e-05
+            },
+            "sharesClipboard": true,
+            "workerMs": 0.0305
+          },
+          "repetition": 1,
+          "rssBytes": {
+            "afterPaste": 200425472,
+            "afterUndo": 200425472,
+            "beforeOpen": 69697536,
+            "beforePaste": 200409088
+          },
+          "seconds": 180,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 63504000,
+            "lastWaveMs": null,
+            "logicalBytes": 127008000,
+            "openedMs": 178.667834,
+            "ramBytes": 63504000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.000583,
+            "waitMs": 8.4e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 127008000
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 63504000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.000167,
+              "waitMs": 8.3e-05
+            },
+            "commitLock": {
+              "heldMs": 0.002458,
+              "waitMs": 0.000334
+            },
+            "sharesClipboard": false,
+            "workerMs": 80.893209
+          },
+          "repetition": 1,
+          "rssBytes": {
+            "afterPaste": 268632064,
+            "afterUndo": 268648448,
+            "beforeOpen": 200425472,
+            "beforePaste": 267616256
+          },
+          "seconds": 180,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 34560000,
+            "lastWaveMs": null,
+            "logicalBytes": 69120000,
+            "openedMs": 99.12441700000001,
+            "ramBytes": 34560000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.000541,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 132624000
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 423360000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.000167,
+              "waitMs": 0.000125
+            },
+            "commitLock": {
+              "heldMs": 0.001833,
+              "waitMs": 4.2e-05
+            },
+            "sharesClipboard": true,
+            "workerMs": 0.03175
+          },
+          "repetition": 1,
+          "rssBytes": {
+            "afterPaste": 759201792,
+            "afterUndo": 759218176,
+            "beforeOpen": 268648448,
+            "beforePaste": 759201792
+          },
+          "seconds": 1200,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 423360000,
+            "lastWaveMs": null,
+            "logicalBytes": 846720000,
+            "openedMs": 1391.409083,
+            "ramBytes": 423360000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.004,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 846720000
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 423360000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.000166,
+              "waitMs": 0.000125
+            },
+            "commitLock": {
+              "heldMs": 0.003,
+              "waitMs": 0.000375
+            },
+            "sharesClipboard": false,
+            "workerMs": 559.513084
+          },
+          "repetition": 1,
+          "rssBytes": {
+            "afterPaste": 1056849920,
+            "afterUndo": 1056849920,
+            "beforeOpen": 759218176,
+            "beforePaste": 826425344
+          },
+          "seconds": 1200,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 230400000,
+            "lastWaveMs": null,
+            "logicalBytes": 460800000,
+            "openedMs": 664.627125,
+            "ramBytes": 230400000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.000584,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 884160000
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 10584000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.00029099999999999997,
+              "waitMs": 8.3e-05
+            },
+            "commitLock": {
+              "heldMs": 0.003916,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": true,
+            "workerMs": 0.036833
+          },
+          "repetition": 2,
+          "rssBytes": {
+            "afterPaste": 47284224,
+            "afterUndo": 47349760,
+            "beforeOpen": 13352960,
+            "beforePaste": 46956544
+          },
+          "seconds": 30,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 0,
+            "lastWaveMs": null,
+            "logicalBytes": 21168000,
+            "openedMs": 10.033917,
+            "ramBytes": 29458368,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.000458,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 29458368
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 10584000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.00020800000000000001,
+              "waitMs": 8.3e-05
+            },
+            "commitLock": {
+              "heldMs": 0.002375,
+              "waitMs": 0.000292
+            },
+            "sharesClipboard": false,
+            "workerMs": 14.114958
+          },
+          "repetition": 2,
+          "rssBytes": {
+            "afterPaste": 69632000,
+            "afterUndo": 69648384,
+            "beforeOpen": 47398912,
+            "beforePaste": 63815680
+          },
+          "seconds": 30,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 0,
+            "lastWaveMs": null,
+            "logicalBytes": 11520000,
+            "openedMs": 6.189083,
+            "ramBytes": 15197184,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.0005,
+            "waitMs": 8.4e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 25781184
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 63504000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.000292,
+              "waitMs": 8.3e-05
+            },
+            "commitLock": {
+              "heldMs": 0.0018750000000000001,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": true,
+            "workerMs": 0.025375
+          },
+          "repetition": 2,
+          "rssBytes": {
+            "afterPaste": 200720384,
+            "afterUndo": 200720384,
+            "beforeOpen": 69992448,
+            "beforePaste": 200720384
+          },
+          "seconds": 180,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 63504000,
+            "lastWaveMs": null,
+            "logicalBytes": 127008000,
+            "openedMs": 171.2705,
+            "ramBytes": 63504000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.000541,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 127008000
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 63504000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.000292,
+              "waitMs": 0.000125
+            },
+            "commitLock": {
+              "heldMs": 0.002125,
+              "waitMs": 0.00033299999999999996
+            },
+            "sharesClipboard": false,
+            "workerMs": 80.414875
+          },
+          "repetition": 2,
+          "rssBytes": {
+            "afterPaste": 268910592,
+            "afterUndo": 268926976,
+            "beforeOpen": 200720384,
+            "beforePaste": 267878400
+          },
+          "seconds": 180,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 34560000,
+            "lastWaveMs": null,
+            "logicalBytes": 69120000,
+            "openedMs": 99.334625,
+            "ramBytes": 34560000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.000625,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 132624000
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 423360000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.00033299999999999996,
+              "waitMs": 0.000166
+            },
+            "commitLock": {
+              "heldMs": 0.001666,
+              "waitMs": 8.3e-05
+            },
+            "sharesClipboard": true,
+            "workerMs": 0.035708
+          },
+          "repetition": 2,
+          "rssBytes": {
+            "afterPaste": 759480320,
+            "afterUndo": 759480320,
+            "beforeOpen": 268926976,
+            "beforePaste": 759480320
+          },
+          "seconds": 1200,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 423360000,
+            "lastWaveMs": null,
+            "logicalBytes": 846720000,
+            "openedMs": 1166.545084,
+            "ramBytes": 423360000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.0005,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 846720000
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 423360000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.000292,
+              "waitMs": 0.000125
+            },
+            "commitLock": {
+              "heldMs": 0.005709,
+              "waitMs": 0.00025
+            },
+            "sharesClipboard": false,
+            "workerMs": 555.701583
+          },
+          "repetition": 2,
+          "rssBytes": {
+            "afterPaste": 1057095680,
+            "afterUndo": 1057095680,
+            "beforeOpen": 759480320,
+            "beforePaste": 826654720
+          },
+          "seconds": 1200,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 230400000,
+            "lastWaveMs": null,
+            "logicalBytes": 460800000,
+            "openedMs": 666.281625,
+            "ramBytes": 230400000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.000542,
+            "waitMs": 0.000125
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 884160000
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 10584000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.000334,
+              "waitMs": 0.000125
+            },
+            "commitLock": {
+              "heldMs": 0.0037500000000000003,
+              "waitMs": 8.4e-05
+            },
+            "sharesClipboard": true,
+            "workerMs": 0.035250000000000004
+          },
+          "repetition": 3,
+          "rssBytes": {
+            "afterPaste": 48545792,
+            "afterUndo": 48611328,
+            "beforeOpen": 13369344,
+            "beforePaste": 48218112
+          },
+          "seconds": 30,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 0,
+            "lastWaveMs": null,
+            "logicalBytes": 21168000,
+            "openedMs": 10.312667,
+            "ramBytes": 29458368,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.000584,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 29458368
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 10584000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.00029099999999999997,
+              "waitMs": 0.000166
+            },
+            "commitLock": {
+              "heldMs": 0.001833,
+              "waitMs": 0.000209
+            },
+            "sharesClipboard": false,
+            "workerMs": 14.112917000000001
+          },
+          "repetition": 3,
+          "rssBytes": {
+            "afterPaste": 70877184,
+            "afterUndo": 70893568,
+            "beforeOpen": 48644096,
+            "beforePaste": 65093632
+          },
+          "seconds": 30,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 0,
+            "lastWaveMs": null,
+            "logicalBytes": 11520000,
+            "openedMs": 6.290875,
+            "ramBytes": 15197184,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.0007080000000000001,
+            "waitMs": 8.4e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 25781184
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 63504000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.00025,
+              "waitMs": 0.000125
+            },
+            "commitLock": {
+              "heldMs": 0.001666,
+              "waitMs": 4.2e-05
+            },
+            "sharesClipboard": true,
+            "workerMs": 0.025666
+          },
+          "repetition": 3,
+          "rssBytes": {
+            "afterPaste": 201670656,
+            "afterUndo": 201670656,
+            "beforeOpen": 70959104,
+            "beforePaste": 201670656
+          },
+          "seconds": 180,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 63504000,
+            "lastWaveMs": null,
+            "logicalBytes": 127008000,
+            "openedMs": 174.99962499999998,
+            "ramBytes": 63504000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.000583,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 127008000
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 63504000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.00025,
+              "waitMs": 0.000125
+            },
+            "commitLock": {
+              "heldMs": 0.002417,
+              "waitMs": 0.000541
+            },
+            "sharesClipboard": false,
+            "workerMs": 80.628292
+          },
+          "repetition": 3,
+          "rssBytes": {
+            "afterPaste": 269893632,
+            "afterUndo": 269910016,
+            "beforeOpen": 201670656,
+            "beforePaste": 268877824
+          },
+          "seconds": 180,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 34560000,
+            "lastWaveMs": null,
+            "logicalBytes": 69120000,
+            "openedMs": 99.595208,
+            "ramBytes": 34560000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.0007080000000000001,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 132624000
+        },
+        {
+          "case": "identity",
+          "clipboardBytes": 423360000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.000166,
+              "waitMs": 0.000167
+            },
+            "commitLock": {
+              "heldMs": 0.005208,
+              "waitMs": 4.2e-05
+            },
+            "sharesClipboard": true,
+            "workerMs": 0.028
+          },
+          "repetition": 3,
+          "rssBytes": {
+            "afterPaste": 760463360,
+            "afterUndo": 760463360,
+            "beforeOpen": 269910016,
+            "beforePaste": 760446976
+          },
+          "seconds": 1200,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 423360000,
+            "lastWaveMs": null,
+            "logicalBytes": 846720000,
+            "openedMs": 1144.2795839999999,
+            "ramBytes": 423360000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 2,
+          "targetSampleRate": 44100,
+          "undoLock": {
+            "heldMs": 0.000541,
+            "waitMs": 8.4e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 846720000
+        },
+        {
+          "case": "stereo_to_mono_48k",
+          "clipboardBytes": 423360000,
+          "phases": {
+            "captureLock": {
+              "heldMs": 0.00025,
+              "waitMs": 0.000125
+            },
+            "commitLock": {
+              "heldMs": 0.0030410000000000003,
+              "waitMs": 0.00041600000000000003
+            },
+            "sharesClipboard": false,
+            "workerMs": 553.935708
+          },
+          "repetition": 3,
+          "rssBytes": {
+            "afterPaste": 1058029568,
+            "afterUndo": 1058029568,
+            "beforeOpen": 760463360,
+            "beforePaste": 827604992
+          },
+          "seconds": 1200,
+          "storageAfterPaste": {
+            "cacheBytes": 0,
+            "diskBytes": 230400000,
+            "lastWaveMs": null,
+            "logicalBytes": 460800000,
+            "openedMs": 660.28775,
+            "ramBytes": 230400000,
+            "redoSteps": 0,
+            "sampleId": 2,
+            "storageCount": 2,
+            "undoSteps": 1
+          },
+          "targetChannels": 1,
+          "targetSampleRate": 48000,
+          "undoLock": {
+            "heldMs": 0.000833,
+            "waitMs": 8.3e-05
+          },
+          "uniqueStoredPcmBytesIncludingClipboard": 884160000
+        }
+      ]
+    }
+  },
+  "summary": [
+    {
+      "seconds": 30,
+      "case": "identity",
+      "reference": {
+        "medianSessionLockMs": 7.397208,
+        "medianCorePhasesMs": 7.397208,
+        "uniqueStoredPcmBytesIncludingClipboard": 40042368
+      },
+      "candidate": {
+        "medianSessionLockMs": 0.004207,
+        "medianCorePhasesMs": 0.039334,
+        "uniqueStoredPcmBytesIncludingClipboard": 29458368
+      }
+    },
+    {
+      "seconds": 30,
+      "case": "stereo_to_mono_48k",
+      "reference": {
+        "medianSessionLockMs": 11.348,
+        "medianCorePhasesMs": 11.348,
+        "uniqueStoredPcmBytesIncludingClipboard": 25781184
+      },
+      "candidate": {
+        "medianSessionLockMs": 0.002583,
+        "medianCorePhasesMs": 14.115041000000002,
+        "uniqueStoredPcmBytesIncludingClipboard": 25781184
+      }
+    },
+    {
+      "seconds": 180,
+      "case": "identity",
+      "reference": {
+        "medianSessionLockMs": 49.224958,
+        "medianCorePhasesMs": 49.224958,
+        "uniqueStoredPcmBytesIncludingClipboard": 190512000
+      },
+      "candidate": {
+        "medianSessionLockMs": 0.002167,
+        "medianCorePhasesMs": 0.027582000000000002,
+        "uniqueStoredPcmBytesIncludingClipboard": 127008000
+      }
+    },
+    {
+      "seconds": 180,
+      "case": "stereo_to_mono_48k",
+      "reference": {
+        "medianSessionLockMs": 63.942584,
+        "medianCorePhasesMs": 63.942584,
+        "uniqueStoredPcmBytesIncludingClipboard": 132624000
+      },
+      "candidate": {
+        "medianSessionLockMs": 0.002625,
+        "medianCorePhasesMs": 80.630959,
+        "uniqueStoredPcmBytesIncludingClipboard": 132624000
+      }
+    },
+    {
+      "seconds": 1200,
+      "case": "identity",
+      "reference": {
+        "medianSessionLockMs": 338.014458,
+        "medianCorePhasesMs": 338.014458,
+        "uniqueStoredPcmBytesIncludingClipboard": 1270080000
+      },
+      "candidate": {
+        "medianSessionLockMs": 0.002,
+        "medianCorePhasesMs": 0.03375,
+        "uniqueStoredPcmBytesIncludingClipboard": 846720000
+      }
+    },
+    {
+      "seconds": 1200,
+      "case": "stereo_to_mono_48k",
+      "reference": {
+        "medianSessionLockMs": 467.511208,
+        "medianCorePhasesMs": 467.511208,
+        "uniqueStoredPcmBytesIncludingClipboard": 884160000
+      },
+      "candidate": {
+        "medianSessionLockMs": 0.0032910000000000005,
+        "medianCorePhasesMs": 555.707584,
+        "uniqueStoredPcmBytesIncludingClipboard": 884160000
+      }
+    }
+  ],
+  "verification": {
+    "rustTests": {
+      "passed": 201,
+      "ignoredOptIn": 39
+    },
+    "nodeTests": {
+      "passed": 124
+    },
+    "frontendBuild": "passed; existing >500 kB chunk warning remains",
+    "browser": "Development mock in headless Chromium: eight paste guard/state/failure/retry checks passed. This does not exercise real native audio."
+  },
+  "tradeoff": "The bounded rate/channel conversion did not become faster: 1200-second stereo 44.1 kHz to mono 48 kHz took median 467.5 ms in the reference versus 555.7 ms on the worker. It no longer holds the session mutex and replaces the full intermediate remapped buffer with at most 16,385 target-layout frames. Same-format insertion avoids a new PCM buffer and reduced median measured core phases from 338.0 ms to 0.034 ms."
+}

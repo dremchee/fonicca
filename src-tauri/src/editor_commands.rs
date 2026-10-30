@@ -236,19 +236,18 @@ pub struct Pasted {
 /// Replaces `[start, end)` with the clipboard (inserts when they are equal), in
 /// this file's channel count and sample rate. One edit, undone as one.
 #[tauri::command]
-pub fn editor_paste(state: State<'_, AppState>, window: Window, start: usize, end: usize) -> Result<Pasted> {
-    with_session(&state, &window, |s| {
-        let pcm = s.audio();
-        let samples = editor::clipboard::take_as(pcm.channels, pcm.sample_rate)?
+pub async fn editor_paste(state: State<'_, AppState>, window: Window, start: usize, end: usize) -> Result<Pasted> {
+    let snapshot = with_session(&state, &window, |s| {
+        let clip = editor::clipboard::snapshot()
             .ok_or_else(|| Error::Other("the clipboard is empty".into()))?;
-        let frames = samples.len() / pcm.channels.max(1);
-        let start = start.min(pcm.frames());
-        let end = end.clamp(start, pcm.frames());
-        let result_frames = pcm.frames().checked_sub(end - start).and_then(|n| n.checked_add(frames))
-            .ok_or_else(|| Error::Other("audio length is too large".into()))?;
-        editor::memory::check_growth(pcm.frames(), result_frames, pcm.channels)?;
-        s.try_apply(Op::Replace { start, end, samples: std::sync::Arc::new(samples) })?;
-        Ok(Pasted { state: s.state(), start, end: start + frames })
+        Ok(editor::paste::Snapshot::new(s, clip, start, end))
+    })?;
+    let output = tauri::async_runtime::spawn_blocking(move || snapshot.render())
+        .await.map_err(|e| Error::Other(format!("pasting audio failed: {e}")))??;
+    with_session(&state, &window, |s| {
+        let editor::paste::Rendered { audio, op, revision, start, end } = output;
+        s.apply_rendered(revision, op, audio)?;
+        Ok(Pasted { state: s.state(), start, end })
     })
 }
 
