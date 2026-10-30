@@ -52,6 +52,7 @@ const toolbar = useTemplateRef<InstanceType<typeof LibraryToolbar>>('toolbar')
 const search = computed(() => toolbar.value?.searchElement)
 
 onMounted(async () => {
+  await editor.reset()
   await Promise.all([settings.init(), library.init(), duplicates.init(), useStemsStore().init(), useApolloStore().init(), useBasicPitchStore().init()])
   void useUpdatesStore().init()
   if (isTauri()) {

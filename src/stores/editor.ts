@@ -16,7 +16,7 @@ import { formatNumber } from '@/format'
 import { t } from '@/i18n'
 import { parseWave } from '@/waveform'
 import { audioExportFormat, audioExportPath } from '@/audio-export'
-import { chooseAudioExport } from '@/composables/audioExport'
+import { chooseAudioExport, settleAudioExport } from '@/composables/audioExport'
 import { editorTimings } from '@/editor-performance'
 import { parseSpectrogram } from '@/spectrogram'
 import { readEditorWindowView, type EditorWindowView } from '@/editor-window-state'
@@ -223,6 +223,37 @@ export const useEditorStore = defineStore('editor', () => {
     finally { loading.value = false; transitioning = false }
   }
 
+  /** A UI reload deliberately starts clean, including the surviving native session. */
+  async function reset(): Promise<boolean> {
+    resolveUnsaved('cancel')
+    settleAudioExport(null)
+    loading.value = true
+    try {
+      await stopPlayback()
+      await usePlayerStore().stop()
+      await editorApi.close(true)
+      sample.value = null
+      state.value = null
+      selection.value = null
+      cursor.value = 0
+      looping.value = false
+      expanded.value = false
+      windowView.value = null
+      error.value = null
+      sessionVersion.value++
+      revision.value++
+      return true
+    } catch (e) {
+      toast.error(String(e))
+      return false
+    } finally {
+      loading.value = false
+      processing.value = false
+      saving.value = false
+      transitioning = false
+    }
+  }
+
   async function detachWindow(viewport?: EditorWindowView['viewport']): Promise<boolean> {
     if (!sample.value || !state.value || transitioning || loading.value || processing.value || saving.value || decide) return false
     transitioning = true
@@ -269,15 +300,19 @@ export const useEditorStore = defineStore('editor', () => {
   /** Loads the window's file and wires up the title and close confirmation. */
   async function init(id: number) {
     const win = getCurrentWindow()
+    // A newly detached window must adopt its transferred session. A reload of
+    // that window discards it and opens the file afresh, like the main UI reset.
+    const reloading = open.value || (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type === 'reload'
+    if (reloading && !await reset()) return
     loading.value = true
     try {
       await api.stop()
-      const r = await editorApi.open(id, false, new URLSearchParams(location.search).get('detached') === '1')
+      const r = await editorApi.open(id, false, !reloading && new URLSearchParams(location.search).get('detached') === '1')
       state.value = r.state
       sample.value = { id, name: r.name, ext: r.ext, path: r.path, bpm: r.bpm }
       sessionVersion.value++
       revision.value++
-      const view = readEditorWindowView(location.search, r.state.frames)
+      const view = reloading ? null : readEditorWindowView(location.search, r.state.frames)
       if (view) {
         cursor.value = view.cursor
         selection.value = view.selection
@@ -668,6 +703,7 @@ export const useEditorStore = defineStore('editor', () => {
     resolveUnsaved,
     openSample,
     closeEmbedded,
+    reset,
     open,
     loading,
     processing,
