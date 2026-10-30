@@ -5,7 +5,7 @@ export default {
     titleDirty: '{name} • — Edit',
   },
   unsaved: { dontSave: 'Don’t save', title: 'Unsaved edits', description: 'Save changes to “{name}” before closing or opening another track?' },
-  panel: { expand: 'Expand editor', collapse: 'Restore editor' },
+  panel: { expand: 'Expand editor', collapse: 'Restore editor', detach: 'Open editor in a separate window' },
   save: {
     exportTitle: 'Save audio',
     exportDescription: 'Choose a format, then a file location.',

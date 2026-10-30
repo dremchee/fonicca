@@ -166,6 +166,7 @@ pub fn run() {
             basic_pitch::basic_pitch_cancel,
             updates::update_status,
             editor_commands::open_editor_window,
+            editor_commands::editor_detach_window,
             editor_commands::editor_open,
             editor_commands::editor_close,
             editor_commands::editor_apply,

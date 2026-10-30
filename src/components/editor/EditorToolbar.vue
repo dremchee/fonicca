@@ -2,7 +2,7 @@
 import type { Curve, Marker } from '@/stores/editor'
 import type { EditorToolAction } from '@/editor-tools'
 import { ArrowLeftRight, ArrowUpToLine, ClipboardPaste, Copy, Crop, Eraser,
-  IterationCw, Maximize2, Minimize2, Music, Play, Redo2, Repeat, Scissors, Square,
+  ExternalLink, IterationCw, Maximize2, Minimize2, Music, Play, Redo2, Repeat, Scissors, Square,
   Undo2, Volume1, Volume2, VolumeX, X } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import { EDITOR_TOOLS, EDITOR_TOGGLE_CLASS } from '@/editor-tools'
@@ -18,8 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 const props = defineProps<{ embedded: boolean, expanded: boolean, canUndo: boolean, canRedo: boolean,
   hasSelection: boolean, hasLoop: boolean, hasClipboard: boolean, playing: boolean,
-  canExportMidi: boolean, beatFrames: number, downbeat: number, zeroSnap: boolean }>()
-const emit = defineEmits<{ action: [action: EditorToolAction], close: [], toggleExpand: [] }>()
+  canExportMidi: boolean, canDetach: boolean, beatFrames: number, downbeat: number, zeroSnap: boolean }>()
+const emit = defineEmits<{ action: [action: EditorToolAction], close: [], toggleExpand: [], detach: [] }>()
 const curve = defineModel<Curve>('curve', { required: true })
 const looping = defineModel<boolean>('looping', { required: true })
 const preview = defineModel<Marker[]>('preview', { required: true })
@@ -155,6 +155,9 @@ const curves: { value: Curve, label: string }[] = [
       </ToolbarOverflow>
       <div class="shrink-0 flex items-center gap-1 pl-2 border-l border-border">
         <EditorSaveMenu />
+        <Hint v-if="props.embedded" :text="t('editor.panel.detach')">
+          <Button variant="ghost" size="icon-sm" :disabled="!canDetach" :aria-label="t('editor.panel.detach')" @click="emit('detach')"><ExternalLink /></Button>
+        </Hint>
         <Button v-if="props.embedded" variant="ghost" size="icon-sm" :aria-label="t(props.expanded ? 'editor.panel.collapse' : 'editor.panel.expand')" @click="emit('toggleExpand')">
           <Minimize2 v-if="props.expanded" /><Maximize2 v-else />
         </Button>

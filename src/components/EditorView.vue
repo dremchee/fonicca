@@ -117,6 +117,15 @@ function setView(key: WaveKey, value: unknown) {
 const frames = computed(() => editor.state?.frames ?? 0)
 const rate = computed(() => editor.state?.sampleRate ?? 44100)
 const { viewStart, viewEnd, fit, zoom, pan, follow, deferFollow, zoomToSelection } = useEditorViewport(frames, () => editor.selection)
+watch(() => editor.windowView, view => {
+  const v = view?.viewport
+  if (!v) return
+  viewStart.value = v.start
+  viewEnd.value = v.end
+  vZoom.value = v.zoom
+  bpm.value = v.bpm
+  downbeat.value = v.downbeat
+}, { immediate: true, flush: 'post' })
 watch(() => editor.playhead, (frame) => {
   if (editor.playing) follow(frame)
 })
@@ -345,12 +354,14 @@ const toolbarActions: Record<EditorToolAction, () => unknown> = {
 
     <EditorToolbar
       :embedded="props.embedded" :expanded="props.expanded"
+      :can-detach="!!editor.state && !editor.loading && !editor.processing && !editor.saving"
       :can-undo="!!editor.state?.canUndo" :can-redo="!!editor.state?.canRedo"
       :has-selection="!!editor.selection" :has-loop="!!editor.state?.loop" :has-clipboard="!!editor.clipboard"
       :playing="editor.playing" :can-export-midi="!!editor.sample && !!frames && !editor.processing"
       :beat-frames="beatFrames" :downbeat="downbeat" :zero-snap="zeroSnap"
       v-model:curve="editor.curve" v-model:looping="editor.looping" v-model:preview="slicePreview"
       @action="action => toolbarActions[action]()" @close="emit('close')" @toggle-expand="emit('toggleExpand')"
+      @detach="editor.detachWindow({ start: viewStart, end: viewEnd, zoom: vZoom, bpm, downbeat })"
     />
 
     <EditorMinimap

@@ -292,6 +292,10 @@ impl Session {
 
     pub fn revision(&self) -> u64 { self.revision }
 
+    pub(crate) fn save_pending(&self) -> bool {
+        self.save_in_flight.load(std::sync::atomic::Ordering::Acquire)
+    }
+
     pub fn audio_revision(&self) -> u64 { self.audio_revision }
 
     pub fn spectrogram(&self) -> Option<std::sync::Arc<spectrogram::Spectrogram>> {

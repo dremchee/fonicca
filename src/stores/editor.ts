@@ -19,6 +19,7 @@ import { audioExportFormat, audioExportPath } from '@/audio-export'
 import { chooseAudioExport } from '@/composables/audioExport'
 import { editorTimings } from '@/editor-performance'
 import { parseSpectrogram } from '@/spectrogram'
+import { readEditorWindowView, type EditorWindowView } from '@/editor-window-state'
 
 export type SaveMode = 'save' | 'saveAs' | 'replaceOriginal' | 'selection'
 
@@ -102,7 +103,8 @@ function invokeEditor<T>(command: string, args?: Record<string, unknown>): Promi
 
 const editorApi = {
   openWindow: (id: number) => invokeEditor<void>('open_editor_window', { id }),
-  open: (id: number, discardExisting = false) => invokeEditor<{ state: EditorState, name: string, ext: string, path: string, bpm: number | null }>('editor_open', { id, discardExisting }),
+  open: (id: number, discardExisting = false, reuse = false) => invokeEditor<{ state: EditorState, name: string, ext: string, path: string, bpm: number | null }>('editor_open', { id, discardExisting, reuse }),
+  detach: (view: EditorWindowView) => invokeEditor<void>('editor_detach_window', { view }),
   close: (discard: boolean) => invokeEditor<void>('editor_close', { discard }),
   apply: (op: EditOp) => invokeEditor<EditorState>('editor_apply', { op }),
   process: (start: number, end: number, processing: AudioProcessing) => invokeEditor<ProcessedAudio>('editor_process', { start, end, processing }),
@@ -139,6 +141,7 @@ export const useEditorStore = defineStore('editor', () => {
   const saving = ref(false)
   const sessionVersion = ref(0)
   const expanded = ref(false)
+  const windowView = ref<EditorWindowView | null>(null)
   const unsavedPrompt = ref(false)
   let transitioning = false
   let decide: ((choice: 'save' | 'discard' | 'cancel') => void) | null = null
@@ -220,6 +223,30 @@ export const useEditorStore = defineStore('editor', () => {
     finally { loading.value = false; transitioning = false }
   }
 
+  async function detachWindow(viewport?: EditorWindowView['viewport']): Promise<boolean> {
+    if (!sample.value || !state.value || transitioning || loading.value || processing.value || saving.value || decide) return false
+    transitioning = true
+    loading.value = true
+    try {
+      const view: EditorWindowView = { cursor: playhead.value ?? cursor.value,
+        selection: selection.value && { ...selection.value }, looping: looping.value, curve: curve.value, viewport }
+      await stopPlayback()
+      await editorApi.detach(view)
+      // The native session now belongs to the new window. Do not close it or
+      // prompt to save: those actions belong to that window from this point on.
+      sample.value = null
+      state.value = null
+      selection.value = null
+      cursor.value = 0
+      expanded.value = false
+      windowView.value = null
+      sessionVersion.value++
+      return true
+    } catch (error) {
+      toast.error(String(error))
+      return false
+    } finally { loading.value = false; transitioning = false }
+  }
   /** Bumped after every change of the audio, so the view re-reads peaks. */
   const revision = ref(0)
 
@@ -245,11 +272,19 @@ export const useEditorStore = defineStore('editor', () => {
     loading.value = true
     try {
       await api.stop()
-      const r = await editorApi.open(id)
+      const r = await editorApi.open(id, false, new URLSearchParams(location.search).get('detached') === '1')
       state.value = r.state
       sample.value = { id, name: r.name, ext: r.ext, path: r.path, bpm: r.bpm }
       sessionVersion.value++
       revision.value++
+      const view = readEditorWindowView(location.search, r.state.frames)
+      if (view) {
+        cursor.value = view.cursor
+        selection.value = view.selection
+        looping.value = view.looping
+        curve.value = view.curve
+        windowView.value = view
+      }
     }
     catch (e) {
       error.value = String(e)
@@ -618,6 +653,8 @@ export const useEditorStore = defineStore('editor', () => {
     sample,
     state,
     expanded,
+    windowView,
+    detachWindow,
     unsavedPrompt,
     resolveUnsaved,
     openSample,

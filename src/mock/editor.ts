@@ -115,7 +115,9 @@ export function editorCommand(cmd: string, args: any): unknown {
       undoSteps: history.length, redoSteps: future.length, openedMs: 128.4, lastWaveMs: 12.6,
     }
     case 'editor_close': return null
+    case 'editor_detach_window': throw new Error('Opening a native editor window is available in the desktop app.')
     case 'editor_open':
+      if (args.reuse) return { state: state(), name: 'Drum Loop 120', ext: 'wav', path: currentPath, bpm: BPM }
       sampleId = args.id
       currentPath = originalPath = '/mock/Drum loop.wav'
       hasSavedTarget = false
