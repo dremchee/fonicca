@@ -41,12 +41,13 @@ Updater signatures are separate from Apple notarization and Windows code signing
 From a clean `main` branch, use the release command:
 
 ```sh
-pnpm release patch --dry-run  # preview the next version and changelog
-pnpm release patch --push     # prepare the release and start CI
+node scripts/release.mjs patch --dry-run  # preview the next version and changelog
+pnpm release:patch                        # prepare the release and start CI
 ```
 
-Use `minor` or `major` instead of `patch`, or supply a stable version explicitly
-(e.g. `pnpm release 0.2.0 --push`). The default is `patch`.
+`release:patch` includes `--push`. For `minor`, `major` or an explicit stable
+version, invoke the script directly (e.g.
+`node scripts/release.mjs 0.2.0 --push`). The script defaults to `patch`.
 
 The command:
 
@@ -98,6 +99,12 @@ a release by itself.
   builds use separate Rust caches. Main checks and release builds save caches;
   pull requests only restore them.
 - Missing installer output fails the job instead of silently uploading nothing.
+- Before the tag's installer matrix starts, `node scripts/verify-model-packs.mjs`
+  checks the generated model catalog, local graph files and unauthenticated public
+  downloads against their pinned sizes and SHA-256 hashes. This checks the small
+  graph artifacts, not the large learned weights. A missing or changed graph
+  prevents packaging. See [model distribution checks](../model-packs/README.md#distribution-checks)
+  for timeouts, retries and an offline local-only check.
 
 ## ONNX Runtime and macOS Intel
 

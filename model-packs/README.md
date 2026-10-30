@@ -5,6 +5,9 @@ embedded in the executable or copied into desktop installers. Fonicca downloads
 them on demand into its application-data `models` directory, together with the
 separately hosted original weights. Downloads must match the size and SHA-256
 in [`catalog.json`](catalog.json) before becoming available for inference.
+This applies to the two graph files below; Apollo's graph is still embedded from
+`src-tauri/resources/apollo.onnx`. The separately downloaded weight files are not
+part of this directory.
 
 ## Catalog maintenance
 
@@ -32,6 +35,29 @@ The synchronization fingerprint is independent of the SHA-256 verification of
 downloaded model bytes. Adding a model still requires a matching Rust enum variant,
 inference implementation and tensor/preprocessing contract. Changing download
 metadata does not add support for a new architecture.
+
+## Distribution checks
+
+Before packaging a version tag, CI runs:
+
+```sh
+pnpm models:verify
+```
+
+This checks catalog synchronization and the local graphs first, then streams each
+public graph URL without authentication and verifies its exact size and SHA-256.
+The installer matrix depends on this check. Publishing a new URL in the catalog
+therefore requires making its bytes publicly available before building the tag.
+Large learned weights are excluded from this gate.
+
+Each request has a 15-second deadline covering the complete response body.
+Transient network/HTTP errors retry up to three times; missing, oversized or
+checksum-mismatched artifacts fail immediately. A network outage can prevent a
+release build even when the checkout is correct; rerun after availability returns.
+
+For a local check without network access, use `pnpm models:verify --offline`.
+That verifies only the checkout and does not prove public availability.
+Add `--report <path>` to either command to save the verification result as JSON.
 
 ## v1
 

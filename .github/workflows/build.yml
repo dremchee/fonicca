@@ -37,6 +37,10 @@ jobs:
           RELEASE_TAG: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
         run: node scripts/verify-release.mjs
 
+      - name: Verify public model graph artifacts before packaging
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: node scripts/verify-model-packs.mjs
+
   checks:
     name: Tests and compilation
     needs: version

@@ -12,6 +12,7 @@
     "tauri": "tauri",
     "models:generate": "node scripts/model-catalog.mjs",
     "models:check": "node scripts/model-catalog.mjs --check",
+    "models:verify": "node scripts/verify-model-packs.mjs",
     "release:patch": "node scripts/release.mjs patch --push",
     "release:check": "node scripts/verify-release.mjs"
   },

@@ -509,5 +509,27 @@ Repeat detection/export timings with `editor_slices_lock_benchmark`, durations
 regression takes a Playwright Page on `/mock.html#editor`; it unmounts that test
 application at the end, so reload before another UI check.
 
-Still pending: foreground WebView/editor memory measurements and release checks.
+Release graph follow-up:
+
+- Added `pnpm models:verify`: validate catalog synchronization, then verify the
+  checkout's versioned graph files and stream their public URLs without credentials.
+  Both byte size and SHA-256 must match. Large weight packs are excluded.
+- The existing version job runs this gate for version tags; the installer matrix
+  depends on that job, so unavailable or changed public graphs prevent packaging.
+  Requests have a deadline covering fetch and body reads, transient failures retry
+  at most three times, corrupt/missing artifacts fail immediately, and stalled
+  cancellation cannot hold the verifier indefinitely.
+- Tests cover local corruption, streaming hash/size checks, HTTP/network failures,
+  retries, timeouts, local-first gating, exclusion of weights and CLI failure codes.
+  Offline mode is explicitly local-only. An optional JSON report records results.
+- [Current public probe and source fingerprints](research/model-pack-verification.json):
+  both graphs downloaded anonymously and matched the catalog. Parsed workflow
+  YAML confirms the tag condition and installer dependency. Hosted CI and new
+  installers were not run for this check; public availability is time-specific.
+- Verification: 132 frontend tests and frontend production build pass;
+  `pnpm release:check` reports 0.1.3. Updated model distribution instructions and
+  corrected obsolete release commands in `docs/builds.md`. No version/tag/push.
+
+Still pending: foreground WebView/editor memory measurements, build/bundle costs
+and current dependency/architecture documentation.
 Completion items remain open until their full evidence exists.
