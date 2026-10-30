@@ -26,6 +26,7 @@ dist-ssr
 .claude/
 
 .playwright-cli/
+.playwright-mcp/
 /output/playwright/
 
 # Local audio research scripts
