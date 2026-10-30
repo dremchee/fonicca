@@ -1,9 +1,5 @@
 # Changelog
 
-## [0.1.5] - 2026-10-30
-
-- fix(test): normalize catalog fixture line endings on Windows (df845ca)
-
 ## [0.1.4] - 2026-10-30
 
 - Measure editor operation latency and add reproducible audio benchmarks (2034b0e)

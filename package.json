@@ -2,7 +2,7 @@
   "name": "fonicca",
   "private": true,
   "packageManager": "pnpm@9.10.0",
-  "version": "0.1.5",
+  "version": "0.1.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
