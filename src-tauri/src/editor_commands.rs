@@ -131,27 +131,18 @@ pub struct Processed {
     loudness: Option<editor::processing::LoudnessReport>,
 }
 
-/// Copy only the target under the session lock; render without holding it.
+/// Snapshot under the lock; copy, process and render the output on the worker.
 #[tauri::command]
 pub async fn editor_process(
     state: State<'_, AppState>, window: Window, start: usize, end: usize,
     processing: editor::processing::Processing,
 ) -> Result<Processed> {
-    let (pcm, revision, total) = with_session(&state, &window, |s| {
-        let pcm = s.audio();
-        if start >= end || end > pcm.frames() {
-            return Err(Error::Other("select a non-empty range inside the file".into()));
-        }
-        editor::memory::check_samples((end-start).saturating_mul(pcm.channels),editor::memory::pcm_budget())?;
-        Ok((crate::audio::Pcm {
-            samples: pcm.range(start * pcm.channels..end * pcm.channels).into_owned(),
-            channels: pcm.channels, sample_rate: pcm.sample_rate,
-        }, s.revision(), pcm.frames()))
-    })?;
-    let rendered = tauri::async_runtime::spawn_blocking(move || editor::processing::render(pcm, start, total, processing))
+    let snapshot = with_session(&state, &window, |s| editor::processing::Snapshot::new(s, start, end))?;
+    let output = tauri::async_runtime::spawn_blocking(move || snapshot.render(processing))
         .await.map_err(|e| Error::Other(format!("audio processing failed: {e}")))??;
     with_session(&state, &window, |s| {
-        s.apply_processed(revision, rendered.op)?;
+        let editor::processing::RenderedSnapshot { audio, revision, rendered } = output;
+        s.apply_rendered(revision, rendered.op, audio)?;
         Ok(Processed { state: s.state(), start, end: rendered.end, loudness: rendered.loudness })
     })
 }

@@ -99,3 +99,98 @@ fn editor_workload_benchmark() {
     if let Ok(path) = std::env::var("FONICCA_BENCH_OUTPUT") { std::fs::write(path, &text).unwrap(); }
     println!("{text}");
 }
+
+fn rss(system: &mut sysinfo::System) -> Option<u64> {
+    let pid = sysinfo::get_current_pid().ok()?;
+    system.refresh_processes_specifics(
+        sysinfo::ProcessesToUpdate::Some(&[pid]), true,
+        sysinfo::ProcessRefreshKind::nothing().with_memory(),
+    );
+    system.process(pid).map(|process| process.memory())
+}
+
+fn locked<T>(session: &std::sync::Mutex<Session>, work: impl FnOnce(&mut Session) -> T) -> (T, serde_json::Value) {
+    let waiting = Instant::now();
+    let mut guard = session.lock().unwrap();
+    let held = Instant::now();
+    let wait_ms = waiting.elapsed().as_secs_f64() * 1000.0;
+    let value = work(&mut guard);
+    let held_ms = held.elapsed().as_secs_f64() * 1000.0;
+    drop(guard);
+    (value, json!({ "waitMs": wait_ms, "heldMs": held_ms }))
+}
+
+#[test]
+#[ignore = "opt-in command-equivalent copy/processing/commit lock and native RSS workload"]
+fn editor_processing_lock_benchmark() {
+    let reference = std::env::var("FONICCA_LOCK_BENCH_REFERENCE").is_ok_and(|value| value == "1");
+    enum Input { Reference(crate::audio::Pcm, u64), Snapshot(super::processing::Snapshot) }
+    let durations = std::env::var("FONICCA_BENCH_SECONDS").unwrap_or_else(|_| "30,180".into());
+    let repeats: usize = std::env::var("FONICCA_BENCH_REPEATS").unwrap_or_else(|_| "3".into()).parse().unwrap();
+    assert!((1..=20).contains(&repeats));
+    let root = tempfile::tempdir().unwrap();
+    let mut system = sysinfo::System::new();
+    let mut observations = Vec::new();
+    for seconds in durations.split(',').map(|n| n.parse::<u32>().unwrap()) {
+        assert!((1..=3600).contains(&seconds));
+        let input = root.path().join("input.wav");
+        fixture(&input, seconds);
+        for repetition in 0..repeats {
+            let before_open = rss(&mut system);
+            let session = std::sync::Mutex::new(Session::open(1, &input, Some(32)).unwrap());
+            let after_open = rss(&mut system);
+            let frames = session.lock().unwrap().audio().frames();
+            let mut cases = Vec::new();
+            for (label, end, processing) in [
+                ("lufs_short", frames.min(3 * 44100), super::processing::Processing::Lufs { target: -18.0, ceiling: -1.0 }),
+                ("lufs_full", frames, super::processing::Processing::Lufs { target: -18.0, ceiling: -1.0 }),
+                ("stretch_short", frames.min(3 * 44100), super::processing::Processing::Stretch { semitones: 0.0, ratio: 1.1 }),
+            ] {
+                let before_prepare = rss(&mut system);
+                // Reference is the command path at 67b93dc: make owned PCM under
+                // the session mutex, render outside, then apply the op under it.
+                let (prepared, prepare_lock) = locked(&session, |session| {
+                    if !reference { return Input::Snapshot(super::processing::Snapshot::new(session, 0, end).unwrap()); }
+                    let audio = session.audio();
+                    super::memory::check_samples(end * audio.channels, super::memory::pcm_budget()).unwrap();
+                    Input::Reference(crate::audio::Pcm { samples: audio.range(0..end * audio.channels).into_owned(),
+                        channels: audio.channels, sample_rate: audio.sample_rate }, session.revision())
+                });
+                let after_prepare = rss(&mut system);
+                let started = Instant::now();
+                let (audio, revision, rendered) = match prepared {
+                    Input::Reference(pcm, revision) => (None, revision, super::processing::render(pcm, 0, frames, processing).unwrap()),
+                    Input::Snapshot(snapshot) => {
+                        let output = snapshot.render(processing).unwrap();
+                        (Some(output.audio), output.revision, output.rendered)
+                    }
+                };
+                let worker_ms = started.elapsed().as_secs_f64() * 1000.0;
+                let after_worker = rss(&mut system);
+                let (_, commit_lock) = locked(&session, |session| {
+                    if let Some(audio) = audio { session.apply_rendered(revision, rendered.op, audio).unwrap(); }
+                    else { assert_eq!(session.revision(), revision); session.try_apply(rendered.op).unwrap(); }
+                });
+                let after_commit = rss(&mut system);
+                let storage = serde_json::to_value(session.lock().unwrap().diagnostics()).unwrap();
+                let (_, undo_lock) = locked(&session, Session::undo);
+                cases.push(json!({ "case": label, "targetFrames": end, "copiedBytesUnderPrepareLock": if reference { end * 2 * 4 } else { 0 },
+                    "prepareLock": prepare_lock, "workerMs": worker_ms, "commitLock": commit_lock,
+                    "undoLock": undo_lock, "storageAfterCommit": storage,
+                    "rssBytes": { "beforePrepare": before_prepare, "afterPrepare": after_prepare,
+                        "afterWorker": after_worker, "afterCommit": after_commit, "afterUndo": rss(&mut system) } }));
+            }
+            drop(session);
+            observations.push(json!({ "seconds": seconds, "repetition": repetition + 1,
+                "rssBeforeOpen": before_open, "rssAfterOpen": after_open, "rssAfterClose": rss(&mut system), "cases": cases }));
+        }
+    }
+    let report = json!({ "schema": 1, "implementation": if reference { "67b93dc command path" } else { "immutable worker snapshot" },
+        "profile": if cfg!(debug_assertions) { "dev-test" } else { "release-test" },
+        "os": std::env::consts::OS, "arch": std::env::consts::ARCH,
+        "note": "Sequential synthetic stereo 44.1kHz float WAV. Native test-process RSS includes mmap pages/allocator retention; it is not PCM heap or WebView memory. Uncontended real Mutex; command-equivalent phases exclude IPC/UI and queue delay.",
+        "observations": observations });
+    let text = serde_json::to_string_pretty(&report).unwrap();
+    if let Ok(path) = std::env::var("FONICCA_LOCK_BENCH_OUTPUT") { std::fs::write(path, &text).unwrap(); }
+    println!("{text}");
+}

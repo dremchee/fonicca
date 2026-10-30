@@ -1,0 +1,169 @@
+{
+  "schema": 1,
+  "status": "partial-hidden-scene; foreground/editor observation remains pending",
+  "date": "2026-10-30T03:33:57.286987+00:00",
+  "sourceBase": "67b93dc + native processing worker snapshot change",
+  "nativeBinarySha256": "c3f3c5e23b2aabe8044856ea0ddc0deacad9ec2c50be76447d17b7f01b33195d",
+  "frontendBundleSha256": {
+    "mock-U27PwL23.js": "fb7a2ceb7813626f808474fccdbb811dee5b51384ed93f0bde2bfa299bac5034"
+  },
+  "isolation": {
+    "identifier": "app.fonicca.performance-fixture",
+    "appDirectoriesOverride": "private temporary directory, separate from user application data",
+    "incognito": true,
+    "nativeLibraryCounts": {
+      "sources": 0,
+      "samples": 0
+    },
+    "backend": "production Vue mock in a same-origin iframe; native SDK globals remain in the parent frame",
+    "nativeAudio": "No PCM, audio playback or model inference in this GUI observation"
+  },
+  "screenState": {
+    "ioregIOConsoleLocked": true,
+    "CGSSessionScreenIsLocked": true,
+    "pageVisibility": "hidden"
+  },
+  "attribution": {
+    "preExistingWebKitPids": [
+      5144,
+      29805,
+      29806,
+      29807,
+      52797,
+      52807
+    ],
+    "cohortPids": [
+      5342,
+      5343,
+      5344,
+      5345
+    ],
+    "nativeParentPid": 5339,
+    "allCohortProcessesExitedAfterOwnHostStopped": true
+  },
+  "observation": {
+    "stage": "library-loaded",
+    "rows": 37,
+    "canvases": 0,
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "heapAvailable": false,
+    "visibility": "hidden",
+    "time": 1793330706.633409,
+    "processes": [
+      {
+        "pid": 5342,
+        "parent": 5339,
+        "rssBytes": 138166272,
+        "name": "fonicca"
+      },
+      {
+        "pid": 5343,
+        "parent": 1,
+        "rssBytes": 36732928,
+        "name": "com.apple.WebKit.GPU"
+      },
+      {
+        "pid": 5344,
+        "parent": 1,
+        "rssBytes": 22216704,
+        "name": "com.apple.WebKit.Networking"
+      },
+      {
+        "pid": 5345,
+        "parent": 1,
+        "rssBytes": 157745152,
+        "name": "com.apple.WebKit.WebContent"
+      }
+    ],
+    "footprintExit": 0,
+    "footprint": {
+      "unit": "byte",
+      "bytes per unit": 1,
+      "start_time": {
+        "mach_absolute_time_ns": 887928359954500,
+        "mach_continuous_time_ns": 2030318167752833,
+        "wall_time_s": 815023506.698221,
+        "date": "2026-10-30T06:25:06.698+03:00"
+      },
+      "processes": [
+        {
+          "name": "com.apple.WebKit.WebContent",
+          "pid": 5345,
+          "translated": false,
+          "page size": 16384,
+          "footprint": 129123144,
+          "auxiliary": {
+            "phys_footprint_peak": 238945072,
+            "phys_footprint": 129155912
+          }
+        },
+        {
+          "name": "fonicca",
+          "pid": 5342,
+          "translated": false,
+          "page size": 16384,
+          "footprint": 43091072,
+          "auxiliary": {
+            "phys_footprint_peak": 62080104,
+            "phys_footprint": 43123840
+          }
+        },
+        {
+          "name": "com.apple.WebKit.GPU",
+          "pid": 5343,
+          "translated": false,
+          "page size": 16384,
+          "footprint": 14107416,
+          "auxiliary": {
+            "phys_footprint_peak": 28951320,
+            "phys_footprint": 14140184
+          }
+        },
+        {
+          "name": "com.apple.WebKit.Networking",
+          "pid": 5344,
+          "translated": false,
+          "page size": 16384,
+          "footprint": 7324176,
+          "auxiliary": {
+            "phys_footprint_peak": 10797584,
+            "phys_footprint": 7356944
+          }
+        }
+      ],
+      "errors": [],
+      "warnings": [],
+      "summary": {
+        "total": {
+          "dirty": 193383664,
+          "swapped": 0,
+          "clean": 38813696,
+          "reclaimable": 155484160,
+          "wired": 180224,
+          "regions": 25222
+        }
+      },
+      "total footprint": 193383664,
+      "shared": [],
+      "end_time": {
+        "mach_absolute_time_ns": 887928411026916,
+        "mach_continuous_time_ns": 2030318218825250,
+        "wall_time_s": 815023506.749294,
+        "date": "2026-10-30T06:25:06.749+03:00"
+      },
+      "page size": 16384
+    }
+  },
+  "limitations": [
+    "Only the hidden 100k metadata library reached its checkpoint (37 DOM rows). macOS was locked; this is not evidence of foreground scrolling, editor rendering, or waveform GPU memory.",
+    "Native RSS is separate from WebContent, GPU and Networking. ps RSS is KiB converted to bytes. footprint reports physical footprint in bytes; the metrics have different accounting and must not be conflated.",
+    "Do not add PCM storage counters to RSS or add individual RSS values as if shared memory were disjoint.",
+    "The GUI uses an isolated mocked backend and a minimal iframe host. It does not establish memory use of the real native IPC library or a long editor session.",
+    "JavaScript heap estimation was unavailable in WebKit (heapAvailable=false).",
+    "The native audio benchmark independently samples a different process; its RSS cannot be combined with this GUI observation.",
+    "No foreground/editor memory completion is claimed. Repeat the controlled scenario with macOS unlocked."
+  ]
+}

@@ -1,7 +1,6 @@
 //! Render expensive edits once off-thread and keep their result in undo history.
-use super::Op;
-use crate::audio::Pcm;
-#[cfg(test)] use crate::audio::AudioRead;
+use super::{Op, Session, blocks::BlockAudio};
+use crate::audio::{AudioRead, Pcm};
 use crate::error::{Error, Result};
 use ebur128::{EbuR128, Mode};
 use serde::{Deserialize, Serialize};
@@ -28,6 +27,45 @@ pub struct Rendered {
     pub op: Op,
     pub end: usize,
     pub loudness: Option<LoudnessReport>,
+}
+
+/// Cheap immutable snapshot taken while the command holds the session mutex.
+/// Owned PCM, memory probing and DSP are all deferred to the blocking worker.
+pub struct Snapshot {
+    audio: BlockAudio,
+    revision: u64,
+    start: usize,
+    end: usize,
+}
+
+pub struct RenderedSnapshot {
+    pub audio: BlockAudio,
+    pub revision: u64,
+    pub rendered: Rendered,
+}
+
+impl Snapshot {
+    pub fn new(session: &Session, start: usize, end: usize) -> Result<Self> {
+        if start >= end || end > session.audio().frames() {
+            return Err(invalid("select a non-empty range inside the file"));
+        }
+        Ok(Self { audio: session.audio().clone(), revision: session.revision(), start, end })
+    }
+
+    pub fn render(mut self, processing: Processing) -> Result<RenderedSnapshot> {
+        let channels = self.audio.channels;
+        super::memory::check_samples((self.end - self.start).saturating_mul(channels), super::memory::pcm_budget())?;
+        let pcm = Pcm {
+            samples: self.audio.range(self.start * channels..self.end * channels).into_owned(),
+            channels,
+            sample_rate: self.audio.sample_rate,
+        };
+        let rendered = render(pcm, self.start, self.audio.frames(), processing)?;
+        // LUFS returns a gain op. Applying it can spill a large output to disk;
+        // that work must also finish before reacquiring the session mutex.
+        self.audio.try_apply(&rendered.op)?;
+        Ok(RenderedSnapshot { audio: self.audio, revision: self.revision, rendered })
+    }
 }
 
 fn invalid(message: &str) -> Error {
@@ -512,7 +550,9 @@ mod tests {
     #[test]
     fn asynchronous_results_cannot_overwrite_a_newer_edit_or_undo() {
         let (_dir, mut s) = session(&sine(1.0, 0.1));
-        let revision = s.revision();
+        let snapshot = Snapshot::new(&s, 0, 48000).unwrap();
+        assert!(snapshot.audio.samples.same_snapshot(&s.audio().samples));
+        let output = snapshot.render(Processing::Lufs { target: -18.0, ceiling: -1.0 }).unwrap();
         let op = || Op::Gain {
             start: 0,
             end: 48000,
@@ -520,9 +560,59 @@ mod tests {
         };
         s.apply(op());
         s.undo();
-        assert!(s.apply_processed(revision, op()).is_err());
-        let current = s.revision();
-        s.apply_processed(current, op()).unwrap();
+        assert!(s.apply_rendered(output.revision, output.rendered.op, output.audio).is_err());
+        let output = Snapshot::new(&s, 0, 48000).unwrap()
+            .render(Processing::Lufs { target: -18.0, ceiling: -1.0 }).unwrap();
+        s.apply_rendered(output.revision, output.rendered.op, output.audio).unwrap();
         assert!(s.state().dirty);
+    }
+
+    #[test]
+    fn worker_output_matches_reference_on_fragmented_audio_and_undo_reuses_source() {
+        for processing in [Processing::Lufs { target: -18.0, ceiling: -1.0 }, Processing::Stretch { semitones: 3.0, ratio: 1.25 }] {
+          for channels in [1, 2] {
+            let mono = sine(1.0, 0.1);
+            let input = Pcm { samples: mono.samples.iter().flat_map(|sample|
+                (0..channels).map(move |channel| sample * if channel == 0 { 1.0 } else { -0.7 })
+            ).collect(), channels, sample_rate: mono.sample_rate };
+            let (_a, mut actual) = session(&input);
+            let (_b, mut reference) = session(&input);
+            for session in [&mut actual, &mut reference] {
+                session.apply(Op::Delete { start: 8000, end: 12000 });
+                session.apply(Op::SetLoop { start: 1000, end: 30000 });
+                session.apply(Op::SetMarkers { markers: vec![Marker { frame: 5000, skip: false }, Marker { frame: 32000, skip: true }] });
+            }
+            let source = actual.audio().clone();
+            let (start, end) = (4000, 35000);
+            let pcm = Pcm { samples: reference.audio().range(start * channels..end * channels).into_owned(), channels, sample_rate: input.sample_rate };
+            let expected = render(pcm, start, reference.audio().frames(), processing).unwrap();
+            reference.try_apply(expected.op).unwrap();
+            let output = Snapshot::new(&actual, start, end).unwrap().render(processing).unwrap();
+            assert!(source.samples.same_snapshot(&actual.audio().samples), "worker must not mutate the live session");
+            actual.apply_rendered(output.revision, output.rendered.op, output.audio).unwrap();
+            assert_eq!(actual.audio().samples, reference.audio().samples);
+            assert_eq!(actual.loop_points(), reference.loop_points());
+            assert_eq!(actual.markers(), reference.markers());
+            let edited = actual.audio().clone();
+            actual.undo();
+            assert!(source.samples.same_snapshot(&actual.audio().samples));
+            actual.redo();
+            assert!(edited.samples.same_snapshot(&actual.audio().samples));
+          }
+        }
+    }
+
+    #[test]
+    fn worker_snapshot_validates_bounds_and_cannot_replace_a_reopened_session() {
+        let (_dir, original) = session(&sine(1.0, 0.1));
+        assert!(Snapshot::new(&original, 100, 100).is_err());
+        assert!(Snapshot::new(&original, 100, 99).is_err());
+        assert!(Snapshot::new(&original, 0, original.audio().frames() + 1).is_err());
+        let snapshot = Snapshot::new(&original, 0, 48000).unwrap();
+        drop(original);
+        let output = snapshot.render(Processing::Lufs { target: -18.0, ceiling: -1.0 }).unwrap();
+        let (_other_dir, mut reopened) = session(&sine(1.0, 0.1));
+        assert!(reopened.apply_rendered(output.revision, output.rendered.op, output.audio).is_err());
+        assert!(!reopened.state().dirty);
     }
 }

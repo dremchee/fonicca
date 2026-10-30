@@ -296,6 +296,70 @@ with a no-match search. Reload the mock before another UI check. Temporary build
 and raw CPU profiles belong outside the checkout; only the compact evidence report
 is versioned.
 
-Still pending: full WebView-process memory measurements, native copying/lock
-evidence and release checks. The remaining completion items stay open until their
-full evidence is present.
+Native processing lock follow-up:
+
+- A command-equivalent workload exposed two long critical sections in LUFS:
+  the target PCM was copied while holding the editor mutex, and the returned
+  gain operation was rendered under it after loudness analysis. The existing
+  worker covered loudness analysis but not these two phases.
+- `processing::Snapshot` captures immutable audio/revision under the mutex.
+  Memory probing, copying, analysis and rendering the output all finish on the
+  blocking worker. Commit checks the original revision and installs the rendered
+  audio through the existing snapshot-history path. New edits, undo and reopening
+  a session invalidate a late result. No IPC payload or DSP algorithm changed.
+- Differential tests compare fragmented mono/stereo LUFS and stretch against the
+  previous render/apply sequence, including loops, markers and undo/redo. They
+  also check invalid ranges, source sharing and results arriving after reopen.
+- [Raw native measurements](research/editor-processing-lock-comparison.json),
+  three observations at 30/180/1200 seconds: for full-file 1200-second LUFS, median
+  preparation hold 50.8 ms → 0.000042 ms and audio commit hold 859.0 ms → 0.0024 ms.
+  These are uncontended core lock phases; state DTO assembly and IPC are excluded.
+  Combined phase time remained about 3.84 seconds. The gain render moved into the
+  worker, so comparing worker time alone would incorrectly imply slower DSP.
+- The same owned PCM input still exists, now allocated outside the mutex. This
+  change does not establish lower peak memory. The benchmark records native
+  process RSS at phase boundaries, separately from deduplicated PCM storage.
+  macOS `sysinfo` reads `proc_taskinfo.pti_resident_size`; mapped PCM pages and
+  allocator retention are part of RSS, and phase samples can miss transient peaks.
+
+Repeat the lock/RSS workload after compilation, without simultaneous UI profiling:
+
+```sh
+FONICCA_BENCH_SECONDS=30,180,1200 FONICCA_BENCH_REPEATS=3 \
+FONICCA_LOCK_BENCH_OUTPUT=/tmp/editor-lock-current.json \
+cargo test --manifest-path src-tauri/Cargo.toml --locked --lib \
+  editor_processing_lock_benchmark -- --ignored --nocapture --test-threads=1
+```
+
+Add `FONICCA_LOCK_BENCH_REFERENCE=1` to run the former command sequence in the
+same test binary. Both modes use private generated audio, a real session mutex
+and no user library or audio device. Tests measure rather than assert timing
+thresholds; use the full repetitions when interpreting the result.
+
+WebView memory observation:
+
+- [Partial native WebView observation](research/webview-memory-observation.json)
+  records separate `ps` RSS and OS `footprint` measurements for the Rust host,
+  WebContent, GPU and Networking processes. The test application used a different
+  identifier, a private temporary app-data root and an incognito WebView; its
+  native database remained empty. All four attributed processes exited after
+  the test host was stopped.
+- The production 100k metadata mock ran in a same-origin iframe inside a minimal
+  Tauri page. This is necessary because the browser SDK mocks try to replace
+  native read-only Tauri callback globals in the main frame. The native host's
+  backend was not replaced, and its real data directories were not accessed.
+- Only the loaded library checkpoint (37 DOM rows) was captured. macOS reported
+  `IOConsoleLocked=Yes` / `CGSSessionScreenIsLocked=Yes`, and WebKit reported
+  `document.visibilityState=hidden`. Further checkpoints did not arrive while
+  the desktop remained locked.
+  These measurements do not complete the foreground scroll/editor memory scenario.
+  JavaScript heap estimation was unavailable, so it was not substituted for OS
+  process accounting. Repeat the scenario when the desktop is unlocked.
+- Native verification after this follow-up: 196 tests pass, 38 opt-in cases remain
+  ignored; the normal native debug build and `cargo check` pass. The temporary
+  fixture host was stopped and the normal debug binary was rebuilt without its
+  test identifier or temporary app-data configuration.
+
+Still pending: foreground WebView/editor memory measurements; an audit of the
+remaining synchronous save/export, paste and transcription preparation paths;
+and release checks. Completion items remain open until their full evidence exists.

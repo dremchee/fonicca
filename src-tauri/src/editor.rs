@@ -282,13 +282,6 @@ impl Session {
 
     pub fn revision(&self) -> u64 { self.revision }
 
-    pub fn apply_processed(&mut self, revision: u64, op: Op) -> Result<()> {
-        if self.revision != revision {
-            return Err(Error::Other("the audio changed during processing; please try again".into()));
-        }
-        self.try_apply(op)
-    }
-
     pub fn audio_revision(&self) -> u64 { self.audio_revision }
 
     pub fn spectrogram(&self) -> Option<std::sync::Arc<spectrogram::Spectrogram>> {

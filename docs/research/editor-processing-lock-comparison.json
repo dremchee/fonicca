@@ -1,0 +1,2423 @@
+{
+  "schema": 1,
+  "date": "2026-10-30T03:35:42.268Z",
+  "sourceBase": "67b93dc",
+  "environment": {
+    "os": "macOS 26.7.1",
+    "cpu": "Apple M1 Pro",
+    "arch": "aarch64",
+    "ramBytes": 17179869184,
+    "profile": "Cargo dev-test; own code opt-level 1, dependencies opt-level 3"
+  },
+  "sourceSha256": {
+    "src-tauri/src/editor.rs": "48bfdaf9ebcb3facc3e33c815c9257805be42e9cc73101914450e4b8ca794586",
+    "src-tauri/src/editor/processing.rs": "3943d63d25acf6cc3784b91b41692bcb00d4eb63f56d13591ff2b27fbbdda4f9",
+    "src-tauri/src/editor_commands.rs": "2a5d6352b6e293583d3cc7a81bd272dd967b830239ed4a3b2770ac891ca58831",
+    "src-tauri/src/editor/benchmarks.rs": "879ef47f0dda7aae0b4d1a8b683c00ce15fccc31ff17da8877f0d45207433ba9"
+  },
+  "workload": "Sequential private synthetic stereo 44.1kHz WAVs; 30/180/1200 seconds, three repetitions. Short processing uses the first three seconds; LUFS full uses all frames. Reference then candidate in the same compiled test binary.",
+  "summary": {
+    "reference": [
+      {
+        "seconds": 30,
+        "case": "lufs_short",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.07262500000000001,
+        "workerMsMedian": 6.935791999999999,
+        "commitHeldMsMedian": 0.200666,
+        "undoHeldMsMedian": 0.000584,
+        "phaseTotalMsMedian": 7.230167,
+        "copiedBytesUnderPrepareLock": 1058400
+      },
+      {
+        "seconds": 30,
+        "case": "lufs_full",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.274208,
+        "workerMsMedian": 71.652834,
+        "commitHeldMsMedian": 2.7308329999999996,
+        "undoHeldMsMedian": 0.000417,
+        "phaseTotalMsMedian": 75.371459,
+        "copiedBytesUnderPrepareLock": 10584000
+      },
+      {
+        "seconds": 30,
+        "case": "stretch_short",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.0445,
+        "workerMsMedian": 33.887375,
+        "commitHeldMsMedian": 0.006917,
+        "undoHeldMsMedian": 0.00041600000000000003,
+        "phaseTotalMsMedian": 33.935208,
+        "copiedBytesUnderPrepareLock": 1058400
+      },
+      {
+        "seconds": 180,
+        "case": "lufs_short",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.152375,
+        "workerMsMedian": 6.960083,
+        "commitHeldMsMedian": 0.22474999999999998,
+        "undoHeldMsMedian": 0.000334,
+        "phaseTotalMsMedian": 7.338417,
+        "copiedBytesUnderPrepareLock": 1058400
+      },
+      {
+        "seconds": 180,
+        "case": "lufs_full",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 6.6125419999999995,
+        "workerMsMedian": 434.91054099999997,
+        "commitHeldMsMedian": 144.952042,
+        "undoHeldMsMedian": 0.000292,
+        "phaseTotalMsMedian": 586.4454170000001,
+        "copiedBytesUnderPrepareLock": 63504000
+      },
+      {
+        "seconds": 180,
+        "case": "stretch_short",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.065542,
+        "workerMsMedian": 33.678584,
+        "commitHeldMsMedian": 2.5154579999999997,
+        "undoHeldMsMedian": 0.000417,
+        "phaseTotalMsMedian": 36.283333999999996,
+        "copiedBytesUnderPrepareLock": 1058400
+      },
+      {
+        "seconds": 1200,
+        "case": "lufs_short",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.1555,
+        "workerMsMedian": 6.988375,
+        "commitHeldMsMedian": 0.246292,
+        "undoHeldMsMedian": 0.00033299999999999996,
+        "phaseTotalMsMedian": 7.408709,
+        "copiedBytesUnderPrepareLock": 1058400
+      },
+      {
+        "seconds": 1200,
+        "case": "lufs_full",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 50.804625,
+        "workerMsMedian": 2884.6508750000003,
+        "commitHeldMsMedian": 858.98875,
+        "undoHeldMsMedian": 0.00025,
+        "phaseTotalMsMedian": 3842.8052079999998,
+        "copiedBytesUnderPrepareLock": 423360000
+      },
+      {
+        "seconds": 1200,
+        "case": "stretch_short",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.060416,
+        "workerMsMedian": 33.924208,
+        "commitHeldMsMedian": 8.496875,
+        "undoHeldMsMedian": 0.000417,
+        "phaseTotalMsMedian": 42.548917,
+        "copiedBytesUnderPrepareLock": 1058400
+      }
+    ],
+    "candidate": [
+      {
+        "seconds": 30,
+        "case": "lufs_short",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.000167,
+        "workerMsMedian": 7.212625,
+        "commitHeldMsMedian": 0.001333,
+        "undoHeldMsMedian": 0.000542,
+        "phaseTotalMsMedian": 7.214125,
+        "copiedBytesUnderPrepareLock": 0
+      },
+      {
+        "seconds": 30,
+        "case": "lufs_full",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.000042,
+        "workerMsMedian": 78.198833,
+        "commitHeldMsMedian": 0.002666,
+        "undoHeldMsMedian": 0.000292,
+        "phaseTotalMsMedian": 78.20120699999998,
+        "copiedBytesUnderPrepareLock": 0
+      },
+      {
+        "seconds": 30,
+        "case": "stretch_short",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.000042,
+        "workerMsMedian": 34.151584,
+        "commitHeldMsMedian": 0.003416,
+        "undoHeldMsMedian": 0.000375,
+        "phaseTotalMsMedian": 34.159917,
+        "copiedBytesUnderPrepareLock": 0
+      },
+      {
+        "seconds": 180,
+        "case": "lufs_short",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.000166,
+        "workerMsMedian": 7.2975829999999995,
+        "commitHeldMsMedian": 0.00175,
+        "undoHeldMsMedian": 0.0005,
+        "phaseTotalMsMedian": 7.3020819999999995,
+        "copiedBytesUnderPrepareLock": 0
+      },
+      {
+        "seconds": 180,
+        "case": "lufs_full",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.000042,
+        "workerMsMedian": 570.158625,
+        "commitHeldMsMedian": 0.002375,
+        "undoHeldMsMedian": 0.00041600000000000003,
+        "phaseTotalMsMedian": 570.1610420000001,
+        "copiedBytesUnderPrepareLock": 0
+      },
+      {
+        "seconds": 180,
+        "case": "stretch_short",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.000083,
+        "workerMsMedian": 34.099540999999995,
+        "commitHeldMsMedian": 1.218542,
+        "undoHeldMsMedian": 0.000375,
+        "phaseTotalMsMedian": 35.302916999999994,
+        "copiedBytesUnderPrepareLock": 0
+      },
+      {
+        "seconds": 1200,
+        "case": "lufs_short",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.00020800000000000001,
+        "workerMsMedian": 7.369458,
+        "commitHeldMsMedian": 0.001791,
+        "undoHeldMsMedian": 0.000417,
+        "phaseTotalMsMedian": 7.371333,
+        "copiedBytesUnderPrepareLock": 0
+      },
+      {
+        "seconds": 1200,
+        "case": "lufs_full",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.000042,
+        "workerMsMedian": 3832.123125,
+        "commitHeldMsMedian": 0.002417,
+        "undoHeldMsMedian": 0.000417,
+        "phaseTotalMsMedian": 3832.1255840000003,
+        "copiedBytesUnderPrepareLock": 0
+      },
+      {
+        "seconds": 1200,
+        "case": "stretch_short",
+        "repetitions": 3,
+        "prepareHeldMsMedian": 0.000083,
+        "workerMsMedian": 33.93875,
+        "commitHeldMsMedian": 6.397,
+        "undoHeldMsMedian": 0.000375,
+        "phaseTotalMsMedian": 40.178792,
+        "copiedBytesUnderPrepareLock": 0
+      }
+    ]
+  },
+  "reference": {
+    "arch": "aarch64",
+    "implementation": "67b93dc command path",
+    "note": "Sequential synthetic stereo 44.1kHz float WAV. Native test-process RSS includes mmap pages/allocator retention; it is not PCM heap or WebView memory. Uncontended real Mutex; command-equivalent phases exclude IPC/UI and queue delay.",
+    "observations": [
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.19175,
+              "waitMs": 0.000084
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.18412499999999998,
+              "waitMs": 0.000125
+            },
+            "rssBytes": {
+              "afterCommit": 27312128,
+              "afterPrepare": 26869760,
+              "afterUndo": 27459584,
+              "afterWorker": 27279360,
+              "beforePrepare": 25673728
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10584000,
+              "openedMs": 10.201417000000001,
+              "ramBytes": 20971520,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.00033299999999999996,
+              "waitMs": 0.000042
+            },
+            "workerMs": 6.934792000000001
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 2.7308329999999996,
+              "waitMs": 0.000458
+            },
+            "copiedBytesUnderPrepareLock": 10584000,
+            "prepareLock": {
+              "heldMs": 0.9877919999999999,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 49725440,
+              "afterPrepare": 38109184,
+              "afterUndo": 49725440,
+              "afterWorker": 38125568,
+              "beforePrepare": 27492352
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10584000,
+              "openedMs": 10.201417000000001,
+              "ramBytes": 35651584,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 1323000,
+            "undoLock": {
+              "heldMs": 0.000417,
+              "waitMs": 0.000041
+            },
+            "workerMs": 71.652834
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 0.013125000000000001,
+              "waitMs": 0.000375
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.048667,
+              "waitMs": 0.000083
+            },
+            "rssBytes": {
+              "afterCommit": 50806784,
+              "afterPrepare": 49725440,
+              "afterUndo": 50806784,
+              "afterWorker": 50757632,
+              "beforePrepare": 49725440
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10689840,
+              "openedMs": 10.201417000000001,
+              "ramBytes": 20038608,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000458,
+              "waitMs": 0.000041
+            },
+            "workerMs": 33.94925
+          }
+        ],
+        "repetition": 1,
+        "rssAfterClose": 50823168,
+        "rssAfterOpen": 25640960,
+        "rssBeforeOpen": 13238272,
+        "seconds": 30
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.20316700000000001,
+              "waitMs": 0.00020800000000000001
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.07262500000000001,
+              "waitMs": 0.000083
+            },
+            "rssBytes": {
+              "afterCommit": 61456384,
+              "afterPrepare": 61456384,
+              "afterUndo": 61456384,
+              "afterWorker": 61456384,
+              "beforePrepare": 61456384
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10584000,
+              "openedMs": 10.096542,
+              "ramBytes": 20971520,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.0007080000000000001,
+              "waitMs": 0.000042
+            },
+            "workerMs": 6.954375
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 2.969417,
+              "waitMs": 0.000375
+            },
+            "copiedBytesUnderPrepareLock": 10584000,
+            "prepareLock": {
+              "heldMs": 0.270625,
+              "waitMs": 0.000083
+            },
+            "rssBytes": {
+              "afterCommit": 74727424,
+              "afterPrepare": 61456384,
+              "afterUndo": 74727424,
+              "afterWorker": 61456384,
+              "beforePrepare": 61456384
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10584000,
+              "openedMs": 10.096542,
+              "ramBytes": 35651584,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 1323000,
+            "undoLock": {
+              "heldMs": 0.000417,
+              "waitMs": 0.000042
+            },
+            "workerMs": 73.981875
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 0.0050420000000000005,
+              "waitMs": 0.000417
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.0445,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 74760192,
+              "afterPrepare": 74727424,
+              "afterUndo": 74760192,
+              "afterWorker": 74760192,
+              "beforePrepare": 74727424
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10689840,
+              "openedMs": 10.096542,
+              "ramBytes": 20038608,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000375,
+              "waitMs": 0.000041
+            },
+            "workerMs": 33.809459
+          }
+        ],
+        "repetition": 2,
+        "rssAfterClose": 74760192,
+        "rssAfterOpen": 61456384,
+        "rssBeforeOpen": 50839552,
+        "seconds": 30
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.200666,
+              "waitMs": 0.000166
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.061,
+              "waitMs": 0.000041
+            },
+            "rssBytes": {
+              "afterCommit": 85393408,
+              "afterPrepare": 85377024,
+              "afterUndo": 85393408,
+              "afterWorker": 85377024,
+              "beforePrepare": 85377024
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10584000,
+              "openedMs": 10.368167,
+              "ramBytes": 20971520,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000584,
+              "waitMs": 0.000042
+            },
+            "workerMs": 6.935791999999999
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 2.593917,
+              "waitMs": 0.000542
+            },
+            "copiedBytesUnderPrepareLock": 10584000,
+            "prepareLock": {
+              "heldMs": 0.274208,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 95993856,
+              "afterPrepare": 85393408,
+              "afterUndo": 95993856,
+              "afterWorker": 85393408,
+              "beforePrepare": 85393408
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10584000,
+              "openedMs": 10.368167,
+              "ramBytes": 35651584,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 1323000,
+            "undoLock": {
+              "heldMs": 0.000375,
+              "waitMs": 0.000083
+            },
+            "workerMs": 71.55604100000001
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 0.006917,
+              "waitMs": 0.00045900000000000004
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.040916,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 95993856,
+              "afterPrepare": 95993856,
+              "afterUndo": 95993856,
+              "afterWorker": 95993856,
+              "beforePrepare": 95993856
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10689840,
+              "openedMs": 10.368167,
+              "ramBytes": 20038608,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.00041600000000000003,
+              "waitMs": 0.000042
+            },
+            "workerMs": 33.887375
+          }
+        ],
+        "repetition": 3,
+        "rssAfterClose": 95993856,
+        "rssAfterOpen": 85377024,
+        "rssBeforeOpen": 74776576,
+        "seconds": 30
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.24741599999999997,
+              "waitMs": 0.000334
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.138417,
+              "waitMs": 0.000041
+            },
+            "rssBytes": {
+              "afterCommit": 130646016,
+              "afterPrepare": 130646016,
+              "afterUndo": 130646016,
+              "afterWorker": 130646016,
+              "beforePrepare": 129581056
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 63504000,
+              "lastWaveMs": null,
+              "logicalBytes": 63504000,
+              "openedMs": 174.856709,
+              "ramBytes": 2097152,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.00075,
+              "waitMs": 0.000041
+            },
+            "workerMs": 6.96775
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 144.952042,
+              "waitMs": 0.000584
+            },
+            "copiedBytesUnderPrepareLock": 63504000,
+            "prepareLock": {
+              "heldMs": 10.738292,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 290177024,
+              "afterPrepare": 256606208,
+              "afterUndo": 290193408,
+              "afterWorker": 256606208,
+              "beforePrepare": 130646016
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 127008000,
+              "lastWaveMs": null,
+              "logicalBytes": 63504000,
+              "openedMs": 174.856709,
+              "ramBytes": 0,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 7938000,
+            "undoLock": {
+              "heldMs": 0.000417,
+              "waitMs": 0.000083
+            },
+            "workerMs": 434.91054099999997
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 2.5154579999999997,
+              "waitMs": 0.0005
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.074625,
+              "waitMs": 0.000083
+            },
+            "rssBytes": {
+              "afterCommit": 291602432,
+              "afterPrepare": 290193408,
+              "afterUndo": 291618816,
+              "afterWorker": 291602432,
+              "beforePrepare": 290193408
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 63504000,
+              "lastWaveMs": null,
+              "logicalBytes": 63609840,
+              "openedMs": 174.856709,
+              "ramBytes": 1164240,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000417,
+              "waitMs": 0.000041
+            },
+            "workerMs": 34.14125
+          }
+        ],
+        "repetition": 1,
+        "rssAfterClose": 228114432,
+        "rssAfterOpen": 129581056,
+        "rssBeforeOpen": 96010240,
+        "seconds": 180
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.22474999999999998,
+              "waitMs": 0.000292
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.152375,
+              "waitMs": 0.000083
+            },
+            "rssBytes": {
+              "afterCommit": 262799360,
+              "afterPrepare": 262782976,
+              "afterUndo": 262799360,
+              "afterWorker": 262782976,
+              "beforePrepare": 261718016
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 63504000,
+              "lastWaveMs": null,
+              "logicalBytes": 63504000,
+              "openedMs": 186.641583,
+              "ramBytes": 2097152,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000334,
+              "waitMs": 0.000041
+            },
+            "workerMs": 6.960083
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 140.48454199999998,
+              "waitMs": 0.000458
+            },
+            "copiedBytesUnderPrepareLock": 63504000,
+            "prepareLock": {
+              "heldMs": 6.18475,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 358825984,
+              "afterPrepare": 325238784,
+              "afterUndo": 358825984,
+              "afterWorker": 325238784,
+              "beforePrepare": 262799360
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 127008000,
+              "lastWaveMs": null,
+              "logicalBytes": 63504000,
+              "openedMs": 186.641583,
+              "ramBytes": 0,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 7938000,
+            "undoLock": {
+              "heldMs": 0.000292,
+              "waitMs": 0.000084
+            },
+            "workerMs": 436.780709
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 1.741708,
+              "waitMs": 0.000375
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.060167000000000005,
+              "waitMs": 0.000041
+            },
+            "rssBytes": {
+              "afterCommit": 358842368,
+              "afterPrepare": 358825984,
+              "afterUndo": 358842368,
+              "afterWorker": 358842368,
+              "beforePrepare": 358825984
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 63504000,
+              "lastWaveMs": null,
+              "logicalBytes": 63609840,
+              "openedMs": 186.641583,
+              "ramBytes": 1164240,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000417,
+              "waitMs": 0.000042
+            },
+            "workerMs": 33.678584
+          }
+        ],
+        "repetition": 2,
+        "rssAfterClose": 295337984,
+        "rssAfterOpen": 261718016,
+        "rssBeforeOpen": 228114432,
+        "seconds": 180
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.216417,
+              "waitMs": 0.000167
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.16275,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 329990144,
+              "afterPrepare": 329990144,
+              "afterUndo": 329990144,
+              "afterWorker": 329990144,
+              "beforePrepare": 328925184
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 63504000,
+              "lastWaveMs": null,
+              "logicalBytes": 63504000,
+              "openedMs": 194.135042,
+              "ramBytes": 2097152,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.00033299999999999996,
+              "waitMs": 0.000083
+            },
+            "workerMs": 6.95925
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 147.09104200000002,
+              "waitMs": 0.0025
+            },
+            "copiedBytesUnderPrepareLock": 63504000,
+            "prepareLock": {
+              "heldMs": 6.6125419999999995,
+              "waitMs": 0.000083
+            },
+            "rssBytes": {
+              "afterCommit": 426016768,
+              "afterPrepare": 392445952,
+              "afterUndo": 426016768,
+              "afterWorker": 392445952,
+              "beforePrepare": 330006528
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 127008000,
+              "lastWaveMs": null,
+              "logicalBytes": 63504000,
+              "openedMs": 194.135042,
+              "ramBytes": 0,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 7938000,
+            "undoLock": {
+              "heldMs": 0.00025,
+              "waitMs": 0.000042
+            },
+            "workerMs": 432.74183300000004
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 2.577375,
+              "waitMs": 0.000583
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.065542,
+              "waitMs": 0.000041
+            },
+            "rssBytes": {
+              "afterCommit": 426016768,
+              "afterPrepare": 426016768,
+              "afterUndo": 426016768,
+              "afterWorker": 426016768,
+              "beforePrepare": 426016768
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 63504000,
+              "lastWaveMs": null,
+              "logicalBytes": 63609840,
+              "openedMs": 194.135042,
+              "ramBytes": 1164240,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000417,
+              "waitMs": 0.000041
+            },
+            "workerMs": 33.640417
+          }
+        ],
+        "repetition": 3,
+        "rssAfterClose": 362512384,
+        "rssAfterOpen": 328925184,
+        "rssBeforeOpen": 295354368,
+        "seconds": 180
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.246292,
+              "waitMs": 0.000917
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.1555,
+              "waitMs": 0.000084
+            },
+            "rssBytes": {
+              "afterCommit": 397164544,
+              "afterPrepare": 397164544,
+              "afterUndo": 397164544,
+              "afterWorker": 397164544,
+              "beforePrepare": 396099584
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 423360000,
+              "lastWaveMs": null,
+              "logicalBytes": 423360000,
+              "openedMs": 1262.550083,
+              "ramBytes": 2097152,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000334,
+              "waitMs": 0.000083
+            },
+            "workerMs": 7.006917
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 858.646125,
+              "waitMs": 0.000625
+            },
+            "copiedBytesUnderPrepareLock": 423360000,
+            "prepareLock": {
+              "heldMs": 83.05737500000001,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 1276411904,
+              "afterPrepare": 1242841088,
+              "afterUndo": 1276411904,
+              "afterWorker": 1242841088,
+              "beforePrepare": 397164544
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 846720000,
+              "lastWaveMs": null,
+              "logicalBytes": 423360000,
+              "openedMs": 1262.550083,
+              "ramBytes": 0,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 52920000,
+            "undoLock": {
+              "heldMs": 0.00025,
+              "waitMs": 0.000042
+            },
+            "workerMs": 2901.101708
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 7.942416000000001,
+              "waitMs": 0.000458
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.060416,
+              "waitMs": 0.000083
+            },
+            "rssBytes": {
+              "afterCommit": 1276411904,
+              "afterPrepare": 1276411904,
+              "afterUndo": 1276411904,
+              "afterWorker": 1276411904,
+              "beforePrepare": 1276411904
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 423360000,
+              "lastWaveMs": null,
+              "logicalBytes": 423465840,
+              "openedMs": 1262.550083,
+              "ramBytes": 1164240,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.0005,
+              "waitMs": 0.000041
+            },
+            "workerMs": 33.900416
+          }
+        ],
+        "repetition": 1,
+        "rssAfterClose": 853049344,
+        "rssAfterOpen": 396099584,
+        "rssBeforeOpen": 362528768,
+        "seconds": 1200
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.25116700000000003,
+              "waitMs": 0.00041600000000000003
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.21625,
+              "waitMs": 0.000084
+            },
+            "rssBytes": {
+              "afterCommit": 887734272,
+              "afterPrepare": 887734272,
+              "afterUndo": 887734272,
+              "afterWorker": 887734272,
+              "beforePrepare": 886669312
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 423360000,
+              "lastWaveMs": null,
+              "logicalBytes": 423360000,
+              "openedMs": 1215.3295,
+              "ramBytes": 2097152,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.00033299999999999996,
+              "waitMs": 0.000042
+            },
+            "workerMs": 6.988375
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 858.98875,
+              "waitMs": 0.000584
+            },
+            "copiedBytesUnderPrepareLock": 423360000,
+            "prepareLock": {
+              "heldMs": 50.804625,
+              "waitMs": 0.000041
+            },
+            "rssBytes": {
+              "afterCommit": 1343602688,
+              "afterPrepare": 1310031872,
+              "afterUndo": 1343602688,
+              "afterWorker": 1310031872,
+              "beforePrepare": 887734272
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 846720000,
+              "lastWaveMs": null,
+              "logicalBytes": 423360000,
+              "openedMs": 1215.3295,
+              "ramBytes": 0,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 52920000,
+            "undoLock": {
+              "heldMs": 0.000292,
+              "waitMs": 0.000042
+            },
+            "workerMs": 2877.2545000000005
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 8.496875,
+              "waitMs": 0.000417
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.06579199999999999,
+              "waitMs": 0.000083
+            },
+            "rssBytes": {
+              "afterCommit": 1343602688,
+              "afterPrepare": 1343602688,
+              "afterUndo": 1343602688,
+              "afterWorker": 1343602688,
+              "beforePrepare": 1343602688
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 423360000,
+              "lastWaveMs": null,
+              "logicalBytes": 423465840,
+              "openedMs": 1215.3295,
+              "ramBytes": 1164240,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000292,
+              "waitMs": 0.000041
+            },
+            "workerMs": 33.986250000000005
+          }
+        ],
+        "repetition": 2,
+        "rssAfterClose": 920240128,
+        "rssAfterOpen": 886669312,
+        "rssBeforeOpen": 853065728,
+        "seconds": 1200
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.21212499999999998,
+              "waitMs": 0.000125
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.15295799999999998,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 954892288,
+              "afterPrepare": 954892288,
+              "afterUndo": 954892288,
+              "afterWorker": 954892288,
+              "beforePrepare": 953827328
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 423360000,
+              "lastWaveMs": null,
+              "logicalBytes": 423360000,
+              "openedMs": 1238.035625,
+              "ramBytes": 2097152,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.00033299999999999996,
+              "waitMs": 0.000042
+            },
+            "workerMs": 6.925542
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 941.44375,
+              "waitMs": 0.000584
+            },
+            "copiedBytesUnderPrepareLock": 423360000,
+            "prepareLock": {
+              "heldMs": 43.841542,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 1298169856,
+              "afterPrepare": 1377189888,
+              "afterUndo": 1298169856,
+              "afterWorker": 1377189888,
+              "beforePrepare": 954892288
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 846720000,
+              "lastWaveMs": null,
+              "logicalBytes": 423360000,
+              "openedMs": 1238.035625,
+              "ramBytes": 0,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 52920000,
+            "undoLock": {
+              "heldMs": 0.00020800000000000001,
+              "waitMs": 0.000083
+            },
+            "workerMs": 2884.6508750000003
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 10.874917,
+              "waitMs": 0.00029099999999999997
+            },
+            "copiedBytesUnderPrepareLock": 1058400,
+            "prepareLock": {
+              "heldMs": 0.050624999999999996,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 1298661376,
+              "afterPrepare": 1298169856,
+              "afterUndo": 1298661376,
+              "afterWorker": 1298661376,
+              "beforePrepare": 1298169856
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 423360000,
+              "lastWaveMs": null,
+              "logicalBytes": 423465840,
+              "openedMs": 1238.035625,
+              "ramBytes": 1164240,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000417,
+              "waitMs": 0.000042
+            },
+            "workerMs": 33.924208
+          }
+        ],
+        "repetition": 3,
+        "rssAfterClose": 875298816,
+        "rssAfterOpen": 953827328,
+        "rssBeforeOpen": 920240128,
+        "seconds": 1200
+      }
+    ],
+    "os": "macos",
+    "profile": "dev-test",
+    "schema": 1
+  },
+  "candidate": {
+    "arch": "aarch64",
+    "implementation": "immutable worker snapshot",
+    "note": "Sequential synthetic stereo 44.1kHz float WAV. Native test-process RSS includes mmap pages/allocator retention; it is not PCM heap or WebView memory. Uncontended real Mutex; command-equivalent phases exclude IPC/UI and queue delay.",
+    "observations": [
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.001459,
+              "waitMs": 0.000125
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.00020800000000000001,
+              "waitMs": 0.000041
+            },
+            "rssBytes": {
+              "afterCommit": 26017792,
+              "afterPrepare": 25772032,
+              "afterUndo": 26165248,
+              "afterWorker": 26017792,
+              "beforePrepare": 25690112
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10584000,
+              "openedMs": 10.271042,
+              "ramBytes": 20971520,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000583,
+              "waitMs": 0.000042
+            },
+            "workerMs": 7.252542
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 0.007291,
+              "waitMs": 0.000209
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000083,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 50921472,
+              "afterPrepare": 26214400,
+              "afterUndo": 50921472,
+              "afterWorker": 50905088,
+              "beforePrepare": 26198016
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10584000,
+              "openedMs": 10.271042,
+              "ramBytes": 35651584,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 1323000,
+            "undoLock": {
+              "heldMs": 0.000292,
+              "waitMs": 0.000041
+            },
+            "workerMs": 78.394
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 0.008124999999999999,
+              "waitMs": 0.00041600000000000003
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.00020800000000000001,
+              "waitMs": 0.000083
+            },
+            "rssBytes": {
+              "afterCommit": 52428800,
+              "afterPrepare": 50921472,
+              "afterUndo": 52445184,
+              "afterWorker": 52412416,
+              "beforePrepare": 50921472
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10689840,
+              "openedMs": 10.271042,
+              "ramBytes": 20038608,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000375,
+              "waitMs": 0.000084
+            },
+            "workerMs": 34.151584
+          }
+        ],
+        "repetition": 1,
+        "rssAfterClose": 52461568,
+        "rssAfterOpen": 25657344,
+        "rssBeforeOpen": 13271040,
+        "seconds": 30
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.001333,
+              "waitMs": 0.000084
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000125,
+              "waitMs": 0.000083
+            },
+            "rssBytes": {
+              "afterCommit": 63094784,
+              "afterPrepare": 63094784,
+              "afterUndo": 63094784,
+              "afterWorker": 63094784,
+              "beforePrepare": 63094784
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10584000,
+              "openedMs": 10.510250000000001,
+              "ramBytes": 20971520,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000542,
+              "waitMs": 0.000083
+            },
+            "workerMs": 7.201834
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 0.002666,
+              "waitMs": 0.000334
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000042,
+              "waitMs": 0.000041
+            },
+            "rssBytes": {
+              "afterCommit": 73695232,
+              "afterPrepare": 63094784,
+              "afterUndo": 73695232,
+              "afterWorker": 73695232,
+              "beforePrepare": 63094784
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10584000,
+              "openedMs": 10.510250000000001,
+              "ramBytes": 35651584,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 1323000,
+            "undoLock": {
+              "heldMs": 0.00041600000000000003,
+              "waitMs": 0.000083
+            },
+            "workerMs": 76.854333
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 0.00325,
+              "waitMs": 0.000209
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000042,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 73711616,
+              "afterPrepare": 73695232,
+              "afterUndo": 73711616,
+              "afterWorker": 73711616,
+              "beforePrepare": 73695232
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10689840,
+              "openedMs": 10.510250000000001,
+              "ramBytes": 20038608,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000334,
+              "waitMs": 0.000041
+            },
+            "workerMs": 33.982959
+          }
+        ],
+        "repetition": 2,
+        "rssAfterClose": 73711616,
+        "rssAfterOpen": 63094784,
+        "rssBeforeOpen": 52477952,
+        "seconds": 30
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.001333,
+              "waitMs": 0.000083
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000167,
+              "waitMs": 0.000041
+            },
+            "rssBytes": {
+              "afterCommit": 84344832,
+              "afterPrepare": 84344832,
+              "afterUndo": 84344832,
+              "afterWorker": 84344832,
+              "beforePrepare": 84344832
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10584000,
+              "openedMs": 10.087291,
+              "ramBytes": 20971520,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.0005,
+              "waitMs": 0.000042
+            },
+            "workerMs": 7.212625
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 0.002333,
+              "waitMs": 0.000417
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000041,
+              "waitMs": 0.000083
+            },
+            "rssBytes": {
+              "afterCommit": 96927744,
+              "afterPrepare": 84344832,
+              "afterUndo": 96927744,
+              "afterWorker": 96927744,
+              "beforePrepare": 84344832
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10584000,
+              "openedMs": 10.087291,
+              "ramBytes": 35651584,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 1323000,
+            "undoLock": {
+              "heldMs": 0.00020800000000000001,
+              "waitMs": 0.000042
+            },
+            "workerMs": 78.198833
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 0.003416,
+              "waitMs": 0.00020800000000000001
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000042,
+              "waitMs": 0.000083
+            },
+            "rssBytes": {
+              "afterCommit": 96944128,
+              "afterPrepare": 96927744,
+              "afterUndo": 96944128,
+              "afterWorker": 96944128,
+              "beforePrepare": 96927744
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 0,
+              "lastWaveMs": null,
+              "logicalBytes": 10689840,
+              "openedMs": 10.087291,
+              "ramBytes": 20038608,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000417,
+              "waitMs": 0.000084
+            },
+            "workerMs": 34.188875
+          }
+        ],
+        "repetition": 3,
+        "rssAfterClose": 96944128,
+        "rssAfterOpen": 84344832,
+        "rssBeforeOpen": 73728000,
+        "seconds": 30
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.001375,
+              "waitMs": 0.000125
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000167,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 131596288,
+              "afterPrepare": 130531328,
+              "afterUndo": 131596288,
+              "afterWorker": 131596288,
+              "beforePrepare": 130531328
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 63504000,
+              "lastWaveMs": null,
+              "logicalBytes": 63504000,
+              "openedMs": 172.09337499999998,
+              "ramBytes": 2097152,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000584,
+              "waitMs": 0.000042
+            },
+            "workerMs": 7.300666
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 0.002375,
+              "waitMs": 0.00025
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000042,
+              "waitMs": 0.000041
+            },
+            "rssBytes": {
+              "afterCommit": 291127296,
+              "afterPrepare": 131596288,
+              "afterUndo": 291127296,
+              "afterWorker": 291127296,
+              "beforePrepare": 131596288
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 127008000,
+              "lastWaveMs": null,
+              "logicalBytes": 63504000,
+              "openedMs": 172.09337499999998,
+              "ramBytes": 0,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 7938000,
+            "undoLock": {
+              "heldMs": 0.00041600000000000003,
+              "waitMs": 0.000042
+            },
+            "workerMs": 580.754125
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 1.2032919999999998,
+              "waitMs": 0.000375
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000084,
+              "waitMs": 0.000083
+            },
+            "rssBytes": {
+              "afterCommit": 291635200,
+              "afterPrepare": 291127296,
+              "afterUndo": 291651584,
+              "afterWorker": 291635200,
+              "beforePrepare": 291127296
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 63504000,
+              "lastWaveMs": null,
+              "logicalBytes": 63609840,
+              "openedMs": 172.09337499999998,
+              "ramBytes": 1164240,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.00025,
+              "waitMs": 0.000083
+            },
+            "workerMs": 34.099540999999995
+          }
+        ],
+        "repetition": 1,
+        "rssAfterClose": 228147200,
+        "rssAfterOpen": 130531328,
+        "rssBeforeOpen": 96960512,
+        "seconds": 180
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.004333,
+              "waitMs": 0.000042
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000166,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 262832128,
+              "afterPrepare": 261734400,
+              "afterUndo": 262832128,
+              "afterWorker": 262815744,
+              "beforePrepare": 261734400
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 63504000,
+              "lastWaveMs": null,
+              "logicalBytes": 63504000,
+              "openedMs": 173.270375,
+              "ramBytes": 2097152,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000458,
+              "waitMs": 0.000083
+            },
+            "workerMs": 7.2975829999999995
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 0.002375,
+              "waitMs": 0.000458
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000042,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 358842368,
+              "afterPrepare": 262832128,
+              "afterUndo": 358842368,
+              "afterWorker": 358842368,
+              "beforePrepare": 262832128
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 127008000,
+              "lastWaveMs": null,
+              "logicalBytes": 63504000,
+              "openedMs": 173.270375,
+              "ramBytes": 0,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 7938000,
+            "undoLock": {
+              "heldMs": 0.00041600000000000003,
+              "waitMs": 0.000083
+            },
+            "workerMs": 570.158625
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 1.218542,
+              "waitMs": 0.00045900000000000004
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000041,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 358875136,
+              "afterPrepare": 358842368,
+              "afterUndo": 358875136,
+              "afterWorker": 358875136,
+              "beforePrepare": 358842368
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 63504000,
+              "lastWaveMs": null,
+              "logicalBytes": 63609840,
+              "openedMs": 173.270375,
+              "ramBytes": 1164240,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000375,
+              "waitMs": 0.000083
+            },
+            "workerMs": 34.022333
+          }
+        ],
+        "repetition": 2,
+        "rssAfterClose": 295370752,
+        "rssAfterOpen": 261734400,
+        "rssBeforeOpen": 228147200,
+        "seconds": 180
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.00175,
+              "waitMs": 0.00020800000000000001
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000166,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 330022912,
+              "afterPrepare": 328957952,
+              "afterUndo": 330022912,
+              "afterWorker": 330022912,
+              "beforePrepare": 328957952
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 63504000,
+              "lastWaveMs": null,
+              "logicalBytes": 63504000,
+              "openedMs": 172.559792,
+              "ramBytes": 2097152,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.0005,
+              "waitMs": 0.000083
+            },
+            "workerMs": 7.294791999999999
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 0.005417,
+              "waitMs": 0.000375
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000042,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 426033152,
+              "afterPrepare": 330022912,
+              "afterUndo": 426049536,
+              "afterWorker": 426033152,
+              "beforePrepare": 330022912
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 127008000,
+              "lastWaveMs": null,
+              "logicalBytes": 63504000,
+              "openedMs": 172.559792,
+              "ramBytes": 0,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 7938000,
+            "undoLock": {
+              "heldMs": 0.000375,
+              "waitMs": 0.000041
+            },
+            "workerMs": 569.121625
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 1.283709,
+              "waitMs": 0.00029099999999999997
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000083,
+              "waitMs": 0.000041
+            },
+            "rssBytes": {
+              "afterCommit": 426049536,
+              "afterPrepare": 426049536,
+              "afterUndo": 426049536,
+              "afterWorker": 426049536,
+              "beforePrepare": 426049536
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 63504000,
+              "lastWaveMs": null,
+              "logicalBytes": 63609840,
+              "openedMs": 172.559792,
+              "ramBytes": 1164240,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.004,
+              "waitMs": 0.00020800000000000001
+            },
+            "workerMs": 34.174917
+          }
+        ],
+        "repetition": 3,
+        "rssAfterClose": 362545152,
+        "rssAfterOpen": 328957952,
+        "rssBeforeOpen": 295387136,
+        "seconds": 180
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.001792,
+              "waitMs": 0.00020800000000000001
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000167,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 397213696,
+              "afterPrepare": 396148736,
+              "afterUndo": 397213696,
+              "afterWorker": 397213696,
+              "beforePrepare": 396148736
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 423360000,
+              "lastWaveMs": null,
+              "logicalBytes": 423360000,
+              "openedMs": 1214.352375,
+              "ramBytes": 2097152,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000417,
+              "waitMs": 0.000042
+            },
+            "workerMs": 7.335292
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 0.002334,
+              "waitMs": 0.00025
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000042,
+              "waitMs": 0.000125
+            },
+            "rssBytes": {
+              "afterCommit": 1276461056,
+              "afterPrepare": 397213696,
+              "afterUndo": 1276461056,
+              "afterWorker": 1276461056,
+              "beforePrepare": 397213696
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 846720000,
+              "lastWaveMs": null,
+              "logicalBytes": 423360000,
+              "openedMs": 1214.352375,
+              "ramBytes": 0,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 52920000,
+            "undoLock": {
+              "heldMs": 0.000375,
+              "waitMs": 0.000083
+            },
+            "workerMs": 3868.968209
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 6.2284999999999995,
+              "waitMs": 0.00020800000000000001
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000083,
+              "waitMs": 0.000041
+            },
+            "rssBytes": {
+              "afterCommit": 1276461056,
+              "afterPrepare": 1276461056,
+              "afterUndo": 1276461056,
+              "afterWorker": 1276461056,
+              "beforePrepare": 1276461056
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 423360000,
+              "lastWaveMs": null,
+              "logicalBytes": 423465840,
+              "openedMs": 1214.352375,
+              "ramBytes": 1164240,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000542,
+              "waitMs": 0.000042
+            },
+            "workerMs": 33.93875
+          }
+        ],
+        "repetition": 1,
+        "rssAfterClose": 853098496,
+        "rssAfterOpen": 396148736,
+        "rssBeforeOpen": 362561536,
+        "seconds": 1200
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.001791,
+              "waitMs": 0.000458
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.00020800000000000001,
+              "waitMs": 0.000083
+            },
+            "rssBytes": {
+              "afterCommit": 887783424,
+              "afterPrepare": 886718464,
+              "afterUndo": 887783424,
+              "afterWorker": 887783424,
+              "beforePrepare": 886718464
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 423360000,
+              "lastWaveMs": null,
+              "logicalBytes": 423360000,
+              "openedMs": 1172.8535419999998,
+              "ramBytes": 2097152,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.0006659999999999999,
+              "waitMs": 0.000041
+            },
+            "workerMs": 7.371042
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 0.0025,
+              "waitMs": 0.000292
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.0036669999999999997,
+              "waitMs": 0.003666
+            },
+            "rssBytes": {
+              "afterCommit": 1343651840,
+              "afterPrepare": 887783424,
+              "afterUndo": 1343651840,
+              "afterWorker": 1343651840,
+              "beforePrepare": 887783424
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 846720000,
+              "lastWaveMs": null,
+              "logicalBytes": 423360000,
+              "openedMs": 1172.8535419999998,
+              "ramBytes": 0,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 52920000,
+            "undoLock": {
+              "heldMs": 0.000417,
+              "waitMs": 0.000042
+            },
+            "workerMs": 3786.406292
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 6.397,
+              "waitMs": 0.00020800000000000001
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000042,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 1343651840,
+              "afterPrepare": 1343651840,
+              "afterUndo": 1343651840,
+              "afterWorker": 1343651840,
+              "beforePrepare": 1343651840
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 423360000,
+              "lastWaveMs": null,
+              "logicalBytes": 423465840,
+              "openedMs": 1172.8535419999998,
+              "ramBytes": 1164240,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000375,
+              "waitMs": 0.000042
+            },
+            "workerMs": 33.78175
+          }
+        ],
+        "repetition": 2,
+        "rssAfterClose": 920289280,
+        "rssAfterOpen": 886718464,
+        "rssBeforeOpen": 853114880,
+        "seconds": 1200
+      },
+      {
+        "cases": [
+          {
+            "case": "lufs_short",
+            "commitLock": {
+              "heldMs": 0.001667,
+              "waitMs": 0.000167
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.00020800000000000001,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 954925056,
+              "afterPrepare": 953860096,
+              "afterUndo": 954925056,
+              "afterWorker": 954925056,
+              "beforePrepare": 953860096
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 423360000,
+              "lastWaveMs": null,
+              "logicalBytes": 423360000,
+              "openedMs": 1200.039208,
+              "ramBytes": 2097152,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.00041600000000000003,
+              "waitMs": 0.000041
+            },
+            "workerMs": 7.369458
+          },
+          {
+            "case": "lufs_full",
+            "commitLock": {
+              "heldMs": 0.002417,
+              "waitMs": 0.000417
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000042,
+              "waitMs": 0.000042
+            },
+            "rssBytes": {
+              "afterCommit": 1410793472,
+              "afterPrepare": 954925056,
+              "afterUndo": 1410793472,
+              "afterWorker": 1410793472,
+              "beforePrepare": 954925056
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 846720000,
+              "lastWaveMs": null,
+              "logicalBytes": 423360000,
+              "openedMs": 1200.039208,
+              "ramBytes": 0,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 52920000,
+            "undoLock": {
+              "heldMs": 0.000417,
+              "waitMs": 0.000042
+            },
+            "workerMs": 3832.123125
+          },
+          {
+            "case": "stretch_short",
+            "commitLock": {
+              "heldMs": 8.286208,
+              "waitMs": 0.0005
+            },
+            "copiedBytesUnderPrepareLock": 0,
+            "prepareLock": {
+              "heldMs": 0.000083,
+              "waitMs": 0.000083
+            },
+            "rssBytes": {
+              "afterCommit": 1410793472,
+              "afterPrepare": 1410793472,
+              "afterUndo": 1410793472,
+              "afterWorker": 1410793472,
+              "beforePrepare": 1410793472
+            },
+            "storageAfterCommit": {
+              "cacheBytes": 0,
+              "diskBytes": 423360000,
+              "lastWaveMs": null,
+              "logicalBytes": 423465840,
+              "openedMs": 1200.039208,
+              "ramBytes": 1164240,
+              "redoSteps": 0,
+              "sampleId": 1,
+              "storageCount": 2,
+              "undoSteps": 1
+            },
+            "targetFrames": 132300,
+            "undoLock": {
+              "heldMs": 0.000375,
+              "waitMs": 0.000041
+            },
+            "workerMs": 33.939875
+          }
+        ],
+        "repetition": 3,
+        "rssAfterClose": 987430912,
+        "rssAfterOpen": 953860096,
+        "rssBeforeOpen": 920289280,
+        "seconds": 1200
+      }
+    ],
+    "os": "macos",
+    "profile": "dev-test",
+    "schema": 1
+  },
+  "limitations": [
+    "Lock measurements use a real, uncontended Mutex around command-equivalent audio preparation and commit. IPC/UI, worker queue delay, state DTO construction and JSON serialization are excluded. These are not contention percentiles or complete command latency.",
+    "Both implementations still materialize the same owned PCM processing input; the candidate allocates/copies it on the worker, not under the session lock. This change does not establish reduced peak memory or faster DSP.",
+    "Candidate worker time also includes applying the rendered op to immutable audio. Reference worker time excludes that work, which is inside its commit lock. Compare total phase time when evaluating overall speed.",
+    "sysinfo macOS memory uses proc_taskinfo.pti_resident_size. RSS includes mapped PCM pages, caches and retained allocator pages; it is neither PCM heap size nor physical footprint.",
+    "RSS is sampled at phase boundaries, not continuously. Measurements can miss transient peaks and depend on allocation/page retention across cases. Do not sum native storage accounting, process RSS and WebView memory.",
+    "No audio device, user audio, database, model inference or WebView is used by this native benchmark.",
+    "Only three observations per scenario on one machine; these do not establish cross-platform performance or real-world interactive latency."
+  ],
+  "verification": {
+    "rustTests": {
+      "passed": 196,
+      "failed": 0,
+      "ignored": 38
+    },
+    "differentialCases": "Mono/stereo fragmented LUFS and stretch, markers/loop retiming, shared-snapshot undo/redo, stale edit/undo/reopened session, invalid bounds",
+    "note": "Large upstream model download/inference tests remain opt-in and were not rerun.",
+    "nativeBuild": "cargo build --locked --no-default-features: exit 0, normal debug configuration restored",
+    "nativeCheck": "cargo check --locked --lib: exit 0"
+  }
+}
