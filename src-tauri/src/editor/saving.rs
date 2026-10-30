@@ -11,10 +11,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde::Deserialize;
 
 use super::{
-    append_markers, blocks::BlockAudio, write_wav, Loop, Marker, Op, Session, Span, State,
+    blocks::BlockAudio, Loop, Marker, Op, Session, Span, State,
 };
 #[cfg(test)]
-use crate::audio::Pcm;
+use crate::{audio::Pcm, editor::write_wav};
 use crate::error::{Error, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize)]
@@ -81,6 +81,7 @@ pub struct Snapshot {
     original_path: PathBuf,
     path: PathBuf,
     has_saved_target: bool,
+    sample_rate: Option<u32>,
     mode: SaveMode,
     destination: Option<PathBuf>,
 }
@@ -137,6 +138,7 @@ impl Snapshot {
             original_path: session.original_path.clone(),
             path: session.path.clone(),
             has_saved_target: session.has_saved_target,
+            sample_rate: if mode == SaveMode::Save { session.export_sample_rate } else { None },
             mode,
             destination: destination.map(Path::to_path_buf),
         })
@@ -144,6 +146,11 @@ impl Snapshot {
 
     pub fn source_id(&self) -> i64 {
         self.source_id
+    }
+
+    pub fn with_sample_rate(mut self, rate: Option<u32>) -> Self {
+        self.sample_rate = rate;
+        self
     }
 
     fn target(&self) -> Result<PathBuf> {
@@ -165,13 +172,8 @@ impl Snapshot {
                 .clone()
                 .ok_or_else(|| Error::Other("choose a destination file".into()))?,
         };
-        if !target.is_absolute()
-            || !target
-                .extension()
-                .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"))
-        {
-            return Err(Error::Other("choose an absolute WAV destination".into()));
-        }
+        if !target.is_absolute() { return Err(Error::Other("choose an absolute audio destination".into())); }
+        super::encoding::Format::from_path(&target)?;
         if matches!(self.mode, SaveMode::SaveAs | SaveMode::Selection)
             && (same_file(&target, &self.original_path) || same_file(&target, &self.path))
         {
@@ -201,8 +203,7 @@ impl Snapshot {
         let tmp = parent.join(format!(".fonicca-{}.wav.tmp", unique_suffix()));
         OpenOptions::new().write(true).create_new(true).open(&tmp)?;
         let tmp = Temporary(tmp);
-        write_wav(&tmp.0, &self.audio, self.bit_depth, self.loop_points)?;
-        append_markers(&tmp.0, &self.markers)?;
+        super::encoding::write_at_rate(&tmp.0, super::encoding::Format::from_path(&target)?, &self.audio, self.bit_depth, self.loop_points, &self.markers, self.sample_rate)?;
         let backup = if target.exists() {
             fs::create_dir_all(backups)?;
             let name = target.file_name().unwrap().to_string_lossy();
@@ -232,6 +233,7 @@ impl Snapshot {
         if self.mode != SaveMode::Selection {
             session.path = output.path.clone();
             session.has_saved_target = true;
+            session.export_sample_rate = self.sample_rate;
             session.saved = self.ops.clone();
             if let Some(id) = indexed_id {
                 session.sample_id = id;
@@ -260,6 +262,69 @@ pub(super) fn save_session(
 mod tests {
     use super::*;
     use crate::editor::{Curve, Op};
+    #[test]
+    fn output_rate_preserves_duration_wav_metadata_and_repeat_save_without_changing_live_audio() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source.wav");
+        write_wav(&source, &Pcm { channels: 1, sample_rate: 44100, samples: (0..44100).map(|i| (i as f32 * 0.05).sin() * 0.4).collect() }, Some(24), None).unwrap();
+        for (ext, rate) in [("wav", 48000), ("mp3", 22050), ("ogg", 96000)] {
+            let mut session = Session::open(1, &source, Some(24)).unwrap();
+            session.apply(Op::SetLoop { start: 22050, end: 33075 });
+            session.apply(Op::SetMarkers { markers: vec![Marker { frame: 4410, skip: false }] });
+            let target = dir.path().join(format!("converted.{ext}"));
+            let snapshot = Snapshot::new(&session, SaveMode::SaveAs, Some(&target), None).unwrap().with_sample_rate(Some(rate));
+            snapshot.write_with(dir.path(), |output| { snapshot.commit(Some(&mut session), &output, None)?; Ok(()) }).unwrap();
+            drop(snapshot);
+            assert_eq!(session.export_sample_rate, Some(rate));
+            assert_eq!(session.audio().sample_rate, 44100);
+            assert_eq!(session.audio().frames(), 44100);
+            assert_eq!(session.loop_points(), Some(Loop { start: 22050, end: 33075 }));
+            session.apply(Op::Gain { start: 0, end: 44100, db: -3.0 });
+            save_session(&mut session, dir.path(), SaveMode::Save, None, None).unwrap();
+            let decoded = crate::audio::decode(&target, f64::INFINITY).unwrap();
+            assert_eq!(decoded.sample_rate, rate);
+            assert!((decoded.frames() as isize - rate as isize).unsigned_abs() < 1600);
+            if ext == "wav" {
+                assert_eq!(decoded.frames(), rate as usize);
+                let reopened = Session::open(2, &target, Some(24)).unwrap();
+                assert_eq!(reopened.loop_points(), Some(Loop { start: 24000, end: 36000 }));
+                assert_eq!(reopened.markers(), &[Marker { frame: 4800, skip: false }]);
+            }
+        }
+    }
+    #[test]
+    fn compressed_save_as_repeat_save_and_selection_preserve_source_and_session_history() {
+        let dir = tempfile::tempdir().unwrap();
+        let source = dir.path().join("source.wav");
+        let audio = Pcm { channels: 2, sample_rate: 44100, samples: (0..44100).flat_map(|i| {
+            let value = (i as f32 * std::f32::consts::TAU * 440.0 / 44100.0).sin() * 0.4;
+            [value, value]
+        }).collect() };
+        write_wav(&source, &audio, Some(24), None).unwrap();
+        let original = fs::read(&source).unwrap();
+        for ext in ["mp3", "ogg"] {
+            let mut session = Session::open(1, &source, Some(24)).unwrap();
+            session.apply(Op::Gain { start: 0, end: 44100, db: -3.0 });
+            let target = dir.path().join(format!("edited.{ext}"));
+            save_session(&mut session, &dir.path().join("backups"), SaveMode::SaveAs, Some(&target), None).unwrap();
+            assert_eq!(session.path, target);
+            assert!(session.state().can_undo && !session.state().dirty);
+            let saved = fs::read(&target).unwrap();
+            session.apply(Op::Gain { start: 0, end: 44100, db: -3.0 });
+            let repeated = save_session(&mut session, &dir.path().join("backups"), SaveMode::Save, None, None).unwrap();
+            assert_eq!(repeated.path, target);
+            assert_eq!(fs::read(repeated.backup.unwrap()).unwrap(), saved);
+            session.undo(); assert!(session.state().dirty);
+            session.redo(); assert!(!session.state().dirty);
+            let fragment = dir.path().join(format!("fragment.{ext}"));
+            save_session(&mut session, dir.path(), SaveMode::Selection, Some(&fragment), Some(Span { start: 4410, end: 26460 })).unwrap();
+            let decoded = crate::audio::decode(&fragment, f64::INFINITY).unwrap();
+            assert!((decoded.frames() as isize - 22050).unsigned_abs() < 3000);
+            assert_eq!(session.path, target);
+            assert!(!session.state().dirty);
+            assert_eq!(fs::read(&source).unwrap(), original);
+        }
+    }
     fn fixture(dir: &Path) -> Session {
         let path = dir.join("Kick.wav");
         write_wav(

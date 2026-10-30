@@ -280,6 +280,7 @@ pub async fn editor_save(
     mode: editor::saving::SaveMode,
     destination: Option<String>,
     range: Option<editor::Span>,
+    sample_rate: Option<u32>,
 ) -> Result<Saved> {
     let backups = state
         .db_path
@@ -287,7 +288,8 @@ pub async fn editor_save(
         .map(|d| d.join("backups"))
         .unwrap_or_else(|| PathBuf::from("backups"));
     let snapshot = with_session(&state, &window, |s| {
-        editor::saving::Snapshot::new(s, mode, destination.as_deref().map(Path::new), range)
+        let snapshot = editor::saving::Snapshot::new(s, mode, destination.as_deref().map(Path::new), range)?;
+        Ok(if matches!(mode, editor::saving::SaveMode::SaveAs | editor::saving::SaveMode::Selection) { snapshot.with_sample_rate(sample_rate) } else { snapshot })
     })?;
     let app = window.app_handle().clone();
     tauri::async_runtime::spawn_blocking(move || {
@@ -332,7 +334,7 @@ pub async fn editor_save(
                     .unwrap_or_default()
                     .to_string_lossy()
                     .into_owned(),
-                ext: "wav".into(),
+                ext: output.path.extension().unwrap_or_default().to_string_lossy().to_ascii_lowercase(),
                 bpm,
                 in_library: id.is_some(),
                 warning,

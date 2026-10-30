@@ -22,6 +22,8 @@ mod markers;
 mod slices;
 pub mod processing;
 pub mod saving;
+pub mod encoding;
+mod resampling;
 pub mod exporting;
 pub mod spectrogram;
 #[cfg(test)]
@@ -200,6 +202,7 @@ pub struct Session {
     pub path: PathBuf,
     pub original_path: PathBuf,
     pub has_saved_target: bool,
+    pub export_sample_rate: Option<u32>,
     pub bit_depth: Option<u32>,
     current: BlockAudio,
     history: Vec<AudioSnapshot>,
@@ -225,6 +228,7 @@ pub struct State {
     pub can_redo: bool,
     pub dirty: bool,
     pub has_saved_target: bool,
+    pub export_sample_rate: Option<u32>,
     pub can_replace_original: bool,
     pub original_path: String,
     #[serde(rename = "loop")]
@@ -255,6 +259,7 @@ impl Session {
             path: path.to_path_buf(),
             original_path: path.to_path_buf(),
             has_saved_target: false,
+            export_sample_rate: None,
             bit_depth,
             current: audio,
             history: Vec::new(),
@@ -277,6 +282,7 @@ impl Session {
             can_redo: !self.redo.is_empty(),
             dirty: self.ops != self.saved,
             has_saved_target: self.has_saved_target,
+            export_sample_rate: self.export_sample_rate,
             can_replace_original: self.original_path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("wav")),
             original_path: self.original_path.to_string_lossy().into_owned(),
             loop_points: self.current_loop,

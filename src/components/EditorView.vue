@@ -8,6 +8,7 @@ import { useLocalStorage } from '@vueuse/core'
 import { computed, nextTick, ref, shallowRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import EditorMinimap from '@/components/EditorMinimap.vue'
+import AudioExportDialog from '@/components/AudioExportDialog.vue'
 import EditorToolbar from '@/components/editor/EditorToolbar.vue'
 import { EDITOR_TOGGLE_CLASS, type EditorToolAction } from '@/editor-tools'
 import EditorDisplayControls from '@/components/EditorDisplayControls.vue'
@@ -147,7 +148,6 @@ const { data: wave, range: waveRange, error: waveError, refresh: readWave } = us
 const openingWave = computed(() => editor.loading || (!isSpectrogram.value && !!editor.state?.frames && !wave.value && !waveError.value))
 
 const x = (frame: number) => ((frame - viewStart.value) / (viewEnd.value - viewStart.value)) * width.value
-
 
 // --- Grid -------------------------------------------------------------------
 
@@ -632,6 +632,7 @@ const toolbarActions: Record<EditorToolAction, () => unknown> = {
         </Hint>
       </div>
     </footer>
+    <AudioExportDialog />
   </div>
 </template>
 

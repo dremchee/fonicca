@@ -15,6 +15,8 @@ import { confirm } from '@/composables/confirm'
 import { formatNumber } from '@/format'
 import { t } from '@/i18n'
 import { parseWave } from '@/waveform'
+import { audioExportFormat, audioExportPath } from '@/audio-export'
+import { chooseAudioExport } from '@/composables/audioExport'
 import { editorTimings } from '@/editor-performance'
 import { parseSpectrogram } from '@/spectrogram'
 
@@ -41,6 +43,8 @@ export interface EditorState {
   canRedo: boolean
   dirty: boolean
   hasSavedTarget: boolean
+  /** Output rate of the saved target; live editing stays at sampleRate. */
+  exportSampleRate?: number | null
   canReplaceOriginal: boolean
   originalPath: string
   /** Loop points for samplers, saved in the WAV's `smpl` chunk. */
@@ -116,8 +120,8 @@ const editorApi = {
   zeroSnap: (frames: number[], radius: number) => invokeEditor<number[]>('editor_zero_snap', { frames, radius }),
   play: (start: number, end: number, looping: boolean) => invokeEditor<void>('editor_play', { start, end, looping }),
   updatePlayback: (start: number, end: number, looping: boolean) => invokeEditor<boolean>('editor_update_playback', { start, end, looping }),
-  save: (mode: SaveMode, destination?: string, range?: Span) =>
-    invokeEditor<{ path: string, backup: string | null, state: EditorState, name: string, ext: string, bpm: number | null, inLibrary: boolean, warning: string | null }>('editor_save', { mode, destination, range }),
+  save: (mode: SaveMode, destination?: string, range?: Span, sampleRate?: number | null) =>
+    invokeEditor<{ path: string, backup: string | null, state: EditorState, name: string, ext: string, bpm: number | null, inLibrary: boolean, warning: string | null }>('editor_save', { mode, destination, range, sampleRate }),
 }
 
 /** Opens a sample in the library's embedded editor. */
@@ -215,6 +219,7 @@ export const useEditorStore = defineStore('editor', () => {
     catch (error) { toast.error(String(error)); return false }
     finally { loading.value = false; transitioning = false }
   }
+
   /** Bumped after every change of the audio, so the view re-reads peaks. */
   const revision = ref(0)
 
@@ -568,15 +573,21 @@ export const useEditorStore = defineStore('editor', () => {
     saving.value = true
     try {
       let destination: string | undefined
-      if (mode === 'saveAs' || mode === 'selection') {
-        const suffix = mode === 'selection' ? ' — loop.wav' : ' — edited.wav'
+      let exportRate: number | null | undefined
+      const actualMode = mode === 'save' && !state.value?.hasSavedTarget ? 'saveAs' : mode
+      if (actualMode === 'saveAs' || actualMode === 'selection') {
+        const options = await chooseAudioExport({ format: audioExportFormat(sample.value.path), sampleRate: state.value?.exportSampleRate ?? null }, state.value?.sampleRate ?? 44100)
+        if (!options) return false
+        const format = options.format
+        exportRate = options.sampleRate
+        const suffix = `${mode === 'selection' ? ' — loop' : ' — edited'}.${format}`
         const picked = await chooseSavePath({
           title: t(mode === 'selection' ? 'editor.save.selection' : 'editor.save.as'),
           defaultPath: sample.value.path.replace(/\.[^/\\.]+$/, '') + suffix,
-          filters: [{ name: 'WAV', extensions: ['wav'] }],
+          filters: [{ name: format === 'ogg' ? 'OGG Vorbis' : format.toUpperCase(), extensions: [format] }],
         })
         if (!picked) return false
-        destination = /\.wav$/i.test(picked) ? picked : `${picked}.wav`
+        destination = audioExportPath(picked, format)
       }
       if (mode === 'replaceOriginal') {
         if (!canOverwrite.value || !await confirm({ title: t('editor.save.replace'),
@@ -585,7 +596,7 @@ export const useEditorStore = defineStore('editor', () => {
       }
       await usePlayerStore().stop()
       await stopPlayback()
-      const r = await editorApi.save(mode, destination, mode === 'selection' ? selected : undefined)
+      const r = await editorApi.save(actualMode, destination, mode === 'selection' ? selected : undefined, exportRate)
       if (mode !== 'selection') {
         state.value = r.state
         sample.value = { id: r.state.sampleId, name: r.name, ext: r.ext, path: r.path, bpm: r.bpm ?? sample.value.bpm }

@@ -10,6 +10,7 @@ let sampleId = 1
 let currentPath = '/mock/Drum loop.wav'
 let originalPath = currentPath
 let hasSavedTarget = false
+let exportSampleRate: number | null = null
 let savedVersion = 0
 let version = 0
 let nextVersion = 0
@@ -45,7 +46,7 @@ function remember() {
 }
 
 function state(): EditorState {
-  return { sampleId, frames: currentFrames, sampleRate: RATE, channels: 2, canUndo: history.length > 0, canRedo: future.length > 0, dirty: version !== savedVersion, hasSavedTarget, canReplaceOriginal: true, originalPath, loop, markers }
+  return { sampleId, frames: currentFrames, sampleRate: RATE, channels: 2, canUndo: history.length > 0, canRedo: future.length > 0, dirty: version !== savedVersion, hasSavedTarget, exportSampleRate, canReplaceOriginal: true, originalPath, loop, markers }
 }
 
 // Same packing as the backend: u32 mode, lanes, count, stride, then lane-major columns
@@ -118,6 +119,7 @@ export function editorCommand(cmd: string, args: any): unknown {
       sampleId = args.id
       currentPath = originalPath = '/mock/Drum loop.wav'
       hasSavedTarget = false
+      exportSampleRate = null
       savedVersion = version = nextVersion = 0
       currentFrames = FRAMES
       loop = null
@@ -129,14 +131,16 @@ export function editorCommand(cmd: string, args: any): unknown {
     case 'plugin:dialog|save': return '/mock/Custom edited.wav'
     case 'editor_save': {
       const path = args.mode === 'replaceOriginal' ? originalPath : args.destination ?? (hasSavedTarget ? currentPath : '/mock/Drum loop — edited.wav')
-      const name = path.split('/').pop().replace(/\.wav$/i, '')
+      const name = path.split('/').pop().replace(/\.(wav|mp3|ogg)$/i, '')
+      const ext = path.split('.').pop().toLowerCase()
       if (args.mode !== 'selection') {
+        if (args.mode !== 'save') exportSampleRate = args.sampleRate ?? null
         currentPath = path
         hasSavedTarget = true
         savedVersion = version
         sampleId = path === originalPath ? 1 : 1001
       }
-      return { path, backup: null, state: state(), name, ext: 'wav', bpm: BPM, inLibrary: true, warning: null }
+      return { path, backup: null, state: state(), name, ext, bpm: BPM, inLibrary: true, warning: null }
     }
     case 'sample_wave': {
       const key = 'fonicca-mock-cached-waves'

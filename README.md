@@ -20,6 +20,8 @@ Find a sound, audition it, edit a fragment or separate a track into stems — in
 
 Supported input formats include WAV, AIFF, FLAC, MP3, OGG, M4A and CAF. Decoding support can depend on the codec inside the file.
 
+The editor saves whole tracks or selections as WAV, MP3 (up to 320 kb/s) or Ogg Vorbis (quality 6), with a choice of output sample rate. WAV also preserves loop points and slice markers. Save updates the chosen file using its last export rate; Save as lets you change the format, rate and location.
+
 ## A closer look
 
 ### Stems in context
