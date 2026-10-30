@@ -1,6 +1,8 @@
 //! Local audio-to-MIDI with Spotify Basic Pitch's pinned ONNX model.
 mod midi;
 mod notes;
+pub(crate) mod input;
+use input::prepare;
 use crate::{
     AppState,
     audio::{self, Pcm},
@@ -91,7 +93,7 @@ pub fn basic_pitch_cancel(state: State<'_, AppState>) {
 }
 enum Source {
     File(PathBuf),
-    Editor(Pcm),
+    Editor(crate::editor::blocks::BlockAudio),
 }
 #[tauri::command]
 pub fn basic_pitch_start(
@@ -148,15 +150,14 @@ pub fn basic_pitch_start(
         let result = (|| {
             check(&jobs.cancel)?;
             let pcm = match source {
-                Source::Editor(pcm) => pcm,
+                Source::Editor(audio) => input::prepare_snapshot(&audio)?,
                 Source::File(path) => {
                     if audio::probe(&path)?.duration.is_some_and(|d| d > 600.0) {
                         return Err(failure("use audio up to 10 minutes"));
                     }
-                    audio::decode(&path, 600.1)?
+                    prepare(audio::decode(&path, 600.1)?)?
                 }
             };
-            let pcm = prepare(pcm)?;
             check(&jobs.cancel)?;
             jobs.update("downloading", 0.0);
             let dir = models::ensure_basic_pitch(&state.models_dir, &jobs.cancel, |n| {
@@ -207,26 +208,6 @@ pub fn basic_pitch_start(
         let _ = app.emit("basic-pitch:changed", progress.clone());
     });
     Ok(())
-}
-fn prepare(mut pcm: Pcm) -> Result<Pcm> {
-    if pcm.frames() == 0
-        || !(1..=2).contains(&pcm.channels)
-        || pcm.sample_rate == 0
-        || pcm.frames() as f64 / pcm.sample_rate as f64 > 600.0
-        || pcm.samples.iter().any(|v| !v.is_finite())
-    {
-        return Err(failure("use finite mono or stereo audio up to 10 minutes"));
-    }
-    if pcm.channels != 1 {
-        pcm.samples = pcm
-            .samples
-            .chunks_exact(pcm.channels)
-            .map(|frame| (frame.iter().map(|v| *v as f64).sum::<f64>() / frame.len() as f64) as f32)
-            .collect();
-        pcm.channels = 1;
-    }
-    crate::batch::resample(&mut pcm, RATE)?;
-    Ok(pcm)
 }
 #[derive(Serialize)]
 struct Prediction {

@@ -1,6 +1,4 @@
 //! Tauri commands for embedded and standalone editor sessions, keyed by window label.
-use crate::audio::AudioRead;
-
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
@@ -21,16 +19,8 @@ fn with_session<T>(state: &AppState, window: &Window, f: impl FnOnce(&mut Sessio
 }
 
 /// Snapshot edited audio for transcription; inference never holds the editor lock.
-pub(crate) fn transcription_audio(state: &AppState, window: &Window, range: editor::Span) -> Result<crate::audio::Pcm> {
-    with_session(state, window, |session| {
-        let pcm = session.audio();
-        if range.start >= range.end || range.end > pcm.frames()
-            || (range.end-range.start) as f64 / pcm.sample_rate as f64 > 600.0 {
-            return Err(Error::Other("select a non-empty fragment up to 10 minutes".into()));
-        }
-        Ok(crate::audio::Pcm { samples: pcm.range(range.start * pcm.channels..range.end * pcm.channels).into_owned(),
-            channels: pcm.channels, sample_rate: pcm.sample_rate })
-    })
+pub(crate) fn transcription_audio(state: &AppState, window: &Window, range: editor::Span) -> Result<editor::blocks::BlockAudio> {
+    with_session(state, window, |session| crate::basic_pitch::input::snapshot(session.audio(), range))
 }
 
 /// Opens (or brings to front) the editor window for a sample.

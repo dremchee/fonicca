@@ -1,0 +1,440 @@
+{
+  "schema": 1,
+  "observedAt": "2026-10-30T04:46:03.836263+00:00",
+  "sourceBase": "e9daaa1ac9b72b1ed4fb1f0c8403dd5a1b37831e",
+  "environment": {
+    "os": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "cpu": "Apple M1 Pro",
+    "profile": "Cargo dev-test, crate opt-level 1, dependencies opt-level 3"
+  },
+  "sourceSha256": {
+    "src-tauri/src/basic_pitch.rs": "1fd59954d27aae8aff6c780a479477ab1ebad071f14235e4439f633e5b9fdbb0",
+    "src-tauri/src/basic_pitch/input.rs": "65097d8f4c7227ff3cd8a2e0284efebfe0f964ee5f41fde79de82916e36d4e1d",
+    "src-tauri/src/editor_commands.rs": "596b7856e1ce918112bb690b166869717f5715c5847b4c4f4d7978fd3d224cc9",
+    "src-tauri/src/editor/benchmarks.rs": "71cfe14709497131b331bfb3e33882d78f4ff51e13f3dd7172f66e5fc6c857cd"
+  },
+  "method": {
+    "order": [
+      "reference",
+      "candidate",
+      "reference",
+      "candidate",
+      "reference",
+      "candidate"
+    ],
+    "durationsSeconds": [
+      30,
+      180,
+      600
+    ],
+    "repetitionsPerCase": 3,
+    "workload": "Private synthetic stereo 44.1 kHz float WAVs; full selected audio converted to the same mono 22.05 kHz model input. Capture uses a real uncontended session Mutex. File open/decoding excluded.",
+    "reference": "Owned selected interleaved PCM under session lock, then original validation/downmix/FFT resampling on worker, retained in the same binary.",
+    "candidate": "Shared selected BlockAudio under session lock; bounded block reads/downmix/finite checks and unchanged FFT resampler on worker. A block crossing pieces may materialize at most 16,384 source frames.",
+    "limits": [
+      "No model downloads, ORT inference, UI, IPC, job startup or worker queue delay.",
+      "Three local alternating repetitions are insufficient for p95 or a cross-platform speed guarantee.",
+      "Per-phase process RSS includes mapped pages and allocator retention, can miss transient peaks and excludes WebView processes. Copied-byte counters are not process RAM.",
+      "Mono input/output and internal resampler scratch still exist. Source audio is shared, not freed while an in-flight job needs it."
+    ]
+  },
+  "implementations": {
+    "reference": {
+      "description": "e9daaa1 owned selection before transcription",
+      "note": "Private synthetic stereo 44.1 kHz WAV. Uncontended session mutex; no UI/IPC/job startup/model inference. Existing mono downmix precision and FFT resampler retained. RSS includes mapped pages and allocator retention; phase boundaries can miss transient peaks and exclude WebView memory. Mono input/output and FFT scratch are still allocated on the worker.",
+      "observations": [
+        {
+          "captureLock": {
+            "heldMs": 0.97125,
+            "waitMs": 0.000125
+          },
+          "copiedInterleavedBytesUnderLock": 10584000,
+          "modelFrames": 661500,
+          "modelInputBytes": 2649072,
+          "repetition": 1,
+          "rssBytes": {
+            "afterCapture": 36306944,
+            "afterDroppingPrepared": 45236224,
+            "afterPrepare": 45203456,
+            "beforeCapture": 25575424
+          },
+          "seconds": 30,
+          "workerMs": 28.456708
+        },
+        {
+          "captureLock": {
+            "heldMs": 11.678459,
+            "waitMs": 0.000125
+          },
+          "copiedInterleavedBytesUnderLock": 63504000,
+          "modelFrames": 3969000,
+          "modelInputBytes": 15879072,
+          "repetition": 1,
+          "rssBytes": {
+            "afterCapture": 203341824,
+            "afterDroppingPrepared": 211714048,
+            "afterPrepare": 211648512,
+            "beforeCapture": 76316672
+          },
+          "seconds": 180,
+          "workerMs": 166.564291
+        },
+        {
+          "captureLock": {
+            "heldMs": 37.082916,
+            "waitMs": 8.3e-05
+          },
+          "copiedInterleavedBytesUnderLock": 211680000,
+          "modelFrames": 13230000,
+          "modelInputBytes": 52923072,
+          "repetition": 1,
+          "rssBytes": {
+            "afterCapture": 605192192,
+            "afterDroppingPrepared": 711065600,
+            "afterPrepare": 711065600,
+            "beforeCapture": 181813248
+          },
+          "seconds": 600,
+          "workerMs": 564.343292
+        },
+        {
+          "captureLock": {
+            "heldMs": 0.973125,
+            "waitMs": 0.000125
+          },
+          "copiedInterleavedBytesUnderLock": 10584000,
+          "modelFrames": 661500,
+          "modelInputBytes": 2649072,
+          "repetition": 2,
+          "rssBytes": {
+            "afterCapture": 36339712,
+            "afterDroppingPrepared": 45318144,
+            "afterPrepare": 45285376,
+            "beforeCapture": 25591808
+          },
+          "seconds": 30,
+          "workerMs": 28.230791
+        },
+        {
+          "captureLock": {
+            "heldMs": 11.056916999999999,
+            "waitMs": 0.000167
+          },
+          "copiedInterleavedBytesUnderLock": 63504000,
+          "modelFrames": 3969000,
+          "modelInputBytes": 15879072,
+          "repetition": 2,
+          "rssBytes": {
+            "afterCapture": 203341824,
+            "afterDroppingPrepared": 211648512,
+            "afterPrepare": 211648512,
+            "beforeCapture": 76316672
+          },
+          "seconds": 180,
+          "workerMs": 164.819416
+        },
+        {
+          "captureLock": {
+            "heldMs": 36.820167,
+            "waitMs": 8.3e-05
+          },
+          "copiedInterleavedBytesUnderLock": 211680000,
+          "modelFrames": 13230000,
+          "modelInputBytes": 52923072,
+          "repetition": 2,
+          "rssBytes": {
+            "afterCapture": 605110272,
+            "afterDroppingPrepared": 710983680,
+            "afterPrepare": 710983680,
+            "beforeCapture": 181731328
+          },
+          "seconds": 600,
+          "workerMs": 568.811125
+        },
+        {
+          "captureLock": {
+            "heldMs": 1.078125,
+            "waitMs": 8.3e-05
+          },
+          "copiedInterleavedBytesUnderLock": 10584000,
+          "modelFrames": 661500,
+          "modelInputBytes": 2649072,
+          "repetition": 3,
+          "rssBytes": {
+            "afterCapture": 36323328,
+            "afterDroppingPrepared": 45252608,
+            "afterPrepare": 45219840,
+            "beforeCapture": 25575424
+          },
+          "seconds": 30,
+          "workerMs": 28.499166
+        },
+        {
+          "captureLock": {
+            "heldMs": 11.655833000000001,
+            "waitMs": 8.3e-05
+          },
+          "copiedInterleavedBytesUnderLock": 63504000,
+          "modelFrames": 3969000,
+          "modelInputBytes": 15879072,
+          "repetition": 3,
+          "rssBytes": {
+            "afterCapture": 203276288,
+            "afterDroppingPrepared": 211599360,
+            "afterPrepare": 211599360,
+            "beforeCapture": 76251136
+          },
+          "seconds": 180,
+          "workerMs": 167.993542
+        },
+        {
+          "captureLock": {
+            "heldMs": 38.027875,
+            "waitMs": 8.4e-05
+          },
+          "copiedInterleavedBytesUnderLock": 211680000,
+          "modelFrames": 13230000,
+          "modelInputBytes": 52923072,
+          "repetition": 3,
+          "rssBytes": {
+            "afterCapture": 605061120,
+            "afterDroppingPrepared": 710967296,
+            "afterPrepare": 710950912,
+            "beforeCapture": 181682176
+          },
+          "seconds": 600,
+          "workerMs": 574.2296249999999
+        }
+      ]
+    },
+    "candidate": {
+      "description": "shared edited selection; mono prepared on worker",
+      "note": "Private synthetic stereo 44.1 kHz WAV. Uncontended session mutex; no UI/IPC/job startup/model inference. Existing mono downmix precision and FFT resampler retained. RSS includes mapped pages and allocator retention; phase boundaries can miss transient peaks and exclude WebView memory. Mono input/output and FFT scratch are still allocated on the worker.",
+      "observations": [
+        {
+          "captureLock": {
+            "heldMs": 0.002875,
+            "waitMs": 0.000125
+          },
+          "copiedInterleavedBytesUnderLock": 0,
+          "modelFrames": 661500,
+          "modelInputBytes": 2649072,
+          "repetition": 1,
+          "rssBytes": {
+            "afterCapture": 25673728,
+            "afterDroppingPrepared": 34701312,
+            "afterPrepare": 34668544,
+            "beforeCapture": 25542656
+          },
+          "seconds": 30,
+          "workerMs": 28.418791
+        },
+        {
+          "captureLock": {
+            "heldMs": 0.001375,
+            "waitMs": 8.4e-05
+          },
+          "copiedInterleavedBytesUnderLock": 0,
+          "modelFrames": 3969000,
+          "modelInputBytes": 15879072,
+          "repetition": 1,
+          "rssBytes": {
+            "afterCapture": 67010560,
+            "afterDroppingPrepared": 138838016,
+            "afterPrepare": 138838016,
+            "beforeCapture": 67010560
+          },
+          "seconds": 180,
+          "workerMs": 169.10500000000002
+        },
+        {
+          "captureLock": {
+            "heldMs": 0.00125,
+            "waitMs": 8.3e-05
+          },
+          "copiedInterleavedBytesUnderLock": 0,
+          "modelFrames": 13230000,
+          "modelInputBytes": 52923072,
+          "repetition": 1,
+          "rssBytes": {
+            "afterCapture": 108920832,
+            "afterDroppingPrepared": 479428608,
+            "afterPrepare": 479412224,
+            "beforeCapture": 108920832
+          },
+          "seconds": 600,
+          "workerMs": 580.8887080000001
+        },
+        {
+          "captureLock": {
+            "heldMs": 0.0026249999999999997,
+            "waitMs": 8.3e-05
+          },
+          "copiedInterleavedBytesUnderLock": 0,
+          "modelFrames": 661500,
+          "modelInputBytes": 2649072,
+          "repetition": 2,
+          "rssBytes": {
+            "afterCapture": 25722880,
+            "afterDroppingPrepared": 34717696,
+            "afterPrepare": 34684928,
+            "beforeCapture": 25591808
+          },
+          "seconds": 30,
+          "workerMs": 28.786708
+        },
+        {
+          "captureLock": {
+            "heldMs": 0.001291,
+            "waitMs": 8.4e-05
+          },
+          "copiedInterleavedBytesUnderLock": 0,
+          "modelFrames": 3969000,
+          "modelInputBytes": 15879072,
+          "repetition": 2,
+          "rssBytes": {
+            "afterCapture": 65781760,
+            "afterDroppingPrepared": 137592832,
+            "afterPrepare": 137592832,
+            "beforeCapture": 65781760
+          },
+          "seconds": 180,
+          "workerMs": 169.872041
+        },
+        {
+          "captureLock": {
+            "heldMs": 0.00125,
+            "waitMs": 0.000125
+          },
+          "copiedInterleavedBytesUnderLock": 0,
+          "modelFrames": 13230000,
+          "modelInputBytes": 52923072,
+          "repetition": 2,
+          "rssBytes": {
+            "afterCapture": 107675648,
+            "afterDroppingPrepared": 478216192,
+            "afterPrepare": 478199808,
+            "beforeCapture": 107675648
+          },
+          "seconds": 600,
+          "workerMs": 587.170917
+        },
+        {
+          "captureLock": {
+            "heldMs": 0.002417,
+            "waitMs": 0.000125
+          },
+          "copiedInterleavedBytesUnderLock": 0,
+          "modelFrames": 661500,
+          "modelInputBytes": 2649072,
+          "repetition": 3,
+          "rssBytes": {
+            "afterCapture": 25640960,
+            "afterDroppingPrepared": 34603008,
+            "afterPrepare": 34570240,
+            "beforeCapture": 25526272
+          },
+          "seconds": 30,
+          "workerMs": 28.42325
+        },
+        {
+          "captureLock": {
+            "heldMs": 0.001084,
+            "waitMs": 8.3e-05
+          },
+          "copiedInterleavedBytesUnderLock": 0,
+          "modelFrames": 3969000,
+          "modelInputBytes": 15879072,
+          "repetition": 3,
+          "rssBytes": {
+            "afterCapture": 65961984,
+            "afterDroppingPrepared": 137789440,
+            "afterPrepare": 137789440,
+            "beforeCapture": 65961984
+          },
+          "seconds": 180,
+          "workerMs": 170.397208
+        },
+        {
+          "captureLock": {
+            "heldMs": 0.005541,
+            "waitMs": 0.000125
+          },
+          "copiedInterleavedBytesUnderLock": 0,
+          "modelFrames": 13230000,
+          "modelInputBytes": 52923072,
+          "repetition": 3,
+          "rssBytes": {
+            "afterCapture": 107905024,
+            "afterDroppingPrepared": 478412800,
+            "afterPrepare": 478412800,
+            "beforeCapture": 107888640
+          },
+          "seconds": 600,
+          "workerMs": 585.892709
+        }
+      ]
+    }
+  },
+  "summary": [
+    {
+      "seconds": 30,
+      "reference": {
+        "medianCaptureLockMs": 0.973125,
+        "medianWorkerMs": 28.456708,
+        "medianCorePhasesMs": 29.427958,
+        "copiedInterleavedBytesUnderLock": 10584000,
+        "modelInputBytes": 2649072
+      },
+      "candidate": {
+        "medianCaptureLockMs": 0.0026249999999999997,
+        "medianWorkerMs": 28.42325,
+        "medianCorePhasesMs": 28.425667,
+        "copiedInterleavedBytesUnderLock": 0,
+        "modelInputBytes": 2649072
+      }
+    },
+    {
+      "seconds": 180,
+      "reference": {
+        "medianCaptureLockMs": 11.655833000000001,
+        "medianWorkerMs": 166.564291,
+        "medianCorePhasesMs": 178.24275,
+        "copiedInterleavedBytesUnderLock": 63504000,
+        "modelInputBytes": 15879072
+      },
+      "candidate": {
+        "medianCaptureLockMs": 0.001291,
+        "medianWorkerMs": 169.872041,
+        "medianCorePhasesMs": 169.873332,
+        "copiedInterleavedBytesUnderLock": 0,
+        "modelInputBytes": 15879072
+      }
+    },
+    {
+      "seconds": 600,
+      "reference": {
+        "medianCaptureLockMs": 37.082916,
+        "medianWorkerMs": 568.811125,
+        "medianCorePhasesMs": 605.6312919999999,
+        "copiedInterleavedBytesUnderLock": 211680000,
+        "modelInputBytes": 52923072
+      },
+      "candidate": {
+        "medianCaptureLockMs": 0.00125,
+        "medianWorkerMs": 585.892709,
+        "medianCorePhasesMs": 585.89825,
+        "copiedInterleavedBytesUnderLock": 0,
+        "modelInputBytes": 52923072
+      }
+    }
+  ],
+  "verification": {
+    "rustPassed": 204,
+    "rustIgnoredOptIn": 40,
+    "inputParity": "Every prepared sample compared against previous owned downmix/resample for mono/stereo, five rates, short inputs and block boundaries. Selected fragmented audio remains readable after later edits and source drop. Invalid formats/ranges and late non-finite samples are rejected.",
+    "inference": "Not rerun; model/predict/note-decoding contracts unchanged.",
+    "cargoCheck": "passed without warnings"
+  }
+}

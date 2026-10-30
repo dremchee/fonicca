@@ -401,6 +401,33 @@ processing workload, but filter on `editor_paste_lock_benchmark`. Set
 `FONICCA_LOCK_BENCH_REFERENCE=1` for the old sequence. To alternate runs, use
 `FONICCA_BENCH_REPEATS=1` and retain three runs per mode.
 
+Transcription preparation follow-up:
+
+- Basic Pitch captures an immutable selected range of edited audio, sharing
+  its existing pieces. The selection survives later edits and closing its source.
+  The 10-minute/mono-stereo/finite-input rules and model input format are unchanged.
+- Finite checks and downmix read at most 16,384 source frames at a time. A range
+  crossing pieces may materialize that small block; contiguous pieces are borrowed.
+  The owned full interleaved selection was removed. The worker still holds a mono
+  input, mono output and the existing FFT resampler's scratch while converting.
+  Owned-file preparation retains its previous move-only path for mono input.
+- Tests compare every model input sample with the previous preparation for
+  mono/stereo, five rates, tiny inputs and block boundaries. They cover captured
+  fragmented edits, later source disposal, invalid ranges/formats/duration and a
+  non-finite sample in a later block. Model inference was not repeated: prediction
+  and note decoding are unchanged, and their prepared input is checked directly.
+- [Three alternating native observations per mode](research/editor-transcription-comparison.json):
+  for a 600-second stereo 44.1 kHz selection, median capture hold 37.08 → 0.00125 ms;
+  copied interleaved bytes under that lock 211,680,000 → 0. Median combined core
+  preparation phases 605.6 → 585.9 ms. This is not a measured reduction of peak RSS
+  by 211 MB or an inference speed improvement. Timings exclude UI/IPC/job startup.
+- Verification: 204 native tests pass (40 opt-in cases ignored), `cargo check`
+  passes. Frontend code did not change in this follow-up.
+
+Repeat this workload with `editor_transcription_lock_benchmark`, durations
+`30,180,600` and the same reference/output/repetition environment variables as
+the other lock workloads. No model or audio device is required.
+
 Still pending: foreground WebView/editor memory measurements; synchronous
-save/export, slicing and transcription preparation paths; and release checks.
+save/export and slicing paths; and release checks.
 Completion items remain open until their full evidence exists.

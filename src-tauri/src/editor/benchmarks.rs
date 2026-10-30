@@ -270,3 +270,59 @@ fn editor_paste_lock_benchmark() {
     if let Ok(path) = std::env::var("FONICCA_LOCK_BENCH_OUTPUT") { std::fs::write(path, &text).unwrap(); }
     println!("{text}");
 }
+
+#[test]
+#[ignore = "opt-in transcription preparation and session lock workload, no model required"]
+fn editor_transcription_lock_benchmark() {
+    use crate::basic_pitch::input as transcription;
+    use crate::audio::Pcm;
+    enum Input { Owned(Pcm), Shared(super::blocks::BlockAudio) }
+    let reference = std::env::var("FONICCA_LOCK_BENCH_REFERENCE").is_ok_and(|value| value == "1");
+    let durations = std::env::var("FONICCA_BENCH_SECONDS").unwrap_or_else(|_| "30,180,600".into());
+    let repeats: usize = std::env::var("FONICCA_BENCH_REPEATS").unwrap_or_else(|_| "3".into()).parse().unwrap();
+    assert!((1..=20).contains(&repeats));
+    let root = tempfile::tempdir().unwrap();
+    let mut system = sysinfo::System::new();
+    let mut observations = Vec::new();
+    for seconds in durations.split(',').map(|n| n.parse::<u32>().unwrap()) {
+        assert!((1..=600).contains(&seconds));
+        let path = root.path().join("input.wav");
+        fixture(&path, seconds);
+        for repetition in 0..repeats {
+            let session = std::sync::Mutex::new(Session::open(1, &path, Some(32)).unwrap());
+            let audio = session.lock().unwrap().audio().clone();
+            let frames = audio.frames();
+            let before_capture = rss(&mut system);
+            let (input, capture_lock) = locked(&session, |session| {
+                let audio = session.audio();
+                if reference { Input::Owned(Pcm { samples: audio.range(0..frames * 2).into_owned(), channels: 2, sample_rate: 44100 }) }
+                else { Input::Shared(transcription::snapshot(audio, super::Span { start: 0, end: frames }).unwrap()) }
+            });
+            let after_capture = rss(&mut system);
+            let started = Instant::now();
+            let prepared = match input {
+                Input::Owned(pcm) => transcription::prepare(pcm).unwrap(),
+                Input::Shared(audio) => transcription::prepare_snapshot(&audio).unwrap(),
+            };
+            let worker_ms = started.elapsed().as_secs_f64() * 1000.0;
+            assert_eq!((prepared.channels, prepared.sample_rate), (1, 22050));
+            assert!(audio.samples.same_snapshot(&session.lock().unwrap().audio().samples));
+            let after_prepare = rss(&mut system);
+            let output_bytes = prepared.samples.capacity() * size_of::<f32>();
+            let model_frames = prepared.frames();
+            drop(prepared);
+            observations.push(json!({ "seconds": seconds, "repetition": repetition + 1,
+                "captureLock": capture_lock, "workerMs": worker_ms,
+                "copiedInterleavedBytesUnderLock": if reference { frames * 2 * 4 } else { 0 },
+                "modelFrames": model_frames, "modelInputBytes": output_bytes,
+                "rssBytes": { "beforeCapture": before_capture, "afterCapture": after_capture, "afterPrepare": after_prepare, "afterDroppingPrepared": rss(&mut system) } }));
+        }
+    }
+    let report = json!({ "schema": 1, "implementation": if reference { "e9daaa1 owned selection before transcription" } else { "shared edited selection; mono prepared on worker" },
+        "profile": if cfg!(debug_assertions) { "dev-test" } else { "release-test" }, "os": std::env::consts::OS, "arch": std::env::consts::ARCH,
+        "note": "Private synthetic stereo 44.1 kHz WAV. Uncontended session mutex; no UI/IPC/job startup/model inference. Existing mono downmix precision and FFT resampler retained. RSS includes mapped pages and allocator retention; phase boundaries can miss transient peaks and exclude WebView memory. Mono input/output and FFT scratch are still allocated on the worker.",
+        "observations": observations });
+    let text = serde_json::to_string_pretty(&report).unwrap();
+    if let Ok(path) = std::env::var("FONICCA_LOCK_BENCH_OUTPUT") { std::fs::write(path, &text).unwrap(); }
+    println!("{text}");
+}
