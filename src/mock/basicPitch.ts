@@ -1,3 +1,4 @@
+import { modelCatalog } from '@/model-catalog.generated'
 import { emit } from '@tauri-apps/api/event'
 const initial = () => ({ sourceId: null as number | null, range: null as { start: number, end: number } | null,
   running: false, stage: '', progress: 0, error: null, cancelled: false, path: null as string | null, noteCount: 0, name: '' })
@@ -7,7 +8,7 @@ let downloading: number | null = null
 let generation = 0
 export function basicPitchStorage() {
   return { id: 'basicPitch', path: '/m/basic-pitch-v1', installed, downloading: downloading != null || (progress.running && progress.stage === 'downloading'),
-    busy: downloading != null || progress.running, size: installed ? 230444 : Math.round((downloading ?? 0) * 230444), downloadSize: 230444 }
+    busy: downloading != null || progress.running, size: installed ? modelCatalog.basicPitch.bytes : Math.round((downloading ?? 0) * modelCatalog.basicPitch.bytes), downloadSize: modelCatalog.basicPitch.bytes }
 }
 export function deleteBasicPitchModel() {
   if (progress.running || downloading != null) throw new Error('model is in use')
@@ -26,7 +27,7 @@ export function downloadBasicPitchModel() {
 }
 export function basicPitchCommand(cmd: string, args: any): unknown {
   if (cmd === 'plugin:dialog|save' && JSON.stringify(args).includes('.mid')) return '/tmp/fonicca-basic-pitch-notes.mid'
-  if (cmd === 'basic_pitch_status') return { progress: structuredClone(progress), modelReady: installed, downloadBytes: 230444 }
+  if (cmd === 'basic_pitch_status') return { progress: structuredClone(progress), modelReady: installed, downloadBytes: modelCatalog.basicPitch.bytes }
   if (cmd === 'basic_pitch_cancel') {
     generation++; progress = { ...progress, running: false, cancelled: true, stage: 'cancelled' }
     void emit('basic-pitch:changed', progress); return null

@@ -13,6 +13,7 @@ import { confirm } from '@/composables/confirm'
 import { formatSize } from '@/format'
 import { useLibraryStore } from '@/stores/library'
 import { useModelStorage } from '@/composables/modelStorage'
+import { modelCatalog, type ModelGroup } from '@/model-catalog.generated'
 
 const emit = defineEmits<{ changed: [] }>()
 const { t } = useI18n()
@@ -21,21 +22,10 @@ const { modelDownload } = storeToRefs(library)
 const { models, error, refresh } = useModelStorage()
 const pending = shallowRef<string[]>([])
 const total = computed(() => models.value?.reduce((sum, model) => sum + model.size, 0) ?? 0)
-type ModelGroup = 'analysis' | 'separation' | 'restoration' | 'transcription'
-const groupByModel: Record<ModelStorage['id'], ModelGroup> = {
-  clap: 'analysis',
-  spleeter: 'separation',
-  scnetLarge: 'separation',
-  scnetXlIhf: 'separation',
-  htdemucs: 'separation',
-  melRoformer: 'separation', bsRoformer: 'separation', mdx23c: 'separation',
-  apollo: 'restoration',
-  basicPitch: 'transcription',
-}
 const groupOrder: ModelGroup[] = ['analysis', 'separation', 'restoration', 'transcription']
 const groups = computed(() => groupOrder.map(id => ({
   id,
-  models: models.value?.filter(model => groupByModel[model.id] === id) ?? [],
+  models: models.value?.filter(model => modelCatalog[model.id].group === id) ?? [],
 })).filter(group => group.models.length > 0))
 function status(model: ModelStorage) {
   if (model.downloading)

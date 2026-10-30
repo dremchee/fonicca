@@ -6,6 +6,7 @@ import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, shallowRef } from 'vue'
 import { t } from '@/i18n'
 import { useBackgroundJob, type ModelJobStatus } from '@/composables/backgroundJob'
+import { modelCatalog } from '@/model-catalog.generated'
 export interface MidiRange { start: number, end: number }
 type MidiSource = Pick<Sample, 'id' | 'name' | 'path' | 'bpm'>
 interface Progress {
@@ -19,7 +20,7 @@ export const useBasicPitchStore = defineStore('basicPitch', () => {
   const range = shallowRef<MidiRange | null>(null)
   const sourceKind = shallowRef<'file' | 'selection' | 'editor'>('file')
   const tempo = shallowRef<number | null>(null)
-  const job = useBackgroundJob({ initial: initial(), bytes: 230444,
+  const job = useBackgroundJob({ initial: initial(), bytes: modelCatalog.basicPitch.bytes,
     read: () => invoke<ModelJobStatus<Progress>>('basic_pitch_status'), subscribe: reload => listen('basic-pitch:changed', reload),
   })
   const { progress, ready, bytes, error, starting, cancelling, init, load } = job

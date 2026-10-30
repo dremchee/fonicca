@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-30",
+  "rustc": "rustc 1.90.0 (1159e78c4 2025-09-14)",
+  "buildScriptSha256": "27c43bb278f217ef7cf05b9ce04dd594a8e89f66b0ba002fefc3e318bf53be2b",
+  "method": "Compiled the actual build.rs with a no-op tauri_build adapter, exercising the catalog gate in an isolated temporary checkout. This checks the guard, not application packaging.",
+  "cases": {
+    "current_catalog": {
+      "exitCode": 0,
+      "passed": true
+    },
+    "crlf_checkout": {
+      "exitCode": 0,
+      "passed": true
+    },
+    "changed_catalog_requires_regeneration": {
+      "exitCode": 101,
+      "passed": true
+    },
+    "missing_stamp_ts": {
+      "exitCode": 101,
+      "passed": true
+    },
+    "missing_stamp_rs": {
+      "exitCode": 101,
+      "passed": true
+    }
+  }
+}

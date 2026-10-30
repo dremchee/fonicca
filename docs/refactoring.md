@@ -14,7 +14,7 @@ unit test alone does not establish an improvement in interactive performance.
   bottleneck, including evaluating stretch and LUFS; compare identical workloads.
 - [x] Library: separate navigation, pagination and selection; bound page retention;
   test stale requests and inspect slow SQL query plans on a large fixture.
-- [ ] Jobs/models: one authoritative model catalog; share polling/cancellation
+- [x] Jobs/models: one authoritative model catalog; share polling/cancellation
   mechanics while keeping model-specific DSP implementations separate.
 - [ ] Release: verify downloadable graphs before distributing installers; measure
   build/bundle costs and update outdated dependency/architecture documentation.
@@ -202,6 +202,34 @@ Background task follow-up:
   120 tests passing, type check and production build passing. Native code is
   unchanged by this follow-up; actual model inference was not rerun for it.
 
-Still pending: full WebView-process memory measurements, long-frame profiling,
-the authoritative model catalog and release checks. The remaining completion
-items stay open until their full evidence is present.
+Model catalog follow-up:
+
+- `model-packs/catalog.json` owns download metadata for all ten models: canonical
+  names, groups, stem capabilities, storage directories, artifacts, byte sizes,
+  SHA-256 and URLs. A migration audit against source `9291952` confirmed identical
+  metadata for every existing model; download locations and hashes did not change.
+- `pnpm models:generate` produces TypeScript metadata/types and Rust constants,
+  artifact tables and enum adapters. Captions, byte defaults, mocks, mode choices,
+  mode validation and downloads consume these outputs. Specialized tensor/DSP
+  code remains separate. Maintenance instructions: `model-packs/README.md`.
+- `pnpm models:check`, the frontend build and release-version CLI reject stale or
+  hand-edited outputs. Native builds also reject an outdated catalog fingerprint
+  without requiring Node during Cargo builds. LF/CRLF normalization is tested.
+- [Native build-gate evidence](research/model-catalog-build-gate.json): the actual
+  build script was compiled with a no-op bundler adapter and run in isolated
+  temporary checkouts. Valid LF and CRLF inputs passed; changed source and missing
+  generated stamps failed. This verifies the catalog guard, not desktop packaging.
+- Node tests verify generated content, mode lists, totals, malformed metadata
+  rejection and both checked-in graph files against the pinned SHA-256. Rust tests
+  verify enum serialization IDs and retain the existing model/mode constraints.
+  Browser mock showed four models in four-track mode and three specialized vocal
+  models in two-track mode, with the existing names and sizes.
+- Verification: 124 frontend tests and 194 native tests pass (37 opt-in native
+  cases remain ignored); frontend production build, native `cargo check`,
+  `models:check` and `release:check` pass. Download/inference of the large upstream
+  weights was not repeated: the metadata migration was checked against the old
+  definitions, and existing native inference code keeps its tensor contracts.
+
+Still pending: full WebView-process memory measurements, long-frame profiling
+and release checks. The remaining completion items stay open until their full
+evidence is present.

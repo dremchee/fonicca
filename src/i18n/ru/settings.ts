@@ -1,3 +1,4 @@
+import { modelCatalog } from '../../model-catalog.generated'
 import type en from '../en/settings'
 
 export default {
@@ -158,7 +159,7 @@ export default {
       transcription: { title: 'Аудио в MIDI', description: 'Распознавание нот и экспорт MIDI для вашей DAW.' },
     },
     onTranscription: 'Загрузится автоматически при первом экспорте MIDI.',
-    basicPitch: { name: 'Basic Pitch · аудио в MIDI', description: 'Распознаёт ноты в мелодическом аудио · Spotify · ONNX' },
+    basicPitch: { name: `${modelCatalog.basicPitch.name} · аудио в MIDI`, description: 'Распознаёт ноты в мелодическом аудио · Spotify · ONNX' },
     deleteTitle: 'Удалить {name}?',
     deleteDesc: 'Скачанные файлы модели будут удалены. Исходники и экспортированные файлы сохранятся. Модель можно снова скачать здесь.',
     inUse: 'Модель используется. Дождитесь завершения обработки.',
@@ -172,15 +173,15 @@ export default {
     incomplete: 'Загрузка не завершена · {size} на диске · требуется {total}',
     downloading: 'Загрузка · {size} из {total}',
     onSeparation: 'Загрузится автоматически при первом разделении на стемы.',
-    clap: { name: 'Аудиоэнкодер CLAP', description: 'Определяет категории по звуку и находит похожие семплы.' },
-    spleeter: { name: 'Spleeter · 4 стема', description: 'Вокал, ударные, бас и остальное · ONNX FP16' },
-    melRoformer: { name: 'Mel-Band RoFormer Kim · 2 дорожки', description: 'Вокал и минус · ONNX · хранение весов FP16' },
-    bsRoformer: { name: 'BS-RoFormer viperx · 2 дорожки', description: 'Вокал и минус · ONNX FP32 · лицензия исходных весов не уточнена' },
-    mdx23c: { name: 'MDX23C · 2 дорожки', description: 'Вокал и минус · локальный ONNX · FP32' },
-    scnetLarge: { name: 'SCNet-large · 4 стема', description: 'Детальное разделение на стемы · ONNX · веса INT8' },
-    htdemucs: { name: 'HTDemucs · 4 стема', description: 'Разделение Demucs · ONNX FP32 · предобученные веса только для научных целей' },
-    scnetXlIhf: { name: 'SCNet XL IHF · 4 стема', description: 'Детальное разделение на стемы · ONNX FP32' },
-    apollo: { name: 'Apollo · восстановление', description: 'Восстанавливает музыку после сжатия. Результат — отдельная WAV-копия.' },
+    clap: { name: `Аудиоэнкодер ${modelCatalog.clap.name}`, description: 'Определяет категории по звуку и находит похожие семплы.' },
+    spleeter: { name: `${modelCatalog.spleeter.name} · 4 стема`, description: 'Вокал, ударные, бас и остальное · ONNX FP16' },
+    melRoformer: { name: `${modelCatalog.melRoformer.name} · 2 дорожки`, description: 'Вокал и минус · ONNX · хранение весов FP16' },
+    bsRoformer: { name: `${modelCatalog.bsRoformer.name} · 2 дорожки`, description: 'Вокал и минус · ONNX FP32 · лицензия исходных весов не уточнена' },
+    mdx23c: { name: `${modelCatalog.mdx23c.name} · 2 дорожки`, description: 'Вокал и минус · локальный ONNX · FP32' },
+    scnetLarge: { name: `${modelCatalog.scnetLarge.name} · 4 стема`, description: 'Детальное разделение на стемы · ONNX · веса INT8' },
+    htdemucs: { name: `${modelCatalog.htdemucs.name} · 4 стема`, description: 'Разделение Demucs · ONNX FP32 · предобученные веса только для научных целей' },
+    scnetXlIhf: { name: `${modelCatalog.scnetXlIhf.name} · 4 стема`, description: 'Детальное разделение на стемы · ONNX FP32' },
+    apollo: { name: `${modelCatalog.apollo.name} · восстановление`, description: 'Восстанавливает музыку после сжатия. Результат — отдельная WAV-копия.' },
   },
   shortcuts: {
     keys: {

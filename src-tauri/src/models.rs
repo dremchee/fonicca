@@ -133,14 +133,14 @@ pub fn storage(root: &Path, clap_downloading: bool, downloading: impl Fn(crate::
         }
     }));
     // Whole-track restoration uses a separate Apollo model pack.
-    let apollo_dir = root.join("apollo-v1");
+    let apollo_dir = root.join(crate::stems::models::APOLLO_DIRECTORY);
     let apollo_size = disk_size(&apollo_dir);
     {
         const APOLLO_SIZE: u64 = crate::stems::models::APOLLO_TOTAL;
         entries.push(Storage {
             id: "apollo",
             path: apollo_dir.to_string_lossy().into_owned(),
-            installed: std::fs::metadata(apollo_dir.join("pytorch_model.bin"))
+            installed: std::fs::metadata(apollo_dir.join(crate::stems::models::APOLLO_FILE))
                 .is_ok_and(|m| m.len() == APOLLO_SIZE),
             downloading: false,
             busy: false,

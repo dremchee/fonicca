@@ -135,7 +135,7 @@ impl Separator {
             .map_err(failure)?
             .with_execution_providers([ort::ep::CPU::default().with_arena_allocator(false).build()])
             .map_err(failure)?
-            .commit_from_file(dir.join("htdemucs.onnx"))
+            .commit_from_file(dir.join(super::models::model_file(super::Model::Htdemucs, 0)))
             .map_err(failure)?;
         Ok(Self { session })
     }

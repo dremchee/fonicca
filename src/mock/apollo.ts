@@ -1,10 +1,11 @@
+import { modelCatalog } from '@/model-catalog.generated'
 import type { ApolloProgress } from '@/stores/apollo'
 import { emit } from '@tauri-apps/api/event'
 const initial = (): ApolloProgress => ({ sourceId: null, running: false, stage: '', progress: 0, error: null, cancelled: false, path: null, id: null, name: '' })
 let progress = initial()
 let generation = 0
 export function apolloCommand(cmd: string, args: any, installed: boolean, didDownload: () => void): unknown {
-  if (cmd === 'apollo_status') return { progress: structuredClone(progress), modelReady: installed, downloadBytes: 66541845 }
+  if (cmd === 'apollo_status') return { progress: structuredClone(progress), modelReady: installed, downloadBytes: modelCatalog.apollo.bytes }
   if (cmd === 'apollo_cancel') {
     generation++; progress = { ...progress, running: false, stage: 'cancelled', cancelled: true }
     void emit('apollo:changed', progress); return null

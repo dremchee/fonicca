@@ -1,3 +1,4 @@
+import { modelCatalog } from '../../model-catalog.generated'
 import type en from '../en/stems'
 export default {
   badge: "{n}",
@@ -13,7 +14,7 @@ export default {
   mode: 'Дорожки', twoTracks: '2 дорожки', fourTracks: '4 дорожки',
   twoDescription: 'Вокал и минус', fourDescription: 'Вокал, барабаны, бас и остальные инструменты',
   model: 'Модель разделения',
-  models: { melRoformer: 'Mel-Band RoFormer Kim', bsRoformer: 'BS-RoFormer viperx', mdx23c: 'MDX23C', htdemucs: 'HTDemucs · 4 стема', scnetXlIhf: 'SCNet XL IHF · Качество', scnetLarge: 'SCNet-large · Баланс', spleeter: 'Spleeter · Быстро' },
+  models: { melRoformer: `${modelCatalog.melRoformer.name}`, bsRoformer: `${modelCatalog.bsRoformer.name}`, mdx23c: `${modelCatalog.mdx23c.name}`, htdemucs: `${modelCatalog.htdemucs.name} · 4 стема`, scnetXlIhf: `${modelCatalog.scnetXlIhf.name} · Качество`, scnetLarge: `${modelCatalog.scnetLarge.name} · Баланс`, spleeter: `${modelCatalog.spleeter.name} · Быстро` },
   modelDescriptions: { melRoformer: 'Специализированная модель для выделения вокала и сохранения минуса.', bsRoformer: 'Специализированная модель для вокала и минуса. Полная точность весов.', mdx23c: 'Разделение на вокал и минус. Обработка на этом компьютере.', htdemucs: 'Вокал, барабаны, бас и остальные инструменты. Предобученные веса — только для научных целей.', scnetXlIhf: 'Детальное разделение. Выше нагрузка на компьютер.', scnetLarge: 'Для более детального разделения. Требует больше памяти и времени, особенно на длинных треках.', spleeter: 'Быстрое разделение с меньшей нагрузкой на компьютер.' },
   folder: 'Папка результата', choose: 'Выбрать…', noFolder: 'Выберите папку для WAV-файлов результата.',
   download: 'При первом запуске загрузится выбранная модель ({size}). Аудио остаётся на этом компьютере.',

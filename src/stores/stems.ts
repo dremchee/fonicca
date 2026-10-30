@@ -6,6 +6,7 @@ import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import { isStemModel, modelsForMode } from '@/stem-models'
 import { useBackgroundJob, type ModelJobStatus } from '@/composables/backgroundJob'
+import { modelCatalog } from '@/model-catalog.generated'
 export interface StemProgress { mode: StemMode, model: StemModel, sourceId: number | null, running: boolean, stage: string, progress: number, error: string | null, cancelled: boolean, paths: string[], ids: number[], name: string }
 const initial = (): StemProgress => ({ mode: 'four', model: 'scnetXlIhf', sourceId: null, running: false, stage: '', progress: 0, error: null, cancelled: false, paths: [], ids: [], name: '' })
 export const useStemsStore = defineStore('stems', () => {
@@ -16,7 +17,7 @@ export const useStemsStore = defineStore('stems', () => {
   if (!isStemModel(model.value) || !modelsForMode(mode.value).includes(model.value)) model.value = modelsForMode(mode.value)[0]!
   const availableModels = computed(() => modelsForMode(mode.value))
   const sample = ref<Sample | null>(null)
-  const job = useBackgroundJob({ initial: initial(), bytes: 221482626,
+  const job = useBackgroundJob({ initial: initial(), bytes: modelCatalog.scnetXlIhf.bytes,
     read: () => invoke<ModelJobStatus<StemProgress>>('stem_status', { model: model.value }),
     subscribe: reload => listen('stems:changed', reload),
     onStatus(status) {

@@ -1,0 +1,213 @@
+{
+  "schema": 1,
+  "stemOrder": [
+    "scnetXlIhf",
+    "scnetLarge",
+    "htdemucs",
+    "spleeter",
+    "melRoformer",
+    "bsRoformer",
+    "mdx23c"
+  ],
+  "models": {
+    "clap": {
+      "name": "CLAP",
+      "group": "analysis",
+      "rustPrefix": "CLAP",
+      "directory": "",
+      "artifacts": [
+        {
+          "name": "clap-htsat-unfused-audio-int8.onnx",
+          "size": 34301667,
+          "sha256": "3fcff2c8824e7bcb83a983f2a49edab3b60cbcf4872ac70efee517355173bd1f",
+          "url": "https://huggingface.co/Xenova/clap-htsat-unfused/resolve/c28f2883575e590e04d3146ff0713c2448d691ba/onnx/audio_model_quantized.onnx",
+          "role": "model"
+        }
+      ]
+    },
+    "spleeter": {
+      "name": "Spleeter",
+      "group": "separation",
+      "rustPrefix": "",
+      "directory": "spleeter4-v1",
+      "artifacts": [
+        {
+          "name": "vocals.fp16.onnx",
+          "size": 19714141,
+          "sha256": "db47148ab1c52709ce694893f532c91abfe3edc4d46238939570e036a22878ca",
+          "url": "https://huggingface.co/Best-Practice/spleeter-4stems-onnx/resolve/486643021f18a4d057d282fff1d11b89a30e9887/vocals.fp16.onnx",
+          "role": "model"
+        },
+        {
+          "name": "drums.fp16.onnx",
+          "size": 19714140,
+          "sha256": "7ae4002e5633634674f74dc3356d5875b0da894d59ce0f60e844bb8f9cb8aa92",
+          "url": "https://huggingface.co/Best-Practice/spleeter-4stems-onnx/resolve/486643021f18a4d057d282fff1d11b89a30e9887/drums.fp16.onnx",
+          "role": "model"
+        },
+        {
+          "name": "bass.fp16.onnx",
+          "size": 19714139,
+          "sha256": "ba4c4949a27222492cca49859901a873b4b71461dc48c7c5a51f93d31eb11f55",
+          "url": "https://huggingface.co/Best-Practice/spleeter-4stems-onnx/resolve/486643021f18a4d057d282fff1d11b89a30e9887/bass.fp16.onnx",
+          "role": "model"
+        },
+        {
+          "name": "other.fp16.onnx",
+          "size": 19714140,
+          "sha256": "3cc59116cb7195946ab9596d8ca25984d09c0f8a70db8cf85d063132f97bc61d",
+          "url": "https://huggingface.co/Best-Practice/spleeter-4stems-onnx/resolve/486643021f18a4d057d282fff1d11b89a30e9887/other.fp16.onnx",
+          "role": "model"
+        }
+      ],
+      "rustVariant": "Spleeter",
+      "tracks": 4
+    },
+    "scnetLarge": {
+      "name": "SCNet-large",
+      "group": "separation",
+      "rustPrefix": "SCNET",
+      "directory": "scnet-large-v1",
+      "artifacts": [
+        {
+          "name": "scnet-large.int8.onnx",
+          "size": 45082486,
+          "sha256": "b2dc586a1e0e6c0afe4915e9057ea29111397b7bbf589edc3d85de91de79cd72",
+          "url": "https://huggingface.co/audiojs/scnet-large/resolve/95f22d9e68f6cab78aef358f1a0de248d4edf805/scnet-large.int8.onnx",
+          "role": "model"
+        }
+      ],
+      "rustVariant": "ScnetLarge",
+      "tracks": 4
+    },
+    "scnetXlIhf": {
+      "name": "SCNet XL IHF",
+      "group": "separation",
+      "rustPrefix": "XL",
+      "directory": "scnet-xl-ihf-v1",
+      "artifacts": [
+        {
+          "name": "scnet_xl_wide_v5_fp32.onnx",
+          "size": 221482626,
+          "sha256": "6e2e46b669fa368247afbe867aaa61317425f3f0568309fd6e0c79671c39f0b6",
+          "url": "https://huggingface.co/Ryan5453/unblend/resolve/30b749fd691312b1e4b3f8fe79df0b51cde836cd/scnet_xl_wide_v5_fp32.onnx",
+          "role": "model"
+        }
+      ],
+      "rustVariant": "ScnetXlIhf",
+      "tracks": 4
+    },
+    "htdemucs": {
+      "name": "HTDemucs",
+      "group": "separation",
+      "rustPrefix": "DEMUCS",
+      "directory": "htdemucs-v1",
+      "artifacts": [
+        {
+          "name": "htdemucs.onnx",
+          "size": 316446953,
+          "sha256": "68d0bf16428ef66e692cdff8a9ccf28f1ef3f69440d57e58605a4cc55fcc5e74",
+          "url": "https://huggingface.co/StemSplitio/htdemucs-onnx/resolve/d54ed9eb60e258ea82131c6ee14578628816456a/htdemucs.onnx",
+          "role": "model"
+        }
+      ],
+      "rustVariant": "Htdemucs",
+      "tracks": 4
+    },
+    "melRoformer": {
+      "name": "Mel-Band RoFormer Kim",
+      "group": "separation",
+      "rustPrefix": "MEL",
+      "directory": "mel-roformer-kim-v1",
+      "artifacts": [
+        {
+          "name": "mel-roformer.fp16.onnx",
+          "size": 464050097,
+          "sha256": "adcbbb826f12453fbb86652b503242d565a9c81cdef1bca2fe0e54752eba91ef",
+          "url": "https://huggingface.co/audiojs/mel-roformer/resolve/c1aba02c00a0bee852d6754fe6ede8164f90a4b3/mel-roformer.fp16.onnx",
+          "role": "model"
+        }
+      ],
+      "rustVariant": "MelRoformer",
+      "tracks": 2
+    },
+    "bsRoformer": {
+      "name": "BS-RoFormer viperx",
+      "group": "separation",
+      "rustPrefix": "BS",
+      "directory": "bs-roformer-viperx-v1",
+      "artifacts": [
+        {
+          "name": "bs-roformer-native.onnx",
+          "size": 4871339,
+          "sha256": "320e61bbb30a3bb0cba7b88c013b02b0acef444c3341667158b1bc1611664af9",
+          "url": "https://raw.githubusercontent.com/dremchee/fonicca/main/model-packs/v1/bs-roformer-native.onnx",
+          "role": "graph"
+        },
+        {
+          "name": "bs_roformer_ep317_sdr12.9755.onnx.data",
+          "size": 639959040,
+          "sha256": "3f3677f7ed3801f7415db4b4c900e6e81f4f41d5b4bc83c0bf899c353b2f9995",
+          "url": "https://huggingface.co/xycld/BS-RoFormer-ONNX/resolve/f020228f4d25616c8ff4146c339c33687c0be43f/bs_roformer_ep317_sdr12.9755.onnx.data",
+          "role": "weights"
+        }
+      ],
+      "rustVariant": "BsRoformer",
+      "tracks": 2
+    },
+    "mdx23c": {
+      "name": "MDX23C",
+      "group": "separation",
+      "rustPrefix": "MDX",
+      "directory": "mdx23c-vocals-v1",
+      "artifacts": [
+        {
+          "name": "mdx23c.onnx",
+          "size": 221595,
+          "sha256": "eb6f147119a27b8dd7be4ee8069ef19de115f03656cc054693bccf23c15fa599",
+          "url": "https://raw.githubusercontent.com/dremchee/fonicca/main/model-packs/v1/mdx23c.onnx",
+          "role": "graph"
+        },
+        {
+          "name": "mdx23c.ckpt",
+          "size": 448101203,
+          "sha256": "49d51472769e34a2501cd1da782346a3212555c3a5619fc2c53507445528d816",
+          "url": "https://github.com/ZFTurbo/Music-Source-Separation-Training/releases/download/v1.0.0/model_vocals_mdx23c_sdr_10.17.ckpt",
+          "role": "weights"
+        }
+      ],
+      "rustVariant": "Mdx23c",
+      "tracks": 2
+    },
+    "apollo": {
+      "name": "Apollo",
+      "group": "restoration",
+      "rustPrefix": "APOLLO",
+      "directory": "apollo-v1",
+      "artifacts": [
+        {
+          "name": "pytorch_model.bin",
+          "size": 66541845,
+          "sha256": "99d9af7f1ff20e63c393035513a655392818d66b4d7fc23d658175c1f15e8d76",
+          "url": "https://huggingface.co/JusperLee/Apollo/resolve/c68bd80fdd9c0d93d2f4a833cb154624f660a561/pytorch_model.bin",
+          "role": "weights"
+        }
+      ]
+    },
+    "basicPitch": {
+      "name": "Basic Pitch",
+      "group": "transcription",
+      "rustPrefix": "BASIC_PITCH",
+      "directory": "basic-pitch-v1",
+      "artifacts": [
+        {
+          "name": "nmp.onnx",
+          "size": 230444,
+          "sha256": "2c3c1d144bfa61ad236e92e169c13535c880469a12a047d4e73451f2c059a0ec",
+          "url": "https://raw.githubusercontent.com/spotify/basic-pitch/fa5997af0a8210982619003269994a1be25eddf3/basic_pitch/saved_models/icassp_2022/nmp.onnx",
+          "role": "model"
+        }
+      ]
+    }
+  }
+}

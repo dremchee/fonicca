@@ -7,101 +7,22 @@ use std::{
     path::{Path, PathBuf},
     sync::atomic::AtomicBool,
 };
-pub const REVISION: &str = "486643021f18a4d057d282fff1d11b89a30e9887";
-pub const TOTAL: u64 = 78856560;
 struct Artifact {
     name: &'static str,
     size: u64,
     hash: &'static str,
+    url: &'static str,
 }
-const FILES: [Artifact; 4] = [
-    Artifact {
-        name: "vocals.fp16.onnx",
-        size: 19714141,
-        hash: "db47148ab1c52709ce694893f532c91abfe3edc4d46238939570e036a22878ca",
-    },
-    Artifact {
-        name: "drums.fp16.onnx",
-        size: 19714140,
-        hash: "7ae4002e5633634674f74dc3356d5875b0da894d59ce0f60e844bb8f9cb8aa92",
-    },
-    Artifact {
-        name: "bass.fp16.onnx",
-        size: 19714139,
-        hash: "ba4c4949a27222492cca49859901a873b4b71461dc48c7c5a51f93d31eb11f55",
-    },
-    Artifact {
-        name: "other.fp16.onnx",
-        size: 19714140,
-        hash: "3cc59116cb7195946ab9596d8ca25984d09c0f8a70db8cf85d063132f97bc61d",
-    },
-];
-pub const SCNET_TOTAL: u64 = 45_082_486;
-const SCNET_REVISION: &str = "95f22d9e68f6cab78aef358f1a0de248d4edf805";
-const SCNET_FILES: [Artifact; 1] = [Artifact {
-    name: "scnet-large.int8.onnx",
-    size: SCNET_TOTAL,
-    hash: "b2dc586a1e0e6c0afe4915e9057ea29111397b7bbf589edc3d85de91de79cd72",
-}];
-pub const XL_TOTAL: u64 = 221_482_626;
-const XL_REVISION: &str = "30b749fd691312b1e4b3f8fe79df0b51cde836cd";
-const XL_FILES: [Artifact; 1] = [Artifact {
-    name: "scnet_xl_wide_v5_fp32.onnx",
-    size: XL_TOTAL,
-    hash: "6e2e46b669fa368247afbe867aaa61317425f3f0568309fd6e0c79671c39f0b6",
-}];
-pub const DEMUCS_TOTAL: u64 = 316_446_953;
-const DEMUCS_REVISION: &str = "d54ed9eb60e258ea82131c6ee14578628816456a";
-const DEMUCS_FILES: [Artifact; 1] = [Artifact {
-    name: "htdemucs.onnx",
-    size: DEMUCS_TOTAL,
-    hash: "68d0bf16428ef66e692cdff8a9ccf28f1ef3f69440d57e58605a4cc55fcc5e74",
-}];
-pub const MEL_TOTAL: u64 = 464_050_097;
-const MEL_REVISION: &str = "c1aba02c00a0bee852d6754fe6ede8164f90a4b3";
-const MEL_FILES: [Artifact; 1] = [Artifact { name: "mel-roformer.fp16.onnx", size: MEL_TOTAL,
-    hash: "adcbbb826f12453fbb86652b503242d565a9c81cdef1bca2fe0e54752eba91ef" }];
-const GRAPH_BASE_URL: &str = "https://raw.githubusercontent.com/dremchee/fonicca/main/model-packs/v1";
-pub const BS_TOTAL: u64 = 639_959_040 + 4_871_339;
-const BS_REVISION: &str = "f020228f4d25616c8ff4146c339c33687c0be43f";
-const BS_FILES: [Artifact; 2] = [Artifact {
-    name: "bs-roformer-native.onnx", size: 4_871_339,
-    hash: "320e61bbb30a3bb0cba7b88c013b02b0acef444c3341667158b1bc1611664af9",
-}, Artifact {
-    name: "bs_roformer_ep317_sdr12.9755.onnx.data", size: 639_959_040,
-    hash: "3f3677f7ed3801f7415db4b4c900e6e81f4f41d5b4bc83c0bf899c353b2f9995",
-}];
-pub const MDX_TOTAL: u64 = 448_101_203 + 221_595;
-const MDX_FILES: [Artifact; 2] = [Artifact {
-    name: "mdx23c.onnx", size: 221_595,
-    hash: "eb6f147119a27b8dd7be4ee8069ef19de115f03656cc054693bccf23c15fa599",
-}, Artifact { name: "mdx23c.ckpt", size: 448_101_203,
-    hash: "49d51472769e34a2501cd1da782346a3212555c3a5619fc2c53507445528d816" }];
-fn files(model: Model) -> &'static [Artifact] {
-    match model {
-        Model::Spleeter => &FILES,
-        Model::ScnetLarge => &SCNET_FILES,
-        Model::ScnetXlIhf => &XL_FILES,
-        Model::Htdemucs => &DEMUCS_FILES,
-        Model::MelRoformer => &MEL_FILES,
-        Model::BsRoformer => &BS_FILES,
-        Model::Mdx23c => &MDX_FILES,
-    }
+include!("catalog.generated.rs");
+pub(super) fn model_file(model: Model, index: usize) -> &'static str {
+    files(model)[index].name
 }
 #[cfg(test)]
 pub fn directory(root: &Path) -> PathBuf {
     directory_for(root, Model::Spleeter)
 }
 pub fn directory_for(root: &Path, model: Model) -> PathBuf {
-    root.join(match model {
-        Model::Spleeter => "spleeter4-v1",
-        Model::ScnetLarge => "scnet-large-v1",
-        Model::ScnetXlIhf => "scnet-xl-ihf-v1",
-        Model::Htdemucs => "htdemucs-v1",
-        Model::MelRoformer => "mel-roformer-kim-v1",
-        Model::BsRoformer => "bs-roformer-viperx-v1",
-        Model::Mdx23c => "mdx23c-vocals-v1",
-    })
+    root.join(directory_name(model))
 }
 #[cfg(test)]
 pub fn installed(root: &Path) -> bool {
@@ -111,17 +32,6 @@ pub fn installed_for(root: &Path, model: Model) -> bool {
     files(model).iter().all(|f| {
         std::fs::metadata(directory_for(root, model).join(f.name)).is_ok_and(|m| m.len() == f.size)
     })
-}
-pub fn total(model: Model) -> u64 {
-    match model {
-        Model::Spleeter => TOTAL,
-        Model::ScnetLarge => SCNET_TOTAL,
-        Model::ScnetXlIhf => XL_TOTAL,
-        Model::Htdemucs => DEMUCS_TOTAL,
-        Model::MelRoformer => MEL_TOTAL,
-        Model::BsRoformer => BS_TOTAL,
-        Model::Mdx23c => MDX_TOTAL,
-    }
 }
 fn valid(path: &Path, f: &Artifact) -> bool {
     let Ok(mut file) = std::fs::File::open(path) else {
@@ -211,32 +121,12 @@ pub fn ensure_for(
 }
 
 fn artifact_url(model: Model, name: &str) -> String {
-    if (model == Model::BsRoformer && name == BS_FILES[0].name)
-        || (model == Model::Mdx23c && name == MDX_FILES[0].name)
-    {
-        return format!("{GRAPH_BASE_URL}/{name}");
-    }
-    match model {
-        Model::Spleeter => format!("https://huggingface.co/Best-Practice/spleeter-4stems-onnx/resolve/{REVISION}/{name}"),
-        Model::ScnetLarge => format!("https://huggingface.co/audiojs/scnet-large/resolve/{SCNET_REVISION}/{name}"),
-        Model::ScnetXlIhf => format!("https://huggingface.co/Ryan5453/unblend/resolve/{XL_REVISION}/{name}"),
-        Model::MelRoformer => format!("https://huggingface.co/audiojs/mel-roformer/resolve/{MEL_REVISION}/{name}"),
-        Model::BsRoformer => format!("https://huggingface.co/xycld/BS-RoFormer-ONNX/resolve/{BS_REVISION}/{name}"),
-        Model::Mdx23c => "https://github.com/ZFTurbo/Music-Source-Separation-Training/releases/download/v1.0.0/model_vocals_mdx23c_sdr_10.17.ckpt".to_owned(),
-        Model::Htdemucs => format!("https://huggingface.co/StemSplitio/htdemucs-onnx/resolve/{DEMUCS_REVISION}/{name}"),
-    }
+    files(model).iter().find(|artifact| artifact.name == name)
+        .expect("artifact belongs to its model pack").url.to_owned()
 }
 
-pub const BASIC_PITCH_TOTAL: u64 = 230_444;
-pub const BASIC_PITCH_FILE: &str = "nmp.onnx";
-const BASIC_PITCH_REVISION: &str = "fa5997af0a8210982619003269994a1be25eddf3";
-const BASIC_PITCH_FILES: [Artifact; 1] = [Artifact {
-    name: BASIC_PITCH_FILE,
-    size: BASIC_PITCH_TOTAL,
-    hash: "2c3c1d144bfa61ad236e92e169c13535c880469a12a047d4e73451f2c059a0ec",
-}];
 pub fn basic_pitch_directory(root: &Path) -> PathBuf {
-    root.join("basic-pitch-v1")
+    root.join(BASIC_PITCH_DIRECTORY)
 }
 pub fn basic_pitch_installed(root: &Path) -> bool {
     std::fs::metadata(basic_pitch_directory(root).join(BASIC_PITCH_FILE))
@@ -260,11 +150,7 @@ pub fn ensure_basic_pitch(
     ensure_pack(
         &dir,
         &BASIC_PITCH_FILES,
-        |name| {
-            format!(
-                "https://raw.githubusercontent.com/spotify/basic-pitch/{BASIC_PITCH_REVISION}/basic_pitch/saved_models/icassp_2022/{name}"
-            )
-        },
+        |_| BASIC_PITCH_FILES[0].url.to_owned(),
         cancel,
         progress,
     )
@@ -292,14 +178,8 @@ pub fn remove_basic_pitch(root: &Path) -> Result<()> {
     }
 }
 
-pub const APOLLO_TOTAL: u64 = 66_541_845;
-const APOLLO_FILES: [Artifact; 1] = [Artifact {
-    name: "pytorch_model.bin",
-    size: APOLLO_TOTAL,
-    hash: "99d9af7f1ff20e63c393035513a655392818d66b4d7fc23d658175c1f15e8d76",
-}];
 pub fn ensure_apollo(root: &Path, cancel: &AtomicBool, progress: impl Fn(u64)) -> Result<PathBuf> {
-    let dir = root.join("apollo-v1");
+    let dir = root.join(APOLLO_DIRECTORY);
     std::fs::create_dir_all(&dir)?;
     std::fs::write(
         dir.join("LICENSE.txt"),
@@ -312,11 +192,7 @@ pub fn ensure_apollo(root: &Path, cancel: &AtomicBool, progress: impl Fn(u64)) -
     let dir = ensure_pack(
         &dir,
         &APOLLO_FILES,
-        |name| {
-            format!(
-                "https://huggingface.co/JusperLee/Apollo/resolve/c68bd80fdd9c0d93d2f4a833cb154624f660a561/{name}"
-            )
-        },
+        |_| APOLLO_FILES[0].url.to_owned(),
         cancel,
         progress,
     )?;
@@ -329,14 +205,14 @@ pub fn ensure_apollo(root: &Path, cancel: &AtomicBool, progress: impl Fn(u64)) -
     Ok(dir)
 }
 pub fn apollo_installed(root: &Path) -> bool {
-    std::fs::metadata(root.join("apollo-v1/pytorch_model.bin"))
+    std::fs::metadata(root.join(APOLLO_DIRECTORY).join(APOLLO_FILES[0].name))
         .is_ok_and(|m| m.len() == APOLLO_TOTAL)
 }
 
 /// Only remove the pack's own artifacts. Audio or other user-added files in the
 /// directory survive; deleting an unknown ID never turns into an arbitrary path.
 pub fn remove_pack(root: &Path, model: Option<Model>) -> Result<()> {
-    let dir = model.map_or_else(|| root.join("apollo-v1"), |m| directory_for(root, m));
+    let dir = model.map_or_else(|| root.join(APOLLO_DIRECTORY), |m| directory_for(root, m));
     if std::fs::symlink_metadata(&dir).is_ok_and(|m| m.file_type().is_symlink()) {
         std::fs::remove_file(&dir)?;
         return Ok(());
@@ -683,6 +559,7 @@ mod tests {
         let path = dir.path().join("model.onnx");
         let model = Artifact {
             name: "test",
+            url: "https://example.invalid/test",
             size: 3,
             hash: "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
         };

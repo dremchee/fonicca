@@ -1,6 +1,7 @@
 import { appendFileSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { checkModelCatalog } from './model-catalog.mjs'
 
 const number = '(?:0|[1-9]\\d*)'
 const identifier = '(?:0|[1-9]\\d*|\\d*[A-Za-z-][0-9A-Za-z-]*)'
@@ -29,6 +30,7 @@ export function verifyRelease(files, tag = '') {
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
+    checkModelCatalog()
     const read = path => readFileSync(path, 'utf8')
     const result = verifyRelease({
       packageJson: JSON.parse(read('package.json')),

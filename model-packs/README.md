@@ -4,14 +4,40 @@ These files are distribution assets, not application resources. They are not
 embedded in the executable or copied into desktop installers. Fonicca downloads
 them on demand into its application-data `models` directory, together with the
 separately hosted original weights. Downloads must match the size and SHA-256
-in `src-tauri/src/stems/models.rs` before becoming available for inference.
+in [`catalog.json`](catalog.json) before becoming available for inference.
+
+## Catalog maintenance
+
+`catalog.json` is the authoritative download metadata for CLAP, the seven stem
+models, Apollo and Basic Pitch: names, groups, stem modes, directories, artifacts,
+exact byte sizes, SHA-256 hashes and download URLs. Localized captions add their
+own descriptions to the canonical names.
+
+After editing it, run:
+
+```sh
+pnpm models:generate
+pnpm models:check
+```
+
+Commit the catalog and both generated files:
+`src/model-catalog.generated.ts` and `src-tauri/src/stems/catalog.generated.rs`.
+The interface and Rust downloader consume those generated files. Generation is
+deterministic; normal checks and builds do not rewrite the source checkout.
+The Node check compares the complete generated contents, and the native build
+rejects a catalog whose synchronization fingerprint is outdated. Line endings
+are normalized so Windows checkouts agree with Linux and macOS.
+
+The synchronization fingerprint is independent of the SHA-256 verification of
+downloaded model bytes. Adding a model still requires a matching Rust enum variant,
+inference implementation and tensor/preprocessing contract. Changing download
+metadata does not add support for a new architecture.
 
 ## v1
 
-| Graph | Bytes | SHA-256 |
-| --- | ---: | --- |
-| `bs-roformer-native.onnx` | 4,871,339 | `320e61bbb30a3bb0cba7b88c013b02b0acef444c3341667158b1bc1611664af9` |
-| `mdx23c.onnx` | 221,595 | `eb6f147119a27b8dd7be4ee8069ef19de115f03656cc054693bccf23c15fa599` |
+The graph artifacts are `bs-roformer-native.onnx` and `mdx23c.onnx`. Their pinned
+sizes, hashes and URLs are recorded in the catalog; tests verify the files in
+this checkout against it.
 
 Download base: `https://raw.githubusercontent.com/dremchee/fonicca/main/model-packs/v1/`.
 Publish this directory to the public `main` branch **before distributing a build

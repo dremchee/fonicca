@@ -132,12 +132,7 @@ pub struct Separator {
 impl Separator {
     pub fn load(dir: &Path, model: Model) -> Result<Self> {
         let contract = Contract::for_model(model)?;
-        let file = match model {
-            Model::MelRoformer => "mel-roformer.fp16.onnx",
-            Model::BsRoformer => "bs-roformer-native.onnx",
-            Model::Mdx23c => "mdx23c.onnx",
-            _ => unreachable!(),
-        };
+        let file = super::models::model_file(model, 0);
         let session = Session::builder()
             .map_err(failure)?
             .with_optimization_level(GraphOptimizationLevel::Level3)

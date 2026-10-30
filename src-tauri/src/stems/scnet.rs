@@ -108,8 +108,7 @@ pub struct Separator {
 impl Separator {
     pub fn load_for(dir: &Path, model: Model) -> Result<Self> {
         let file = match model {
-            Model::ScnetLarge => "scnet-large.int8.onnx",
-            Model::ScnetXlIhf => "scnet_xl_wide_v5_fp32.onnx",
+            Model::ScnetLarge | Model::ScnetXlIhf => super::models::model_file(model, 0),
             _ => return Err(failure("unsupported SCNet variant")),
         };
         // XL benefits from up to six performance cores on Apple silicon.

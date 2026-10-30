@@ -1,3 +1,4 @@
+import { modelCatalog } from '../../model-catalog.generated'
 export default {
   nav: {
     general: 'General',
@@ -156,7 +157,7 @@ export default {
       transcription: { title: 'Audio to MIDI', description: 'Recognize notes and export MIDI for your DAW.' },
     },
     onTranscription: 'Downloads automatically when you first export MIDI.',
-    basicPitch: { name: 'Basic Pitch · audio to MIDI', description: 'Recognizes notes in melodic audio · Spotify · ONNX' },
+    basicPitch: { name: `${modelCatalog.basicPitch.name} · audio to MIDI`, description: 'Recognizes notes in melodic audio · Spotify · ONNX' },
     deleteTitle: 'Delete {name}?',
     deleteDesc: 'Downloaded model files will be removed. Original audio and exported files stay. You can download the model again here.',
     inUse: 'Model is in use. Wait for processing to finish.',
@@ -170,15 +171,15 @@ export default {
     incomplete: 'Incomplete download · {size} on disk · {total} required',
     downloading: 'Downloading · {size} of {total}',
     onSeparation: 'Downloads automatically the first time you separate stems.',
-    clap: { name: 'CLAP audio encoder', description: 'Categorizes samples by sound and finds similar samples.' },
-    spleeter: { name: 'Spleeter · 4 stems', description: 'Vocals, drums, bass and other · ONNX FP16' },
-    melRoformer: { name: 'Mel-Band RoFormer Kim · 2 stems', description: 'Vocals and instrumental · ONNX · FP16 stored weights' },
-    bsRoformer: { name: 'BS-RoFormer viperx · 2 stems', description: 'Vocals and instrumental · ONNX FP32 · original weights license unconfirmed' },
-    mdx23c: { name: 'MDX23C · 2 stems', description: 'Vocals and instrumental · native ONNX · FP32' },
-    scnetLarge: { name: 'SCNet-large · 4 stems', description: 'Detailed stem separation · ONNX · INT8 stored weights' },
-    htdemucs: { name: 'HTDemucs · 4 stems', description: 'Demucs separation · ONNX FP32 · pretrained weights for scientific use only' },
-    scnetXlIhf: { name: 'SCNet XL IHF · 4 stems', description: 'Detailed stem separation · ONNX FP32' },
-    apollo: { name: 'Apollo · restoration', description: 'Restores music after lossy compression. Saves a separate WAV copy.' },
+    clap: { name: `${modelCatalog.clap.name} audio encoder`, description: 'Categorizes samples by sound and finds similar samples.' },
+    spleeter: { name: `${modelCatalog.spleeter.name} · 4 stems`, description: 'Vocals, drums, bass and other · ONNX FP16' },
+    melRoformer: { name: `${modelCatalog.melRoformer.name} · 2 stems`, description: 'Vocals and instrumental · ONNX · FP16 stored weights' },
+    bsRoformer: { name: `${modelCatalog.bsRoformer.name} · 2 stems`, description: 'Vocals and instrumental · ONNX FP32 · original weights license unconfirmed' },
+    mdx23c: { name: `${modelCatalog.mdx23c.name} · 2 stems`, description: 'Vocals and instrumental · native ONNX · FP32' },
+    scnetLarge: { name: `${modelCatalog.scnetLarge.name} · 4 stems`, description: 'Detailed stem separation · ONNX · INT8 stored weights' },
+    htdemucs: { name: `${modelCatalog.htdemucs.name} · 4 stems`, description: 'Demucs separation · ONNX FP32 · pretrained weights for scientific use only' },
+    scnetXlIhf: { name: `${modelCatalog.scnetXlIhf.name} · 4 stems`, description: 'Detailed stem separation · ONNX FP32' },
+    apollo: { name: `${modelCatalog.apollo.name} · restoration`, description: 'Restores music after lossy compression. Saves a separate WAV copy.' },
   },
   shortcuts: {
     keys: {

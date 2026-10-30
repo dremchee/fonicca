@@ -41,26 +41,6 @@ pub enum Model {
     BsRoformer,
     Mdx23c,
 }
-impl Model {
-    pub const ALL: [Self; 7] = [
-        Self::Spleeter,
-        Self::ScnetLarge,
-        Self::ScnetXlIhf,
-        Self::Htdemucs,
-        Self::MelRoformer, Self::BsRoformer, Self::Mdx23c,
-    ];
-    pub fn id(self) -> &'static str {
-        match self {
-            Self::Spleeter => "spleeter",
-            Self::ScnetLarge => "scnetLarge",
-            Self::ScnetXlIhf => "scnetXlIhf",
-            Self::Htdemucs => "htdemucs",
-            Self::MelRoformer => "melRoformer",
-            Self::BsRoformer => "bsRoformer",
-            Self::Mdx23c => "mdx23c",
-        }
-    }
-}
 #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Mode { Two, #[default] Four }
@@ -69,8 +49,8 @@ impl Mode {
         match self { Self::Two => &["vocals", "instrumental"], Self::Four => &dsp::NAMES }
     }
     fn validate(self, model: Model) -> Result<()> {
-        let vocal_only = matches!(model, Model::MelRoformer | Model::BsRoformer | Model::Mdx23c);
-        if (self == Self::Two) != vocal_only {
+        let expected = match self { Self::Two => 2, Self::Four => 4 };
+        if models::tracks(model) != expected {
             return Err(failure("this model does not support the selected track mode"));
         }
         Ok(())
@@ -584,6 +564,9 @@ mod tests {
     }
     #[test]
     fn vocal_only_models_reject_four_track_requests() {
+        for model in Model::ALL {
+            assert_eq!(serde_json::to_string(&model).unwrap(), format!("\"{}\"", model.id()));
+        }
         for model in [Model::MelRoformer,Model::BsRoformer,Model::Mdx23c] {
             assert!(Mode::Four.validate(model).is_err());
             assert!(Mode::Two.validate(model).is_ok());

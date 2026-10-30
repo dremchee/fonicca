@@ -31,10 +31,8 @@ const FRAMES: usize = CLIP / HOP + 1;
 pub const EMBEDDING_VERSION: i64 = 1;
 
 /// Pinned download of the model, verified by size and SHA-256.
-pub const MODEL_FILE: &str = "clap-htsat-unfused-audio-int8.onnx";
-pub const MODEL_URL: &str = "https://huggingface.co/Xenova/clap-htsat-unfused/resolve/c28f2883575e590e04d3146ff0713c2448d691ba/onnx/audio_model_quantized.onnx";
-pub const MODEL_SHA256: &str = "3fcff2c8824e7bcb83a983f2a49edab3b60cbcf4872ac70efee517355173bd1f";
-pub const MODEL_SIZE: u64 = 34_301_667;
+pub use crate::stems::models::{CLAP_FILE as MODEL_FILE, CLAP_URL as MODEL_URL,
+    CLAP_SHA256 as MODEL_SHA256, CLAP_TOTAL as MODEL_SIZE};
 
 // --- Features ------------------------------------------------------------------
 

@@ -4,6 +4,7 @@ import { listen } from '@tauri-apps/api/event'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref } from 'vue'
 import { useBackgroundJob, type ModelJobStatus } from '@/composables/backgroundJob'
+import { modelCatalog } from '@/model-catalog.generated'
 export interface ApolloProgress {
   sourceId: number | null
   running: boolean
@@ -19,7 +20,7 @@ const initial = (): ApolloProgress => ({ sourceId: null, running: false, stage: 
 export const useApolloStore = defineStore('apollo', () => {
   const open = ref(false)
   const sample = ref<Sample | null>(null)
-  const job = useBackgroundJob({ initial: initial(), bytes: 66541845,
+  const job = useBackgroundJob({ initial: initial(), bytes: modelCatalog.apollo.bytes,
     read: () => invoke<ModelJobStatus<ApolloProgress>>('apollo_status'), subscribe: reload => listen('apollo:changed', reload),
   })
   const { progress, ready, bytes, error, starting, cancelling, init, load } = job

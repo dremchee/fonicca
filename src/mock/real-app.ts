@@ -1,3 +1,4 @@
+import { modelCatalog } from '@/model-catalog.generated'
 // The real App on a fake backend (mockIPC), to click through the UI in a browser.
 import { stemModels } from '@/stem-models'
 import { largeLibraryCommand } from './library-large'
@@ -34,7 +35,7 @@ let playFrom = 0
 let playLoaded = false
 let preferred: string[] = []
 let clapInstalled = location.hash === '#models' || location.hash === '#model-downloads' || location.hash === '#stem-processing'
-let clapBytes = clapInstalled ? 34301667 : 0
+let clapBytes = clapInstalled ? modelCatalog.clap.bytes : 0
 let clapDownloading = false
 let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], language: 'en', watchFolders: true, autoplay: true, rowPlaybackMode: 'cursor', volume: 1, analysisThreads: null, stemsFolder: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme', editorWaveform: { waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' } }
 
@@ -74,16 +75,16 @@ export function install() {
       case 'count_samples': return 0
       case 'list_samples': case 'sample_ids': case 'list_tags': case 'list_collections': return []
       case 'analysis_status': return { pending: 0, pendingEmbeddings: 0, modelReady: false, paused: false, updated: [] }
-      case 'sound_model_status': return { installed: clapInstalled, ready: clapInstalled, downloading: clapDownloading, size: 34301667 }
+      case 'sound_model_status': return { installed: clapInstalled, ready: clapInstalled, downloading: clapDownloading, size: modelCatalog.clap.bytes }
       case 'model_storage': return [
-        { id: 'clap', path: '/m/clap.onnx', installed: clapInstalled, downloading: clapDownloading, busy: clapDownloading, size: clapBytes, downloadSize: 34301667 },
+        { id: 'clap', path: '/m/clap.onnx', installed: clapInstalled, downloading: clapDownloading, busy: clapDownloading, size: clapBytes, downloadSize: modelCatalog.clap.bytes },
         stemModelStorage('spleeter'),
         stemModelStorage('scnetLarge'),
         stemModelStorage('scnetXlIhf'),
         stemModelStorage('htdemucs'),
         stemModelStorage('melRoformer'), stemModelStorage('bsRoformer'), stemModelStorage('mdx23c'),
         basicPitchStorage(),
-        { id: 'apollo', path: '/m/apollo-v1', installed: apolloInstalled, downloading: apolloProgress != null, busy: apolloProgress != null || apolloBusy(), size: apolloInstalled ? 66541845 : Math.round((apolloProgress ?? 0) * 66541845), downloadSize: 66541845 },
+        { id: 'apollo', path: '/m/apollo-v1', installed: apolloInstalled, downloading: apolloProgress != null, busy: apolloProgress != null || apolloBusy(), size: apolloInstalled ? modelCatalog.apollo.bytes : Math.round((apolloProgress ?? 0) * modelCatalog.apollo.bytes), downloadSize: modelCatalog.apollo.bytes },
       ]
       case 'delete_model':
         if (args.id === 'basicPitch') { deleteBasicPitchModel(); return null }
@@ -106,10 +107,10 @@ export function install() {
         if (clapDownloading) return null
         clapDownloading = true
         const tick = () => {
-          clapBytes = Math.min(34301667, clapBytes + 7000000)
-          clapInstalled = clapBytes === 34301667
+          clapBytes = Math.min(modelCatalog.clap.bytes, clapBytes + 7000000)
+          clapInstalled = clapBytes === modelCatalog.clap.bytes
           clapDownloading = !clapInstalled
-          void emit('model-download', { received: clapBytes, total: 34301667, done: clapInstalled, error: null })
+          void emit('model-download', { received: clapBytes, total: modelCatalog.clap.bytes, done: clapInstalled, error: null })
           if (clapDownloading) setTimeout(tick, 400)
         }
         setTimeout(tick, 400)
@@ -117,7 +118,7 @@ export function install() {
       }
       case 'get_settings': return settings
       case 'update_settings': settings = args.settings; return settings
-      case 'app_info': return { version: '0.1.0', cores: 10, defaultThreads: 5, dbPath: '/db', dbSize: 1, modelsDir: '/m', modelsSize: clapBytes + stemModels.reduce((sum, id) => sum + stemModelStorage(id).size, 0) + basicPitchStorage().size + 66541845, settingsPath: '/s' }
+      case 'app_info': return { version: '0.1.0', cores: 10, defaultThreads: 5, dbPath: '/db', dbSize: 1, modelsDir: '/m', modelsSize: clapBytes + stemModels.reduce((sum, id) => sum + stemModelStorage(id).size, 0) + basicPitchStorage().size + modelCatalog.apollo.bytes, settingsPath: '/s' }
       case 'duplicate_count': return groups.length
       case 'duplicate_groups': return structuredClone(groups)
       case 'verify_duplicates':

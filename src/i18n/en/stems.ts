@@ -1,3 +1,4 @@
+import { modelCatalog } from '../../model-catalog.generated'
 export default {
   badge: "{n}",
   expand: "Show stems for {name}",
@@ -12,7 +13,7 @@ export default {
   mode: 'Tracks', twoTracks: '2 tracks', fourTracks: '4 tracks',
   twoDescription: 'Vocals and instrumental', fourDescription: 'Vocals, drums, bass and other instruments',
   model: 'Separation model',
-  models: { melRoformer: 'Mel-Band RoFormer Kim', bsRoformer: 'BS-RoFormer viperx', mdx23c: 'MDX23C', htdemucs: 'HTDemucs · 4 stems', scnetXlIhf: 'SCNet XL IHF · Quality', scnetLarge: 'SCNet-large · Balanced', spleeter: 'Spleeter · Fast' },
+  models: { melRoformer: `${modelCatalog.melRoformer.name}`, bsRoformer: `${modelCatalog.bsRoformer.name}`, mdx23c: `${modelCatalog.mdx23c.name}`, htdemucs: `${modelCatalog.htdemucs.name} · 4 stems`, scnetXlIhf: `${modelCatalog.scnetXlIhf.name} · Quality`, scnetLarge: `${modelCatalog.scnetLarge.name} · Balanced`, spleeter: `${modelCatalog.spleeter.name} · Fast` },
   modelDescriptions: { melRoformer: 'Specialized model for vocals and instrumental.', bsRoformer: 'Specialized vocal and instrumental model. Full-precision weights.', mdx23c: 'Vocals and instrumental. Processed on this computer.', htdemucs: 'Vocals, drums, bass and other instruments. Pretrained weights for scientific use only.', scnetXlIhf: 'Detailed separation. Higher resource use.', scnetLarge: 'For more detailed separation. Uses more memory and takes longer, especially on long tracks.', spleeter: 'Fast separation with lower resource use.' },
   folder: 'Output folder', choose: 'Choose…', noFolder: 'Choose a folder for the resulting WAV files.',
   download: 'First run downloads the selected model ({size}). Audio stays on this computer.',

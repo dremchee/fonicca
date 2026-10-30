@@ -1,3 +1,4 @@
+import type { ModelId } from './model-catalog.generated'
 import type { RowPlaybackMode } from '@/row-playback'
 import type { Locale } from '@/i18n'
 import type { CustomTheme } from '@/themes'
@@ -84,11 +85,11 @@ export interface SoundModelStatus {
 }
 
 export type StemMode = 'two' | 'four'
-export type StemModel = 'spleeter' | 'scnetLarge' | 'scnetXlIhf' | 'htdemucs' | 'melRoformer' | 'bsRoformer' | 'mdx23c'
+export type { StemModel } from './model-catalog.generated'
 
 export interface ModelStorage {
   busy: boolean
-  id: 'clap' | 'apollo' | 'basicPitch' | StemModel
+  id: ModelId
   path: string
   installed: boolean
   downloading: boolean

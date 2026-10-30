@@ -6,10 +6,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
+    "build": "node scripts/model-catalog.mjs --check && vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "tauri": "tauri",
+    "models:generate": "node scripts/model-catalog.mjs",
+    "models:check": "node scripts/model-catalog.mjs --check",
     "release:patch": "node scripts/release.mjs patch --push",
     "release:check": "node scripts/verify-release.mjs"
   },
