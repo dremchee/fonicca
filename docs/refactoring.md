@@ -16,7 +16,7 @@ unit test alone does not establish an improvement in interactive performance.
   test stale requests and inspect slow SQL query plans on a large fixture.
 - [x] Jobs/models: one authoritative model catalog; share polling/cancellation
   mechanics while keeping model-specific DSP implementations separate.
-- [ ] Release: verify downloadable graphs before distributing installers; measure
+- [x] Release: verify downloadable graphs before distributing installers; measure
   build/bundle costs and update outdated dependency/architecture documentation.
 
 ## Editor boundaries
@@ -530,6 +530,68 @@ Release graph follow-up:
   `pnpm release:check` reports 0.1.3. Updated model distribution instructions and
   corrected obsolete release commands in `docs/builds.md`. No version/tag/push.
 
-Still pending: foreground WebView/editor memory measurements, build/bundle costs
-and current dependency/architecture documentation.
+Bundle/loading follow-up:
+
+- `main.ts` chooses a dynamic root before mounting. Editor windows no longer
+  load the library shell. The main window defers EditorView, DuplicatesView and
+  DebugMonitor until requested. Window visibility still changes after mounting.
+- A small `SettingsHost` loads SettingsDialog on first open and retains it while
+  hidden. Its first mount may happen with `dialogOpen` already true, so metadata
+  loading now observes that initial state. Reopening keeps the same component
+  and refreshes metadata as before. The separate editor keeps its waveform target.
+- `scripts/profile-bundle.mjs <report.json>` runs the normal Vite config without
+  writing `dist`. It records artifact bytes, hashes, module attribution and each
+  window's startup dependency closure, including the dynamically chosen root.
+  It does not treat the small bootstrap alone as total startup work.
+- [Artifact comparison and production mock checks](research/bundle-loading-comparison.json):
+  uncompressed startup JavaScript 1,102,131 → 920,622 bytes for the library
+  (16.5% less) and → 725,406 for the editor window (34.2% less). Total JavaScript
+  grew to 1,121,507 bytes (1.8%) from chunk boundaries/import wrappers; per-file
+  gzip totals also grew. This is a loading-scope improvement, not a proven launch
+  time, memory or native speed improvement. No warning threshold was raised;
+  the production build no longer contains a >500 kB JavaScript chunk.
+- The browser test caught an intermediate implementation in which Vite hoisted
+  library preloads out of a conditional import. Awaiting inside each branch
+  corrected the actual network requests. The final private production fixture
+  passed 12 opening/state/metadata/network checks with no page/console errors.
+- `tests/browser/startup-loading.mjs` accepts a Playwright Page and a local
+  `/mock.html` URL. Its fixture must build the real `index.html`/`main.ts`, prepend
+  only browser `mockWindows` and `src/mock/real-app.install()` before mounting,
+  and use a private output directory. The regular mock entry imports both roots
+  eagerly and cannot establish this startup-network regression. The test resets
+  only its browser's monitor preference and simulates no real audio/file writes.
+- [Local native release build](research/local-release-build.json): current 0.1.3
+  ARM64 `.app`, 34,556,929 logical file bytes (32.96 MiB), 285.6 seconds overall.
+  Cargo reported 273.7 seconds, 619 fresh / 67 dirty units; the two project units
+  took 116.7/108.9 seconds. Caches existed, so this is not a cold-build benchmark
+  or a before/after compiler comparison. No release profile was changed.
+  The app's ad-hoc signature was verified. No standalone model graph/weight
+  files are bundled; Apollo's graph remains embedded in the executable.
+  The app was not launched, installed, published or updater-signed. Linux and
+  Windows packaging remain hosted-CI checks, not local claims.
+
+Current architecture/dependency follow-up:
+
+- Added `docs/architecture.md` for window loading, module/state ownership,
+  pagination, immutable audio, workers/revision guards, saving and diagnostics.
+- Replaced the mixed historical dependency recommendations with actual locked
+  versions and package license metadata. The former overview is archived under
+  `docs/research/dependency-options-before-2026-10-30.md`; it is not current advice.
+  Updated the product plan's stack and README links to those current documents.
+- The docs explicitly distinguish current native playback, cosine search and
+  XXH3 duplicate checks from previously considered alternatives, and distinguish
+  the two downloadable graphs from embedded Apollo. Model weight terms remain
+  separate from package metadata and existing notices.
+
+- Final follow-up verification: 132 frontend tests, 215 Rust tests (42 opt-in
+  cases ignored), type check, production frontend and local ARM64 app build pass.
+  `release:check` confirms 0.1.3. Checked 55 relative documentation links and
+  39 dependency table rows against locked/installed metadata. Research report
+  source hashes match the code that produced them. Native signature verification
+  and the 12 production browser checks passed separately as recorded above.
+
+Still pending: foreground WebView/editor memory measurements. macOS still reports
+`IOConsoleLocked=Yes` on this follow-up, so the earlier hidden-WebView observation
+cannot complete that requirement. Repeat after unlocking the desktop; do not
+infer total UI memory from native RSS, browser mocks or the bundle byte reduction.
 Completion items remain open until their full evidence exists.

@@ -114,6 +114,8 @@ Pushes and pull requests to `main` run tests and compilation checks. Matching ve
 - [Builds, signing, automatic updates and release instructions](docs/builds.md)
 - [Development plan and backlog](docs/plan.md)
 - [Dependency and model license notes](docs/dependencies.md)
+- [Current architecture and module boundaries](docs/architecture.md)
+- [Refactoring plan and performance measurements](docs/refactoring.md)
 - [Third-party notices](docs/licenses/)
 
 ## Feedback

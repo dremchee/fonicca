@@ -21,17 +21,19 @@
 | Данные | SQLite (rusqlite на стороне Rust), FTS5 для поиска | Один файл, быстро, полнотекстовый поиск из коробки |
 | Декодирование | symphonia | WAV/AIFF/FLAC/MP3/OGG на чистом Rust |
 | Запись / ресемплинг | hound, rubato | WAV-запись, качественный SRC |
-| Воспроизведение | cpal (Rust) или Web Audio в webview | Низкая задержка превью |
+| Воспроизведение | rodio / cpal (Rust) | Нативный вывод превью и редактора |
 | Time-stretch для превью | signalsmith-stretch (MIT) | Rubber Band — GPL/коммерческая лицензия |
-| Анализ (BPM, тональность) | stratum-dsp (+ beat-this для бит-трекинга) | MIT/Apache; aubio (GPL) и Essentia (AGPL) не подходят |
+| Анализ (BPM, тональность) | stratum-dsp | Работает локально; дополнительные анализаторы остаются вариантами развития |
 | Эмбеддинги | Аудио-энкодер CLAP (laion/clap-htsat-unfused, int8 ONNX, 34 МБ, Apache-2.0) через ONNX Runtime (`ort`) | Категории и поиск похожих одной моделью; векторы категорий посчитаны заранее, текстовый энкодер в приложении не нужен |
-| Векторный поиск | sqlite-vec, при нехватке скорости — usearch | Без отдельного сервера |
-| Отпечатки (дубликаты) | rusty-chromaprint (MIT) | Чистый Rust, без LGPL-части оригинала |
-| Стем-сепарация | ONNX Runtime + SCNet XL IHF / SCNet-large / Spleeter | См. риски по весам моделей |
-| Waveform и редактор | wavesurfer.js (BSD-3) на старте → свой canvas/WebGL-рендер с пиками из Rust | peaks.js — LGPL |
+| Векторный поиск | Косинусное сравнение в RAM; эмбеддинги в SQLite | Текущая реализация без sqlite-vec / usearch |
+| Отпечатки (дубликаты) | XXH3 | Быстрый fingerprint и полная проверка содержимого кандидатов |
+| Стем-сепарация | ONNX Runtime; семь моделей из model-packs/catalog.json | Условия графов и весов учитываются отдельно |
+| Waveform и редактор | gl-waveform + собственный canvas/CSS, пики из Rust | Диапазонные запросы и кэш пиков |
 | Drag в DAW | tauri-plugin-drag | Перетаскивание файлов из приложения наружу |
 
-Полный список с лицензиями — [dependencies.md](dependencies.md).
+Основные текущие зависимости — [dependencies.md](dependencies.md), границы
+реализации — [architecture.md](architecture.md). Ниже остаются этапы продукта
+и будущие задачи, а не перечень уже реализованных возможностей.
 
 ## Этапы
 
