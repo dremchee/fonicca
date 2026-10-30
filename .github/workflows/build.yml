@@ -44,7 +44,6 @@ jobs:
   checks:
     name: Tests and compilation
     needs: version
-    if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
@@ -82,7 +81,7 @@ jobs:
 
   build:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: version
+    needs: [version, checks]
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 90
@@ -218,7 +217,7 @@ jobs:
 
   release:
     name: Draft release
-    needs: [version, build]
+    needs: [version, checks, build]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-22.04
     timeout-minutes: 10
