@@ -1,0 +1,881 @@
+{
+  "schema": 1,
+  "observedAt": "2026-10-30T05:13:20.454007+00:00",
+  "sourceBase": "94f470f5e140534881ea599e84397334c9ddabd3",
+  "environment": {
+    "os": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "cpu": "Apple M1 Pro",
+    "profile": "Cargo dev-test, crate opt-level 1, dependencies opt-level 3"
+  },
+  "sourceSha256": {
+    "src-tauri/src/editor.rs": "94db6aa38a06ad8f64fe672c5a87e0bea5db03a16652db2f30d92b5184657d85",
+    "src-tauri/src/editor/saving.rs": "93fef356051e0f6f4acb974c6eccf166190cf70914c0ede183f23069b0bdfc7b",
+    "src-tauri/src/editor_commands.rs": "88eda9f0758ddab44eb5a5bd57860c305caec33305fe392b43747b58aca58e7c",
+    "src-tauri/src/editor/benchmarks.rs": "661f6a9f77c619a0d9932bd8ff40b9fe25e7c33d9e3aa5a321385520c65619a7"
+  },
+  "method": {
+    "order": [
+      "reference",
+      "candidate",
+      "reference",
+      "candidate",
+      "reference",
+      "candidate"
+    ],
+    "durationsSeconds": [
+      30,
+      180,
+      1200
+    ],
+    "repetitionsPerCase": 3,
+    "reference": "The same synchronous file policy runs while holding the session mutex. Both modes use the new write helper, so this isolates lock scope rather than comparing historical binaries.",
+    "candidate": "Capture immutable audio, metadata, operations and a session-specific save lease; write/backup/rename outside the editor mutex; commit the captured saved anchor to the still-matching session.",
+    "workload": "Private synthetic stereo 44.1 kHz float WAV, short gain before each save. First save to an edited version, then update that version with a recoverable backup. Includes real file writes, policy validation, state DTO, filesystem name choice and rename.",
+    "limits": [
+      "No DB indexing, event delivery, UI, IPC or worker queue delay. No audio device or user library.",
+      "Uncontended session and file writer mutexes; does not quantify waiting under real concurrency. Functional concurrency tests cover accessible editor, overlapping saves, competing windows and replaced sessions.",
+      "Three local alternating observations, warm filesystem, no cross-platform or p95 guarantee. No fsync/power-failure durability claim.",
+      "Phase RSS includes mapped pages and allocator retention, is not peak memory, and excludes WebView.",
+      "Disk write time was not reduced consistently. The large first-save median is higher in this candidate observation; the implementation goal here is keeping file I/O out of the editor critical section."
+    ]
+  },
+  "implementations": {
+    "reference": {
+      "description": "synchronous policy under session mutex",
+      "note": "Private synthetic stereo float WAV. Reference holds the session mutex around the same file policy; it isolates critical-section scope rather than comparing historical binaries. Candidate includes snapshot capture, real writes, backup, rename, saved-anchor commit and state DTO. Both include the independent uncontended writer mutex. No DB indexing, UI/IPC/worker queue delay or file fsync durability guarantee. Warm filesystem; RSS includes mmap/allocator and phase samples are not peak memory.",
+      "observations": [
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 10584068,
+          "repetition": 1,
+          "rssBytes": {
+            "afterSave": 26492928,
+            "beforeSave": 26165248
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 31.824916,
+              "waitMs": 8.3e-05
+            }
+          ],
+          "totalCoreMs": 31.931
+        },
+        {
+          "backupBytes": 10584068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 10584068,
+          "repetition": 1,
+          "rssBytes": {
+            "afterSave": 26607616,
+            "beforeSave": 26574848
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 32.637625,
+              "waitMs": 4.2e-05
+            }
+          ],
+          "totalCoreMs": 32.640542
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 63504068,
+          "repetition": 1,
+          "rssBytes": {
+            "afterSave": 123731968,
+            "beforeSave": 60588032
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 174.31845800000002,
+              "waitMs": 8.4e-05
+            }
+          ],
+          "totalCoreMs": 174.321458
+        },
+        {
+          "backupBytes": 63504068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 63504068,
+          "repetition": 1,
+          "rssBytes": {
+            "afterSave": 123797504,
+            "beforeSave": 123781120
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 133.511667,
+              "waitMs": 8.4e-05
+            }
+          ],
+          "totalCoreMs": 133.52241700000002
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 423360068,
+          "repetition": 1,
+          "rssBytes": {
+            "afterSave": 495812608,
+            "beforeSave": 94240768
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 1209.5252919999998,
+              "waitMs": 8.3e-05
+            }
+          ],
+          "totalCoreMs": 1209.528333
+        },
+        {
+          "backupBytes": 423360068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 423360068,
+          "repetition": 1,
+          "rssBytes": {
+            "afterSave": 516898816,
+            "beforeSave": 495812608
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 1051.329875,
+              "waitMs": 8.3e-05
+            }
+          ],
+          "totalCoreMs": 1051.3360830000001
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 10584068,
+          "repetition": 2,
+          "rssBytes": {
+            "afterSave": 26509312,
+            "beforeSave": 26181632
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 22.862709,
+              "waitMs": 4.1e-05
+            }
+          ],
+          "totalCoreMs": 22.876041999999998
+        },
+        {
+          "backupBytes": 10584068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 10584068,
+          "repetition": 2,
+          "rssBytes": {
+            "afterSave": 26591232,
+            "beforeSave": 26574848
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 22.561083,
+              "waitMs": 8.3e-05
+            }
+          ],
+          "totalCoreMs": 22.563416
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 63504068,
+          "repetition": 2,
+          "rssBytes": {
+            "afterSave": 123731968,
+            "beforeSave": 60588032
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 132.515875,
+              "waitMs": 0.000125
+            }
+          ],
+          "totalCoreMs": 132.519
+        },
+        {
+          "backupBytes": 63504068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 63504068,
+          "repetition": 2,
+          "rssBytes": {
+            "afterSave": 123731968,
+            "beforeSave": 123731968
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 128.664375,
+              "waitMs": 0.000125
+            }
+          ],
+          "totalCoreMs": 128.667167
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 423360068,
+          "repetition": 2,
+          "rssBytes": {
+            "afterSave": 517177344,
+            "beforeSave": 94158848
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 1118.8879169999998,
+              "waitMs": 8.3e-05
+            }
+          ],
+          "totalCoreMs": 1118.890583
+        },
+        {
+          "backupBytes": 423360068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 423360068,
+          "repetition": 2,
+          "rssBytes": {
+            "afterSave": 517193728,
+            "beforeSave": 517177344
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 928.1235,
+              "waitMs": 8.3e-05
+            }
+          ],
+          "totalCoreMs": 928.126042
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 10584068,
+          "repetition": 3,
+          "rssBytes": {
+            "afterSave": 26066944,
+            "beforeSave": 25722880
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 22.554416,
+              "waitMs": 8.3e-05
+            }
+          ],
+          "totalCoreMs": 22.567166999999998
+        },
+        {
+          "backupBytes": 10584068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 10584068,
+          "repetition": 3,
+          "rssBytes": {
+            "afterSave": 26165248,
+            "beforeSave": 26132480
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 22.845417,
+              "waitMs": 4.1e-05
+            }
+          ],
+          "totalCoreMs": 22.847666999999998
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 63504068,
+          "repetition": 3,
+          "rssBytes": {
+            "afterSave": 123305984,
+            "beforeSave": 60145664
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 132.088708,
+              "waitMs": 8.4e-05
+            }
+          ],
+          "totalCoreMs": 132.102125
+        },
+        {
+          "backupBytes": 63504068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 63504068,
+          "repetition": 3,
+          "rssBytes": {
+            "afterSave": 123322368,
+            "beforeSave": 123322368
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 128.45725,
+              "waitMs": 4.1e-05
+            }
+          ],
+          "totalCoreMs": 128.45975
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 423360068,
+          "repetition": 3,
+          "rssBytes": {
+            "afterSave": 514785280,
+            "beforeSave": 93749248
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 1151.3196249999999,
+              "waitMs": 8.3e-05
+            }
+          ],
+          "totalCoreMs": 1151.32225
+        },
+        {
+          "backupBytes": 423360068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 423360068,
+          "repetition": 3,
+          "rssBytes": {
+            "afterSave": 516423680,
+            "beforeSave": 514785280
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 918.348417,
+              "waitMs": 8.4e-05
+            }
+          ],
+          "totalCoreMs": 918.352125
+        }
+      ]
+    },
+    "candidate": {
+      "description": "snapshot; independent file writer; guarded saved anchor",
+      "note": "Private synthetic stereo float WAV. Reference holds the session mutex around the same file policy; it isolates critical-section scope rather than comparing historical binaries. Candidate includes snapshot capture, real writes, backup, rename, saved-anchor commit and state DTO. Both include the independent uncontended writer mutex. No DB indexing, UI/IPC/worker queue delay or file fsync durability guarantee. Warm filesystem; RSS includes mmap/allocator and phase samples are not peak memory.",
+      "observations": [
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 10584068,
+          "repetition": 1,
+          "rssBytes": {
+            "afterSave": 26361856,
+            "beforeSave": 26017792
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 0.003458,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 0.005083000000000001,
+              "waitMs": 0.000375
+            }
+          ],
+          "totalCoreMs": 28.497667
+        },
+        {
+          "backupBytes": 10584068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 10584068,
+          "repetition": 1,
+          "rssBytes": {
+            "afterSave": 26656768,
+            "beforeSave": 26624000
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 0.0007080000000000001,
+              "waitMs": 4.2e-05
+            },
+            {
+              "heldMs": 0.0025,
+              "waitMs": 0.000458
+            }
+          ],
+          "totalCoreMs": 23.397458999999998
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 63504068,
+          "repetition": 1,
+          "rssBytes": {
+            "afterSave": 124551168,
+            "beforeSave": 61407232
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 0.000875,
+              "waitMs": 0.00020800000000000001
+            },
+            {
+              "heldMs": 0.0049169999999999995,
+              "waitMs": 0.00025
+            }
+          ],
+          "totalCoreMs": 143.351917
+        },
+        {
+          "backupBytes": 63504068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 63504068,
+          "repetition": 1,
+          "rssBytes": {
+            "afterSave": 124567552,
+            "beforeSave": 124567552
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 0.000625,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 0.0024590000000000002,
+              "waitMs": 0.000375
+            }
+          ],
+          "totalCoreMs": 136.197625
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 423360068,
+          "repetition": 1,
+          "rssBytes": {
+            "afterSave": 516800512,
+            "beforeSave": 95092736
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 0.001,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 0.017291,
+              "waitMs": 0.005791999999999999
+            }
+          ],
+          "totalCoreMs": 1395.384583
+        },
+        {
+          "backupBytes": 423360068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 423360068,
+          "repetition": 1,
+          "rssBytes": {
+            "afterSave": 517767168,
+            "beforeSave": 516800512
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 0.001,
+              "waitMs": 4.2e-05
+            },
+            {
+              "heldMs": 0.002833,
+              "waitMs": 0.000209
+            }
+          ],
+          "totalCoreMs": 940.578166
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 10584068,
+          "repetition": 2,
+          "rssBytes": {
+            "afterSave": 26001408,
+            "beforeSave": 25640960
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 0.003666,
+              "waitMs": 4.1e-05
+            },
+            {
+              "heldMs": 0.009833,
+              "waitMs": 0.004125
+            }
+          ],
+          "totalCoreMs": 22.38175
+        },
+        {
+          "backupBytes": 10584068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 10584068,
+          "repetition": 2,
+          "rssBytes": {
+            "afterSave": 26083328,
+            "beforeSave": 26066944
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 0.000833,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 0.002792,
+              "waitMs": 0.000167
+            }
+          ],
+          "totalCoreMs": 22.646959000000003
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 63504068,
+          "repetition": 2,
+          "rssBytes": {
+            "afterSave": 123256832,
+            "beforeSave": 60080128
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 0.0011250000000000001,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 0.004875,
+              "waitMs": 0.000541
+            }
+          ],
+          "totalCoreMs": 132.775584
+        },
+        {
+          "backupBytes": 63504068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 63504068,
+          "repetition": 2,
+          "rssBytes": {
+            "afterSave": 123764736,
+            "beforeSave": 123764736
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 0.000791,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 0.002833,
+              "waitMs": 0.00025
+            }
+          ],
+          "totalCoreMs": 130.295917
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 423360068,
+          "repetition": 2,
+          "rssBytes": {
+            "afterSave": 511770624,
+            "beforeSave": 94191616
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 0.001167,
+              "waitMs": 4.1e-05
+            },
+            {
+              "heldMs": 0.004625,
+              "waitMs": 0.000375
+            }
+          ],
+          "totalCoreMs": 1087.208083
+        },
+        {
+          "backupBytes": 423360068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 423360068,
+          "repetition": 2,
+          "rssBytes": {
+            "afterSave": 516882432,
+            "beforeSave": 511787008
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 0.0007080000000000001,
+              "waitMs": 8.4e-05
+            },
+            {
+              "heldMs": 0.002334,
+              "waitMs": 0.00033299999999999996
+            }
+          ],
+          "totalCoreMs": 939.009333
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 10584068,
+          "repetition": 3,
+          "rssBytes": {
+            "afterSave": 26001408,
+            "beforeSave": 25657344
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 0.003958,
+              "waitMs": 8.4e-05
+            },
+            {
+              "heldMs": 0.005959,
+              "waitMs": 0.00033299999999999996
+            }
+          ],
+          "totalCoreMs": 22.32525
+        },
+        {
+          "backupBytes": 10584068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 10584068,
+          "repetition": 3,
+          "rssBytes": {
+            "afterSave": 26099712,
+            "beforeSave": 26066944
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 0.000792,
+              "waitMs": 8.4e-05
+            },
+            {
+              "heldMs": 0.003084,
+              "waitMs": 0.0005
+            }
+          ],
+          "totalCoreMs": 22.627291
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 63504068,
+          "repetition": 3,
+          "rssBytes": {
+            "afterSave": 123207680,
+            "beforeSave": 60063744
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 0.0011250000000000001,
+              "waitMs": 4.1e-05
+            },
+            {
+              "heldMs": 0.005625000000000001,
+              "waitMs": 0.000167
+            }
+          ],
+          "totalCoreMs": 134.111333
+        },
+        {
+          "backupBytes": 63504068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 63504068,
+          "repetition": 3,
+          "rssBytes": {
+            "afterSave": 123207680,
+            "beforeSave": 123207680
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 0.00075,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 0.003083,
+              "waitMs": 0.000375
+            }
+          ],
+          "totalCoreMs": 127.92445799999999
+        },
+        {
+          "backupBytes": null,
+          "case": "first_save",
+          "fileBytes": 423360068,
+          "repetition": 3,
+          "rssBytes": {
+            "afterSave": 485621760,
+            "beforeSave": 93650944
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 0.0011250000000000001,
+              "waitMs": 8.4e-05
+            },
+            {
+              "heldMs": 0.019167,
+              "waitMs": 0.002833
+            }
+          ],
+          "totalCoreMs": 1325.8682079999999
+        },
+        {
+          "backupBytes": 423360068,
+          "case": "save_existing_with_backup",
+          "fileBytes": 423360068,
+          "repetition": 3,
+          "rssBytes": {
+            "afterSave": 516358144,
+            "beforeSave": 485638144
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 0.000625,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 0.003208,
+              "waitMs": 0.00029099999999999997
+            }
+          ],
+          "totalCoreMs": 965.685542
+        }
+      ]
+    }
+  },
+  "summary": [
+    {
+      "seconds": 30,
+      "case": "first_save",
+      "reference": {
+        "medianSessionHoldMs": 22.862709,
+        "medianTotalCoreMs": 22.876041999999998,
+        "fileBytes": 10584068,
+        "backupBytes": null
+      },
+      "candidate": {
+        "medianSessionHoldMs": 0.009916999999999999,
+        "medianTotalCoreMs": 22.38175,
+        "fileBytes": 10584068,
+        "backupBytes": null
+      }
+    },
+    {
+      "seconds": 30,
+      "case": "save_existing_with_backup",
+      "reference": {
+        "medianSessionHoldMs": 22.845417,
+        "medianTotalCoreMs": 22.847666999999998,
+        "fileBytes": 10584068,
+        "backupBytes": 10584068
+      },
+      "candidate": {
+        "medianSessionHoldMs": 0.003625,
+        "medianTotalCoreMs": 22.646959000000003,
+        "fileBytes": 10584068,
+        "backupBytes": 10584068
+      }
+    },
+    {
+      "seconds": 180,
+      "case": "first_save",
+      "reference": {
+        "medianSessionHoldMs": 132.515875,
+        "medianTotalCoreMs": 132.519,
+        "fileBytes": 63504068,
+        "backupBytes": null
+      },
+      "candidate": {
+        "medianSessionHoldMs": 0.006,
+        "medianTotalCoreMs": 134.111333,
+        "fileBytes": 63504068,
+        "backupBytes": null
+      }
+    },
+    {
+      "seconds": 180,
+      "case": "save_existing_with_backup",
+      "reference": {
+        "medianSessionHoldMs": 128.664375,
+        "medianTotalCoreMs": 128.667167,
+        "fileBytes": 63504068,
+        "backupBytes": 63504068
+      },
+      "candidate": {
+        "medianSessionHoldMs": 0.003624,
+        "medianTotalCoreMs": 130.295917,
+        "fileBytes": 63504068,
+        "backupBytes": 63504068
+      }
+    },
+    {
+      "seconds": 1200,
+      "case": "first_save",
+      "reference": {
+        "medianSessionHoldMs": 1151.3196249999999,
+        "medianTotalCoreMs": 1151.32225,
+        "fileBytes": 423360068,
+        "backupBytes": null
+      },
+      "candidate": {
+        "medianSessionHoldMs": 0.018291,
+        "medianTotalCoreMs": 1325.8682079999999,
+        "fileBytes": 423360068,
+        "backupBytes": null
+      }
+    },
+    {
+      "seconds": 1200,
+      "case": "save_existing_with_backup",
+      "reference": {
+        "medianSessionHoldMs": 928.1235,
+        "medianTotalCoreMs": 928.126042,
+        "fileBytes": 423360068,
+        "backupBytes": 423360068
+      },
+      "candidate": {
+        "medianSessionHoldMs": 0.003833,
+        "medianTotalCoreMs": 940.578166,
+        "fileBytes": 423360068,
+        "backupBytes": 423360068
+      }
+    }
+  ],
+  "verification": {
+    "rustPassed": 209,
+    "rustIgnoredOptIn": 41,
+    "filesystemTests": "Existing first/repeated save, Save As, selection metadata, original backup, invalid paths and backup failures still pass. Added pending-write editing/saved-anchor, close/reopen, lease release, parallel windows and indexed-selection tests.",
+    "cargoCheck": "passed without warnings"
+  }
+}

@@ -428,6 +428,45 @@ Repeat this workload with `editor_transcription_lock_benchmark`, durations
 `30,180,600` and the same reference/output/repetition environment variables as
 the other lock workloads. No model or audio device is required.
 
+Save follow-up:
+
+- Saving captures immutable audio, loops/markers and the requested operation
+  history. File validation, unique first-save naming, WAV output, recoverable
+  backup, rename and library indexing run on a blocking worker. The live editor
+  mutex covers capture and the final saved-anchor/state update, not file I/O or
+  the database probe/index query. Existing IPC response fields are unchanged.
+- Each open session has an RAII save lease: another save of that session is
+  rejected while pending, and the lease is released after failures or completion.
+  The lease also identifies the session after close/reopen. A stale result leaves
+  the replacement session intact and reports where the file was already saved.
+  Successfully indexed output still emits the library update in that case.
+- The saved history anchor is the captured version. Backend edits made during
+  the write stay dirty; undoing back to the written version reaches a clean state.
+  The frontend retains its existing save guard and controls. Selection export
+  does not switch source ID/path or mark the whole file saved.
+- A separate file-writer mutex serializes destination choice, backup/replace and
+  completion across editor windows. It protects competing first-save names
+  without holding the editor map while another file is written. Temporary output
+  has RAII cleanup; existing file and backup-failure behavior remains covered.
+- [Native file workload](research/editor-save-comparison.json), three alternating
+  observations per mode at 30/180/1200 seconds. For the 1200-second first save,
+  median session hold 1151.3 → 0.0183 ms; updating the version with backup,
+  928.1 → 0.0038 ms. Disk writing itself is not consistently faster: total first
+  save 1151.3 → 1325.9 ms; version update 928.1 → 940.6 ms in this observation.
+  The reference wraps the same writing policy in the session mutex to isolate
+  lock scope. Measurements include state DTO assembly but exclude DB indexing,
+  IPC, scheduling and UI. They are not a peak-memory or durability guarantee.
+- Filesystem tests additionally cover concurrent editor access, newer audio and
+  metadata during save, the exact undo/redo saved anchor, replaced sessions,
+  overlapping-save rejection, retry after failure, two windows saving one source
+  and selection export indexed under a different ID.
+- Verification: 209 native tests pass (41 opt-in workloads/inference cases
+  ignored); `cargo check` passes without warnings. Frontend code is unchanged.
+
+Repeat the file workload using `editor_save_lock_benchmark`, durations
+`30,180,1200` and the other lock workloads' reference/output/repetition variables.
+All source/output/backup files are private temporary fixtures removed on exit.
+
 Still pending: foreground WebView/editor memory measurements; synchronous
-save/export and slicing paths; and release checks.
+slice detection/export paths; and release checks.
 Completion items remain open until their full evidence exists.

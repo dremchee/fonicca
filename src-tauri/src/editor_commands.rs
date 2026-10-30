@@ -274,27 +274,74 @@ pub struct Saved {
 
 /// Saves the current buffer, or exports a selection without changing the session.
 #[tauri::command]
-pub fn editor_save(state: State<'_, AppState>, window: Window, mode: editor::saving::SaveMode, destination: Option<String>, range: Option<editor::Span>) -> Result<Saved> {
-    let backups = state.db_path.parent().map(|d| d.join("backups")).unwrap_or_else(|| PathBuf::from("backups"));
-    let saved = with_session(&state, &window, |s| {
-        let output = editor::saving::save_session(s, &backups, mode, destination.as_deref().map(Path::new), range)?;
-        // Index just the saved file, rather than rescanning a potentially large source.
-        let indexed = index_saved(&state.db.lock().unwrap(), &output.path);
-        let (id, warning) = match indexed { Ok(id) => (id, None), Err(error) => (None, Some(error.to_string())) };
-        if mode != editor::saving::SaveMode::Selection {
-            if let Some(id) = id { s.sample_id = id; }
-        }
-        let bpm = state.db.lock().unwrap().query_row("SELECT bpm FROM samples WHERE id=?1", [s.sample_id], |r| r.get(0)).ok().flatten();
-        Ok(Saved {
-            path: output.path.to_string_lossy().into_owned(),
-            backup: output.backup.map(|b| b.to_string_lossy().into_owned()),
-            state: s.state(),
-            name: output.path.file_stem().unwrap_or_default().to_string_lossy().into_owned(),
-            ext: "wav".into(), bpm, in_library: id.is_some(), warning, file_id: id,
-        })
+pub async fn editor_save(
+    state: State<'_, AppState>,
+    window: Window,
+    mode: editor::saving::SaveMode,
+    destination: Option<String>,
+    range: Option<editor::Span>,
+) -> Result<Saved> {
+    let backups = state
+        .db_path
+        .parent()
+        .map(|d| d.join("backups"))
+        .unwrap_or_else(|| PathBuf::from("backups"));
+    let snapshot = with_session(&state, &window, |s| {
+        editor::saving::Snapshot::new(s, mode, destination.as_deref().map(Path::new), range)
     })?;
-    if let Some(id) = saved.file_id { let _ = window.emit("editor:saved", id); }
-    Ok(saved)
+    let app = window.app_handle().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        snapshot.write_with(&backups, |output| {
+            // Index just the saved file, rather than rescanning a potentially large source.
+            let indexed = index_saved(&state.db.lock().unwrap(), &output.path);
+            let (id, warning) = match indexed {
+                Ok(id) => (id, None),
+                Err(error) => (None, Some(error.to_string())),
+            };
+            let sample_id = if mode == editor::saving::SaveMode::Selection {
+                snapshot.source_id()
+            } else {
+                id.unwrap_or(snapshot.source_id())
+            };
+            let bpm = state
+                .db
+                .lock()
+                .unwrap()
+                .query_row("SELECT bpm FROM samples WHERE id=?1", [sample_id], |r| {
+                    r.get(0)
+                })
+                .ok()
+                .flatten();
+            let committed = {
+                let mut sessions = state.editor.lock().unwrap();
+                snapshot.commit(sessions.get_mut(window.label()), &output, id)
+            };
+            // A closed/replaced session must not hide a file successfully written
+            // and indexed by its former save operation.
+            if let Some(id) = id {
+                let _ = window.emit("editor:saved", id);
+            }
+            Ok(Saved {
+                path: output.path.to_string_lossy().into_owned(),
+                backup: output.backup.map(|b| b.to_string_lossy().into_owned()),
+                state: committed?,
+                name: output
+                    .path
+                    .file_stem()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .into_owned(),
+                ext: "wav".into(),
+                bpm,
+                in_library: id.is_some(),
+                warning,
+                file_id: id,
+            })
+        })
+    })
+    .await
+    .map_err(|error| Error::Other(format!("saving audio failed: {error}")))?
 }
 
 /// Import/update only files under a library source. Save As outside the library

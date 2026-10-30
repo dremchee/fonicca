@@ -193,6 +193,7 @@ pub struct Session {
     last_wave_us: std::sync::atomic::AtomicU64,
     revision: u64,
     audio_revision: u64,
+    save_in_flight: std::sync::Arc<std::sync::atomic::AtomicBool>,
     spectrum: Option<std::sync::Arc<spectrogram::Spectrogram>>,
     pub sample_id: i64,
     pub path: PathBuf,
@@ -247,6 +248,7 @@ impl Session {
             last_wave_us: std::sync::atomic::AtomicU64::new(0),
             revision: next_revision(),
             audio_revision: next_revision(),
+            save_in_flight: Default::default(),
             spectrum: None,
             sample_id,
             path: path.to_path_buf(),
@@ -377,6 +379,7 @@ impl Session {
         result
     }
 
+    #[cfg(test)]
     pub fn mark_saved(&mut self) {
         self.saved = self.ops.clone();
     }

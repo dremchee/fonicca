@@ -326,3 +326,63 @@ fn editor_transcription_lock_benchmark() {
     if let Ok(path) = std::env::var("FONICCA_LOCK_BENCH_OUTPUT") { std::fs::write(path, &text).unwrap(); }
     println!("{text}");
 }
+
+#[test]
+#[ignore = "opt-in file save/session lock workload with private WAVs and backups"]
+fn editor_save_lock_benchmark() {
+    use super::saving::{self, SaveMode};
+    let reference = std::env::var("FONICCA_LOCK_BENCH_REFERENCE").is_ok_and(|value| value == "1");
+    let durations = std::env::var("FONICCA_BENCH_SECONDS").unwrap_or_else(|_| "30,180".into());
+    let repeats: usize = std::env::var("FONICCA_BENCH_REPEATS").unwrap_or_else(|_| "3".into()).parse().unwrap();
+    assert!((1..=20).contains(&repeats));
+    let root = tempfile::tempdir().unwrap();
+    let mut system = sysinfo::System::new();
+    let mut observations = Vec::new();
+    for seconds in durations.split(',').map(|n| n.parse::<u32>().unwrap()) {
+        assert!((1..=1200).contains(&seconds));
+        for repetition in 0..repeats {
+            let run = root.path().join(format!("{seconds}-{repetition}"));
+            std::fs::create_dir(&run).unwrap();
+            let source = run.join("input.wav");
+            fixture(&source, seconds);
+            let session = std::sync::Mutex::new(Session::open(1, &source, Some(32)).unwrap());
+            for case in ["first_save", "save_existing_with_backup"] {
+                let frames = session.lock().unwrap().audio().frames();
+                session.lock().unwrap().try_apply(Op::Gain { start: 0, end: frames.min(44100), db: -3.0 }).unwrap();
+                let before_save = rss(&mut system);
+                let backups = run.join("backups");
+                let mut locks = Vec::new();
+                let started = Instant::now();
+                let output = if reference {
+                    let (output, held) = locked(&session, |session| saving::save_session(session, &backups, SaveMode::Save, None, None).unwrap());
+                    locks.push(held);
+                    output
+                } else {
+                    let (snapshot, held) = locked(&session, |session| saving::Snapshot::new(session, SaveMode::Save, None, None).unwrap());
+                    locks.push(held);
+                    snapshot.write_with(&backups, |output| {
+                        let (_, held) = locked(&session, |session| snapshot.commit(Some(session), &output, None).unwrap());
+                        locks.push(held);
+                        Ok(output)
+                    }).unwrap()
+                };
+                let total_ms = started.elapsed().as_secs_f64() * 1000.0;
+                let after_save = rss(&mut system);
+                let file_bytes = std::fs::metadata(&output.path).unwrap().len();
+                let backup_bytes = output.backup.as_ref().map(|path| std::fs::metadata(path).unwrap().len());
+                assert!(!session.lock().unwrap().state().dirty);
+                assert_eq!(backup_bytes.is_some(), case == "save_existing_with_backup");
+                observations.push(json!({ "seconds": seconds, "repetition": repetition + 1, "case": case,
+                    "sessionLocks": locks, "totalCoreMs": total_ms, "fileBytes": file_bytes, "backupBytes": backup_bytes,
+                    "rssBytes": { "beforeSave": before_save, "afterSave": after_save } }));
+            }
+        }
+    }
+    let report = json!({ "schema": 1, "implementation": if reference { "synchronous policy under session mutex" } else { "snapshot; independent file writer; guarded saved anchor" },
+        "profile": if cfg!(debug_assertions) { "dev-test" } else { "release-test" }, "os": std::env::consts::OS, "arch": std::env::consts::ARCH,
+        "note": "Private synthetic stereo float WAV. Reference holds the session mutex around the same file policy; it isolates critical-section scope rather than comparing historical binaries. Candidate includes snapshot capture, real writes, backup, rename, saved-anchor commit and state DTO. Both include the independent uncontended writer mutex. No DB indexing, UI/IPC/worker queue delay or file fsync durability guarantee. Warm filesystem; RSS includes mmap/allocator and phase samples are not peak memory.",
+        "observations": observations });
+    let text = serde_json::to_string_pretty(&report).unwrap();
+    if let Ok(path) = std::env::var("FONICCA_LOCK_BENCH_OUTPUT") { std::fs::write(path, &text).unwrap(); }
+    println!("{text}");
+}
