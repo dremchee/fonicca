@@ -26,7 +26,6 @@ import {
 } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { storeToRefs } from 'pinia'
-import { TabsContent, TabsList, TabsRoot, TabsTrigger } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
@@ -52,7 +51,7 @@ import { useDuplicatesStore } from '@/stores/duplicates'
 import { useLibraryStore } from '@/stores/library'
 import { useSettingsStore } from '@/stores/settings'
 
-const props = withDefaults(defineProps<{ waveTarget?: 'preview' | 'editor', embedded?: boolean }>(), { waveTarget: 'preview', embedded: false })
+const props = withDefaults(defineProps<{ waveTarget?: 'preview' | 'editor', embedded?: boolean }>(), { waveTarget: 'editor', embedded: false })
 const { t } = useI18n()
 const store = useSettingsStore()
 const { settings, dialogOpen, section } = storeToRefs(store)
@@ -128,20 +127,8 @@ const threads = computed({
   set: (v: string) => store.update({ analysisThreads: v === 'auto' ? null : Number(v) }),
 })
 
-const waveTargets = [
-  { value: 'preview', labelKey: 'settings.waveform.previewTab' },
-  { value: 'editor', labelKey: 'settings.waveform.editorTab' },
-] as const
-
-function waveSettings(target: 'preview' | 'editor') {
-  return target === 'editor' ? settings.value.editorWaveform : settings.value
-}
-
-function setWaveOptions(target: 'preview' | 'editor', patch: Partial<WaveformSettings>) {
-  if (target === 'editor')
-    store.update({ editorWaveform: { ...settings.value.editorWaveform, ...patch } })
-  else
-    store.update(patch)
+function setWaveOptions(patch: Partial<WaveformSettings>) {
+  store.update({ editorWaveform: { ...settings.value.editorWaveform, ...patch } })
 }
 
 const shortcuts: { keys: string[], labelKey: string }[] = [
@@ -395,19 +382,7 @@ function keyLabel(k: string) {
 
           <!-- Waveform -->
           <template v-else-if="section === 'waveform'">
-            <TabsRoot :default-value="props.waveTarget" class="flex flex-col gap-4">
-              <TabsList class="inline-flex h-9 w-fit items-center rounded-md bg-muted p-1 text-muted-foreground" :aria-label="t('settings.nav.waveform')">
-                <TabsTrigger
-                  v-for="target in waveTargets" :key="target.value" :value="target.value"
-                  class="inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                >
-                  {{ t(target.labelKey) }}
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent v-for="target in waveTargets" :key="target.value" :value="target.value" class="flex flex-col gap-4 outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=inactive]:hidden">
-                <WaveformControls :target="target.value" :options="waveSettings(target.value)" @change="setWaveOptions(target.value, $event)" />
-              </TabsContent>
-            </TabsRoot>
+            <WaveformControls target="editor" :options="settings.editorWaveform" @change="setWaveOptions" />
           </template>
 
           <!-- Analysis -->
