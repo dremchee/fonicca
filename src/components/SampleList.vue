@@ -12,6 +12,8 @@ import { isTauri } from '@tauri-apps/api/core'
 import { useI18n } from 'vue-i18n'
 import { categoryHint, categoryLabel, formatBpm, formatDuration, kindLabel, sourceHint } from '@/format'
 import Hint from '@/components/Hint.vue'
+import SampleListHints from '@/components/SampleListHints.vue'
+import { Tooltip } from '@/components/ui/tooltip'
 import CategoryIcon from '@/components/icons/CategoryIcon.vue'
 import SampleContextMenu from '@/components/SampleContextMenu.vue'
 import SampleStemProgress from '@/components/SampleStemProgress.vue'
@@ -269,6 +271,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
           <span aria-hidden="true" />
         </div>
 
+        <Tooltip>
         <ContextMenu v-model:open="menuOpen">
           <ContextMenuTrigger as-child :disabled="nativeMenus">
             <div ref="scroller" class="flex-1 min-h-0 overflow-y-auto outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" tabindex="0" :aria-label="t('sidebar.allSamples')" @contextmenu="onContextMenu">
@@ -363,34 +366,27 @@ function onDragStart(e: DragEvent, sample: Sample) {
                       <span v-else-if="column.id === 'tags'" class="flex gap-1 overflow-hidden">
                         <span v-for="tag in s.tags" :key="tag.id" class="chip tag-color" :style="tagStyle(tag)">{{ tag.name }}</span>
                       </span>
-                      <Hint v-else-if="column.id === 'category'" :text="categoryHint(s.categorySource, s.categoryConfidence)" side="top">
-                        <span class="truncate text-xs" :class="s.categorySource === 'audio' ? 'text-muted-foreground' : ''">{{ s.category ? categoryLabel(s.category) : '' }}</span>
-                      </Hint>
+                      <span v-else-if="column.id === 'category'" :data-sample-hint="categoryHint(s.categorySource, s.categoryConfidence)" data-grace-area-trigger class="truncate text-xs" :class="s.categorySource === 'audio' ? 'text-muted-foreground' : ''">{{ s.category ? categoryLabel(s.category) : '' }}</span>
                       <span v-else-if="column.id === 'kind'" class="text-muted-foreground text-xs">
                         <template v-if="s.kind">{{ kindLabel(s.kind) }}</template>
                         <span v-else-if="!s.analyzed" class="opacity-50">…</span>
                       </span>
-                      <Hint v-else-if="column.id === 'bpm'" :text="sourceHint(s.bpmSource)" side="top">
-                        <span class="text-right" :class="s.bpmSource === 'audio' ? 'text-muted-foreground' : ''">
+                      <span v-else-if="column.id === 'bpm'" :data-sample-hint="sourceHint(s.bpmSource)" data-grace-area-trigger class="text-right" :class="s.bpmSource === 'audio' ? 'text-muted-foreground' : ''">
                           {{ s.bpm != null ? formatBpm(s.bpm) : '' }}
-                        </span>
-                      </Hint>
-                      <Hint v-else-if="column.id === 'key'" :text="sourceHint(s.keySource)" side="top">
-                        <span :class="s.keySource === 'audio' ? 'text-muted-foreground' : ''">{{ s.key ?? '' }}</span>
-                      </Hint>
+                      </span>
+                      <span v-else-if="column.id === 'key'" :data-sample-hint="sourceHint(s.keySource)" data-grace-area-trigger :class="s.keySource === 'audio' ? 'text-muted-foreground' : ''">{{ s.key ?? '' }}</span>
                       <span v-else-if="column.id === 'length'" class="text-right text-muted-foreground">{{ formatDuration(s.duration) }}</span>
                       <span v-else-if="column.id === 'type'" class="text-muted-foreground uppercase text-xs">{{ s.ext }}</span>
                     </template>
-                    <Hint :text="s.favorite ? t('list.favorite.remove') : t('list.favorite.add')" shortcut="F">
                       <button
                         class="star grid place-items-center" :class="{ on: s.favorite }"
+                        :data-sample-hint="s.favorite ? t('list.favorite.remove') : t('list.favorite.add')" data-grace-area-trigger data-hint-shortcut="F" data-hint-side="bottom"
                         :aria-label="s.favorite ? t('list.favorite.remove') : t('list.favorite.add')"
                         @mousedown.stop
                         @click.stop="library.toggleFavorite(s)"
                       >
                         <span :class="s.favorite ? 'i-lucide-star text-amber-400' : 'i-lucide-star'" class="text-xs" />
                       </button>
-                    </Hint>
                   </div>
                   <div
                     v-else
@@ -406,6 +402,8 @@ function onDragStart(e: DragEvent, sample: Sample) {
           </ContextMenuTrigger>
           <SampleContextMenu v-if="menuSample" ref="sampleMenu" :native="nativeMenus" :sample="menuSample" @close="menuOpen = false" />
         </ContextMenu>
+        <SampleListHints :viewport="scroller" />
+        </Tooltip>
         <div v-if="total > 0" class="column-guides pointer-events-none absolute inset-0 grid px-3" aria-hidden="true">
           <span />
           <span class="column-guide" :class="{ active: resizingColumn === 'name' }" />

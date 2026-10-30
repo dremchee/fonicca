@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { hintLines } from '@/hint-text'
 import { Kbd } from '@/components/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -16,12 +17,7 @@ const props = withDefaults(defineProps<{
 
 // Keep the action and its scope on separate lines. Each line contributes its
 // own intrinsic width, rather than wrapping a full-width balanced text box.
-const lines = computed(() => {
-  const scope = props.text.match(/^(.*?)\s+(\([^()]+\))$/)
-  return scope && props.text.length > 40
-    ? [scope[1]!, scope[2]!]
-    : props.text.split('\n')
-})
+const lines = computed(() => hintLines(props.text))
 </script>
 
 <template>

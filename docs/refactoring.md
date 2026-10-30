@@ -230,6 +230,72 @@ Model catalog follow-up:
   weights was not repeated: the metadata migration was checked against the old
   definitions, and existing native inference code keeps its tensor contracts.
 
-Still pending: full WebView-process memory measurements, long-frame profiling
-and release checks. The remaining completion items stay open until their full
-evidence is present.
+Library rendering follow-up:
+
+- Repeated the 100k-row scroll workload on a production mock, separate from the
+  earlier development measurement. A CPU profile identified frequent tooltip
+  mounting/unmounting, Reka forwarding helpers and associated reactive allocations.
+  This is renderer work, not a SQLite query or audio decode delay.
+- The virtualized list now delegates metadata/favorite hints to one shared tooltip.
+  Cells stay plain DOM nodes. Existing tooltip placement, hoverable content,
+  keyboard focus, Escape, provenance/confidence text and favorite shortcut remain.
+  Scroll, context menus, changed analysis and removed rows dismiss the old anchor;
+  `aria-describedby` is attached only while the corresponding hint is open.
+- Reproducible browser workload: `scripts/profile-library.mjs`. It needs a local
+  production mock and an already open Playwright CLI session. It reloads each run,
+  records actual viewport/browser, 35 scroll jumps, frame intervals, long tasks and
+  CDP main-thread task time. Optional `--cpu` captures a separate CPU profile;
+  profiler-enabled timings must not be mixed with ordinary measurement runs.
+- Browser regression scenario: `tests/browser/library-hints.mjs` exports
+  `checkLibraryHints(page)` for Playwright `run-code`. The checked cases include
+  hover onto content, keyboard access, Escape suppression, scroll/context-menu
+  dismissal, changed analysis and filtering away the anchor. It is an opt-in
+  browser check, not part of the Node-only `pnpm test` command.
+- Raw observations, source/build hashes and measurement limits are in
+  [library-ui-comparison.json](research/library-ui-comparison.json). These local
+  Chromium results do not establish Tauri/WebKit memory usage or performance on
+  every OS. The mock has metadata and cached-wave misses, not 100k decoded files.
+- Three alternating runs per build: median main-thread task time 2192.6 → 762.7 ms
+  (65.2% less busy time for this workload), with 57 rendered sample rows in every
+  observation. Median maximum frame interval was 50.1 → 16.8 ms; the three observed
+  baseline long tasks were 50–58 ms, and none occurred in the three candidate runs.
+
+To build a production mock without including it in the distributed application:
+
+```sh
+node --input-type=module -e 'import {build} from "vite"; await build({build:{outDir:"/tmp/fonicca-library-profile",emptyOutDir:true,sourcemap:true,rolldownOptions:{input:"mock.html"}}})'
+python3 -m http.server 1434 --bind 127.0.0.1 --directory /tmp/fonicca-library-profile
+```
+
+In another terminal, using an installed Playwright CLI:
+
+```sh
+playwright-cli --session fonicca-profile open 'http://127.0.0.1:1434/mock.html?size=100000#library-large'
+node scripts/profile-library.mjs --url 'http://127.0.0.1:1434/mock.html?size=100000#library-large' --output /tmp/library-ui.json
+```
+
+`PLAYWRIGHT_CLI=/absolute/path/to/playwright_cli.sh` also accepts a shell wrapper.
+Run at least three observations per version, alternate versions, keep the same
+viewport and avoid simultaneous builds. To repeat the hint regression scenario in
+the existing session:
+
+```sh
+node --input-type=module <<'JS'
+import { checkLibraryHints } from './tests/browser/library-hints.mjs'
+import { spawnSync } from 'node:child_process'
+const cli = process.env.PLAYWRIGHT_CLI ?? 'playwright-cli'
+const shell = cli.endsWith('.sh')
+const args = [...(shell ? [cli] : []), '--session', 'fonicca-profile', 'run-code', checkLibraryHints.toString()]
+const result = spawnSync(shell ? 'bash' : cli, args, { stdio: 'inherit' })
+process.exitCode = result.status ?? 1
+JS
+```
+
+The browser regression starts on the first page of the English 100k mock and ends
+with a no-match search. Reload the mock before another UI check. Temporary builds
+and raw CPU profiles belong outside the checkout; only the compact evidence report
+is versioned.
+
+Still pending: full WebView-process memory measurements, native copying/lock
+evidence and release checks. The remaining completion items stay open until their
+full evidence is present.
