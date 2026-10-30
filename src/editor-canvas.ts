@@ -66,7 +66,7 @@ function render(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, painter
 
   // Waveform, one lane per channel (or one mixed lane), in the full brand colour.
   // The selection is the inverse: a brand-colour block with the wave in the canvas colour.
-  // An idle saved loop stays translucent; during playback it uses selection inversion.
+  // An idle saved loop leaves the waveform unchanged; playback uses selection inversion.
   const selected = scene.selection
   const lp = scene.loop
   const sel = selected && lp && selected.start === lp.start && selected.end === lp.end && !scene.loopPlaying ? null : selected
@@ -123,13 +123,6 @@ function render(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, painter
     ctx.fillRect(selX, RULER, selW, h - RULER)
   }
 
-  if (lp && !scene.loopPlaying) {
-    ctx.fillStyle = color('--primary')
-    ctx.globalAlpha = 0.14
-    ctx.fillRect(pixel(x(lp.start)), RULER, pixel(x(lp.end)) - pixel(x(lp.start)), h - RULER)
-    ctx.globalAlpha = 1
-  }
-
   // Grid over the wave, so it reads on the wave and the selection alike: bars
   // strongest, then beats (or ruler ticks), then subdivisions.
   if (scene.grid.mode !== 'off') {
@@ -177,7 +170,7 @@ function render(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, painter
     ctx.save()
     ctx.fillStyle = color('--foreground')
     for (const [px, direction] of [[a, 1], [b, -1]]) {
-      ctx.fillRect(direction < 0 ? px - 1 / dpr : px, LOOP_FLAG_SIZE + 2, 1 / dpr, h - LOOP_FLAG_SIZE - 2)
+      ctx.fillRect(direction < 0 ? px - 1 / dpr : px, 0, 1 / dpr, h)
       ctx.beginPath()
       ctx.moveTo(px, 0)
       ctx.lineTo(pixel(px + direction * LOOP_FLAG_WIDTH), 0)
@@ -230,7 +223,7 @@ function drawSlices(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, x: 
     ctx.fillStyle = color('--foreground')
     // The start of the file is no marker of its own.
     if (r.start > 0 || scene.markers[0]?.frame === 0) {
-      ctx.fillRect(px, LOOP_FLAG_SIZE, 1, h - LOOP_FLAG_SIZE)
+      ctx.fillRect(px, 0, 1, h)
       ctx.beginPath()
       ctx.moveTo(px, 0)
       ctx.lineTo(px + LOOP_FLAG_WIDTH, 0)

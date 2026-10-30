@@ -57,11 +57,14 @@ test('spectrogram uses its own painter/axis and an empty viewport paints nothing
   assert.deepEqual(v.calls, [])
 })
 
-test('saved loop uses a translucent range, solid corner flags and a label without inverting the wave', () => {
+test('saved loop has continuous flag stems and a label without shading or inverting the wave', () => {
   const v = setup()
   v.scene.loop = { ...v.scene.selection! }
   drawEditorCanvas(v.ctx, v.scene, v.painters)
   assert.equal(v.painted.length, 1)
+  assert.ok(!v.calls.some(c => c.name === 'fillRect' && c.args[0] === 100 && c.args[1] === 18 && c.args[2] === 100 && c.args[3] === 182))
+  for (const x of [100, 199.5])
+    assert.ok(v.calls.some(c => c.name === 'fillRect' && c.args[0] === x && c.args[1] === 0 && c.args[2] === 0.5 && c.args[3] === 200))
   assert.ok(v.calls.some(c => c.name === 'fillText' && c.args[0] === 'Loop'))
   assert.ok(v.calls.some(c => c.name === 'lineTo' && c.args[0] === 107 && c.args[1] === 0))
   assert.ok(v.calls.some(c => c.name === 'lineTo' && c.args[0] === 193 && c.args[1] === 0))
