@@ -1,0 +1,250 @@
+{
+  "schema": 1,
+  "baseRevision": "67d8d8fe6533a583b88577a5c5c013861419bea2",
+  "sourceHashes": {
+    "src/main.ts": "6959b4c14098197c5116d3e7081ee2c5111c9ab78ae8471f60050524b1466efd",
+    "src/App.vue": "838038776e499053b9ddd32e2db70ab4ddbca5b49ca61cd6d443eef55390dea3",
+    "src/EditorWindow.vue": "134c5e38101137704e50b42418788a32818caae6b9e609f0b14bd3fb0312a419",
+    "src/components/SettingsHost.vue": "19b13c5a26f681fd6832bbf503b270c28e0671a63a1610bce672730dbefefc3a",
+    "src/components/SettingsDialog.vue": "d49ddd146f172c86ba51da30e767800ffbb361161a78933d8f7287f81f145e56",
+    "src-tauri/Cargo.toml": "e9c0ec5a60a61709d37d6dfd668fb69f524e75338da52a9bdb2cdcf540fbc82c",
+    "src-tauri/Cargo.lock": "f641af7ef3288051326446a53928a5bb266b2c71545d01b93a13d6887590444a",
+    "src-tauri/tauri.conf.json": "03f518efb42342e9fdddea195e1bddc37506362729e5cd8684c1529632f2af19",
+    "pnpm-lock.yaml": "034125339466e3b841db2fde4001104a58e30a8e6a9fb4cb8b619facb80724a7"
+  },
+  "build": {
+    "command": [
+      "pnpm",
+      "tauri",
+      "build",
+      "--ci",
+      "--bundles",
+      "app",
+      "--",
+      "--locked",
+      "--timings"
+    ],
+    "startedUnixSeconds": 1793343111.422028,
+    "elapsedSeconds": 285.6029989719391,
+    "exitCode": 0,
+    "scope": "Local macOS ARM64 release .app, existing dependency/build caches, no updater signing, no DMG, not launched or published; native Cargo --timings requested."
+  },
+  "app": {
+    "version": "0.1.3",
+    "identifier": "app.fonicca",
+    "minimumOS": "13.4",
+    "fileBytes": 34556929,
+    "files": [
+      {
+        "path": "Contents/Info.plist",
+        "bytes": 953,
+        "sha256": "3be9fe5304e2d7dfbe288033655561613b2d516951831be5649b3f46e9d07cf9"
+      },
+      {
+        "path": "Contents/_CodeSignature/CodeResources",
+        "bytes": 2440,
+        "sha256": "ad525342eeb44a7d8abcef43763393e9ee8e53ead940902ec508d093d7d02ea3"
+      },
+      {
+        "path": "Contents/MacOS/fonicca",
+        "bytes": 33154240,
+        "sha256": "66f07dbc841d5777ec65086db2e7a45f267541add890a1fc0ecee17ffb5ffa0a"
+      },
+      {
+        "path": "Contents/Resources/icon.icns",
+        "bytes": 1399296,
+        "sha256": "58dd30517f6752eca5fee8c2fa8cfd0a972f22516809d380f310923d29e39ac4"
+      }
+    ],
+    "architecture": "arm64",
+    "adHocSignatureVerified": true,
+    "modelPackFilesBundled": false
+  },
+  "cargoTimings": {
+    "artifactSHA256": "05f18cf7eae11bfc1ce080e00f1484d32ab9813f88c1a0de3298540e3ae207fb",
+    "compiledUnits": 67,
+    "topDurationUnits": [
+      {
+        "i": 65,
+        "name": "fonicca",
+        "version": "0.1.3",
+        "mode": "todo",
+        "target": "",
+        "start": 48.05,
+        "duration": 116.71,
+        "rmeta_time": null,
+        "unlocked_units": [
+          66
+        ],
+        "unlocked_rmeta_units": []
+      },
+      {
+        "i": 66,
+        "name": "fonicca",
+        "version": "0.1.3",
+        "mode": "todo",
+        "target": " bin \"fonicca\"",
+        "start": 164.76,
+        "duration": 108.93,
+        "rmeta_time": null,
+        "unlocked_units": [],
+        "unlocked_rmeta_units": []
+      },
+      {
+        "i": 39,
+        "name": "objc2-app-kit",
+        "version": "0.3.2",
+        "mode": "todo",
+        "target": "",
+        "start": 17.25,
+        "duration": 27.08,
+        "rmeta_time": 15.97,
+        "unlocked_units": [],
+        "unlocked_rmeta_units": [
+          49,
+          47,
+          53,
+          48,
+          52,
+          50,
+          51
+        ]
+      },
+      {
+        "i": 3,
+        "name": "libsqlite3-sys",
+        "version": "0.38.2",
+        "mode": "run-custom-build",
+        "target": " build script (run)",
+        "start": 1.03,
+        "duration": 24.1,
+        "rmeta_time": null,
+        "unlocked_units": [
+          45
+        ],
+        "unlocked_rmeta_units": []
+      },
+      {
+        "i": 25,
+        "name": "objc2-foundation",
+        "version": "0.3.2",
+        "mode": "todo",
+        "target": "",
+        "start": 7.4,
+        "duration": 16.55,
+        "rmeta_time": 9.36,
+        "unlocked_units": [],
+        "unlocked_rmeta_units": [
+          38,
+          37,
+          35,
+          34,
+          41,
+          36
+        ]
+      },
+      {
+        "i": 27,
+        "name": "rustls",
+        "version": "0.23.46",
+        "mode": "todo",
+        "target": "",
+        "start": 7.65,
+        "duration": 13.43,
+        "rmeta_time": 3.14,
+        "unlocked_units": [],
+        "unlocked_rmeta_units": [
+          31,
+          29,
+          30
+        ]
+      },
+      {
+        "i": 58,
+        "name": "tauri",
+        "version": "2.12.5",
+        "mode": "todo",
+        "target": "",
+        "start": 35.32,
+        "duration": 12.73,
+        "rmeta_time": 4.91,
+        "unlocked_units": [
+          65
+        ],
+        "unlocked_rmeta_units": [
+          63,
+          59,
+          62,
+          60,
+          61
+        ]
+      },
+      {
+        "i": 33,
+        "name": "reqwest",
+        "version": "0.13.5",
+        "mode": "todo",
+        "target": "",
+        "start": 11.24,
+        "duration": 8.7,
+        "rmeta_time": 1.02,
+        "unlocked_units": [],
+        "unlocked_rmeta_units": []
+      },
+      {
+        "i": 4,
+        "name": "signalsmith-stretch",
+        "version": "0.1.3",
+        "mode": "run-custom-build",
+        "target": " build script (run)",
+        "start": 1.04,
+        "duration": 5.21,
+        "rmeta_time": null,
+        "unlocked_units": [
+          20
+        ],
+        "unlocked_rmeta_units": []
+      },
+      {
+        "i": 31,
+        "name": "ureq",
+        "version": "3.5.0",
+        "mode": "todo",
+        "target": "",
+        "start": 10.79,
+        "duration": 5.13,
+        "rmeta_time": 0.95,
+        "unlocked_units": [],
+        "unlocked_rmeta_units": []
+      },
+      {
+        "i": 2,
+        "name": "ring",
+        "version": "0.17.14",
+        "mode": "run-custom-build",
+        "target": " build script (run)",
+        "start": 1.02,
+        "duration": 5.11,
+        "rmeta_time": null,
+        "unlocked_units": [
+          19,
+          18
+        ],
+        "unlocked_rmeta_units": []
+      },
+      {
+        "i": 53,
+        "name": "muda",
+        "version": "0.20.0",
+        "mode": "todo",
+        "target": "",
+        "start": 33.23,
+        "duration": 3.55,
+        "rmeta_time": 0.97,
+        "unlocked_units": [],
+        "unlocked_rmeta_units": []
+      }
+    ]
+  },
+  "limits": "One macOS ARM64 app packaging observation with pre-existing caches. Cargo rebuilt some cached targets; this is neither a cold build nor a before/after native compiler comparison. No installer, updater signature, notarization, launch, release, tag or push. Other OS installers remain CI-only. File bytes are logical size, not installed disk allocation. No separately downloadable graph/weight files are in the app file list; the Apollo graph remains compiled into the executable."
+}

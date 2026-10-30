@@ -1,0 +1,768 @@
+{
+  "schema": 1,
+  "before": {
+    "schema": 1,
+    "measuredAt": "2026-10-30T06:36:12.048Z",
+    "baseRevision": "67d8d8fe6533a583b88577a5c5c013861419bea2",
+    "sourceHashes": {
+      "src/main.ts": "007a12c80d3c2ae7fb6c3342639249a9229d71abf554d393d032fb10eb5cbbe7",
+      "src/App.vue": "6356d762861d033e5c6a74e40d8e8c3f23677b571d86290e56cb52d5b60479b9",
+      "src/EditorWindow.vue": "35b2f2e8877104fa734f0ae08d55765804d39557080581ea0f1c1f5a3103c58e",
+      "src/components/SettingsDialog.vue": "baed08e4cefc6d20190162efed18e48b12f3926d12a9dc0fec185fdc15eb0d78",
+      "vite.config.ts": "4e4155c873c6437b138ef55450d05918f4a454afdb729bb9f6293a3d9e67b830",
+      "pnpm-lock.yaml": "034125339466e3b841db2fde4001104a58e30a8e6a9fb4cb8b619facb80724a7"
+    },
+    "buildMs": 3811.417917,
+    "js": {
+      "bytes": 1102131,
+      "gzipBytes": 330362
+    },
+    "libraryStartup": {
+      "chunks": [
+        "assets/index-BWRnBRqa.js"
+      ],
+      "bytes": 1102131,
+      "gzipBytes": 330362
+    },
+    "editorStartup": {
+      "chunks": [
+        "assets/index-BWRnBRqa.js"
+      ],
+      "bytes": 1102131,
+      "gzipBytes": 330362
+    },
+    "chunks": [
+      {
+        "file": "assets/index-BWRnBRqa.js",
+        "bytes": 1102131,
+        "gzipBytes": 330362,
+        "sha256": "8a59ca2f02313fc418e41e153bfaa880c5e83634b7638cabebc4432a98f3971e",
+        "entry": true,
+        "dynamic": false,
+        "facade": "index.html",
+        "imports": [],
+        "dynamicImports": [],
+        "moduleCount": 891
+      }
+    ],
+    "assets": [
+      {
+        "file": "assets/128x128-dark-CHx_Q2Gs.png",
+        "bytes": 21717
+      },
+      {
+        "file": "assets/128x128-light-puENt2jQ.png",
+        "bytes": 21013
+      },
+      {
+        "file": "assets/index-CsmiJZS2.css",
+        "bytes": 108905
+      },
+      {
+        "file": "index.html",
+        "bytes": 720
+      }
+    ],
+    "limits": "Warm installed dependencies; Vite API build only, without type checking, native packaging, file writes or browser startup. gzip sizes are a comparison metric; local Tauri assets need not use HTTP compression. Module renderedLength is attribution before final chunk minification, not final byte contribution. Dynamic roots selected by main count toward their window startup. Other dynamic imports are excluded until requested.",
+    "topModules": [
+      {
+        "path": "node_modules/.pnpm/@vue+runtime-core@3.5.44/node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js",
+        "renderedLength": 164698
+      },
+      {
+        "path": "node_modules/.pnpm/@vue+runtime-dom@3.5.44/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-bundler.js",
+        "renderedLength": 49857
+      },
+      {
+        "path": "node_modules/.pnpm/@tanstack+virtual-core@3.19.7/node_modules/@tanstack/virtual-core/dist/esm/index.js",
+        "renderedLength": 47524
+      },
+      {
+        "path": "src/components/EditorView.vue?vue&type=script&setup=true&lang.ts",
+        "renderedLength": 44830
+      },
+      {
+        "path": "node_modules/.pnpm/vue-i18n@11.4.16_vue@3.5.44_typescript@6.0.3_/node_modules/vue-i18n/dist/vue-i18n.mjs",
+        "renderedLength": 43373
+      },
+      {
+        "path": "node_modules/.pnpm/vue-sonner@2.0.9/node_modules/vue-sonner/lib/index.js",
+        "renderedLength": 42016
+      },
+      {
+        "path": "node_modules/.pnpm/@vue+reactivity@3.5.44/node_modules/@vue/reactivity/dist/reactivity.esm-bundler.js",
+        "renderedLength": 41628
+      },
+      {
+        "path": "node_modules/.pnpm/@intlify+message-compiler@11.4.16/node_modules/@intlify/message-compiler/dist/message-compiler.mjs",
+        "renderedLength": 36942
+      },
+      {
+        "path": "node_modules/.pnpm/@intlify+core-base@11.4.16/node_modules/@intlify/core-base/dist/core-base.mjs",
+        "renderedLength": 36744
+      },
+      {
+        "path": "src/components/SourceSidebar.vue?vue&type=script&setup=true&lang.ts",
+        "renderedLength": 33832
+      },
+      {
+        "path": "src/components/BatchDialog.vue?vue&type=script&setup=true&lang.ts",
+        "renderedLength": 32263
+      },
+      {
+        "path": "src/components/SettingsDialog.vue?vue&type=script&setup=true&lang.ts",
+        "renderedLength": 32259
+      },
+      {
+        "path": "node_modules/.pnpm/cn@0.5.0/node_modules/cn/dist/engine.js",
+        "renderedLength": 30530
+      },
+      {
+        "path": "node_modules/.pnpm/@vueuse+core@15.0.0_vue@3.5.44_typescript@6.0.3_/node_modules/@vueuse/core/dist/index.js",
+        "renderedLength": 28999
+      },
+      {
+        "path": "src/components/SampleList.vue?vue&type=script&setup=true&lang.ts",
+        "renderedLength": 28615
+      },
+      {
+        "path": "src/components/DuplicatesView.vue?vue&type=script&setup=true&lang.ts",
+        "renderedLength": 24611
+      },
+      {
+        "path": "node_modules/.pnpm/gl-waveform@5.3.0/node_modules/gl-waveform/index.js",
+        "renderedLength": 21318
+      },
+      {
+        "path": "src/components/CommandPalette.vue?vue&type=script&setup=true&lang.ts",
+        "renderedLength": 20756
+      },
+      {
+        "path": "node_modules/.pnpm/reka-ui@2.11.0_vue@3.5.44_typescript@6.0.3_/node_modules/reka-ui/dist/Splitter/SplitterGroup.js",
+        "renderedLength": 20350
+      },
+      {
+        "path": "node_modules/.pnpm/@floating-ui+core@1.8.0/node_modules/@floating-ui/core/dist/floating-ui.core.mjs",
+        "renderedLength": 19594
+      }
+    ]
+  },
+  "after": {
+    "schema": 1,
+    "measuredAt": "2026-10-30T06:51:15.421Z",
+    "baseRevision": "67d8d8fe6533a583b88577a5c5c013861419bea2",
+    "sourceHashes": {
+      "src/main.ts": "6959b4c14098197c5116d3e7081ee2c5111c9ab78ae8471f60050524b1466efd",
+      "src/App.vue": "838038776e499053b9ddd32e2db70ab4ddbca5b49ca61cd6d443eef55390dea3",
+      "src/EditorWindow.vue": "134c5e38101137704e50b42418788a32818caae6b9e609f0b14bd3fb0312a419",
+      "src/components/SettingsHost.vue": "19b13c5a26f681fd6832bbf503b270c28e0671a63a1610bce672730dbefefc3a",
+      "src/components/SettingsDialog.vue": "d49ddd146f172c86ba51da30e767800ffbb361161a78933d8f7287f81f145e56",
+      "vite.config.ts": "4e4155c873c6437b138ef55450d05918f4a454afdb729bb9f6293a3d9e67b830",
+      "pnpm-lock.yaml": "034125339466e3b841db2fde4001104a58e30a8e6a9fb4cb8b619facb80724a7"
+    },
+    "buildMs": 4207.788375,
+    "js": {
+      "bytes": 1121507,
+      "gzipBytes": 352955
+    },
+    "libraryStartup": {
+      "chunks": [
+        "assets/index-BtgTljxC.js",
+        "assets/i18n-BRUPIovF.js",
+        "assets/App-CAupzoCr.js",
+        "assets/Hint-SO4Why7a.js",
+        "assets/_plugin-vue_export-helper-DBTLjMFa.js",
+        "assets/EditorUnsavedDialog-B4E7MZ0r.js",
+        "assets/Slider-BRNFA6MY.js",
+        "assets/updates-DQ8nX_Up.js",
+        "assets/activity-BteShBGH.js",
+        "assets/rotate-ccw-f43RlM3F.js"
+      ],
+      "bytes": 920622,
+      "gzipBytes": 288783
+    },
+    "editorStartup": {
+      "chunks": [
+        "assets/index-BtgTljxC.js",
+        "assets/i18n-BRUPIovF.js",
+        "assets/EditorWindow-Cf2KzTJl.js",
+        "assets/_plugin-vue_export-helper-DBTLjMFa.js",
+        "assets/EditorUnsavedDialog-B4E7MZ0r.js",
+        "assets/Hint-SO4Why7a.js",
+        "assets/Slider-BRNFA6MY.js",
+        "assets/EditorView-C56JAtyQ.js",
+        "assets/LevelMeter-D5fjQeCs.js"
+      ],
+      "bytes": 725406,
+      "gzipBytes": 234402
+    },
+    "chunks": [
+      {
+        "file": "assets/index-BtgTljxC.js",
+        "bytes": 41661,
+        "gzipBytes": 14196,
+        "sha256": "ea32f08bfbdf83edeff6537490ef63caaf1c35fbbcdfa3e00fea2895e8e288f9",
+        "entry": true,
+        "dynamic": false,
+        "facade": "index.html",
+        "imports": [
+          "assets/i18n-BRUPIovF.js"
+        ],
+        "dynamicImports": [
+          "assets/EditorWindow-Cf2KzTJl.js",
+          "assets/App-CAupzoCr.js"
+        ],
+        "moduleCount": 11
+      },
+      {
+        "file": "assets/App-CAupzoCr.js",
+        "bytes": 232465,
+        "gzipBytes": 64446,
+        "sha256": "d5e47ccae3bc78b8e55d1189299cc84318562604635fa4e22571dd5689ff614a",
+        "entry": false,
+        "dynamic": true,
+        "facade": "src/App.vue",
+        "imports": [
+          "assets/Hint-SO4Why7a.js",
+          "assets/i18n-BRUPIovF.js",
+          "assets/index-BtgTljxC.js",
+          "assets/_plugin-vue_export-helper-DBTLjMFa.js",
+          "assets/EditorUnsavedDialog-B4E7MZ0r.js",
+          "assets/Slider-BRNFA6MY.js",
+          "assets/updates-DQ8nX_Up.js",
+          "assets/activity-BteShBGH.js",
+          "assets/rotate-ccw-f43RlM3F.js"
+        ],
+        "dynamicImports": [
+          "assets/EditorView-C56JAtyQ.js",
+          "assets/DuplicatesView--taUVneo.js",
+          "assets/DebugMonitor-UTk78TCy.js"
+        ],
+        "moduleCount": 210
+      },
+      {
+        "file": "assets/DebugMonitor-UTk78TCy.js",
+        "bytes": 7392,
+        "gzipBytes": 2775,
+        "sha256": "d8eaa89528a5f6b1cdda33af8fb96b90bd771bfae6f7f9bc222decae2b86d841",
+        "entry": false,
+        "dynamic": true,
+        "facade": "src/components/DebugMonitor.vue",
+        "imports": [
+          "assets/i18n-BRUPIovF.js",
+          "assets/_plugin-vue_export-helper-DBTLjMFa.js",
+          "assets/EditorUnsavedDialog-B4E7MZ0r.js",
+          "assets/activity-BteShBGH.js",
+          "assets/rotate-ccw-f43RlM3F.js"
+        ],
+        "dynamicImports": [],
+        "moduleCount": 6
+      },
+      {
+        "file": "assets/DuplicatesView--taUVneo.js",
+        "bytes": 19579,
+        "gzipBytes": 6879,
+        "sha256": "4d5b875f9186e800ad6f849cddd63c0c58a6e0d86216f3099bc17adc9d7f192d",
+        "entry": false,
+        "dynamic": true,
+        "facade": "src/components/DuplicatesView.vue",
+        "imports": [
+          "assets/Hint-SO4Why7a.js",
+          "assets/i18n-BRUPIovF.js",
+          "assets/index-BtgTljxC.js",
+          "assets/_plugin-vue_export-helper-DBTLjMFa.js",
+          "assets/EditorUnsavedDialog-B4E7MZ0r.js",
+          "assets/updates-DQ8nX_Up.js",
+          "assets/eye-off-DpgIW0ec.js",
+          "assets/App-CAupzoCr.js"
+        ],
+        "dynamicImports": [],
+        "moduleCount": 10
+      },
+      {
+        "file": "assets/EditorUnsavedDialog-B4E7MZ0r.js",
+        "bytes": 47228,
+        "gzipBytes": 13941,
+        "sha256": "6d7818c803f8d61c866c77418b9d37f25d12c8f6f3b04b9a453a6e578e42c724",
+        "entry": false,
+        "dynamic": false,
+        "facade": null,
+        "imports": [
+          "assets/Hint-SO4Why7a.js",
+          "assets/i18n-BRUPIovF.js",
+          "assets/index-BtgTljxC.js",
+          "assets/_plugin-vue_export-helper-DBTLjMFa.js",
+          "assets/Slider-BRNFA6MY.js"
+        ],
+        "dynamicImports": [
+          "assets/SettingsDialog-BDBWd3lP.js"
+        ],
+        "moduleCount": 95
+      },
+      {
+        "file": "assets/EditorView-C56JAtyQ.js",
+        "bytes": 80207,
+        "gzipBytes": 23869,
+        "sha256": "8bddc6032272861686561cec442d1f5c344715ee28ff6969dec6788dd67c7610",
+        "entry": false,
+        "dynamic": false,
+        "facade": null,
+        "imports": [
+          "assets/Hint-SO4Why7a.js",
+          "assets/i18n-BRUPIovF.js",
+          "assets/index-BtgTljxC.js",
+          "assets/_plugin-vue_export-helper-DBTLjMFa.js",
+          "assets/EditorUnsavedDialog-B4E7MZ0r.js",
+          "assets/Slider-BRNFA6MY.js",
+          "assets/LevelMeter-D5fjQeCs.js"
+        ],
+        "dynamicImports": [],
+        "moduleCount": 69
+      },
+      {
+        "file": "assets/EditorWindow-Cf2KzTJl.js",
+        "bytes": 1276,
+        "gzipBytes": 704,
+        "sha256": "9050320f45ee528c151f9a66f619208ce673e876b61ffbbde8adeb5a2aa7366c",
+        "entry": false,
+        "dynamic": true,
+        "facade": "src/EditorWindow.vue",
+        "imports": [
+          "assets/i18n-BRUPIovF.js",
+          "assets/index-BtgTljxC.js",
+          "assets/_plugin-vue_export-helper-DBTLjMFa.js",
+          "assets/EditorUnsavedDialog-B4E7MZ0r.js",
+          "assets/EditorView-C56JAtyQ.js"
+        ],
+        "dynamicImports": [
+          "assets/DebugMonitor-UTk78TCy.js"
+        ],
+        "moduleCount": 2
+      },
+      {
+        "file": "assets/Hint-SO4Why7a.js",
+        "bytes": 139475,
+        "gzipBytes": 40259,
+        "sha256": "426a6b2a338d42f7aa58ac06be5f52b74d253296fb6c351f9ba1292deee1c3e7",
+        "entry": false,
+        "dynamic": false,
+        "facade": null,
+        "imports": [
+          "assets/i18n-BRUPIovF.js",
+          "assets/index-BtgTljxC.js",
+          "assets/_plugin-vue_export-helper-DBTLjMFa.js"
+        ],
+        "dynamicImports": [],
+        "moduleCount": 149
+      },
+      {
+        "file": "assets/LevelMeter-D5fjQeCs.js",
+        "bytes": 29742,
+        "gzipBytes": 12121,
+        "sha256": "11ff1d90387da088d98b6bf4115b053f1386fec52e24f882c0c2f713f0ec0b4a",
+        "entry": false,
+        "dynamic": false,
+        "facade": null,
+        "imports": [
+          "assets/i18n-BRUPIovF.js",
+          "assets/_plugin-vue_export-helper-DBTLjMFa.js",
+          "assets/Slider-BRNFA6MY.js"
+        ],
+        "dynamicImports": [],
+        "moduleCount": 18
+      },
+      {
+        "file": "assets/SettingsDialog-BDBWd3lP.js",
+        "bytes": 62230,
+        "gzipBytes": 17528,
+        "sha256": "d2bff78a2f52f38b202c55fd819695290f76a38951a5a2809b5ba5d4e246f64b",
+        "entry": false,
+        "dynamic": true,
+        "facade": "src/components/SettingsDialog.vue",
+        "imports": [
+          "assets/Hint-SO4Why7a.js",
+          "assets/i18n-BRUPIovF.js",
+          "assets/index-BtgTljxC.js",
+          "assets/_plugin-vue_export-helper-DBTLjMFa.js",
+          "assets/EditorUnsavedDialog-B4E7MZ0r.js",
+          "assets/Slider-BRNFA6MY.js",
+          "assets/updates-DQ8nX_Up.js",
+          "assets/LevelMeter-D5fjQeCs.js",
+          "assets/eye-off-DpgIW0ec.js",
+          "assets/rotate-ccw-f43RlM3F.js"
+        ],
+        "dynamicImports": [],
+        "moduleCount": 46
+      },
+      {
+        "file": "assets/Slider-BRNFA6MY.js",
+        "bytes": 46363,
+        "gzipBytes": 9770,
+        "sha256": "8dbd31a5eded4fc7ffc79175fa49b97009c48682d20d56a4158acb55263eb509",
+        "entry": false,
+        "dynamic": false,
+        "facade": null,
+        "imports": [
+          "assets/Hint-SO4Why7a.js",
+          "assets/i18n-BRUPIovF.js",
+          "assets/index-BtgTljxC.js",
+          "assets/_plugin-vue_export-helper-DBTLjMFa.js"
+        ],
+        "dynamicImports": [],
+        "moduleCount": 69
+      },
+      {
+        "file": "assets/_plugin-vue_export-helper-DBTLjMFa.js",
+        "bytes": 87751,
+        "gzipBytes": 33343,
+        "sha256": "c74db1f8195c8b4970a7cabf508ffc1e259a81ef1b46d42703a41296bbd47f3b",
+        "entry": false,
+        "dynamic": false,
+        "facade": null,
+        "imports": [
+          "assets/i18n-BRUPIovF.js"
+        ],
+        "dynamicImports": [],
+        "moduleCount": 36
+      },
+      {
+        "file": "assets/activity-BteShBGH.js",
+        "bytes": 263,
+        "gzipBytes": 224,
+        "sha256": "3a5cb65fafeae6d95628a4cc1bd90e9ea13c793dfd8f951a3a4cd92c17d19538",
+        "entry": false,
+        "dynamic": false,
+        "facade": null,
+        "imports": [
+          "assets/_plugin-vue_export-helper-DBTLjMFa.js"
+        ],
+        "dynamicImports": [],
+        "moduleCount": 1
+      },
+      {
+        "file": "assets/eye-off-DpgIW0ec.js",
+        "bytes": 459,
+        "gzipBytes": 296,
+        "sha256": "1c0a5c82f8c80ff68bc91bc49501541396a5c696ad2f057d098ba6aa9505d492",
+        "entry": false,
+        "dynamic": false,
+        "facade": null,
+        "imports": [
+          "assets/_plugin-vue_export-helper-DBTLjMFa.js"
+        ],
+        "dynamicImports": [],
+        "moduleCount": 1
+      },
+      {
+        "file": "assets/i18n-BRUPIovF.js",
+        "bytes": 251703,
+        "gzipBytes": 86199,
+        "sha256": "b7b60c88baa527f6d31027c52ede7a4fdae22e637651b72311ef0bab65770d69",
+        "entry": false,
+        "dynamic": false,
+        "facade": null,
+        "imports": [],
+        "dynamicImports": [],
+        "moduleCount": 53
+      },
+      {
+        "file": "assets/rotate-ccw-f43RlM3F.js",
+        "bytes": 407,
+        "gzipBytes": 276,
+        "sha256": "316704fb6eda5a655408f8a9889b5dd8bdc9562ea9cfc09063cd4094176d61c5",
+        "entry": false,
+        "dynamic": false,
+        "facade": null,
+        "imports": [
+          "assets/_plugin-vue_export-helper-DBTLjMFa.js"
+        ],
+        "dynamicImports": [],
+        "moduleCount": 2
+      },
+      {
+        "file": "assets/updates-DQ8nX_Up.js",
+        "bytes": 73306,
+        "gzipBytes": 26129,
+        "sha256": "58665141dee9421b6d5833295d71af19561ae39203bbb8498de3374f0de3fd6e",
+        "entry": false,
+        "dynamic": false,
+        "facade": null,
+        "imports": [
+          "assets/Hint-SO4Why7a.js",
+          "assets/i18n-BRUPIovF.js",
+          "assets/index-BtgTljxC.js",
+          "assets/_plugin-vue_export-helper-DBTLjMFa.js",
+          "assets/EditorUnsavedDialog-B4E7MZ0r.js",
+          "assets/Slider-BRNFA6MY.js"
+        ],
+        "dynamicImports": [],
+        "moduleCount": 116
+      }
+    ],
+    "assets": [
+      {
+        "file": "assets/128x128-dark-CHx_Q2Gs.png",
+        "bytes": 21717
+      },
+      {
+        "file": "assets/128x128-light-puENt2jQ.png",
+        "bytes": 21013
+      },
+      {
+        "file": "assets/App-D7oDf5Af.css",
+        "bytes": 6236
+      },
+      {
+        "file": "assets/DebugMonitor-Bke1vJXB.css",
+        "bytes": 2204
+      },
+      {
+        "file": "assets/DuplicatesView-CVItvJ4A.css",
+        "bytes": 1145
+      },
+      {
+        "file": "assets/EditorView-OsDvg2_1.css",
+        "bytes": 2335
+      },
+      {
+        "file": "assets/LevelMeter-CZ5-_erT.css",
+        "bytes": 3406
+      },
+      {
+        "file": "assets/SettingsDialog-DWuj91KN.css",
+        "bytes": 3316
+      },
+      {
+        "file": "assets/index-CdquMpiV.css",
+        "bytes": 89868
+      },
+      {
+        "file": "assets/updates-BwlTzHU6.css",
+        "bytes": 402
+      },
+      {
+        "file": "index.html",
+        "bytes": 795
+      }
+    ],
+    "limits": "Warm installed dependencies; Vite API build only, without type checking, native packaging, file writes or browser startup. gzip sizes are a comparison metric; local Tauri assets need not use HTTP compression. Module renderedLength is attribution before final chunk minification, not final byte contribution. Dynamic roots selected by main count toward their window startup. Other dynamic imports are excluded until requested.",
+    "topModules": [
+      {
+        "path": "node_modules/.pnpm/@vue+runtime-core@3.5.44/node_modules/@vue/runtime-core/dist/runtime-core.esm-bundler.js",
+        "renderedLength": 164640
+      },
+      {
+        "path": "node_modules/.pnpm/@vue+runtime-dom@3.5.44/node_modules/@vue/runtime-dom/dist/runtime-dom.esm-bundler.js",
+        "renderedLength": 49755
+      },
+      {
+        "path": "node_modules/.pnpm/@tanstack+virtual-core@3.19.7/node_modules/@tanstack/virtual-core/dist/esm/index.js",
+        "renderedLength": 47524
+      },
+      {
+        "path": "src/components/EditorView.vue?vue&type=script&setup=true&lang.ts",
+        "renderedLength": 44714
+      },
+      {
+        "path": "node_modules/.pnpm/vue-i18n@11.4.16_vue@3.5.44_typescript@6.0.3_/node_modules/vue-i18n/dist/vue-i18n.mjs",
+        "renderedLength": 43323
+      },
+      {
+        "path": "node_modules/.pnpm/vue-sonner@2.0.9/node_modules/vue-sonner/lib/index.js",
+        "renderedLength": 41968
+      },
+      {
+        "path": "node_modules/.pnpm/@vue+reactivity@3.5.44/node_modules/@vue/reactivity/dist/reactivity.esm-bundler.js",
+        "renderedLength": 41600
+      },
+      {
+        "path": "node_modules/.pnpm/@intlify+message-compiler@11.4.16/node_modules/@intlify/message-compiler/dist/message-compiler.mjs",
+        "renderedLength": 36938
+      },
+      {
+        "path": "node_modules/.pnpm/@intlify+core-base@11.4.16/node_modules/@intlify/core-base/dist/core-base.mjs",
+        "renderedLength": 36676
+      },
+      {
+        "path": "src/components/SourceSidebar.vue?vue&type=script&setup=true&lang.ts",
+        "renderedLength": 33694
+      },
+      {
+        "path": "src/components/BatchDialog.vue?vue&type=script&setup=true&lang.ts",
+        "renderedLength": 32057
+      },
+      {
+        "path": "src/components/SettingsDialog.vue?vue&type=script&setup=true&lang.ts",
+        "renderedLength": 32012
+      },
+      {
+        "path": "node_modules/.pnpm/cn@0.5.0/node_modules/cn/dist/engine.js",
+        "renderedLength": 30530
+      },
+      {
+        "path": "node_modules/.pnpm/@vueuse+core@15.0.0_vue@3.5.44_typescript@6.0.3_/node_modules/@vueuse/core/dist/index.js",
+        "renderedLength": 28853
+      },
+      {
+        "path": "src/components/SampleList.vue?vue&type=script&setup=true&lang.ts",
+        "renderedLength": 28547
+      },
+      {
+        "path": "src/components/DuplicatesView.vue?vue&type=script&setup=true&lang.ts",
+        "renderedLength": 24421
+      },
+      {
+        "path": "node_modules/.pnpm/gl-waveform@5.3.0/node_modules/gl-waveform/index.js",
+        "renderedLength": 21318
+      },
+      {
+        "path": "src/components/CommandPalette.vue?vue&type=script&setup=true&lang.ts",
+        "renderedLength": 20688
+      },
+      {
+        "path": "node_modules/.pnpm/reka-ui@2.11.0_vue@3.5.44_typescript@6.0.3_/node_modules/reka-ui/dist/Splitter/SplitterGroup.js",
+        "renderedLength": 20348
+      },
+      {
+        "path": "node_modules/.pnpm/@floating-ui+core@1.8.0/node_modules/@floating-ui/core/dist/floating-ui.core.mjs",
+        "renderedLength": 19590
+      }
+    ]
+  },
+  "browser": {
+    "checks": [
+      "library startup excludes unopened feature chunks",
+      "settings navigation opens while its component is loading",
+      "first settings open loads its deferred chunk and metadata",
+      "metadata requested during an already-open lazy mount reaches the About screen",
+      "closing and reopening preserves the mounted settings component",
+      "reopening refreshes application metadata",
+      "double-click loads the embedded editor and its audio state",
+      "duplicates remain available after deferred mounting",
+      "monitor opens from its sidebar control",
+      "separate editor window loads without library or settings UI: /assets/index-BS9afixU.js, /assets/i18n-DBNKc1PT.js, /assets/EditorWindow-C3M_i6nX.js, /assets/_plugin-vue_export-helper-MXCWhqvA.js, /assets/EditorUnsavedDialog-D4HZBO2W.js, /assets/Hint-BGwokCLy.js, /assets/Slider-CrIY2iwC.js, /assets/EditorView-3-bEVVWg.js, /assets/LevelMeter-CkBINsWV.js",
+      "separate editor settings retain the editor waveform target",
+      "checked flows have no page or console errors: "
+    ],
+    "libraryRequests": [
+      "/assets/index-BS9afixU.js",
+      "/assets/i18n-DBNKc1PT.js",
+      "/assets/App-BhlH1Zes.js",
+      "/assets/Hint-BGwokCLy.js",
+      "/assets/_plugin-vue_export-helper-MXCWhqvA.js",
+      "/assets/EditorUnsavedDialog-D4HZBO2W.js",
+      "/assets/Slider-CrIY2iwC.js",
+      "/assets/updates-am1tH1o4.js",
+      "/assets/activity-BrnqdE-4.js",
+      "/assets/rotate-ccw-CJuDAujQ.js"
+    ],
+    "editorRequests": [
+      "/assets/index-BS9afixU.js",
+      "/assets/i18n-DBNKc1PT.js",
+      "/assets/EditorWindow-C3M_i6nX.js",
+      "/assets/_plugin-vue_export-helper-MXCWhqvA.js",
+      "/assets/EditorUnsavedDialog-D4HZBO2W.js",
+      "/assets/Hint-BGwokCLy.js",
+      "/assets/Slider-CrIY2iwC.js",
+      "/assets/EditorView-3-bEVVWg.js",
+      "/assets/LevelMeter-CkBINsWV.js"
+    ],
+    "browser": "156.0.8078.76",
+    "fixtureAssets": [
+      {
+        "file": "App-BhlH1Zes.js",
+        "bytes": 232238,
+        "sha256": "bddf4b0b11fc943c3ccea732ef22fce343efcc5d5d40559fe6bab4a97bdf2aab"
+      },
+      {
+        "file": "DebugMonitor-BOOgG9bD.js",
+        "bytes": 7392,
+        "sha256": "6acaabc30c23e9d614980d6a7f339743c6aa84f3f19b2d6a950ed16fb72b333a"
+      },
+      {
+        "file": "DuplicatesView-CDLNn6nT.js",
+        "bytes": 19587,
+        "sha256": "10d29beeee372e328920982de884f9493caf8d490520ddebb36e1e7fa54bcc59"
+      },
+      {
+        "file": "EditorUnsavedDialog-D4HZBO2W.js",
+        "bytes": 47231,
+        "sha256": "9517be2bf52a532661a90edffd980b8274723693f64fb802bfcd9319a421042d"
+      },
+      {
+        "file": "EditorView-3-bEVVWg.js",
+        "bytes": 80187,
+        "sha256": "3d6e8370869806a4f17c3f7cfd44d84be70472abe9261999eb8426dce35cdfb1"
+      },
+      {
+        "file": "EditorWindow-C3M_i6nX.js",
+        "bytes": 1276,
+        "sha256": "8b13fdcba394b01b96c6626af5e11a897c399e3d38b9265d4c32a92f7eb0775a"
+      },
+      {
+        "file": "Hint-BGwokCLy.js",
+        "bytes": 139488,
+        "sha256": "a88a43401f21ec84423f83d5751e46dff63bb1a67a50098c5929b6372981012a"
+      },
+      {
+        "file": "LevelMeter-CkBINsWV.js",
+        "bytes": 29741,
+        "sha256": "f00c25b0f7668bf07231d0fffc27b8c98a4147bc55134d1c38c3725e6f5efdd4"
+      },
+      {
+        "file": "SettingsDialog-BHYyLs09.js",
+        "bytes": 62228,
+        "sha256": "108f3a882b284eb2ac95c4c491e1f6463bdb9fa6c36fe40716e99e52a7b879ba"
+      },
+      {
+        "file": "Slider-CrIY2iwC.js",
+        "bytes": 46363,
+        "sha256": "952c43006f9a3a583cc94b91a87f4620cf585e0bdf0dd5a11d9f903f1f4f9977"
+      },
+      {
+        "file": "_plugin-vue_export-helper-MXCWhqvA.js",
+        "bytes": 87744,
+        "sha256": "0a58d4b098f3e872ff215d7557b41310a4bf28e679dff33a3e875768d6ce6306"
+      },
+      {
+        "file": "activity-BrnqdE-4.js",
+        "bytes": 263,
+        "sha256": "a90153ed3f729b4f7fa531f1967b87ab40840e1c22f1dc8240dddb38f18b5eb6"
+      },
+      {
+        "file": "eye-off-DgNsZmfE.js",
+        "bytes": 459,
+        "sha256": "c6837a1ba44aa19ee8722c9450b663d8d7f4207646a012fa6b46838d6f4bd7cb"
+      },
+      {
+        "file": "i18n-DBNKc1PT.js",
+        "bytes": 251702,
+        "sha256": "c77ddd2adb038892f369c0c99c45311d7cc44d39b2df5a2b32c62077968547a5"
+      },
+      {
+        "file": "index-BS9afixU.js",
+        "bytes": 63703,
+        "sha256": "b5652a75409ef6fe1af7a0ed2eb7212512cfac1e04b51e7386ed8b1320f59058"
+      },
+      {
+        "file": "rotate-ccw-CJuDAujQ.js",
+        "bytes": 407,
+        "sha256": "2f7366cf3db17188f422baa4460fbaa7e01e6293a3b64f786518d8b4911c3d55"
+      },
+      {
+        "file": "updates-am1tH1o4.js",
+        "bytes": 73295,
+        "sha256": "9986e693d5287629af45915c767fba5289c5e625b2a177d2e8e40c7ead471d3e"
+      }
+    ],
+    "fixture": "Private production build of index.html with only main.ts prepended by mockWindows + src/mock/real-app.install(), outside dist; normal dynamic root selection and feature components retained."
+  },
+  "sourceHashes": {
+    "scripts/profile-bundle.mjs": "d637399140f812d912dbc63ba3b1cfa18efd3fab2fb6776d69242377a70977fe",
+    "tests/browser/startup-loading.mjs": "57445dde7f74bca3f8608085cddbb58908fdddde6feda7355892984de6420ba7",
+    "src/main.ts": "6959b4c14098197c5116d3e7081ee2c5111c9ab78ae8471f60050524b1466efd",
+    "src/components/SettingsHost.vue": "19b13c5a26f681fd6832bbf503b270c28e0671a63a1610bce672730dbefefc3a"
+  },
+  "regression": "The first conditional await-of-import version preloaded App.js in the editor path and failed the separate-window network assertion. Awaiting inside each branch passed all 12 checks. Initial monitor state is explicitly closed in the private QA fixture.",
+  "limits": "Size comparison is uncompressed and per-file gzip artifact bytes, including each selected root and static dependencies. No measured startup-time, peak-memory or cross-platform performance claim. Total JS slightly grows because splitting adds imports and wrappers. Vite-only times are single warm observations, not isolated benchmarks. Browser mocks do not validate native audio, OS window visibility or updater behavior."
+}

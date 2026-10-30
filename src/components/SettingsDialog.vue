@@ -66,7 +66,7 @@ const info = ref<AppInfo | null>(null)
 watch(dialogOpen, async (open) => {
   if (open)
     [info.value] = await Promise.all([api.appInfo(), duplicates.loadHidden()])
-})
+}, { immediate: true })
 
 async function refreshInfo() {
   info.value = await api.appInfo()

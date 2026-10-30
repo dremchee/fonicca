@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import DebugMonitor from '@/components/DebugMonitor.vue'
 import { debugMonitorOpen } from '@/composables/debugMonitor'
 import { onKeyStroke } from '@vueuse/core'
 import { isTauri } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BatchDialog from '@/components/BatchDialog.vue'
 import StemDialog from '@/components/StemDialog.vue'
@@ -16,17 +15,15 @@ import { useApolloStore } from '@/stores/apollo'
 import { useStemsStore } from '@/stores/stems'
 import CommandPalette from '@/components/CommandPalette.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import DuplicatesView from '@/components/DuplicatesView.vue'
 import FilterBar from '@/components/FilterBar.vue'
 import LibraryToolbar from '@/components/LibraryToolbar.vue'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import SampleList from '@/components/SampleList.vue'
-import SettingsDialog from '@/components/SettingsDialog.vue'
+import SettingsHost from '@/components/SettingsHost.vue'
 import TrackInfoDialog from '@/components/TrackInfoDialog.vue'
 import SourceSidebar from '@/components/SourceSidebar.vue'
-import EditorView from '@/components/EditorView.vue'
 import EditorUnsavedDialog from '@/components/EditorUnsavedDialog.vue'
 import { installAppMenu } from '@/menu'
 import { useDuplicatesStore } from '@/stores/duplicates'
@@ -37,6 +34,10 @@ import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useUpdatesStore } from '@/stores/updates'
 import { useSettingsStore } from '@/stores/settings'
+
+const EditorView = defineAsyncComponent(() => import('@/components/EditorView.vue'))
+const DuplicatesView = defineAsyncComponent(() => import('@/components/DuplicatesView.vue'))
+const DebugMonitor = defineAsyncComponent(() => import('@/components/DebugMonitor.vue'))
 
 const { locale } = useI18n()
 const library = useLibraryStore()
@@ -181,7 +182,7 @@ onKeyStroke(',', (e) => {
       <ResizableHandle />
       <!-- The list needs ~520px for its columns; the sidebar gives way before it does. -->
       <ResizablePanel id="main" :order="2" as="main" size-unit="px" :min-size="520" class="min-w-0 flex flex-col">
-        <SettingsDialog embedded v-show="settings.dialogOpen" />
+        <SettingsHost embedded />
         <div v-show="!settings.dialogOpen" class="min-h-0 flex-1 flex flex-col">
           <template v-if="!inDuplicates && !editor.expanded">
             <LibraryToolbar ref="toolbar" @open-search="paletteOpen = true" />
