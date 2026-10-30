@@ -6,6 +6,9 @@ unit test alone does not establish an improvement in interactive performance.
 
 ## Completion checklist
 
+See the [requirement-to-evidence audit](refactoring-audit.md) for current proof,
+limitations and the remaining foreground measurement.
+
 - [ ] Baseline: short/long audio workloads, library scrolling/search, bounded
   operation telemetry, separate native/renderer memory interpretation.
 - [x] Editor: extract waveform loading/rendering, pointer selection/markers,

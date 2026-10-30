@@ -1,0 +1,789 @@
+{
+  "schema": 1,
+  "measuredAt": "2026-10-30T07:31:48.546Z",
+  "sourceRevision": "8f073f2c8daba452cc02b6b0234b8281544eccb7",
+  "sourceSha256": {
+    "src-tauri/src/editor/benchmarks.rs": "1c2534b9c3330dcbcdb9e9f8961b764f260c79c3e7b476d03bdc629d4bfc4155",
+    "src-tauri/src/editor.rs": "a64c718ed8c13ba2d4f7eadfd277f372bb2f4a001bfc765ba5801c43c73e96e0",
+    "src-tauri/src/editor/blocks.rs": "62b40b6cb179e82cff7f1cc516a2c0456311f68bef84397e4311e106baa080bd",
+    "src-tauri/src/editor/storage.rs": "b1ceb78572eed275e4289e7942046bde144be5e7bbfff2079a702e3ba93239ea",
+    "src-tauri/src/editor/blocks/waveform.rs": "c206111c677e274baf0b0f6330b2b9997b8f01bf72ad8d6635f744343f2baf67",
+    "src-tauri/src/editor/processing.rs": "3943d63d25acf6cc3784b91b41692bcb00d4eb63f56d13591ff2b27fbbdda4f9",
+    "src-tauri/Cargo.toml": "e9c0ec5a60a61709d37d6dfd668fb69f524e75338da52a9bdb2cdcf540fbc82c",
+    "src-tauri/Cargo.lock": "f641af7ef3288051326446a53928a5bb266b2c71545d01b93a13d6887590444a"
+  },
+  "command": "FONICCA_BENCH_SECONDS=30,180,1200 FONICCA_BENCH_REPEATS=3 FONICCA_BENCH_OUTPUT=/tmp/fonicca-final-editor-workload.json cargo test --manifest-path src-tauri/Cargo.toml --locked --lib editor_workload_benchmark -- --ignored --nocapture --test-threads=1",
+  "environment": {
+    "cpu": "Apple M1 Pro",
+    "ramBytes": 17179869184,
+    "macOS": "26.7.1",
+    "power": "Battery power, 100%, discharging; prior baseline did not record power mode",
+    "profile": "Cargo dev-test, crate opt-level 1, dependencies opt-level 3",
+    "concurrency": "No concurrent build, model inference, UI profiling or other native workload launched by this task"
+  },
+  "historicalBaseline": {
+    "path": "docs/research/editor-performance-baseline.json",
+    "sha256": "5bee9df2a888ffd8eed82b0e2759ebe354f933a5cdc1853a5e739bbcf0f6fd5a",
+    "sourceBase": "3bd5203cda2aaa0e5215b4098a56e16aa0754b78"
+  },
+  "current": {
+    "arch": "aarch64",
+    "note": "Sequential warm-filesystem runs; no audio device or WebView. Wave includes cache generation. Storage is not process RSS.",
+    "os": "macos",
+    "profile": "dev-test",
+    "scenarios": [
+      {
+        "channels": 2,
+        "operations": {
+          "delete": {
+            "p50Ms": 0.004583,
+            "p95Ms": 0.004667,
+            "samplesMs": [
+              0.004583,
+              0.004667,
+              0.003791
+            ]
+          },
+          "fade_full": {
+            "p50Ms": 8.603665999999999,
+            "p95Ms": 50.907374999999995,
+            "samplesMs": [
+              8.603665999999999,
+              50.907374999999995,
+              7.778917
+            ]
+          },
+          "fade_short": {
+            "p50Ms": 0.636416,
+            "p95Ms": 0.701084,
+            "samplesMs": [
+              0.701084,
+              0.470125,
+              0.636416
+            ]
+          },
+          "gain_full": {
+            "p50Ms": 3.134458,
+            "p95Ms": 19.553042,
+            "samplesMs": [
+              2.858667,
+              19.553042,
+              3.134458
+            ]
+          },
+          "lufs_short": {
+            "p50Ms": 7.063458,
+            "p95Ms": 7.724208,
+            "samplesMs": [
+              7.724208,
+              7.021042,
+              7.063458
+            ]
+          },
+          "normalize_full": {
+            "p50Ms": 5.071291,
+            "p95Ms": 5.756916,
+            "samplesMs": [
+              5.050667,
+              5.071291,
+              5.756916
+            ]
+          },
+          "open_decode": {
+            "p50Ms": 14.293666,
+            "p95Ms": 20.602958,
+            "samplesMs": [
+              20.602958,
+              10.653791,
+              14.293666
+            ]
+          },
+          "redo_fade": {
+            "p50Ms": 0.000417,
+            "p95Ms": 0.000583,
+            "samplesMs": [
+              0.000166,
+              0.000417,
+              0.000583
+            ]
+          },
+          "save": {
+            "p50Ms": 28.540542,
+            "p95Ms": 28.68325,
+            "samplesMs": [
+              25.305125,
+              28.540542,
+              28.68325
+            ]
+          },
+          "stretch_short": {
+            "p50Ms": 33.386625,
+            "p95Ms": 34.295666000000004,
+            "samplesMs": [
+              33.386625,
+              34.295666000000004,
+              33.333042
+            ]
+          },
+          "undo_delete": {
+            "p50Ms": 0.00020800000000000001,
+            "p95Ms": 0.228708,
+            "samplesMs": [
+              0.228708,
+              0.00020800000000000001,
+              0.000167
+            ]
+          },
+          "undo_fade": {
+            "p50Ms": 0.001166,
+            "p95Ms": 0.001458,
+            "samplesMs": [
+              0.00075,
+              0.001458,
+              0.001166
+            ]
+          },
+          "undo_full_fade": {
+            "p50Ms": 0.00033299999999999996,
+            "p95Ms": 0.000584,
+            "samplesMs": [
+              0.00033299999999999996,
+              0.000584,
+              0.00025
+            ]
+          },
+          "wave_after_fade": {
+            "p50Ms": 3.608083,
+            "p95Ms": 32.074708,
+            "samplesMs": [
+              3.442,
+              32.074708,
+              3.608083
+            ]
+          },
+          "wave_cached": {
+            "p50Ms": 1.129667,
+            "p95Ms": 1.208917,
+            "samplesMs": [
+              1.129667,
+              1.208917,
+              1.0375
+            ]
+          },
+          "wave_first": {
+            "p50Ms": 25.732625,
+            "p95Ms": 27.654875,
+            "samplesMs": [
+              25.6055,
+              27.654875,
+              25.732625
+            ]
+          },
+          "wave_pan": {
+            "p50Ms": 0.931334,
+            "p95Ms": 0.9676659999999999,
+            "samplesMs": [
+              0.925833,
+              0.9676659999999999,
+              0.931334
+            ]
+          },
+          "wave_zoom": {
+            "p50Ms": 1.052625,
+            "p95Ms": 2.0319589999999996,
+            "samplesMs": [
+              1.052625,
+              2.0319589999999996,
+              0.9610829999999999
+            ]
+          }
+        },
+        "repetitions": 3,
+        "sampleRate": 44100,
+        "seconds": 30,
+        "storage": {
+          "cacheBytes": 2545620,
+          "diskBytes": 0,
+          "lastWaveMs": 3.607,
+          "logicalBytes": 10584000,
+          "openedMs": 14.291333,
+          "ramBytes": 37748736,
+          "redoSteps": 1,
+          "sampleId": 1,
+          "storageCount": 3,
+          "undoSteps": 1
+        }
+      },
+      {
+        "channels": 2,
+        "operations": {
+          "delete": {
+            "p50Ms": 0.0029579999999999997,
+            "p95Ms": 0.003167,
+            "samplesMs": [
+              0.001833,
+              0.0029579999999999997,
+              0.003167
+            ]
+          },
+          "fade_full": {
+            "p50Ms": 199.18270800000002,
+            "p95Ms": 200.724416,
+            "samplesMs": [
+              199.18270800000002,
+              200.724416,
+              189.7655
+            ]
+          },
+          "fade_short": {
+            "p50Ms": 0.42283400000000004,
+            "p95Ms": 0.51725,
+            "samplesMs": [
+              0.51725,
+              0.404083,
+              0.42283400000000004
+            ]
+          },
+          "gain_full": {
+            "p50Ms": 167.277833,
+            "p95Ms": 174.074333,
+            "samplesMs": [
+              163.13304100000002,
+              167.277833,
+              174.074333
+            ]
+          },
+          "lufs_short": {
+            "p50Ms": 6.953291,
+            "p95Ms": 7.0413749999999995,
+            "samplesMs": [
+              6.953291,
+              7.0413749999999995,
+              6.941292
+            ]
+          },
+          "normalize_full": {
+            "p50Ms": 168.698625,
+            "p95Ms": 192.920542,
+            "samplesMs": [
+              168.698625,
+              192.920542,
+              145.29
+            ]
+          },
+          "open_decode": {
+            "p50Ms": 217.70141700000002,
+            "p95Ms": 221.162625,
+            "samplesMs": [
+              217.70141700000002,
+              221.162625,
+              204.319917
+            ]
+          },
+          "redo_fade": {
+            "p50Ms": 0.000375,
+            "p95Ms": 0.000375,
+            "samplesMs": [
+              0.000375,
+              0.000375,
+              0.00029099999999999997
+            ]
+          },
+          "save": {
+            "p50Ms": 139.799541,
+            "p95Ms": 149.62545799999998,
+            "samplesMs": [
+              149.62545799999998,
+              139.799541,
+              107.1315
+            ]
+          },
+          "stretch_short": {
+            "p50Ms": 32.712292,
+            "p95Ms": 32.995958,
+            "samplesMs": [
+              32.712292,
+              32.995958,
+              32.547875
+            ]
+          },
+          "undo_delete": {
+            "p50Ms": 0.00020800000000000001,
+            "p95Ms": 0.00025,
+            "samplesMs": [
+              0.00025,
+              0.00020800000000000001,
+              0.000167
+            ]
+          },
+          "undo_fade": {
+            "p50Ms": 0.001167,
+            "p95Ms": 0.00125,
+            "samplesMs": [
+              0.000625,
+              0.00125,
+              0.001167
+            ]
+          },
+          "undo_full_fade": {
+            "p50Ms": 0.0005,
+            "p95Ms": 0.000583,
+            "samplesMs": [
+              0.0005,
+              0.000583,
+              0.000375
+            ]
+          },
+          "wave_after_fade": {
+            "p50Ms": 3.856375,
+            "p95Ms": 4.370209,
+            "samplesMs": [
+              3.804375,
+              3.856375,
+              4.370209
+            ]
+          },
+          "wave_cached": {
+            "p50Ms": 1.229583,
+            "p95Ms": 1.344708,
+            "samplesMs": [
+              1.344708,
+              1.228542,
+              1.229583
+            ]
+          },
+          "wave_first": {
+            "p50Ms": 151.859791,
+            "p95Ms": 151.910042,
+            "samplesMs": [
+              151.910042,
+              151.859791,
+              148.051667
+            ]
+          },
+          "wave_pan": {
+            "p50Ms": 1.2275829999999999,
+            "p95Ms": 1.275958,
+            "samplesMs": [
+              1.2275829999999999,
+              1.219167,
+              1.275958
+            ]
+          },
+          "wave_zoom": {
+            "p50Ms": 0.9715,
+            "p95Ms": 1.310417,
+            "samplesMs": [
+              1.310417,
+              0.9715,
+              0.968667
+            ]
+          }
+        },
+        "repetitions": 3,
+        "sampleRate": 44100,
+        "seconds": 180,
+        "storage": {
+          "cacheBytes": 14121744,
+          "diskBytes": 127008000,
+          "lastWaveMs": 4.369,
+          "logicalBytes": 63504000,
+          "openedMs": 204.317791,
+          "ramBytes": 2097152,
+          "redoSteps": 1,
+          "sampleId": 1,
+          "storageCount": 3,
+          "undoSteps": 1
+        }
+      },
+      {
+        "channels": 2,
+        "operations": {
+          "delete": {
+            "p50Ms": 0.004041,
+            "p95Ms": 0.004167,
+            "samplesMs": [
+              0.004041,
+              0.002042,
+              0.004167
+            ]
+          },
+          "fade_full": {
+            "p50Ms": 1105.804083,
+            "p95Ms": 1140.1593750000002,
+            "samplesMs": [
+              1105.804083,
+              1091.552042,
+              1140.1593750000002
+            ]
+          },
+          "fade_short": {
+            "p50Ms": 0.412,
+            "p95Ms": 0.421708,
+            "samplesMs": [
+              0.412,
+              0.40979200000000005,
+              0.421708
+            ]
+          },
+          "gain_full": {
+            "p50Ms": 876.422958,
+            "p95Ms": 902.4734159999999,
+            "samplesMs": [
+              902.4734159999999,
+              876.422958,
+              840.111541
+            ]
+          },
+          "lufs_short": {
+            "p50Ms": 6.963042,
+            "p95Ms": 7.0152920000000005,
+            "samplesMs": [
+              7.0152920000000005,
+              6.963042,
+              6.957083
+            ]
+          },
+          "normalize_full": {
+            "p50Ms": 1017.315708,
+            "p95Ms": 1021.6124159999999,
+            "samplesMs": [
+              1021.6124159999999,
+              1017.315708,
+              933.1375840000001
+            ]
+          },
+          "open_decode": {
+            "p50Ms": 1200.085792,
+            "p95Ms": 1319.2321670000001,
+            "samplesMs": [
+              1319.2321670000001,
+              1200.085792,
+              1190.6412500000001
+            ]
+          },
+          "redo_fade": {
+            "p50Ms": 0.00025,
+            "p95Ms": 0.000334,
+            "samplesMs": [
+              0.00025,
+              0.00025,
+              0.000334
+            ]
+          },
+          "save": {
+            "p50Ms": 782.4422920000001,
+            "p95Ms": 814.062625,
+            "samplesMs": [
+              814.062625,
+              782.036708,
+              782.4422920000001
+            ]
+          },
+          "stretch_short": {
+            "p50Ms": 32.577374999999996,
+            "p95Ms": 32.601208,
+            "samplesMs": [
+              32.601208,
+              32.463083,
+              32.577374999999996
+            ]
+          },
+          "undo_delete": {
+            "p50Ms": 0.000125,
+            "p95Ms": 0.000167,
+            "samplesMs": [
+              0.000167,
+              0.000125,
+              0.000125
+            ]
+          },
+          "undo_fade": {
+            "p50Ms": 0.001291,
+            "p95Ms": 0.0014169999999999999,
+            "samplesMs": [
+              0.0014169999999999999,
+              0.0005,
+              0.001291
+            ]
+          },
+          "undo_full_fade": {
+            "p50Ms": 0.000625,
+            "p95Ms": 0.0007080000000000001,
+            "samplesMs": [
+              0.000541,
+              0.000625,
+              0.0007080000000000001
+            ]
+          },
+          "wave_after_fade": {
+            "p50Ms": 4.025375,
+            "p95Ms": 4.223415999999999,
+            "samplesMs": [
+              4.223415999999999,
+              3.9622909999999996,
+              4.025375
+            ]
+          },
+          "wave_cached": {
+            "p50Ms": 1.4692500000000002,
+            "p95Ms": 1.476125,
+            "samplesMs": [
+              1.43425,
+              1.4692500000000002,
+              1.476125
+            ]
+          },
+          "wave_first": {
+            "p50Ms": 975.305125,
+            "p95Ms": 1086.7582499999999,
+            "samplesMs": [
+              1086.7582499999999,
+              975.305125,
+              973.498292
+            ]
+          },
+          "wave_pan": {
+            "p50Ms": 1.6457089999999999,
+            "p95Ms": 1.706167,
+            "samplesMs": [
+              1.6457089999999999,
+              1.706167,
+              1.615459
+            ]
+          },
+          "wave_zoom": {
+            "p50Ms": 0.976375,
+            "p95Ms": 0.9868329999999998,
+            "samplesMs": [
+              0.975166,
+              0.9868329999999998,
+              0.976375
+            ]
+          }
+        },
+        "repetitions": 3,
+        "sampleRate": 44100,
+        "seconds": 1200,
+        "storage": {
+          "cacheBytes": 92839572,
+          "diskBytes": 846720000,
+          "lastWaveMs": 4.024,
+          "logicalBytes": 423360000,
+          "openedMs": 1190.638917,
+          "ramBytes": 2097152,
+          "redoSteps": 1,
+          "sampleId": 1,
+          "storageCount": 3,
+          "undoSteps": 1
+        }
+      }
+    ],
+    "schema": 1
+  },
+  "sharedOperations": [
+    {
+      "seconds": 30,
+      "repetitions": 3,
+      "operations": {
+        "delete": {
+          "historicalMedianMs": 0.0028339999999999997,
+          "currentMedianMs": 0.004583
+        },
+        "fade_full": {
+          "historicalMedianMs": 12.835834,
+          "currentMedianMs": 8.603665999999999
+        },
+        "fade_short": {
+          "historicalMedianMs": 0.984917,
+          "currentMedianMs": 0.636416
+        },
+        "open_decode": {
+          "historicalMedianMs": 10.676167,
+          "currentMedianMs": 14.293666
+        },
+        "redo_fade": {
+          "historicalMedianMs": 0.00033299999999999996,
+          "currentMedianMs": 0.000417
+        },
+        "save": {
+          "historicalMedianMs": 26.098875,
+          "currentMedianMs": 28.540542
+        },
+        "undo_delete": {
+          "historicalMedianMs": 0.000167,
+          "currentMedianMs": 0.00020800000000000001
+        },
+        "undo_fade": {
+          "historicalMedianMs": 0.00075,
+          "currentMedianMs": 0.001166
+        },
+        "undo_full_fade": {
+          "historicalMedianMs": 0.000167,
+          "currentMedianMs": 0.00033299999999999996
+        },
+        "wave_after_fade": {
+          "historicalMedianMs": 3.240084,
+          "currentMedianMs": 3.608083
+        },
+        "wave_cached": {
+          "historicalMedianMs": 0.837708,
+          "currentMedianMs": 1.129667
+        },
+        "wave_first": {
+          "historicalMedianMs": 24.957791999999998,
+          "currentMedianMs": 25.732625
+        },
+        "wave_pan": {
+          "historicalMedianMs": 0.7094999999999999,
+          "currentMedianMs": 0.931334
+        },
+        "wave_zoom": {
+          "historicalMedianMs": 0.9885,
+          "currentMedianMs": 1.052625
+        }
+      }
+    },
+    {
+      "seconds": 180,
+      "repetitions": 3,
+      "operations": {
+        "delete": {
+          "historicalMedianMs": 0.0022919999999999998,
+          "currentMedianMs": 0.0029579999999999997
+        },
+        "fade_full": {
+          "historicalMedianMs": 207.736792,
+          "currentMedianMs": 199.18270800000002
+        },
+        "fade_short": {
+          "historicalMedianMs": 0.943375,
+          "currentMedianMs": 0.42283400000000004
+        },
+        "open_decode": {
+          "historicalMedianMs": 191.915583,
+          "currentMedianMs": 217.70141700000002
+        },
+        "redo_fade": {
+          "historicalMedianMs": 0.000375,
+          "currentMedianMs": 0.000375
+        },
+        "save": {
+          "historicalMedianMs": 137.671916,
+          "currentMedianMs": 139.799541
+        },
+        "undo_delete": {
+          "historicalMedianMs": 0.000209,
+          "currentMedianMs": 0.00020800000000000001
+        },
+        "undo_fade": {
+          "historicalMedianMs": 0.001042,
+          "currentMedianMs": 0.001167
+        },
+        "undo_full_fade": {
+          "historicalMedianMs": 0.000417,
+          "currentMedianMs": 0.0005
+        },
+        "wave_after_fade": {
+          "historicalMedianMs": 3.573083,
+          "currentMedianMs": 3.856375
+        },
+        "wave_cached": {
+          "historicalMedianMs": 1.088208,
+          "currentMedianMs": 1.229583
+        },
+        "wave_first": {
+          "historicalMedianMs": 149.320708,
+          "currentMedianMs": 151.859791
+        },
+        "wave_pan": {
+          "historicalMedianMs": 1.092625,
+          "currentMedianMs": 1.2275829999999999
+        },
+        "wave_zoom": {
+          "historicalMedianMs": 0.964666,
+          "currentMedianMs": 0.9715
+        }
+      }
+    },
+    {
+      "seconds": 1200,
+      "repetitions": 3,
+      "operations": {
+        "delete": {
+          "historicalMedianMs": 0.0022500000000000003,
+          "currentMedianMs": 0.004041
+        },
+        "fade_full": {
+          "historicalMedianMs": 1350.845584,
+          "currentMedianMs": 1105.804083
+        },
+        "fade_short": {
+          "historicalMedianMs": 0.952375,
+          "currentMedianMs": 0.412
+        },
+        "open_decode": {
+          "historicalMedianMs": 1222.7501249999998,
+          "currentMedianMs": 1200.085792
+        },
+        "redo_fade": {
+          "historicalMedianMs": 0.00033299999999999996,
+          "currentMedianMs": 0.00025
+        },
+        "save": {
+          "historicalMedianMs": 779.355042,
+          "currentMedianMs": 782.4422920000001
+        },
+        "undo_delete": {
+          "historicalMedianMs": 0.000125,
+          "currentMedianMs": 0.000125
+        },
+        "undo_fade": {
+          "historicalMedianMs": 0.000541,
+          "currentMedianMs": 0.001291
+        },
+        "undo_full_fade": {
+          "historicalMedianMs": 0.0005,
+          "currentMedianMs": 0.000625
+        },
+        "wave_after_fade": {
+          "historicalMedianMs": 3.6727499999999997,
+          "currentMedianMs": 4.025375
+        },
+        "wave_cached": {
+          "historicalMedianMs": 1.2595,
+          "currentMedianMs": 1.4692500000000002
+        },
+        "wave_first": {
+          "historicalMedianMs": 968.448458,
+          "currentMedianMs": 975.305125
+        },
+        "wave_pan": {
+          "historicalMedianMs": 1.473583,
+          "currentMedianMs": 1.6457089999999999
+        },
+        "wave_zoom": {
+          "historicalMedianMs": 0.963083,
+          "currentMedianMs": 0.976375
+        }
+      }
+    }
+  ],
+  "verification": {
+    "testPassed": 1,
+    "failed": 0,
+    "filtered": 256,
+    "workloadSeconds": 22.41,
+    "scenarioCount": 3,
+    "observationsPerOperation": 3,
+    "operationsPerScenario": 18
+  },
+  "limits": [
+    "Native warm-filesystem function timings; no actual audio device, playback, IPC queue, foreground WebView or GPU completion.",
+    "This is a final-code observation with historical medians for context, not a new controlled paired before/after experiment. The older baseline lacks a power-state record.",
+    "The extended workload adds full gain/normalization and short stretch/LUFS before saving; histories/order differ after the original operations. Do not infer a save speedup or a PCM/RSS reduction from those historical comparisons.",
+    "Three observations do not establish tail latency; p95 of three is just the largest observed value. Small sub-millisecond differences do not establish a regression.",
+    "Source and audio format match recorded fixtures and native profile. Algorithm equivalence and command revision/race semantics are covered separately by the current unit/browser checks.",
+    "Storage counters are not RSS. This does not complete the pending foreground WebView/editor memory requirement."
+  ]
+}
