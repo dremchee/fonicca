@@ -409,7 +409,7 @@ pub(crate) fn rescan_containing(state: &AppState, path: &Path) -> Result<bool> {
 
 /// Slices of `[start, end)` of this window's audio (see `editor::slices`).
 #[tauri::command]
-pub fn editor_slices(
+pub async fn editor_slices(
     state: State<'_, AppState>,
     window: Window,
     start: usize,
@@ -417,7 +417,10 @@ pub fn editor_slices(
     by: editor::SliceBy,
     zero: bool,
 ) -> Result<Vec<editor::Span>> {
-    with_session(&state, &window, |s| Ok(editor::slices(s.audio(), start, end, by, zero)))
+    let snapshot = with_session(&state, &window, |s| Ok(editor::SliceSnapshot::new(s)))?;
+    let detected = tauri::async_runtime::spawn_blocking(move || snapshot.detect(start, end, by, zero))
+        .await.map_err(|error| Error::Other(format!("slice detection failed: {error}")))?;
+    with_session(&state, &window, |s| detected.finish(s))
 }
 
 #[derive(Serialize)]
@@ -432,27 +435,13 @@ pub struct ExportedSlices {
 /// Writes each slice as a WAV ("Kick 01.wav", …) into a new folder next to the
 /// file ("Kick slices"), at the file's bit depth, and adds them to the library.
 #[tauri::command]
-pub fn editor_export_slices(state: State<'_, AppState>, window: Window, spans: Vec<editor::Span>) -> Result<ExportedSlices> {
+pub async fn editor_export_slices(state: State<'_, AppState>, window: Window, spans: Vec<editor::Span>) -> Result<ExportedSlices> {
     if spans.is_empty() {
         return Err(Error::Other("nothing to export".into()));
     }
-    let dir = with_session(&state, &window, |s| {
-        let parent = s.path.parent().unwrap_or(Path::new("."));
-        let stem = s.path.file_stem().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-        let dir = (1..)
-            .map(|n| parent.join(if n == 1 { format!("{stem} slices") } else { format!("{stem} slices {n}") }))
-            .find(|d| !d.exists())
-            .expect("some name is free");
-        std::fs::create_dir_all(&dir)?;
-        let audio = s.audio();
-        let width = spans.len().to_string().len().max(2);
-        for (i, span) in spans.iter().enumerate() {
-            let (a, b) = (span.start.min(audio.frames()), span.end.min(audio.frames()));
-            let pcm = audio.slice_frames(a,b.max(a));
-            editor::write_wav(&dir.join(format!("{stem} {:0width$}.wav", i + 1)), &pcm, s.bit_depth, None)?;
-        }
-        Ok(dir)
-    })?;
+    let snapshot = with_session(&state, &window, |s| editor::exporting::Snapshot::new(s, spans))?;
+    let (dir, count) = tauri::async_runtime::spawn_blocking(move || snapshot.write())
+        .await.map_err(|error| Error::Other(format!("exporting slices failed: {error}")))??;
     let in_library = rescan_containing(&state, &dir)?;
-    Ok(ExportedSlices { dir: dir.to_string_lossy().into_owned(), count: spans.len(), in_library })
+    Ok(ExportedSlices { dir: dir.to_string_lossy().into_owned(), count, in_library })
 }

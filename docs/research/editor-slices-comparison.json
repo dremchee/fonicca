@@ -1,0 +1,1640 @@
+{
+  "schema": 1,
+  "observedAt": "2026-10-30T05:51:24.189202+00:00",
+  "sourceBase": "4b9ebc1be41bf42838c054c8b16b73829d784e41",
+  "environment": {
+    "os": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "machine": "arm64",
+    "cpu": "Apple M1 Pro",
+    "profile": "Cargo dev-test, crate opt-level 1, dependencies opt-level 3"
+  },
+  "sourceSha256": {
+    "src-tauri/src/editor.rs": "a64c718ed8c13ba2d4f7eadfd277f372bb2f4a001bfc765ba5801c43c73e96e0",
+    "src-tauri/src/editor/slices.rs": "19f952b371661d3e9627a29fefda724588666970f2c6f1f326ef70fed9040125",
+    "src-tauri/src/editor/exporting.rs": "d38918ac15ea2ff1715b0b4efd48a26d547bd0ce7c414140d080d4f527c547e3",
+    "src-tauri/src/editor_commands.rs": "73f4d30f3eccf24bebeecb502c829711e93f0333458e73993893b832c19d4f84",
+    "src-tauri/src/editor/benchmarks.rs": "1c2534b9c3330dcbcdb9e9f8961b764f260c79c3e7b476d03bdc629d4bfc4155",
+    "src/components/EditorSlicer.vue": "ff7aea02a4f4aed9b9060cdb99af50d1c9286417574044a31b05b47a477c2d16",
+    "tests/browser/editor-slices.mjs": "689c6121b02adea2ffdb2aa48a586f1777e6060f32200b2acaab26a77986b233"
+  },
+  "method": {
+    "order": [
+      "reference",
+      "candidate",
+      "reference",
+      "candidate",
+      "reference",
+      "candidate"
+    ],
+    "durationsSeconds": [
+      30,
+      180,
+      1200
+    ],
+    "repetitionsPerCase": 3,
+    "workload": "Private synthetic stereo 44.1 kHz float WAV. Unchanged grid, transient and silence algorithms with zero snapping, then four equal WAV exports.",
+    "reference": "Detection runs directly under the session mutex. Export wraps the new directory/write policy under that mutex, isolating lock scope rather than comparing historical export binaries.",
+    "candidate": "Immutable audio capture, detection or real file writes outside the session mutex; detection checks the audio revision on return.",
+    "limits": [
+      "No UI, IPC, worker scheduling/queue delay or library rescan. Uncontended native mutex and warm filesystem.",
+      "Three local alternating observations, not p95 or a cross-platform guarantee. Algorithms/writing themselves were not optimized by this extraction.",
+      "RSS includes mapped pages/allocator retention, misses transient peaks and excludes WebView."
+    ]
+  },
+  "implementations": {
+    "reference": {
+      "description": "detection/export under session mutex",
+      "note": "Private synthetic stereo float WAV. Detection uses the unchanged grid/transient/silence algorithm and zero snapping. Export writes four equal WAVs with the same policy in both modes; reference includes snapshot setup inside the long critical section and isolates lock scope rather than comparing historical binaries. No library rescan, UI/IPC or worker queue delay. Warm filesystem and uncontended mutex. Phase RSS includes mmap/allocator, misses transient peaks and excludes WebView.",
+      "observations": [
+        {
+          "case": "grid",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 25870336,
+            "before": 25608192
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 0.120041,
+              "waitMs": 8.3e-05
+            }
+          ],
+          "spanCount": 60,
+          "totalCoreMs": 0.2125
+        },
+        {
+          "case": "transients",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 25985024,
+            "before": 25919488
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 52.042291999999996,
+              "waitMs": 4.2e-05
+            }
+          ],
+          "spanCount": 32,
+          "totalCoreMs": 52.044374999999995
+        },
+        {
+          "case": "silence",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 26034176,
+            "before": 25985024
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 25.806875,
+              "waitMs": 0.00020800000000000001
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 25.808666000000002
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 10584272,
+          "repetition": 1,
+          "rssBytes": {
+            "after": 26230784,
+            "before": 26050560
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 24.619083,
+              "waitMs": 0.000167
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 24.622167
+        },
+        {
+          "case": "grid",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 65732608,
+            "before": 59817984
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 0.446916,
+              "waitMs": 8.3e-05
+            }
+          ],
+          "spanCount": 360,
+          "totalCoreMs": 0.449
+        },
+        {
+          "case": "transients",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 123371520,
+            "before": 65732608
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 326.421167,
+              "waitMs": 4.2e-05
+            }
+          ],
+          "spanCount": 197,
+          "totalCoreMs": 326.423958
+        },
+        {
+          "case": "silence",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 123371520,
+            "before": 123371520
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 159.098125,
+              "waitMs": 0.00020800000000000001
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 159.10191700000001
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 63504272,
+          "repetition": 1,
+          "rssBytes": {
+            "after": 123404288,
+            "before": 123371520
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 154.120292,
+              "waitMs": 0.00020800000000000001
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 154.123458
+        },
+        {
+          "case": "grid",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 132907008,
+            "before": 93487104
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 2.862625,
+              "waitMs": 8.3e-05
+            }
+          ],
+          "spanCount": 2400,
+          "totalCoreMs": 2.864792
+        },
+        {
+          "case": "transients",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 516980736,
+            "before": 132907008
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 2179.705166,
+              "waitMs": 8.4e-05
+            }
+          ],
+          "spanCount": 1312,
+          "totalCoreMs": 2179.707542
+        },
+        {
+          "case": "silence",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 516997120,
+            "before": 516980736
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 1061.6870000000001,
+              "waitMs": 0.00020800000000000001
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 1061.690333
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 423360272,
+          "repetition": 1,
+          "rssBytes": {
+            "after": 517029888,
+            "before": 516997120
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 935.02175,
+              "waitMs": 0.000166
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 935.02525
+        },
+        {
+          "case": "grid",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 25853952,
+            "before": 25559040
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 0.022042,
+              "waitMs": 0.000125
+            }
+          ],
+          "spanCount": 60,
+          "totalCoreMs": 0.031166
+        },
+        {
+          "case": "transients",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 25968640,
+            "before": 25903104
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 51.785667000000004,
+              "waitMs": 4.1e-05
+            }
+          ],
+          "spanCount": 32,
+          "totalCoreMs": 51.788208000000004
+        },
+        {
+          "case": "silence",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 26001408,
+            "before": 25968640
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 25.977375000000002,
+              "waitMs": 0.000167
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 25.980125
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 10584272,
+          "repetition": 2,
+          "rssBytes": {
+            "after": 26214400,
+            "before": 26017792
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 21.547542,
+              "waitMs": 0.000209
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 21.553042
+        },
+        {
+          "case": "grid",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 65683456,
+            "before": 59801600
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 0.461833,
+              "waitMs": 0.000125
+            }
+          ],
+          "spanCount": 360,
+          "totalCoreMs": 0.464083
+        },
+        {
+          "case": "transients",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 123322368,
+            "before": 65683456
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 328.730458,
+              "waitMs": 4.2e-05
+            }
+          ],
+          "spanCount": 197,
+          "totalCoreMs": 328.733709
+        },
+        {
+          "case": "silence",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 123322368,
+            "before": 123322368
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 159.38325,
+              "waitMs": 0.000167
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 159.38725
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 63504272,
+          "repetition": 2,
+          "rssBytes": {
+            "after": 123387904,
+            "before": 123322368
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 131.628458,
+              "waitMs": 0.00025
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 131.63250000000002
+        },
+        {
+          "case": "grid",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 132841472,
+            "before": 93454336
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 2.809917,
+              "waitMs": 8.4e-05
+            }
+          ],
+          "spanCount": 2400,
+          "totalCoreMs": 2.812333
+        },
+        {
+          "case": "transients",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 516931584,
+            "before": 132857856
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 2175.452416,
+              "waitMs": 8.3e-05
+            }
+          ],
+          "spanCount": 1312,
+          "totalCoreMs": 2175.455
+        },
+        {
+          "case": "silence",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 516931584,
+            "before": 516931584
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 1062.863334,
+              "waitMs": 0.000167
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 1062.866916
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 423360272,
+          "repetition": 2,
+          "rssBytes": {
+            "after": 516997120,
+            "before": 516931584
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 939.854792,
+              "waitMs": 0.00020800000000000001
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 939.85825
+        },
+        {
+          "case": "grid",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 25870336,
+            "before": 25591808
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 0.02025,
+              "waitMs": 0.000167
+            }
+          ],
+          "spanCount": 60,
+          "totalCoreMs": 0.028584
+        },
+        {
+          "case": "transients",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 25985024,
+            "before": 25919488
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 51.943459,
+              "waitMs": 4.1e-05
+            }
+          ],
+          "spanCount": 32,
+          "totalCoreMs": 51.94575
+        },
+        {
+          "case": "silence",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 26017792,
+            "before": 25985024
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 25.976792,
+              "waitMs": 0.000166
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 25.979583
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 10584272,
+          "repetition": 3,
+          "rssBytes": {
+            "after": 26198016,
+            "before": 26034176
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 21.682167,
+              "waitMs": 0.000167
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 21.68825
+        },
+        {
+          "case": "grid",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 65699840,
+            "before": 59801600
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 0.441417,
+              "waitMs": 8.3e-05
+            }
+          ],
+          "spanCount": 360,
+          "totalCoreMs": 0.44387499999999996
+        },
+        {
+          "case": "transients",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 123355136,
+            "before": 65699840
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 327.035917,
+              "waitMs": 0.000125
+            }
+          ],
+          "spanCount": 197,
+          "totalCoreMs": 327.0385
+        },
+        {
+          "case": "silence",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 123355136,
+            "before": 123355136
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 159.187625,
+              "waitMs": 0.000166
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 159.191208
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 63504272,
+          "repetition": 3,
+          "rssBytes": {
+            "after": 123387904,
+            "before": 123355136
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 128.03383300000002,
+              "waitMs": 0.000209
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 128.037791
+        },
+        {
+          "case": "grid",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 132874240,
+            "before": 93454336
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 2.853375,
+              "waitMs": 8.4e-05
+            }
+          ],
+          "spanCount": 2400,
+          "totalCoreMs": 2.855667
+        },
+        {
+          "case": "transients",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 516964352,
+            "before": 132874240
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 2264.211042,
+              "waitMs": 8.4e-05
+            }
+          ],
+          "spanCount": 1312,
+          "totalCoreMs": 2264.2137089999997
+        },
+        {
+          "case": "silence",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 517816320,
+            "before": 516964352
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 1061.5596249999999,
+              "waitMs": 0.000167
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 1061.5630840000001
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 423360272,
+          "repetition": 3,
+          "rssBytes": {
+            "after": 517849088,
+            "before": 517816320
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 897.6866660000001,
+              "waitMs": 0.00020800000000000001
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 897.691167
+        }
+      ]
+    },
+    "candidate": {
+      "description": "shared snapshots; worker detection/export",
+      "note": "Private synthetic stereo float WAV. Detection uses the unchanged grid/transient/silence algorithm and zero snapping. Export writes four equal WAVs with the same policy in both modes; reference includes snapshot setup inside the long critical section and isolates lock scope rather than comparing historical binaries. No library rescan, UI/IPC or worker queue delay. Warm filesystem and uncontended mutex. Phase RSS includes mmap/allocator, misses transient peaks and excludes WebView.",
+      "observations": [
+        {
+          "case": "grid",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 25853952,
+            "before": 25591808
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 4.2e-05,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 4.2e-05,
+              "waitMs": 4.2e-05
+            }
+          ],
+          "spanCount": 60,
+          "totalCoreMs": 0.032708
+        },
+        {
+          "case": "transients",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 26017792,
+            "before": 25903104
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 4.2e-05,
+              "waitMs": 4.1e-05
+            },
+            {
+              "heldMs": 4.2e-05,
+              "waitMs": 0.00029099999999999997
+            }
+          ],
+          "spanCount": 32,
+          "totalCoreMs": 51.92525
+        },
+        {
+          "case": "silence",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 26050560,
+            "before": 26017792
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 4.2e-05
+            },
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 0.00041600000000000003
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 25.864084
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 10584272,
+          "repetition": 1,
+          "rssBytes": {
+            "after": 26230784,
+            "before": 26066944
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 0.005292000000000001,
+              "waitMs": 0.000167
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 22.886416
+        },
+        {
+          "case": "grid",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 65716224,
+            "before": 59834368
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 0.000125,
+              "waitMs": 4.1e-05
+            },
+            {
+              "heldMs": 4.1e-05,
+              "waitMs": 8.3e-05
+            }
+          ],
+          "spanCount": 360,
+          "totalCoreMs": 0.453333
+        },
+        {
+          "case": "transients",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 123551744,
+            "before": 65716224
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 8.4e-05,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 8.4e-05,
+              "waitMs": 0.000458
+            }
+          ],
+          "spanCount": 197,
+          "totalCoreMs": 330.46575
+        },
+        {
+          "case": "silence",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 123551744,
+            "before": 123551744
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 0.002542,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 8.4e-05,
+              "waitMs": 0.000583
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 159.51341599999998
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 63504272,
+          "repetition": 1,
+          "rssBytes": {
+            "after": 123584512,
+            "before": 123551744
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 0.0005,
+              "waitMs": 0.000167
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 129.587041
+        },
+        {
+          "case": "grid",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 133054464,
+            "before": 93650944
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 0.000125
+            }
+          ],
+          "spanCount": 2400,
+          "totalCoreMs": 2.836375
+        },
+        {
+          "case": "transients",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 517144576,
+            "before": 133054464
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 4.1e-05
+            },
+            {
+              "heldMs": 0.000209,
+              "waitMs": 0.00033299999999999996
+            }
+          ],
+          "spanCount": 1312,
+          "totalCoreMs": 2188.0719169999998
+        },
+        {
+          "case": "silence",
+          "repetition": 1,
+          "rssBytes": {
+            "after": 517144576,
+            "before": 517144576
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 0.000584
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 1064.4007499999998
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 423360272,
+          "repetition": 1,
+          "rssBytes": {
+            "after": 517160960,
+            "before": 517144576
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 0.000583,
+              "waitMs": 0.000209
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 954.179791
+        },
+        {
+          "case": "grid",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 25821184,
+            "before": 25559040
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 0.000125
+            },
+            {
+              "heldMs": 8.4e-05,
+              "waitMs": 4.2e-05
+            }
+          ],
+          "spanCount": 60,
+          "totalCoreMs": 0.028416999999999998
+        },
+        {
+          "case": "transients",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 25952256,
+            "before": 25870336
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 4.2e-05,
+              "waitMs": 4.1e-05
+            },
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 8.4e-05
+            }
+          ],
+          "spanCount": 32,
+          "totalCoreMs": 51.709625
+        },
+        {
+          "case": "silence",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 26001408,
+            "before": 25952256
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 4.1e-05,
+              "waitMs": 0.000334
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 25.993624999999998
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 10584272,
+          "repetition": 2,
+          "rssBytes": {
+            "after": 26198016,
+            "before": 26017792
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 0.002,
+              "waitMs": 0.00020800000000000001
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 21.680959
+        },
+        {
+          "case": "grid",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 65667072,
+            "before": 59785216
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 8.4e-05,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 8.4e-05
+            }
+          ],
+          "spanCount": 360,
+          "totalCoreMs": 0.44583300000000003
+        },
+        {
+          "case": "transients",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 123469824,
+            "before": 65667072
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 4.2e-05,
+              "waitMs": 4.2e-05
+            },
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 0.000209
+            }
+          ],
+          "spanCount": 197,
+          "totalCoreMs": 329.524167
+        },
+        {
+          "case": "silence",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 123469824,
+            "before": 123469824
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 4.2e-05,
+              "waitMs": 8.4e-05
+            },
+            {
+              "heldMs": 8.4e-05,
+              "waitMs": 0.00041600000000000003
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 159.347625
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 63504272,
+          "repetition": 2,
+          "rssBytes": {
+            "after": 123502592,
+            "before": 123469824
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 0.000375,
+              "waitMs": 0.000209
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 128.214666
+        },
+        {
+          "case": "grid",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 133005312,
+            "before": 93569024
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 0.000167,
+              "waitMs": 0.000125
+            },
+            {
+              "heldMs": 4.2e-05,
+              "waitMs": 4.2e-05
+            }
+          ],
+          "spanCount": 2400,
+          "totalCoreMs": 2.7876250000000002
+        },
+        {
+          "case": "transients",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 517111808,
+            "before": 133005312
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 0.00033299999999999996
+            }
+          ],
+          "spanCount": 1312,
+          "totalCoreMs": 2188.437375
+        },
+        {
+          "case": "silence",
+          "repetition": 2,
+          "rssBytes": {
+            "after": 517816320,
+            "before": 517111808
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 4.1e-05,
+              "waitMs": 8.4e-05
+            },
+            {
+              "heldMs": 8.4e-05,
+              "waitMs": 0.000458
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 1064.8752909999998
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 423360272,
+          "repetition": 2,
+          "rssBytes": {
+            "after": 517849088,
+            "before": 517816320
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 0.000375,
+              "waitMs": 0.00020800000000000001
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 898.665791
+        },
+        {
+          "case": "grid",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 25919488,
+            "before": 25640960
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 0.000167
+            },
+            {
+              "heldMs": 4.2e-05,
+              "waitMs": 4.2e-05
+            }
+          ],
+          "spanCount": 60,
+          "totalCoreMs": 0.029207999999999998
+        },
+        {
+          "case": "transients",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 26050560,
+            "before": 25968640
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 8.4e-05
+            },
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 0.000875
+            }
+          ],
+          "spanCount": 32,
+          "totalCoreMs": 57.894792
+        },
+        {
+          "case": "silence",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 26083328,
+            "before": 26050560
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 4.1e-05,
+              "waitMs": 0.000125
+            },
+            {
+              "heldMs": 4.2e-05,
+              "waitMs": 0.000375
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 25.953625000000002
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 10584272,
+          "repetition": 3,
+          "rssBytes": {
+            "after": 26279936,
+            "before": 26099712
+          },
+          "seconds": 30,
+          "sessionLocks": [
+            {
+              "heldMs": 0.002125,
+              "waitMs": 0.000167
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 22.31025
+        },
+        {
+          "case": "grid",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 67026944,
+            "before": 61128704
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 4.2e-05
+            },
+            {
+              "heldMs": 4.2e-05,
+              "waitMs": 4.1e-05
+            }
+          ],
+          "spanCount": 360,
+          "totalCoreMs": 0.47604199999999997
+        },
+        {
+          "case": "transients",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 124698624,
+            "before": 67026944
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 4.2e-05,
+              "waitMs": 4.1e-05
+            },
+            {
+              "heldMs": 8.4e-05,
+              "waitMs": 4.2e-05
+            }
+          ],
+          "spanCount": 197,
+          "totalCoreMs": 328.51291599999996
+        },
+        {
+          "case": "silence",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 124698624,
+            "before": 124698624
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 4.2e-05,
+              "waitMs": 0.00033299999999999996
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 160.28979199999998
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 63504272,
+          "repetition": 3,
+          "rssBytes": {
+            "after": 124715008,
+            "before": 124698624
+          },
+          "seconds": 180,
+          "sessionLocks": [
+            {
+              "heldMs": 0.0005,
+              "waitMs": 0.00020800000000000001
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 127.79795899999999
+        },
+        {
+          "case": "grid",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 134217728,
+            "before": 94781440
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 0.000125,
+              "waitMs": 8.4e-05
+            },
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 0.00029099999999999997
+            }
+          ],
+          "spanCount": 2400,
+          "totalCoreMs": 2.895666
+        },
+        {
+          "case": "transients",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 518324224,
+            "before": 134217728
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 4.2e-05,
+              "waitMs": 8.3e-05
+            },
+            {
+              "heldMs": 8.4e-05,
+              "waitMs": 8.3e-05
+            }
+          ],
+          "spanCount": 1312,
+          "totalCoreMs": 2185.784
+        },
+        {
+          "case": "silence",
+          "repetition": 3,
+          "rssBytes": {
+            "after": 518324224,
+            "before": 518324224
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 0.000125
+            },
+            {
+              "heldMs": 8.3e-05,
+              "waitMs": 0.000584
+            }
+          ],
+          "spanCount": 1,
+          "totalCoreMs": 1065.296333
+        },
+        {
+          "case": "export_four_regions",
+          "fileBytes": 423360272,
+          "repetition": 3,
+          "rssBytes": {
+            "after": 518340608,
+            "before": 518324224
+          },
+          "seconds": 1200,
+          "sessionLocks": [
+            {
+              "heldMs": 0.000792,
+              "waitMs": 0.00020800000000000001
+            }
+          ],
+          "spanCount": 4,
+          "totalCoreMs": 894.96025
+        }
+      ]
+    }
+  },
+  "summary": [
+    {
+      "seconds": 30,
+      "case": "grid",
+      "reference": {
+        "medianSessionHeldMs": 0.022042,
+        "medianTotalCoreMs": 0.031166,
+        "spanCount": 60,
+        "fileBytes": null
+      },
+      "candidate": {
+        "medianSessionHeldMs": 0.000125,
+        "medianTotalCoreMs": 0.029207999999999998,
+        "spanCount": 60,
+        "fileBytes": null
+      }
+    },
+    {
+      "seconds": 30,
+      "case": "transients",
+      "reference": {
+        "medianSessionHeldMs": 51.943459,
+        "medianTotalCoreMs": 51.94575,
+        "spanCount": 32,
+        "fileBytes": null
+      },
+      "candidate": {
+        "medianSessionHeldMs": 0.000125,
+        "medianTotalCoreMs": 51.92525,
+        "spanCount": 32,
+        "fileBytes": null
+      }
+    },
+    {
+      "seconds": 30,
+      "case": "silence",
+      "reference": {
+        "medianSessionHeldMs": 25.976792,
+        "medianTotalCoreMs": 25.979583,
+        "spanCount": 1,
+        "fileBytes": null
+      },
+      "candidate": {
+        "medianSessionHeldMs": 0.000124,
+        "medianTotalCoreMs": 25.953625000000002,
+        "spanCount": 1,
+        "fileBytes": null
+      }
+    },
+    {
+      "seconds": 30,
+      "case": "export_four_regions",
+      "reference": {
+        "medianSessionHeldMs": 21.682167,
+        "medianTotalCoreMs": 21.68825,
+        "spanCount": 4,
+        "fileBytes": 10584272
+      },
+      "candidate": {
+        "medianSessionHeldMs": 0.002125,
+        "medianTotalCoreMs": 22.31025,
+        "spanCount": 4,
+        "fileBytes": 10584272
+      }
+    },
+    {
+      "seconds": 180,
+      "case": "grid",
+      "reference": {
+        "medianSessionHeldMs": 0.446916,
+        "medianTotalCoreMs": 0.449,
+        "spanCount": 360,
+        "fileBytes": null
+      },
+      "candidate": {
+        "medianSessionHeldMs": 0.000166,
+        "medianTotalCoreMs": 0.453333,
+        "spanCount": 360,
+        "fileBytes": null
+      }
+    },
+    {
+      "seconds": 180,
+      "case": "transients",
+      "reference": {
+        "medianSessionHeldMs": 327.035917,
+        "medianTotalCoreMs": 327.0385,
+        "spanCount": 197,
+        "fileBytes": null
+      },
+      "candidate": {
+        "medianSessionHeldMs": 0.000126,
+        "medianTotalCoreMs": 329.524167,
+        "spanCount": 197,
+        "fileBytes": null
+      }
+    },
+    {
+      "seconds": 180,
+      "case": "silence",
+      "reference": {
+        "medianSessionHeldMs": 159.187625,
+        "medianTotalCoreMs": 159.191208,
+        "spanCount": 1,
+        "fileBytes": null
+      },
+      "candidate": {
+        "medianSessionHeldMs": 0.000126,
+        "medianTotalCoreMs": 159.51341599999998,
+        "spanCount": 1,
+        "fileBytes": null
+      }
+    },
+    {
+      "seconds": 180,
+      "case": "export_four_regions",
+      "reference": {
+        "medianSessionHeldMs": 131.628458,
+        "medianTotalCoreMs": 131.63250000000002,
+        "spanCount": 4,
+        "fileBytes": 63504272
+      },
+      "candidate": {
+        "medianSessionHeldMs": 0.0005,
+        "medianTotalCoreMs": 128.214666,
+        "spanCount": 4,
+        "fileBytes": 63504272
+      }
+    },
+    {
+      "seconds": 1200,
+      "case": "grid",
+      "reference": {
+        "medianSessionHeldMs": 2.853375,
+        "medianTotalCoreMs": 2.855667,
+        "spanCount": 2400,
+        "fileBytes": null
+      },
+      "candidate": {
+        "medianSessionHeldMs": 0.00020800000000000001,
+        "medianTotalCoreMs": 2.836375,
+        "spanCount": 2400,
+        "fileBytes": null
+      }
+    },
+    {
+      "seconds": 1200,
+      "case": "transients",
+      "reference": {
+        "medianSessionHeldMs": 2179.705166,
+        "medianTotalCoreMs": 2179.707542,
+        "spanCount": 1312,
+        "fileBytes": null
+      },
+      "candidate": {
+        "medianSessionHeldMs": 0.000166,
+        "medianTotalCoreMs": 2188.0719169999998,
+        "spanCount": 1312,
+        "fileBytes": null
+      }
+    },
+    {
+      "seconds": 1200,
+      "case": "silence",
+      "reference": {
+        "medianSessionHeldMs": 1061.6870000000001,
+        "medianTotalCoreMs": 1061.690333,
+        "spanCount": 1,
+        "fileBytes": null
+      },
+      "candidate": {
+        "medianSessionHeldMs": 0.000166,
+        "medianTotalCoreMs": 1064.8752909999998,
+        "spanCount": 1,
+        "fileBytes": null
+      }
+    },
+    {
+      "seconds": 1200,
+      "case": "export_four_regions",
+      "reference": {
+        "medianSessionHeldMs": 935.02175,
+        "medianTotalCoreMs": 935.02525,
+        "spanCount": 4,
+        "fileBytes": 423360272
+      },
+      "candidate": {
+        "medianSessionHeldMs": 0.000583,
+        "medianTotalCoreMs": 898.665791,
+        "spanCount": 4,
+        "fileBytes": 423360272
+      }
+    }
+  ],
+  "browser": {
+    "schema": 1,
+    "observedAt": "2026-10-30T05:37:34.933Z",
+    "sourceBase": "4b9ebc1be41bf42838c054c8b16b73829d784e41",
+    "variants": {
+      "baseline": {
+        "exitCode": 1,
+        "summary": "Error: old analysis appeared in the debounce gap after selection changed",
+        "componentSha256": "b892690ff28e40181216a50153ec2e37caa8431ef3418566193b8c08dceae293",
+        "assetsSha256": {
+          "mock-CN7LNAPd.js": "22b12dc946bd8ffa852ebfde9f6804d504cd9d9a514534a395e32ba7ae3db6d5"
+        }
+      },
+      "candidate": {
+        "exitCode": 0,
+        "summary": "{\"passed\":[\"selection debounce gap\",\"captured selection\",\"parameter invalidation\",\"close and reopen\",\"current markers only\",\"editor revision\",\"dispose during debounce\"]}",
+        "componentSha256": "ff7aea02a4f4aed9b9060cdb99af50d1c9286417574044a31b05b47a477c2d16",
+        "assetsSha256": {
+          "mock-B5bDqIp0.js": "50f36077d9d00a323bbdf83b6fff38b0c5ae01b71d13766455a53f25295d898f"
+        }
+      }
+    },
+    "note": "Production mock builds use the same source/config except the injected HEAD EditorSlicer versus current component and the asset URL prefix needed to serve both fixtures. Delayed mock IPC resolves within a microtask turn before a new debounced analysis can start. This proves lifecycle/state regression, not native audio or latency. Temporary mocks were not shipped in app dist.",
+    "verification": {
+      "testSha256": "689c6121b02adea2ffdb2aa48a586f1777e6060f32200b2acaab26a77986b233"
+    }
+  },
+  "verification": {
+    "nativeTestsPassed": 215,
+    "nativeIgnoredOptIn": 42,
+    "nodeTestsPassed": 124,
+    "cargoCheck": "passed without warnings",
+    "frontendBuild": "passed; >500 kB chunk warning remains",
+    "nativeDebugBuild": "cargo build --locked --no-default-features passed; binary was not launched or packaged",
+    "productionBrowserPaste": "eight paste guard/selection/failure/retry checks passed in the candidate production mock",
+    "foregroundMemory": "macOS remains IOConsoleLocked=Yes; foreground WebView/editor memory scenario still pending",
+    "normalBinaryHasPerformanceFixtureIdentifier": false
+  }
+}

@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 
 use super::zero_crossing;
 use crate::audio::AudioRead;
+use crate::error::{Error, Result};
+use super::{blocks::BlockAudio, Session};
 #[cfg(test)] use crate::audio::Pcm;
 
 /// A slice, `[start, end)` frames.
@@ -25,6 +27,34 @@ pub enum SliceBy {
     /// The sounding parts between silences quieter than `threshold_db` and longer than `min_silence_ms`.
     #[serde(rename_all = "camelCase")]
     Silence { threshold_db: f32, min_silence_ms: f32 },
+}
+
+/// Detection can scan the whole file. Keep its immutable source and revision
+/// separate from the live editor while a blocking worker finds boundaries.
+pub struct SliceSnapshot {
+    audio: BlockAudio,
+    revision: u64,
+}
+pub struct DetectedSlices {
+    spans: Vec<Span>,
+    revision: u64,
+}
+impl SliceSnapshot {
+    pub fn new(session: &Session) -> Self {
+        Self { audio: session.audio().clone(), revision: session.audio_revision() }
+    }
+
+    pub fn detect(self, start: usize, end: usize, by: SliceBy, zero: bool) -> DetectedSlices {
+        DetectedSlices { spans: slices(&self.audio, start, end, by, zero), revision: self.revision }
+    }
+}
+impl DetectedSlices {
+    pub fn finish(self, session: &Session) -> Result<Vec<Span>> {
+        if session.audio_revision() != self.revision {
+            return Err(Error::Other("the audio changed during slice detection; please try again".into()));
+        }
+        Ok(self.spans)
+    }
 }
 
 /// Analysis hop and window, in frames.
@@ -185,6 +215,7 @@ fn sounding(pcm: &impl AudioRead, start: usize, end: usize, threshold_db: f32, m
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::editor::{Op, Marker};
 
     const SR: usize = 44100;
 
@@ -243,5 +274,46 @@ mod tests {
         // A long minimum silence joins them.
         let s = slices(&p, 0, p.frames(), SliceBy::Silence { threshold_db: -50.0, min_silence_ms: 1000.0 }, false);
         assert_eq!(s.len(), 1);
+    }
+
+    #[test]
+    fn worker_detection_matches_all_modes_on_fragmented_audio_and_allows_metadata_changes() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("hits.wav");
+        let pcm = hits(&[0.1, 0.5, 0.75, 1.4], 2.0);
+        crate::editor::write_wav(&path, &pcm, Some(32), None).unwrap();
+        let mut session = Session::open(1, &path, Some(32)).unwrap();
+        session.apply(Op::Delete { start: 4000, end: 5000 });
+        for by in [SliceBy::Grid { origin: 100.0, step: 4410.0 }, SliceBy::Transients { sensitivity: 0.5, min_ms: 50.0 }, SliceBy::Silence { threshold_db: -50.0, min_silence_ms: 100.0 }] {
+            for zero in [false, true] {
+                let expected = slices(session.audio(), 1000, usize::MAX, by, zero);
+                let source = session.audio().clone();
+                let snapshot = SliceSnapshot::new(&session);
+                assert!(source.samples.same_snapshot(&snapshot.audio.samples));
+                let detected = snapshot.detect(1000, usize::MAX, by, zero);
+                session.apply(Op::SetMarkers { markers: vec![Marker { frame: 2000, skip: false }] });
+                assert_eq!(detected.finish(&session).unwrap(), expected);
+                assert!(source.samples.same_snapshot(&session.audio().samples));
+            }
+        }
+    }
+
+    #[test]
+    fn stale_slice_detection_is_rejected_after_edit_undo_and_reopen() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("hits.wav");
+        crate::editor::write_wav(&path, &hits(&[0.1], 1.0), Some(32), None).unwrap();
+        let mut session = Session::open(1, &path, Some(32)).unwrap();
+        let by = SliceBy::Grid { origin: 0.0, step: 4410.0 };
+        for undo in [false, true] {
+            let pending = SliceSnapshot::new(&session);
+            session.apply(Op::Gain { start: 0, end: 44100, db: -3.0 });
+            if undo { session.undo(); }
+            assert!(pending.detect(0, 44100, by, false).finish(&session).is_err());
+        }
+        let pending = SliceSnapshot::new(&session);
+        drop(session);
+        let reopened = Session::open(1, &path, Some(32)).unwrap();
+        assert!(pending.detect(0, 44100, by, false).finish(&reopened).is_err());
     }
 }

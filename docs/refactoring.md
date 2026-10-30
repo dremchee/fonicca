@@ -10,7 +10,7 @@ unit test alone does not establish an improvement in interactive performance.
   operation telemetry, separate native/renderer memory interpretation.
 - [x] Editor: extract waveform loading/rendering, pointer selection/markers,
   shortcuts and toolbar; clarify view/store ownership; verify interaction parity.
-- [ ] Audio: measure copying/locks/recomputation; optimize the demonstrated
+- [x] Audio: measure copying/locks/recomputation; optimize the demonstrated
   bottleneck, including evaluating stretch and LUFS; compare identical workloads.
 - [x] Library: separate navigation, pagination and selection; bound page retention;
   test stale requests and inspect slow SQL query plans on a large fixture.
@@ -467,6 +467,47 @@ Repeat the file workload using `editor_save_lock_benchmark`, durations
 `30,180,1200` and the other lock workloads' reference/output/repetition variables.
 All source/output/backup files are private temporary fixtures removed on exit.
 
-Still pending: foreground WebView/editor memory measurements; synchronous
-slice detection/export paths; and release checks.
+Slice detection/export follow-up:
+
+- Grid/transient/silence detection captures shared edited audio and runs outside
+  the editor map on a blocking worker. Return validates the audio revision, so
+  later edits, undo or reopening cannot deliver obsolete boundaries. Loop/marker
+  metadata changes alone do not invalidate unchanged source audio.
+- Region export captures edited pieces, path, depth and spans. Writing happens
+  on a worker and does not switch the source or mutate history. An atomically
+  created output directory prevents two windows from sharing/overwriting a set.
+  Numbering, range clamping, WAV depth and metadata policy remain unchanged.
+  As before, a failed multi-file export can leave its already-written partial set.
+- Slicer preview now invalidates existing results and marker placement immediately
+  when its target/settings/editor revision changes. The next analysis remains
+  debounced. This closes a window where an older reply could enable obsolete
+  markers before a new request started. A disposed component cannot start a
+  delayed read or restore its preview.
+- [Native observations and browser regression evidence](research/editor-slices-comparison.json):
+  three alternating measurements per mode at 30/180/1200 seconds. For the
+  1200-second fixture, median session holds: transient detection 2179.7 → 0.000166
+  ms, silence detection 1061.7 → 0.000166 ms, four-region export 935.0 → 0.000583 ms.
+  Detection algorithms and their total computation time remain about 2.2/1.1
+  seconds respectively. Measurements exclude worker queueing, IPC and rescanning;
+  the short native holds do not establish end-to-end UI latency or peak memory.
+- Native tests verify all detection modes on fragmented edits, metadata-only
+  changes, stale audio/session rejection, exact exported samples, no source
+  mutation, concurrent unique directories, numbering and failure cases.
+- `tests/browser/editor-slices.mjs` runs against a real compiled mock UI. A build
+  with the previous component fails on a response arriving inside the debounce
+  gap. The candidate passes seven target/settings/revision/placement/disposal
+  checks. Eight existing paste integration checks pass on that production mock
+  too. Temporary mock builds were not included in the application's `dist`.
+- Verification: 215 native tests pass (42 opt-in workloads/inference cases
+  ignored), 124 frontend tests, type check, frontend production build, native
+  `cargo check` and normal native debug build pass. The debug binary was rebuilt
+  without the earlier isolated performance-fixture identifier; it was not launched.
+  The existing frontend chunk-size warning remains.
+
+Repeat detection/export timings with `editor_slices_lock_benchmark`, durations
+`30,180,1200` and the reference/output/repetition variables used above. The browser
+regression takes a Playwright Page on `/mock.html#editor`; it unmounts that test
+application at the end, so reload before another UI check.
+
+Still pending: foreground WebView/editor memory measurements and release checks.
 Completion items remain open until their full evidence exists.

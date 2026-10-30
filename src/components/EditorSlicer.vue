@@ -2,7 +2,7 @@
 import type { Marker, SliceBy, Span } from '@/stores/editor'
 import { Slice } from '@lucide/vue'
 import { useLocalStorage, watchDebounced } from '@vueuse/core'
-import { computed, onBeforeUnmount, ref, shallowRef } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
@@ -108,10 +108,20 @@ const by = computed<SliceBy | null>(() => {
 })
 
 let request = 0
-onBeforeUnmount(() => { request++; preview.value = [] })
+let disposed = false
+onBeforeUnmount(() => { disposed = true; request++; preview.value = [] })
+const inputs = () => [open.value, by.value, target.value, editor.revision, props.zero]
+// Invalidate immediately; the next request starts only after the debounce. An
+// older response can otherwise arrive in that gap and enable stale markers.
+watch(inputs, () => {
+  request++
+  found.value = []
+  preview.value = []
+}, { deep: true, flush: 'sync' })
 watchDebounced(
-  [open, by, target, () => editor.revision, () => props.zero],
+  inputs,
   async () => {
+    if (disposed) return
     const req = ++request
     if (!open.value || !by.value || !editor.open) {
       found.value = []
@@ -126,7 +136,7 @@ watchDebounced(
       }
     }
     catch (e) {
-      console.error(e)
+      if (!disposed && req === request) console.error(e)
     }
   },
   { debounce: 120, deep: true },

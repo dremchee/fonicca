@@ -22,12 +22,13 @@ mod markers;
 mod slices;
 pub mod processing;
 pub mod saving;
+pub mod exporting;
 pub mod spectrogram;
 #[cfg(test)]
 mod benchmarks;
 pub use loops::{zero_crossing, Loop};
 pub use markers::{append_markers, Marker};
-pub use slices::{slices, SliceBy, Span};
+pub use slices::{SliceBy, Span, SliceSnapshot};
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]

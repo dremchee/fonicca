@@ -386,3 +386,73 @@ fn editor_save_lock_benchmark() {
     if let Ok(path) = std::env::var("FONICCA_LOCK_BENCH_OUTPUT") { std::fs::write(path, &text).unwrap(); }
     println!("{text}");
 }
+
+#[test]
+#[ignore = "opt-in slice detection/export and editor lock workload"]
+fn editor_slices_lock_benchmark() {
+    let reference = std::env::var("FONICCA_LOCK_BENCH_REFERENCE").is_ok_and(|value| value == "1");
+    let durations = std::env::var("FONICCA_BENCH_SECONDS").unwrap_or_else(|_| "30,180".into());
+    let repeats: usize = std::env::var("FONICCA_BENCH_REPEATS").unwrap_or_else(|_| "3".into()).parse().unwrap();
+    assert!((1..=20).contains(&repeats));
+    let root = tempfile::tempdir().unwrap();
+    let mut system = sysinfo::System::new();
+    let mut observations = Vec::new();
+    for seconds in durations.split(',').map(|n| n.parse::<u32>().unwrap()) {
+        assert!((1..=1200).contains(&seconds));
+        let path = root.path().join("input.wav");
+        fixture(&path, seconds);
+        for repetition in 0..repeats {
+            let session = std::sync::Mutex::new(Session::open(1, &path, Some(32)).unwrap());
+            let frames = session.lock().unwrap().audio().frames();
+            for (case, by) in [("grid", super::SliceBy::Grid { origin: 0.0, step: 22050.0 }),
+                ("transients", super::SliceBy::Transients { sensitivity: 0.5, min_ms: 50.0 }),
+                ("silence", super::SliceBy::Silence { threshold_db: -40.0, min_silence_ms: 100.0 })] {
+                let mut locks = Vec::new();
+                let before = rss(&mut system);
+                let started = Instant::now();
+                let spans = if reference {
+                    let (spans, held) = locked(&session, |session| super::slices::slices(session.audio(), 0, frames, by, true));
+                    locks.push(held);
+                    spans
+                } else {
+                    let (snapshot, held) = locked(&session, |session| super::SliceSnapshot::new(session));
+                    locks.push(held);
+                    let result = snapshot.detect(0, frames, by, true);
+                    let (spans, held) = locked(&session, |session| result.finish(session).unwrap());
+                    locks.push(held);
+                    spans
+                };
+                let total_ms = started.elapsed().as_secs_f64() * 1000.0;
+                observations.push(json!({ "seconds": seconds, "repetition": repetition + 1, "case": case,
+                    "sessionLocks": locks, "totalCoreMs": total_ms, "spanCount": spans.len(),
+                    "rssBytes": { "before": before, "after": rss(&mut system) } }));
+            }
+            let spans = (0..4).map(|n| super::Span { start: n * frames / 4, end: (n + 1) * frames / 4 }).collect();
+            let mut locks = Vec::new();
+            let before = rss(&mut system);
+            let started = Instant::now();
+            let (dir, count) = if reference {
+                let (output, held) = locked(&session, |session| super::exporting::Snapshot::new(session, spans).unwrap().write().unwrap());
+                locks.push(held);
+                output
+            } else {
+                let (snapshot, held) = locked(&session, |session| super::exporting::Snapshot::new(session, spans).unwrap());
+                locks.push(held);
+                snapshot.write().unwrap()
+            };
+            let total_ms = started.elapsed().as_secs_f64() * 1000.0;
+            assert_eq!(count, 4);
+            let output_bytes: u64 = std::fs::read_dir(&dir).unwrap().map(|entry| entry.unwrap().metadata().unwrap().len()).sum();
+            observations.push(json!({ "seconds": seconds, "repetition": repetition + 1, "case": "export_four_regions",
+                "sessionLocks": locks, "totalCoreMs": total_ms, "spanCount": count, "fileBytes": output_bytes,
+                "rssBytes": { "before": before, "after": rss(&mut system) } }));
+        }
+    }
+    let report = json!({ "schema": 1, "implementation": if reference { "detection/export under session mutex" } else { "shared snapshots; worker detection/export" },
+        "profile": if cfg!(debug_assertions) { "dev-test" } else { "release-test" }, "os": std::env::consts::OS, "arch": std::env::consts::ARCH,
+        "note": "Private synthetic stereo float WAV. Detection uses the unchanged grid/transient/silence algorithm and zero snapping. Export writes four equal WAVs with the same policy in both modes; reference includes snapshot setup inside the long critical section and isolates lock scope rather than comparing historical binaries. No library rescan, UI/IPC or worker queue delay. Warm filesystem and uncontended mutex. Phase RSS includes mmap/allocator, misses transient peaks and excludes WebView.",
+        "observations": observations });
+    let text = serde_json::to_string_pretty(&report).unwrap();
+    if let Ok(path) = std::env::var("FONICCA_LOCK_BENCH_OUTPUT") { std::fs::write(path, &text).unwrap(); }
+    println!("{text}");
+}
