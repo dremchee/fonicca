@@ -1,22 +1,19 @@
 <script setup lang="ts">
-import type { ModelStorage } from '@/api'
 import { Download } from '@lucide/vue'
-import { computed, onMounted, onUnmounted, shallowRef } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { api } from '@/api'
 import { Badge } from '@/components/ui/badge'
 import SoundModelDownload from '@/components/SoundModelDownload.vue'
 import { useLibraryStore } from '@/stores/library'
 import { useSettingsStore } from '@/stores/settings'
+import { useModelStorage } from '@/composables/modelStorage'
 
 const { t } = useI18n()
 const library = useLibraryStore()
 const settings = useSettingsStore()
-const models = shallowRef<ModelStorage[]>([])
-let active = true
-let timer: ReturnType<typeof setTimeout> | undefined
+const { models } = useModelStorage()
 const downloads = computed(() => {
-  const items = models.value.filter(model => model.downloading).map(model => ({
+  const items = (models.value ?? []).filter(model => model.downloading).map(model => ({
     id: model.id,
     percent: model.downloadSize ? Math.min(100, Math.max(0, Math.floor(model.size / model.downloadSize * 100))) : 0,
   }))
@@ -32,16 +29,6 @@ const downloads = computed(() => {
 const showSoundModel = computed(() => !downloads.value.some(model => model.id === 'clap') && (
   !!library.modelDownload?.error || !!library.soundModel && !library.soundModel.installed
 ))
-async function refresh() {
-  try {
-    const result = await api.modelStorage()
-    if (active) models.value = result
-  }
-  catch { /* Keep the last state during a transient connection failure. */ }
-  finally { if (active) timer = setTimeout(refresh, 1000) }
-}
-onMounted(refresh)
-onUnmounted(() => { active = false; clearTimeout(timer) })
 </script>
 
 <template>

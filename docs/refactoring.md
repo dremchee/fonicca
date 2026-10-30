@@ -180,6 +180,28 @@ SQL follow-up:
   optimized workloads sequentially after compilation; do not run UI profiling
   or other builds concurrently with their query measurements.
 
+Background task follow-up:
+
+- Stem separation, Apollo and Basic Pitch share `useBackgroundJob`. Stores keep
+  their source identity, model/mode validation, output dialog and DSP arguments.
+  Starting/cancelling commands, pending flags and status lifetime are shared.
+- `createJobPoller` serializes status reads, coalesces refreshes and invalidates
+  pre-command/model responses. A read failure retries with bounded backoff;
+  idle status stops polling. Disposal drops late results and releases waiters.
+  Store disposal also releases its native event listener, including a listener
+  whose registration completes after disposal. It does not cancel native audio
+  processing merely because a component closes.
+- Download badges and visible model settings share one model-storage poller,
+  replacing their independent loops. Its last mounted consumer releases the
+  timer; disposed results cannot replace a newly mounted consumer's state.
+- Tests exercise status recovery, duplicate commands, delayed reads, retrying
+  subscription registration, cancelled save dialogs and shared consumer lifetime.
+  Native DSP/job implementations have not been combined.
+- Browser mock: started two-track separation, stopped it, then started again and
+  observed completed vocals/instrumental outputs. Current frontend verification:
+  120 tests passing, type check and production build passing. Native code is
+  unchanged by this follow-up; actual model inference was not rerun for it.
+
 Still pending: full WebView-process memory measurements, long-frame profiling,
-shared job/model refactoring and release checks. The remaining completion items
-stay open until their full evidence is present.
+the authoritative model catalog and release checks. The remaining completion
+items stay open until their full evidence is present.

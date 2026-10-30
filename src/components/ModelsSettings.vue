@@ -3,7 +3,7 @@ import type { ModelStorage } from '@/api'
 import { Download, FolderOpen, Trash2 } from '@lucide/vue'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, onUnmounted, shallowRef } from 'vue'
+import { computed, shallowRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
 import { api } from '@/api'
@@ -12,13 +12,13 @@ import { Button } from '@/components/ui/button'
 import { confirm } from '@/composables/confirm'
 import { formatSize } from '@/format'
 import { useLibraryStore } from '@/stores/library'
+import { useModelStorage } from '@/composables/modelStorage'
 
 const emit = defineEmits<{ changed: [] }>()
 const { t } = useI18n()
 const library = useLibraryStore()
 const { modelDownload } = storeToRefs(library)
-const models = shallowRef<ModelStorage[] | null>(null)
-const error = shallowRef('')
+const { models, error, refresh } = useModelStorage()
 const pending = shallowRef<string[]>([])
 const total = computed(() => models.value?.reduce((sum, model) => sum + model.size, 0) ?? 0)
 type ModelGroup = 'analysis' | 'separation' | 'restoration' | 'transcription'
@@ -37,30 +37,6 @@ const groups = computed(() => groupOrder.map(id => ({
   id,
   models: models.value?.filter(model => groupByModel[model.id] === id) ?? [],
 })).filter(group => group.models.length > 0))
-let active = true
-let timer: ReturnType<typeof setTimeout> | undefined
-
-async function refresh() {
-  clearTimeout(timer)
-  try {
-    const next = await api.modelStorage()
-    if (active) {
-      models.value = next
-      error.value = ''
-    }
-  }
-  catch (e) {
-    if (active) error.value = String(e)
-  }
-  finally {
-    // This section is mounted only while visible. Also picks up downloads from
-    // another window and files removed outside the app, without a new watcher.
-    if (active) timer = setTimeout(refresh, 2000)
-  }
-}
-onMounted(refresh)
-onUnmounted(() => { active = false; clearTimeout(timer) })
-
 function status(model: ModelStorage) {
   if (model.downloading)
     return t('settings.models.downloading', { size: formatSize(model.size), total: formatSize(model.downloadSize) })
