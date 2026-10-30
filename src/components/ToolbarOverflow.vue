@@ -6,7 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
-const props = defineProps<{ items: string[] }>()
+const props = defineProps<{ items: string[], overflowItems?: string[] }>()
 const { t } = useI18n()
 const container = ref<HTMLElement | null>(null)
 const menu = ref<HTMLElement | null>(null)
@@ -33,9 +33,11 @@ function capture(id: string, element: unknown) {
 }
 onBeforeUnmount(() => observer.disconnect())
 useResizeObserver(container, ([entry]) => { available.value = entry?.contentRect.width ?? 0 })
+const orderedItems = computed(() => [...props.items.filter(id => !props.overflowItems?.includes(id)), ...props.items.filter(id => props.overflowItems?.includes(id))])
 const visibleCount = computed(() => {
-  const sizes = props.items.map(id => (widths.value[id] ?? 32) + 4)
-  if (sizes.reduce((sum, width) => sum + width, 0) <= available.value) return sizes.length
+  const primaryItems = orderedItems.value.filter(id => !props.overflowItems?.includes(id))
+  const sizes = primaryItems.map(id => (widths.value[id] ?? 32) + 4)
+  if (sizes.reduce((sum, width) => sum + width, 0) + (props.overflowItems?.length ? 36 : 0) <= available.value) return sizes.length
   let used = 36 // Reserve the overflow trigger before admitting more tools.
   let count = 0
   for (const width of sizes) {
@@ -51,7 +53,7 @@ watchEffect(() => { if (!overflow.value) open.value = false })
 
 <template>
   <div ref="container" class="relative min-w-8 min-h-8 flex-1 flex items-center gap-1">
-    <Teleport v-for="(item, index) in items" :key="item" :to="menu ?? 'body'" :disabled="index < visibleCount || !menu">
+    <Teleport v-for="(item, index) in orderedItems" :key="item" :to="menu ?? 'body'" :disabled="index < visibleCount || !menu">
       <div
         :ref="element => capture(item, element)" :data-tool="item"
         class="w-max shrink-0 inline-flex items-center"

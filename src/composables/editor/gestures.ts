@@ -30,6 +30,7 @@ interface Options {
   viewEnd: Ref<number>
   identity: Ref<string>
   zeroSnap: Ref<boolean>
+  autoplay?: Ref<boolean>
   ruler: number
   x: (frame: number) => number
   snapped: (frame: number, event: MouseEvent) => number
@@ -138,7 +139,7 @@ export function useEditorGestures(options: Options) {
     const lp = draggedLoop.value ?? editor.state?.loop
     const rect = canvas.value?.getBoundingClientRect()
     if (!lp || !rect) return false
-    const label = loopLabelBox(x(lp.start), x(lp.end), rect.width, RULER)
+    const label = loopLabelBox(x(lp.start), x(lp.end), rect.width, RULER, editor.regions.some(r => r.start === lp.start && !r.skip))
     const px = e.clientX - rect.left, py = e.clientY - rect.top
     return !!label && px >= label.x && px <= label.x + label.width && py >= label.y && py <= label.y + label.height
   }
@@ -348,15 +349,6 @@ export function useEditorGestures(options: Options) {
       dragLoop(e, loopEdge)
       return
     }
-    // The loop band on the ruler selects the loop.
-    const lp = editor.state?.loop
-    if (lp && e.clientY - canvas.value!.getBoundingClientRect().top < RULER) {
-      const f = frameAt(e.clientX)
-      if (f >= lp.start && f <= lp.end) {
-        selectLoop()
-        return
-      }
-    }
     // A region on the ruler: a click selects it, ⌥-click skips it or takes it back.
     if (editor.regions.length && onRuler(e)) {
       const f = frameAt(e.clientX)
@@ -416,7 +408,7 @@ export function useEditorGestures(options: Options) {
       if (editor.playing && changedRange)
         void editor.updatePlaybackRange()
       // Creating a selection while stopped remains silent; a plain click auditions the cursor.
-      else if (!dragged && !e.shiftKey && e.detail < 2 && !selected && editor.cursor < frames.value)
+      else if ((options.autoplay?.value ?? true) && !dragged && !e.shiftKey && e.detail < 2 && !selected && editor.cursor < frames.value)
         void editor.play()
     }
     listen(move, up)

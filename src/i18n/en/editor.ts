@@ -5,7 +5,8 @@ export default {
     titleDirty: '{name} • — Edit',
   },
   unsaved: { dontSave: 'Don’t save', title: 'Unsaved edits', description: 'Save changes to “{name}” before closing or opening another track?' },
-  panel: { expand: 'Expand editor', collapse: 'Restore editor', detach: 'Open editor in a separate window' },
+  panel: {
+    viewOptions: 'View options', expand: 'Expand editor', collapse: 'Restore editor', detach: 'Open editor in a separate window' },
   save: {
     exportTitle: 'Save audio',
     exportDescription: 'Choose a format, then a file location.',
@@ -36,6 +37,7 @@ export default {
     action: 'Discard',
   },
   toolbar: {
+    autoplay: 'Autoplay',
     moreTools: 'More tools',
     undo: 'Undo',
     redo: 'Redo',

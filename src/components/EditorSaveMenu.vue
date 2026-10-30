@@ -21,7 +21,7 @@ const regionCount = computed(() => editor.regions.filter(region => !region.skip 
         :aria-label="t(editor.saving ? 'editor.save.saving' : 'common.actions.save')"
         :title="t(editor.saving ? 'editor.save.saving' : 'common.actions.save')"
       >
-        <Save /> <ChevronDown class="size-3" />
+        <Save :class="editor.state?.dirty && 'text-primary'" /> <ChevronDown class="size-3" />
       </Button>
     </DropdownMenuTrigger>
     <DropdownMenuContent align="end" class="min-w-56">

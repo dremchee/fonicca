@@ -22,13 +22,14 @@ function setup(t: { after: (cleanup: () => void) => void }) {
   }
   const canvas = shallowRef({ getBoundingClientRect: () => ({ left: 0, top: 0, width: 100 }) } as HTMLCanvasElement)
   const identity = shallowRef('first-track')
+  const autoplay = shallowRef(true)
   const zeroSnap = shallowRef(false)
   const scope = effectScope()
-  const gestures = scope.run(() => useEditorGestures({ editor, canvas, identity, zeroSnap,
+  const gestures = scope.run(() => useEditorGestures({ editor, canvas, identity, zeroSnap, autoplay,
     frames: shallowRef(1000), rate: shallowRef(1000), viewStart: shallowRef(0), viewEnd: shallowRef(1000),
     ruler: 18, x: frame => frame / 10, snapped: frame => frame, badgeAt: () => undefined }))!
   t.after(() => { scope.stop(); if (old) Object.defineProperty(globalThis, 'window', old); else Reflect.deleteProperty(globalThis, 'window') })
-  return { gestures, editor, calls, target, identity, zeroSnap, scope }
+  return { gestures, editor, calls, target, identity, zeroSnap, autoplay, scope }
 }
 
 test('click auditions its position, dragging selects silently, playing range updates without restarting', async t => {
@@ -212,9 +213,9 @@ test('inward corner flags can be grabbed away from the boundary without a jump',
 test('Loop label plays the saved range from its start with repeat enabled', t => {
   const v = setup(t)
   v.editor.state!.loop = { start: 200, end: 900 }
-  v.gestures.updateHover(mouse('mousemove', 40, { clientY: 25 }))
+  v.gestures.updateHover(mouse('mousemove', 50, { clientY: 25 }))
   assert.equal(v.gestures.hoverLoopLabel.value, true)
-  v.gestures.onMouseDown(mouse('mousedown', 40, { clientY: 25 }))
+  v.gestures.onMouseDown(mouse('mousedown', 50, { clientY: 25 }))
   assert.deepEqual(v.editor.selection, { start: 200, end: 900 })
   assert.equal(v.editor.cursor, 200)
   assert.equal(v.editor.looping, true)
@@ -226,10 +227,10 @@ test('Loop label does not start playback while processing or saving', t => {
   const v = setup(t)
   v.editor.state!.loop = { start: 200, end: 900 }
   v.editor.processing = true
-  v.gestures.onMouseDown(mouse('mousedown', 40, { clientY: 25 }))
+  v.gestures.onMouseDown(mouse('mousedown', 50, { clientY: 25 }))
   v.editor.processing = false
   v.editor.saving = true
-  v.gestures.onMouseDown(mouse('mousedown', 40, { clientY: 25 }))
+  v.gestures.onMouseDown(mouse('mousedown', 50, { clientY: 25 }))
   assert.equal(v.calls.play, 0)
   assert.equal(v.editor.looping, false)
 })
@@ -257,4 +258,28 @@ test('a marker can be dragged by its line while playback and selection remain un
   assert.equal(v.calls.markers, 1)
   assert.equal(v.calls.play, 0)
   assert.equal(v.calls.stop, 0)
+})
+
+
+test('ruler selects a marker region inside an existing loop for setting new loop bounds', async t => {
+  const v = setup(t)
+  v.editor.state!.loop = { start: 100, end: 900 }
+  v.editor.regions = [{ start: 200, end: 500, skip: false }, { start: 500, end: 1000, skip: false }]
+  v.gestures.onMouseDown(mouse('mousedown', 35, { clientY: 12 }))
+  assert.deepEqual(v.editor.selection, { start: 200, end: 500 })
+  await v.editor.setLoopPoints(v.editor.selection!)
+  assert.deepEqual(v.editor.state!.loop, { start: 200, end: 500 })
+})
+
+
+test('autoplay can disable cursor audition without disabling explicit playback', async t => {
+  const v = setup(t)
+  v.autoplay.value = false
+  v.gestures.onMouseDown(mouse('mousedown', 20))
+  v.target.dispatchEvent(mouse('mouseup', 20))
+  await setImmediate()
+  assert.equal(v.editor.cursor, 200)
+  assert.equal(v.calls.play, 0)
+  v.gestures.playRegion({ start: 200, end: 400 })
+  assert.equal(v.calls.play, 1)
 })

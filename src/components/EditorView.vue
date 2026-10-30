@@ -29,6 +29,7 @@ import {
   ContextMenuShortcut,
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
@@ -77,6 +78,7 @@ const RULER = 18
 const displayMode = useLocalStorage<'waveform' | 'spectrogram'>('editor.displayMode', 'waveform')
 const isSpectrogram = computed(() => displayMode.value === 'spectrogram')
 const gridMode = useLocalStorage<GridMode>('editor.gridMode', 'beats')
+const autoplay = useLocalStorage('editor.autoplay', true)
 const snap = useLocalStorage('editor.snap', true)
 const zeroSnap = useLocalStorage('editor.zeroSnap', true)
 const gridTempoRow = ref<HTMLElement | null>(null)
@@ -167,7 +169,7 @@ const { beatFrames, beatGrid, gridStep, gridOrigin, gridFrames, isMultiple, snap
 const { draggedMarkers, draggedLoop, hoverEdge, hoverMarker, hoverLoopLabel, menuOnRuler, menu, menuRegion,
   frameAt, selectLoop, playRegion, addMarkers, removeMarker, toggleSkip,
   onDoubleClick, onContextMenu, onMouseDown, updateHover } = useEditorGestures({
-  editor, canvas, frames, rate, viewStart, viewEnd, zeroSnap, x, snapped, badgeAt, ruler: RULER,
+  editor, canvas, frames, rate, viewStart, viewEnd, zeroSnap, autoplay, x, snapped, badgeAt, ruler: RULER,
   identity: computed(() => `${editor.sample?.id}:${editor.sessionVersion}`),
 })
 const shownLoop = computed(() => draggedLoop.value ?? editor.state?.loop ?? null)
@@ -187,7 +189,7 @@ function draw() {
       downbeat: downbeat.value, gridStep, gridFrames, gridOrigin, isMultiple },
     wave: wave.value, waveRange: waveRange.value, look: waveformLook(settings.settings.editorWaveform),
     zoom: vZoom.value, spectral: isSpectrogram.value, spectrum: spectrum.value,
-    selection: editor.selection, loop: shownLoop.value, loopLabel: t('editor.waveform.loopLabel'), loopPlaying: editor.playing && editor.looping, regions: shownRegions.value,
+    selection: editor.selection, playing: editor.playing, loop: shownLoop.value, loopLabel: t('editor.waveform.loopLabel'), loopPlaying: editor.playing && editor.looping, regions: shownRegions.value,
     markers: shownMarkers.value, slicePreview: slicePreview.value, hoverBadge: hoverBadge.value,
     color: name => (isSpectrogram.value && spectralColors[name]) || style.getPropertyValue(name).trim(),
   }, { drawWave, drawSpectrogram, drawFrequencyAxis })
@@ -276,7 +278,7 @@ function badgeAt(e: MouseEvent) {
     return undefined
   const px = e.clientX - rect.left
   const py = e.clientY - rect.top
-  if (py < RULER + 1 || py > RULER + 1 + BADGE_H)
+  if (py < RULER + 3 || py > RULER + 3 + BADGE_H)
     return undefined
   return badges.find(b => px >= b.x && px <= b.x + b.w)
 }
@@ -352,7 +354,7 @@ const toolbarActions: Record<EditorToolAction, () => unknown> = {
   <div class="h-full flex flex-col overflow-hidden bg-background text-foreground" :inert="editor.loading || editor.saving" :aria-busy="openingWave" data-editor-panel>
     <!-- Keep a drag region for the legacy standalone editor window. -->
     <header v-if="!props.embedded" class="h-11 shrink-0 pl-[84px] pr-3 flex items-center border-b border-border" data-tauri-drag-region>
-      <span class="min-w-0 truncate text-sm font-medium" data-tauri-drag-region>{{ editor.sample?.name }}<span class="text-muted-foreground">.{{ editor.sample?.ext }}</span><span v-if="editor.state?.dirty" class="text-primary"> •</span></span>
+      <span class="min-w-0 truncate text-sm font-medium" data-tauri-drag-region><svg v-if="editor.state?.dirty" width="6" height="6" viewBox="0 0 6 6" class="mr-1.5 inline-block shrink-0 text-primary align-middle" aria-hidden="true"><circle cx="3" cy="3" r="3" fill="currentColor" /></svg>{{ editor.sample?.name }}<span class="text-muted-foreground">.{{ editor.sample?.ext }}</span></span>
     </header>
 
     <EditorToolbar
@@ -515,7 +517,7 @@ const toolbarActions: Record<EditorToolAction, () => unknown> = {
         </div>
       </div>
       <div v-if="editor.sample" class="pointer-events-none absolute bottom-2 left-2 max-w-[min(70%,28rem)] truncate rounded bg-background/80 px-2 py-1 text-xs font-medium text-foreground" :title="`${editor.sample.name}.${editor.sample.ext}`">
-        {{ editor.sample.name }}<span class="text-muted-foreground">.{{ editor.sample.ext }}</span><span v-if="editor.state?.dirty" class="text-primary"> •</span>
+        <svg v-if="editor.state?.dirty" width="6" height="6" viewBox="0 0 6 6" class="mr-1.5 inline-block shrink-0 text-primary align-middle" aria-hidden="true"><circle cx="3" cy="3" r="3" fill="currentColor" /></svg>{{ editor.sample.name }}<span class="text-muted-foreground">.{{ editor.sample.ext }}</span>
       </div>
       <div
         v-if="isSpectrogram && spectrum && !spectrumError"
@@ -568,6 +570,10 @@ const toolbarActions: Record<EditorToolAction, () => unknown> = {
       <Separator orientation="vertical" class="h-3" />
       <!-- View controls: beat grid, snapping, look and zoom. -->
       <div class="footer-controls shrink-0 flex items-center gap-1.5 text-foreground">
+        <label class="flex items-center gap-1.5 px-1 text-xs cursor-pointer">
+          <Checkbox :model-value="autoplay" @update:model-value="autoplay = $event === true" />
+          {{ t('editor.toolbar.autoplay') }}
+        </label>
         <EditorDisplayControls v-model="displayMode" :loading="spectrumLoading" :error="spectrumError" @retry="refreshSpectrum" />
         <Separator orientation="vertical" class="mx-0.5 h-3" />
         <Hint :text="t('editor.toolbar.snapHint')" shortcut="S">
@@ -651,7 +657,7 @@ const toolbarActions: Record<EditorToolAction, () => unknown> = {
 </template>
 
 <style scoped>
-.footer-controls :deep(button) {
+.footer-controls :deep(button:not([data-slot="checkbox"])) {
   width: 28px;
   min-width: 28px;
   height: 24px;

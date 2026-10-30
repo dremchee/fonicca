@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Curve, Marker } from '@/stores/editor'
 import type { EditorToolAction } from '@/editor-tools'
-import { ArrowLeftRight, ArrowUpToLine, ClipboardPaste, Copy, Crop, Eraser,
+import { ArrowLeftRight, ArrowUpToLine, ChevronDown, ClipboardPaste, Copy, Crop, Eraser,
   ExternalLink, IterationCw, Maximize2, Minimize2, Music, Play, Redo2, Repeat, Scissors, Square,
   Undo2, Volume1, Volume2, VolumeX, X } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
@@ -13,6 +13,7 @@ import EditorSlicer from '@/components/EditorSlicer.vue'
 import FadeIcon from '@/components/icons/FadeIcon.vue'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Toggle } from '@/components/ui/toggle'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -24,6 +25,8 @@ const curve = defineModel<Curve>('curve', { required: true })
 const looping = defineModel<boolean>('looping', { required: true })
 const preview = defineModel<Marker[]>('preview', { required: true })
 const { t } = useI18n()
+const primaryTools = new Set(['play', 'loop', 'loopPoints', 'cut', 'copy', 'paste', 'fadeIn', 'fadeOut', 'slice'])
+const secondaryTools = EDITOR_TOOLS.filter(tool => !primaryTools.has(tool))
 const curves: { value: Curve, label: string }[] = [
   { value: 'smooth', label: 'editor.curves.smooth' },
   { value: 'linear', label: 'editor.curves.linear' },
@@ -33,7 +36,7 @@ const curves: { value: Curve, label: string }[] = [
 
 <template>
     <div class="h-11 shrink-0 px-3 flex items-center gap-1 border-b border-border">
-      <ToolbarOverflow :items="EDITOR_TOOLS">
+      <ToolbarOverflow :items="EDITOR_TOOLS" :overflow-items="secondaryTools">
         <template #default="{ item }">
           <Hint v-if="item === 'undo'" :text="t('editor.toolbar.undo')" shortcut="⌘Z">
               <Button variant="ghost" size="icon-sm" :disabled="!canUndo" :aria-label="t('editor.toolbar.undo')" @click="emit('action', 'undo')">
@@ -47,7 +50,7 @@ const curves: { value: Curve, label: string }[] = [
           </Hint>
           <Hint v-if="item === 'play'" :text="playing ? t('editor.toolbar.stop') : hasSelection ? t('editor.toolbar.playSelection') : t('editor.toolbar.playFromCursor')" :shortcut="t('editor.toolbar.space')">
               <Button variant="ghost" size="icon-sm" :aria-label="t(playing ? 'editor.toolbar.stop' : 'common.actions.play')" @click="emit('action', 'play')">
-                <component :is="playing ? Square : Play" />
+                <component :is="playing ? Square : Play" fill="currentColor" :stroke-width="0" />
               </Button>
           </Hint>
           <Hint v-if="item === 'loop'" :text="t('editor.toolbar.loopHint')" shortcut="L">
@@ -155,12 +158,24 @@ const curves: { value: Curve, label: string }[] = [
       </ToolbarOverflow>
       <div class="shrink-0 flex items-center gap-1 pl-2 border-l border-border">
         <EditorSaveMenu />
-        <Hint v-if="props.embedded" :text="t('editor.panel.detach')">
-          <Button variant="ghost" size="icon-sm" :disabled="!canDetach" :aria-label="t('editor.panel.detach')" @click="emit('detach')"><ExternalLink /></Button>
-        </Hint>
-        <Button v-if="props.embedded" variant="ghost" size="icon-sm" :aria-label="t(props.expanded ? 'editor.panel.collapse' : 'editor.panel.expand')" @click="emit('toggleExpand')">
-          <Minimize2 v-if="props.expanded" /><Maximize2 v-else />
-        </Button>
+        <DropdownMenu v-if="props.embedded">
+          <DropdownMenuTrigger as-child>
+            <Button variant="ghost" size="sm" class="gap-1 px-2" :aria-label="t('editor.panel.viewOptions')">
+              <Minimize2 v-if="props.expanded" /><Maximize2 v-else /><ChevronDown class="size-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuGroup>
+              <DropdownMenuItem @select="emit('toggleExpand')">
+                <Minimize2 v-if="props.expanded" /><Maximize2 v-else />
+                {{ t(props.expanded ? 'editor.panel.collapse' : 'editor.panel.expand') }}
+              </DropdownMenuItem>
+              <DropdownMenuItem :disabled="!canDetach" @select="emit('detach')">
+                <ExternalLink />{{ t('editor.panel.detach') }}
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <Button v-if="props.embedded" variant="ghost" size="icon-sm" :aria-label="t('common.actions.close')" @click="emit('close')"><X /></Button>
       </div>
     </div>

@@ -22,6 +22,7 @@ export interface EditorCanvasScene {
   loop: { start: number, end: number } | null
   loopLabel?: string
   loopPlaying?: boolean
+  playing?: boolean
   regions: Region[]
   markers: Marker[]
   slicePreview: Marker[]
@@ -178,7 +179,7 @@ function render(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, painter
       ctx.closePath()
       ctx.fill()
     }
-    const label = loopLabelBox(a, b, w, RULER)
+    const label = loopLabelBox(a, b, w, RULER, scene.regions.some(r => r.start === lp.start && !r.skip))
     if (label) {
       ctx.beginPath()
       ctx.roundRect(pixel(label.x), label.y, label.width, label.height, 2)
@@ -201,7 +202,6 @@ function render(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, painter
 function drawSlices(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, x: (frame: number) => number, color: (name: string) => string) {
   const { width: w, height: h, ruler: RULER } = scene.viewport
   const regions = scene.regions
-  const loopLabel = scene.loop ? loopLabelBox(x(scene.loop.start), x(scene.loop.end), w, RULER) : null
   const badges: RegionBadge[] = []
   ctx.fillStyle = color('--card')
   ctx.globalAlpha = 0.65
@@ -218,7 +218,9 @@ function drawSlices(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, x: 
     if (!r.skip)
       n++
     const px = Math.round(x(r.start))
-    if (px < -40 || px > w)
+    const pinned = scene.playing && !r.skip && px < 0 && x(r.end) > 0
+      && scene.selection?.start === r.start && scene.selection?.end === r.end
+    if ((!pinned && px < -40) || px > w)
       continue
     ctx.fillStyle = color('--foreground')
     // The start of the file is no marker of its own.
@@ -235,21 +237,19 @@ function drawSlices(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, x: 
       continue
     const label = String(n)
     const lw = Math.max(BADGE_H, ctx.measureText(label).width + 6)
-    let labelX = px + 4
-    if (loopLabel && labelX < loopLabel.x + loopLabel.width && labelX + lw > loopLabel.x)
-      labelX = loopLabel.x + loopLabel.width + 4
+    const labelX = pinned ? 4 : px + 4
     if (labelX - lastLabel < lw + 4 || labelX + lw > w)
       continue
     lastLabel = labelX
     badges.push({ start: r.start, end: r.end, x: labelX, w: lw })
     ctx.beginPath()
-    ctx.roundRect(labelX, RULER + 1, lw, BADGE_H, 2)
+    ctx.roundRect(labelX, RULER + 3, lw, BADGE_H, 2)
     ctx.fill()
     ctx.fillStyle = color('--background')
     // Hovered: a play button.
     if (scene.hoverBadge === r.start) {
       const cx = labelX + lw / 2
-      const cy = RULER + 1 + BADGE_H / 2
+      const cy = RULER + 3 + BADGE_H / 2
       ctx.beginPath()
       ctx.moveTo(cx - 2.5, cy - 4)
       ctx.lineTo(cx + 4, cy)
@@ -258,7 +258,7 @@ function drawSlices(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, x: 
       ctx.fill()
     }
     else {
-      ctx.fillText(label, labelX + (lw - ctx.measureText(label).width) / 2, RULER + 12)
+      ctx.fillText(label, labelX + (lw - ctx.measureText(label).width) / 2, RULER + 14)
     }
   }
 

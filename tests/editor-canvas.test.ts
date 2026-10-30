@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { loopLabelBox } from '../src/editor-loop-controls.ts'
 import { drawEditorCanvas, type EditorCanvasScene } from '../src/editor-canvas.ts'
 
 function setup() {
@@ -76,12 +77,16 @@ test('saved loop has continuous flag stems and a label without shading or invert
   assert.equal(v.painted.length, 2)
 })
 
-test('slice numbers remain clickable beside a loop label at the same boundary', () => {
+test('slice numbers keep their position when a loop shares their boundary', () => {
   const v = setup()
   v.scene.loop = { start: 1000, end: 3000 }
   v.scene.regions = [{ start: 1000, end: 3000, skip: false }]
   const badges = drawEditorCanvas(v.ctx, v.scene, v.painters)
-  assert.equal(badges[0].x, 144)
+  assert.equal(badges[0].x, 104)
+  const label = loopLabelBox(100, 300, 400, 18, true)!
+  assert.equal(label.y, 21)
+  assert.ok(label.x >= badges[0].x + badges[0].w + 4)
+  assert.ok(v.calls.some(c => c.name === 'roundRect' && c.args[0] === label.x && c.args[1] === 21))
 })
 
 test('playing a saved loop inverts its waveform like a selected marker region', () => {
@@ -94,4 +99,26 @@ test('playing a saved loop inverts its waveform like a selected marker region', 
   v.painted.length = 0
   drawEditorCanvas(v.ctx, v.scene, v.painters)
   assert.equal(v.painted.length, 1)
+})
+
+
+test('standalone Loop label stays beside its boundary with a small top inset', () => {
+  const label = loopLabelBox(100, 300, 400, 18)!
+  assert.equal(label.x, 104)
+  assert.equal(label.y, 21)
+})
+
+
+test('playing region badge pins to the left edge only while its region remains visible', () => {
+  const v = setup()
+  v.scene.regions = [{ start: 1000, end: 3000, skip: false }]
+  v.scene.selection = { start: 1000, end: 3000 }
+  v.scene.viewport.start = 2000
+  v.scene.playing = true
+  assert.deepEqual(drawEditorCanvas(v.ctx, v.scene, v.painters), [{ start: 1000, end: 3000, x: 4, w: 14 }])
+  v.scene.playing = false
+  assert.deepEqual(drawEditorCanvas(v.ctx, v.scene, v.painters), [])
+  v.scene.playing = true
+  v.scene.viewport.start = 3100
+  assert.deepEqual(drawEditorCanvas(v.ctx, v.scene, v.painters), [])
 })

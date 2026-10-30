@@ -6,7 +6,8 @@ export default {
     titleDirty: '{name} • — Редактор',
   },
   unsaved: { dontSave: 'Не сохранять', title: 'Несохранённые изменения', description: 'Сохранить изменения в «{name}» перед закрытием или открытием другого трека?' },
-  panel: { expand: 'Развернуть редактор', collapse: 'Свернуть редактор', detach: 'Открыть редактор в отдельном окне' },
+  panel: {
+    viewOptions: 'Вид редактора', expand: 'Развернуть редактор', collapse: 'Свернуть редактор', detach: 'Открыть редактор в отдельном окне' },
   save: {
     exportTitle: 'Сохранить аудио',
     exportDescription: 'Выберите формат, затем место сохранения.',
@@ -37,6 +38,7 @@ export default {
     action: 'Отбросить',
   },
   toolbar: {
+    autoplay: 'Автоплей',
     moreTools: 'Дополнительные инструменты',
     undo: 'Отменить',
     redo: 'Повторить',

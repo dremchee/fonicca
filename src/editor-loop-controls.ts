@@ -4,8 +4,8 @@ export const LOOP_LABEL_WIDTH = 36
 export const LOOP_LABEL_HEIGHT = 14
 
 /** Shared by canvas drawing and hit testing, including a partially visible loop. */
-export function loopLabelBox(start: number, end: number, width: number, ruler: number) {
-  const left = Math.max(0, start) + 4
+export function loopLabelBox(start: number, end: number, width: number, ruler: number, hasRegionBadge = false) {
+  const left = Math.max(0, start) + (hasRegionBadge ? 24 : 4)
   const right = Math.min(width, end) - 4
   return right - left >= LOOP_LABEL_WIDTH
     ? { x: left, y: ruler + 3, width: LOOP_LABEL_WIDTH, height: LOOP_LABEL_HEIGHT }
