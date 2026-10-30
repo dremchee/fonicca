@@ -1,0 +1,2118 @@
+{
+  "schema": 1,
+  "status": "foreground-observations-completed",
+  "identifier": "app.fonicca.performance-fixture",
+  "appDataOverride": "/var/folders/hw/s37zjtj92k32vbk6clw5kn3w0000gn/T/fonicca-foreground-7komwjvv/data",
+  "incognito": true,
+  "backend": "Real native IPC and isolated SQLite, no mockIPC. 100k rows: two private synthetic float WAVs and 99998 metadata-only rows. No model inference or audible playback. Sources inserted after startup to avoid scanning metadata-only paths.",
+  "beforeWebKitPids": [
+    5144,
+    29805,
+    29806,
+    29807,
+    52797,
+    52807
+  ],
+  "nativeHostPid": 79127,
+  "cohortPids": [
+    79127,
+    79280,
+    79281,
+    79282
+  ],
+  "cohortRemainingAfterHostExit": [],
+  "binarySha256": "a53ce6a485cf5def848c89ca6bf59aa8ae1cbca64311e003cc2372d4c3612610",
+  "checkpointCount": 9,
+  "checkpoints": [
+    {
+      "stage": "library-loaded",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "rows": 38,
+      "canvases": 0,
+      "heapAvailable": false,
+      "heapBytes": null,
+      "library": {
+        "retainedPages": 1,
+        "retainedRows": 200,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "total": 100000,
+      "editor": {
+        "open": false,
+        "frames": 0,
+        "processing": false
+      },
+      "timings": [],
+      "native": {
+        "processBytes": 123437056,
+        "cpuPercent": null,
+        "availableBytes": 5751668736,
+        "editorBusy": false,
+        "editor": null
+      },
+      "screenLocked": false,
+      "capturedAt": 1793348105.088523,
+      "processes": [
+        {
+          "pid": 79127,
+          "parent": 79081,
+          "rssBytes": 123453440,
+          "name": "/var/folders/hw/s37zjtj92k32vbk6clw5kn3w0000gn/T/fonicca-foreground-7komwjvv/fonicca-profile"
+        },
+        {
+          "pid": 79280,
+          "parent": 1,
+          "rssBytes": 33898496,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 79281,
+          "parent": 1,
+          "rssBytes": 19382272,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 79282,
+          "parent": 1,
+          "rssBytes": 112017408,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 901177408084208,
+          "mach_continuous_time_ns": 2047716346459791,
+          "wall_time_s": 815040905.014682,
+          "date": "2026-10-30T11:15:05.015+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 79282,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 137986816,
+            "auxiliary": {
+              "phys_footprint_peak": 166101760,
+              "phys_footprint": 138019584
+            }
+          },
+          {
+            "name": "fonicca-profile",
+            "pid": 79127,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 47613128,
+            "auxiliary": {
+              "phys_footprint_peak": 62440576,
+              "phys_footprint": 47645896
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 79280,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 30344008,
+            "auxiliary": {
+              "phys_footprint_peak": 32064328,
+              "phys_footprint": 30376776
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 79281,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 7651808,
+            "auxiliary": {
+              "phys_footprint_peak": 7979488,
+              "phys_footprint": 7684576
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 223333616,
+            "swapped": 15892480,
+            "clean": 44056576,
+            "reclaimable": 43384832,
+            "wired": 51937280,
+            "regions": 25306
+          }
+        },
+        "total footprint": 223333616,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 901177465493500,
+          "mach_continuous_time_ns": 2047716403869083,
+          "wall_time_s": 815040905.072092,
+          "date": "2026-10-30T11:15:05.072+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "library-scrolled",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "rows": 58,
+      "canvases": 0,
+      "heapAvailable": false,
+      "heapBytes": null,
+      "library": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "total": 100000,
+      "editor": {
+        "open": false,
+        "frames": 0,
+        "processing": false
+      },
+      "timings": [],
+      "native": {
+        "processBytes": 120979456,
+        "cpuPercent": 34.88372,
+        "availableBytes": 5940314112,
+        "editorBusy": false,
+        "editor": null
+      },
+      "elapsedMs": 4303,
+      "frameGapsMs": [
+        29,
+        28,
+        34,
+        33,
+        33,
+        34,
+        33,
+        33,
+        34,
+        32,
+        34,
+        34,
+        33,
+        33,
+        33,
+        34,
+        33,
+        34,
+        33,
+        32,
+        35,
+        33,
+        32,
+        36,
+        32,
+        33,
+        34,
+        33,
+        33,
+        34,
+        33,
+        33,
+        35,
+        32,
+        33,
+        33,
+        34,
+        33,
+        34,
+        32,
+        34,
+        33,
+        34,
+        32,
+        35,
+        32,
+        34,
+        34,
+        33,
+        33,
+        39,
+        28,
+        33,
+        34,
+        33,
+        40,
+        26,
+        34,
+        33,
+        35,
+        39,
+        26,
+        34,
+        33,
+        33,
+        34,
+        39,
+        27,
+        34,
+        33,
+        33,
+        48,
+        18,
+        34,
+        36,
+        31,
+        33,
+        98,
+        37,
+        10,
+        22,
+        48,
+        19,
+        32,
+        44,
+        23,
+        33,
+        51,
+        17,
+        35,
+        31,
+        34,
+        33,
+        33,
+        34,
+        33,
+        33,
+        34,
+        33,
+        33,
+        34,
+        33,
+        33,
+        33,
+        36,
+        31,
+        35,
+        32,
+        34,
+        33,
+        33,
+        33,
+        34,
+        32,
+        34,
+        33,
+        34,
+        33,
+        33,
+        35,
+        31,
+        35,
+        33,
+        33,
+        33,
+        34,
+        33,
+        33
+      ],
+      "scrollTop": 3150000,
+      "screenLocked": false,
+      "capturedAt": 1793348109.5674071,
+      "processes": [
+        {
+          "pid": 79127,
+          "parent": 79081,
+          "rssBytes": 120979456,
+          "name": "/var/folders/hw/s37zjtj92k32vbk6clw5kn3w0000gn/T/fonicca-foreground-7komwjvv/fonicca-profile"
+        },
+        {
+          "pid": 79280,
+          "parent": 1,
+          "rssBytes": 48824320,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 79281,
+          "parent": 1,
+          "rssBytes": 16842752,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 79282,
+          "parent": 1,
+          "rssBytes": 182697984,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 901181888076333,
+          "mach_continuous_time_ns": 2047720826451916,
+          "wall_time_s": 815040909.494711,
+          "date": "2026-10-30T11:15:09.495+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 79282,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 205030216,
+            "auxiliary": {
+              "phys_footprint_peak": 831112008,
+              "phys_footprint": 205062984
+            }
+          },
+          {
+            "name": "fonicca-profile",
+            "pid": 79127,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 50447584,
+            "auxiliary": {
+              "phys_footprint_peak": 62440576,
+              "phys_footprint": 50480352
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 79280,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 31460568,
+            "auxiliary": {
+              "phys_footprint_peak": 41996128,
+              "phys_footprint": 31493336
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 79281,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 8045024,
+            "auxiliary": {
+              "phys_footprint_peak": 8110560,
+              "phys_footprint": 8077792
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 294721248,
+            "swapped": 41648128,
+            "clean": 44056576,
+            "reclaimable": 1548288000,
+            "wired": 16695296,
+            "regions": 27244
+          }
+        },
+        "total footprint": 294721248,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 901181941509791,
+          "mach_continuous_time_ns": 2047720879885375,
+          "wall_time_s": 815040909.548145,
+          "date": "2026-10-30T11:15:09.548+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "library-restored",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "rows": 38,
+      "canvases": 0,
+      "heapAvailable": false,
+      "heapBytes": null,
+      "library": {
+        "retainedPages": 1,
+        "retainedRows": 200,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "total": 100000,
+      "editor": {
+        "open": false,
+        "frames": 0,
+        "processing": false
+      },
+      "timings": [],
+      "native": {
+        "processBytes": 121683968,
+        "cpuPercent": 16.476643,
+        "availableBytes": 5867520000,
+        "editorBusy": false,
+        "editor": null
+      },
+      "rapidScopeChanges": 10,
+      "screenLocked": false,
+      "capturedAt": 1793348111.6975832,
+      "processes": [
+        {
+          "pid": 79127,
+          "parent": 79081,
+          "rssBytes": 121683968,
+          "name": "/var/folders/hw/s37zjtj92k32vbk6clw5kn3w0000gn/T/fonicca-foreground-7komwjvv/fonicca-profile"
+        },
+        {
+          "pid": 79280,
+          "parent": 1,
+          "rssBytes": 48480256,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 79281,
+          "parent": 1,
+          "rssBytes": 17137664,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 79282,
+          "parent": 1,
+          "rssBytes": 191152128,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 901184023131500,
+          "mach_continuous_time_ns": 2047722961507083,
+          "wall_time_s": 815040911.629783,
+          "date": "2026-10-30T11:15:11.630+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 79282,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 320996168,
+            "auxiliary": {
+              "phys_footprint_peak": 831112008,
+              "phys_footprint": 321028936
+            }
+          },
+          {
+            "name": "fonicca-profile",
+            "pid": 79127,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 50676960,
+            "auxiliary": {
+              "phys_footprint_peak": 62440576,
+              "phys_footprint": 50709728
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 79280,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 23382320,
+            "auxiliary": {
+              "phys_footprint_peak": 52152624,
+              "phys_footprint": 23415088
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 79281,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 7832032,
+            "auxiliary": {
+              "phys_footprint_peak": 8143328,
+              "phys_footprint": 7864800
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 402625336,
+            "swapped": 36159488,
+            "clean": 44269568,
+            "reclaimable": 511049728,
+            "wired": 34078720,
+            "regions": 26505
+          }
+        },
+        "total footprint": 402625336,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 901184074724750,
+          "mach_continuous_time_ns": 2047723013100333,
+          "wall_time_s": 815040911.681377,
+          "date": "2026-10-30T11:15:11.681+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "editor-short-loaded",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "rows": 29,
+      "canvases": 2,
+      "heapAvailable": false,
+      "heapBytes": null,
+      "library": {
+        "retainedPages": 1,
+        "retainedRows": 200,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "total": 100000,
+      "editor": {
+        "open": true,
+        "frames": 1323000,
+        "processing": false,
+        "dirty": false
+      },
+      "timings": [
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 23,
+          "p50Ms": 23,
+          "p95Ms": 23,
+          "maxMs": 23
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 67,
+          "p50Ms": 67,
+          "p95Ms": 67,
+          "maxMs": 67
+        },
+        {
+          "name": "editor.draw",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 8,
+          "p50Ms": 4.000000000003638,
+          "p95Ms": 8,
+          "maxMs": 8
+        },
+        {
+          "name": "editor_wave",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 61,
+          "p50Ms": 27,
+          "p95Ms": 61,
+          "maxMs": 61
+        }
+      ],
+      "native": {
+        "processBytes": 136577024,
+        "cpuPercent": 3.8477368,
+        "availableBytes": 6319357952,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 1,
+          "logicalBytes": 10584000,
+          "ramBytes": 18874368,
+          "diskBytes": 0,
+          "storageCount": 1,
+          "cacheBytes": 2314788,
+          "undoSteps": 0,
+          "redoSteps": 0,
+          "openedMs": 13.777667000000001,
+          "lastWaveMs": 26.291
+        }
+      },
+      "screenLocked": false,
+      "capturedAt": 1793348113.320788,
+      "processes": [
+        {
+          "pid": 79127,
+          "parent": 79081,
+          "rssBytes": 136577024,
+          "name": "/var/folders/hw/s37zjtj92k32vbk6clw5kn3w0000gn/T/fonicca-foreground-7komwjvv/fonicca-profile"
+        },
+        {
+          "pid": 79280,
+          "parent": 1,
+          "rssBytes": 54231040,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 79281,
+          "parent": 1,
+          "rssBytes": 17580032,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 79282,
+          "parent": 1,
+          "rssBytes": 210370560,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 901185645382708,
+          "mach_continuous_time_ns": 2047724583758291,
+          "wall_time_s": 815040913.252047,
+          "date": "2026-10-30T11:15:13.252+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 79282,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 238322504,
+            "auxiliary": {
+              "phys_footprint_peak": 831112008,
+              "phys_footprint": 238355272
+            }
+          },
+          {
+            "name": "fonicca-profile",
+            "pid": 79127,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 65144032,
+            "auxiliary": {
+              "phys_footprint_peak": 65242336,
+              "phys_footprint": 65176800
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 79280,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 43534352,
+            "auxiliary": {
+              "phys_footprint_peak": 58394952,
+              "phys_footprint": 43567120
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 79281,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 7963104,
+            "auxiliary": {
+              "phys_footprint_peak": 8143328,
+              "phys_footprint": 7995872
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 354701848,
+            "swapped": 30048256,
+            "clean": 45252608,
+            "reclaimable": 530743296,
+            "wired": 34177024,
+            "regions": 26632
+          }
+        },
+        "total footprint": 354701848,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 901185697689125,
+          "mach_continuous_time_ns": 2047724636064708,
+          "wall_time_s": 815040913.304354,
+          "date": "2026-10-30T11:15:13.304+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "editor-short-edited",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "rows": 29,
+      "canvases": 2,
+      "heapAvailable": false,
+      "heapBytes": null,
+      "library": {
+        "retainedPages": 1,
+        "retainedRows": 200,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "total": 100000,
+      "editor": {
+        "open": true,
+        "frames": 1323000,
+        "processing": false,
+        "dirty": false
+      },
+      "timings": [
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 23,
+          "p50Ms": 23,
+          "p95Ms": 23,
+          "maxMs": 23
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 67,
+          "p50Ms": 67,
+          "p95Ms": 67,
+          "maxMs": 67
+        },
+        {
+          "name": "editor.draw",
+          "calls": 35,
+          "errors": 0,
+          "lastMs": 4.000000000003638,
+          "p50Ms": 4.000000000003638,
+          "p95Ms": 8,
+          "maxMs": 9
+        },
+        {
+          "name": "editor_wave",
+          "calls": 42,
+          "errors": 0,
+          "lastMs": 7,
+          "p50Ms": 7.999999999996362,
+          "p95Ms": 18.999999999996362,
+          "maxMs": 61
+        },
+        {
+          "name": "editor_apply.fadeOut",
+          "calls": 10,
+          "errors": 0,
+          "lastMs": 7,
+          "p50Ms": 7,
+          "p95Ms": 13.000000000003638,
+          "maxMs": 13.000000000003638
+        },
+        {
+          "name": "editor_undo",
+          "calls": 10,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 2,
+          "p95Ms": 12,
+          "maxMs": 12
+        }
+      ],
+      "native": {
+        "processBytes": 144457728,
+        "cpuPercent": 6.9622087,
+        "availableBytes": 6330417152,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 1,
+          "logicalBytes": 10584000,
+          "ramBytes": 20971520,
+          "diskBytes": 0,
+          "storageCount": 2,
+          "cacheBytes": 2545620,
+          "undoSteps": 0,
+          "redoSteps": 1,
+          "openedMs": 13.777667000000001,
+          "lastWaveMs": 1.23
+        }
+      },
+      "actions": [
+        {
+          "iteration": 1,
+          "commandToStateMs": 23
+        },
+        {
+          "iteration": 2,
+          "commandToStateMs": 20
+        },
+        {
+          "iteration": 3,
+          "commandToStateMs": 21
+        },
+        {
+          "iteration": 4,
+          "commandToStateMs": 21
+        },
+        {
+          "iteration": 5,
+          "commandToStateMs": 20
+        },
+        {
+          "iteration": 6,
+          "commandToStateMs": 21
+        },
+        {
+          "iteration": 7,
+          "commandToStateMs": 22
+        },
+        {
+          "iteration": 8,
+          "commandToStateMs": 20.999999999996362
+        },
+        {
+          "iteration": 9,
+          "commandToStateMs": 20
+        },
+        {
+          "iteration": 10,
+          "commandToStateMs": 20
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793348116.994997,
+      "processes": [
+        {
+          "pid": 79127,
+          "parent": 79081,
+          "rssBytes": 144457728,
+          "name": "/var/folders/hw/s37zjtj92k32vbk6clw5kn3w0000gn/T/fonicca-foreground-7komwjvv/fonicca-profile"
+        },
+        {
+          "pid": 79280,
+          "parent": 1,
+          "rssBytes": 65208320,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 79281,
+          "parent": 1,
+          "rssBytes": 17612800,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 79282,
+          "parent": 1,
+          "rssBytes": 266092544,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 901189319777416,
+          "mach_continuous_time_ns": 2047728258153000,
+          "wall_time_s": 815040916.926472,
+          "date": "2026-10-30T11:15:16.926+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 79282,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 251462520,
+            "auxiliary": {
+              "phys_footprint_peak": 831112008,
+              "phys_footprint": 251495288
+            }
+          },
+          {
+            "name": "fonicca-profile",
+            "pid": 79127,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 69862624,
+            "auxiliary": {
+              "phys_footprint_peak": 73008352,
+              "phys_footprint": 69895392
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 79280,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 34342808,
+            "auxiliary": {
+              "phys_footprint_peak": 66291608,
+              "phys_footprint": 34375576
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 79281,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 7995872,
+            "auxiliary": {
+              "phys_footprint_peak": 8143328,
+              "phys_footprint": 8028640
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 363401680,
+            "swapped": 27672576,
+            "clean": 45301760,
+            "reclaimable": 533659648,
+            "wired": 42123264,
+            "regions": 26661
+          }
+        },
+        "total footprint": 363401680,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 901189371657583,
+          "mach_continuous_time_ns": 2047728310033166,
+          "wall_time_s": 815040916.978352,
+          "date": "2026-10-30T11:15:16.978+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "editor-short-closed",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "rows": 38,
+      "canvases": 0,
+      "heapAvailable": false,
+      "heapBytes": null,
+      "library": {
+        "retainedPages": 1,
+        "retainedRows": 200,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "total": 100000,
+      "editor": {
+        "open": false,
+        "frames": 0,
+        "processing": false
+      },
+      "timings": [
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 23,
+          "p50Ms": 23,
+          "p95Ms": 23,
+          "maxMs": 23
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 67,
+          "p50Ms": 67,
+          "p95Ms": 67,
+          "maxMs": 67
+        },
+        {
+          "name": "editor.draw",
+          "calls": 35,
+          "errors": 0,
+          "lastMs": 4.000000000003638,
+          "p50Ms": 4.000000000003638,
+          "p95Ms": 8,
+          "maxMs": 9
+        },
+        {
+          "name": "editor_wave",
+          "calls": 42,
+          "errors": 0,
+          "lastMs": 7,
+          "p50Ms": 7.999999999996362,
+          "p95Ms": 18.999999999996362,
+          "maxMs": 61
+        },
+        {
+          "name": "editor_apply.fadeOut",
+          "calls": 10,
+          "errors": 0,
+          "lastMs": 7,
+          "p50Ms": 7,
+          "p95Ms": 13.000000000003638,
+          "maxMs": 13.000000000003638
+        },
+        {
+          "name": "editor_undo",
+          "calls": 10,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 2,
+          "p95Ms": 12,
+          "maxMs": 12
+        },
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 6,
+          "p50Ms": 6,
+          "p95Ms": 6,
+          "maxMs": 6
+        }
+      ],
+      "native": {
+        "processBytes": 144310272,
+        "cpuPercent": 0.9692774,
+        "availableBytes": 6793232384,
+        "editorBusy": false,
+        "editor": null
+      },
+      "screenLocked": false,
+      "capturedAt": 1793348118.6952362,
+      "processes": [
+        {
+          "pid": 79127,
+          "parent": 79081,
+          "rssBytes": 144310272,
+          "name": "/var/folders/hw/s37zjtj92k32vbk6clw5kn3w0000gn/T/fonicca-foreground-7komwjvv/fonicca-profile"
+        },
+        {
+          "pid": 79280,
+          "parent": 1,
+          "rssBytes": 61571072,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 79281,
+          "parent": 1,
+          "rssBytes": 17645568,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 79282,
+          "parent": 1,
+          "rssBytes": 263094272,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 901191018805916,
+          "mach_continuous_time_ns": 2047729957181500,
+          "wall_time_s": 815040918.625514,
+          "date": "2026-10-30T11:15:18.626+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 79282,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 284803960,
+            "auxiliary": {
+              "phys_footprint_peak": 831112008,
+              "phys_footprint": 284836728
+            }
+          },
+          {
+            "name": "fonicca-profile",
+            "pid": 79127,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 68601056,
+            "auxiliary": {
+              "phys_footprint_peak": 73008352,
+              "phys_footprint": 68633824
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 79280,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 26445696,
+            "auxiliary": {
+              "phys_footprint_peak": 66291608,
+              "phys_footprint": 26478464
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 79281,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 7995872,
+            "auxiliary": {
+              "phys_footprint_peak": 8143328,
+              "phys_footprint": 8028640
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 387584440,
+            "swapped": 28786688,
+            "clean": 45301760,
+            "reclaimable": 474021888,
+            "wired": 54657024,
+            "regions": 26632
+          }
+        },
+        "total footprint": 387584440,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 901191071159250,
+          "mach_continuous_time_ns": 2047730009534833,
+          "wall_time_s": 815040918.677868,
+          "date": "2026-10-30T11:15:18.678+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "editor-long-loaded",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "rows": 29,
+      "canvases": 2,
+      "heapAvailable": false,
+      "heapBytes": null,
+      "library": {
+        "retainedPages": 1,
+        "retainedRows": 200,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "total": 100000,
+      "editor": {
+        "open": true,
+        "frames": 52920000,
+        "processing": false,
+        "dirty": false
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 4,
+          "errors": 0,
+          "lastMs": 8,
+          "p50Ms": 1,
+          "p95Ms": 8,
+          "maxMs": 8
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 1429,
+          "p50Ms": 1429,
+          "p95Ms": 1429,
+          "maxMs": 1429
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 5,
+          "p50Ms": 5,
+          "p95Ms": 5,
+          "maxMs": 5
+        },
+        {
+          "name": "editor_wave",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 1434,
+          "p50Ms": 1425,
+          "p95Ms": 1434,
+          "maxMs": 1434
+        }
+      ],
+      "native": {
+        "processBytes": 626556928,
+        "cpuPercent": 53.961536,
+        "availableBytes": 6383190016,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 2,
+          "logicalBytes": 423360000,
+          "ramBytes": 0,
+          "diskBytes": 423360000,
+          "storageCount": 1,
+          "cacheBytes": 92608740,
+          "undoSteps": 0,
+          "redoSteps": 0,
+          "openedMs": 1426.995875,
+          "lastWaveMs": 1425.622
+        }
+      },
+      "screenLocked": false,
+      "capturedAt": 1793348123.097538,
+      "processes": [
+        {
+          "pid": 79127,
+          "parent": 79081,
+          "rssBytes": 626556928,
+          "name": "/var/folders/hw/s37zjtj92k32vbk6clw5kn3w0000gn/T/fonicca-foreground-7komwjvv/fonicca-profile"
+        },
+        {
+          "pid": 79280,
+          "parent": 1,
+          "rssBytes": 47841280,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 79281,
+          "parent": 1,
+          "rssBytes": 16433152,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 79282,
+          "parent": 1,
+          "rssBytes": 215154688,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 901195420669291,
+          "mach_continuous_time_ns": 2047734359044875,
+          "wall_time_s": 815040923.027413,
+          "date": "2026-10-30T11:15:23.027+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 79282,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 296715128,
+            "auxiliary": {
+              "phys_footprint_peak": 831112008,
+              "phys_footprint": 296747896
+            }
+          },
+          {
+            "name": "fonicca-profile",
+            "pid": 79127,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 144770656,
+            "auxiliary": {
+              "phys_footprint_peak": 144868960,
+              "phys_footprint": 144803424
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 79280,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 29165464,
+            "auxiliary": {
+              "phys_footprint_peak": 66291608,
+              "phys_footprint": 29198232
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 79281,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 8225248,
+            "auxiliary": {
+              "phys_footprint_peak": 8274400,
+              "phys_footprint": 8258016
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 478614352,
+            "swapped": 79970304,
+            "clean": 468877312,
+            "reclaimable": 446922752,
+            "wired": 50020352,
+            "regions": 26720
+          }
+        },
+        "total footprint": 478614352,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 901195474319458,
+          "mach_continuous_time_ns": 2047734412695041,
+          "wall_time_s": 815040923.081063,
+          "date": "2026-10-30T11:15:23.081+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "editor-long-edited",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "rows": 29,
+      "canvases": 2,
+      "heapAvailable": false,
+      "heapBytes": null,
+      "library": {
+        "retainedPages": 1,
+        "retainedRows": 200,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "total": 100000,
+      "editor": {
+        "open": true,
+        "frames": 52920000,
+        "processing": false,
+        "dirty": false
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 37,
+          "errors": 0,
+          "lastMs": 9.999999999992724,
+          "p50Ms": 4,
+          "p95Ms": 8,
+          "maxMs": 9.999999999992724
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 1429,
+          "p50Ms": 1429,
+          "p95Ms": 1429,
+          "maxMs": 1429
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 5,
+          "p50Ms": 5,
+          "p95Ms": 5,
+          "maxMs": 5
+        },
+        {
+          "name": "editor_wave",
+          "calls": 42,
+          "errors": 0,
+          "lastMs": 7,
+          "p50Ms": 7.000000000007276,
+          "p95Ms": 17,
+          "maxMs": 1434
+        },
+        {
+          "name": "editor_apply.fadeOut",
+          "calls": 10,
+          "errors": 0,
+          "lastMs": 10,
+          "p50Ms": 4,
+          "p95Ms": 13,
+          "maxMs": 13
+        },
+        {
+          "name": "editor_undo",
+          "calls": 10,
+          "errors": 0,
+          "lastMs": 3,
+          "p50Ms": 3,
+          "p95Ms": 5,
+          "maxMs": 5
+        }
+      ],
+      "native": {
+        "processBytes": 632946688,
+        "cpuPercent": 9.160841,
+        "availableBytes": 6354419712,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 2,
+          "logicalBytes": 423360000,
+          "ramBytes": 2097152,
+          "diskBytes": 423360000,
+          "storageCount": 2,
+          "cacheBytes": 92839572,
+          "undoSteps": 0,
+          "redoSteps": 1,
+          "openedMs": 1426.995875,
+          "lastWaveMs": 4.84
+        }
+      },
+      "actions": [
+        {
+          "iteration": 1,
+          "commandToStateMs": 20
+        },
+        {
+          "iteration": 2,
+          "commandToStateMs": 21
+        },
+        {
+          "iteration": 3,
+          "commandToStateMs": 21
+        },
+        {
+          "iteration": 4,
+          "commandToStateMs": 23
+        },
+        {
+          "iteration": 5,
+          "commandToStateMs": 22
+        },
+        {
+          "iteration": 6,
+          "commandToStateMs": 25.000000000007276
+        },
+        {
+          "iteration": 7,
+          "commandToStateMs": 22
+        },
+        {
+          "iteration": 8,
+          "commandToStateMs": 23
+        },
+        {
+          "iteration": 9,
+          "commandToStateMs": 20
+        },
+        {
+          "iteration": 10,
+          "commandToStateMs": 21.000000000007276
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793348126.789831,
+      "processes": [
+        {
+          "pid": 79127,
+          "parent": 79081,
+          "rssBytes": 632946688,
+          "name": "/var/folders/hw/s37zjtj92k32vbk6clw5kn3w0000gn/T/fonicca-foreground-7komwjvv/fonicca-profile"
+        },
+        {
+          "pid": 79280,
+          "parent": 1,
+          "rssBytes": 60571648,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 79281,
+          "parent": 1,
+          "rssBytes": 16531456,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 79282,
+          "parent": 1,
+          "rssBytes": 282738688,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 901199111634000,
+          "mach_continuous_time_ns": 2047738050009583,
+          "wall_time_s": 815040926.718407,
+          "date": "2026-10-30T11:15:26.718+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 79282,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 270287760,
+            "auxiliary": {
+              "phys_footprint_peak": 831112008,
+              "phys_footprint": 270320528
+            }
+          },
+          {
+            "name": "fonicca-profile",
+            "pid": 79127,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 151062112,
+            "auxiliary": {
+              "phys_footprint_peak": 151160416,
+              "phys_footprint": 151094880
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 79280,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 46647192,
+            "auxiliary": {
+              "phys_footprint_peak": 68405168,
+              "phys_footprint": 46679960
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 79281,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 8077792,
+            "auxiliary": {
+              "phys_footprint_peak": 8290784,
+              "phys_footprint": 8110560
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 475812712,
+            "swapped": 64749568,
+            "clean": 468877312,
+            "reclaimable": 512868352,
+            "wired": 34177024,
+            "regions": 26759
+          }
+        },
+        "total footprint": 475812712,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 901199166327916,
+          "mach_continuous_time_ns": 2047738104703500,
+          "wall_time_s": 815040926.773102,
+          "date": "2026-10-30T11:15:26.773+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "editor-long-closed",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "rows": 38,
+      "canvases": 0,
+      "heapAvailable": false,
+      "heapBytes": null,
+      "library": {
+        "retainedPages": 1,
+        "retainedRows": 200,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "total": 100000,
+      "editor": {
+        "open": false,
+        "frames": 0,
+        "processing": false
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 37,
+          "errors": 0,
+          "lastMs": 9.999999999992724,
+          "p50Ms": 4,
+          "p95Ms": 8,
+          "maxMs": 9.999999999992724
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 1429,
+          "p50Ms": 1429,
+          "p95Ms": 1429,
+          "maxMs": 1429
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 5,
+          "p50Ms": 5,
+          "p95Ms": 5,
+          "maxMs": 5
+        },
+        {
+          "name": "editor_wave",
+          "calls": 42,
+          "errors": 0,
+          "lastMs": 7,
+          "p50Ms": 7.000000000007276,
+          "p95Ms": 17,
+          "maxMs": 1434
+        },
+        {
+          "name": "editor_apply.fadeOut",
+          "calls": 10,
+          "errors": 0,
+          "lastMs": 10,
+          "p50Ms": 4,
+          "p95Ms": 13,
+          "maxMs": 13
+        },
+        {
+          "name": "editor_undo",
+          "calls": 10,
+          "errors": 0,
+          "lastMs": 3,
+          "p50Ms": 3,
+          "p95Ms": 5,
+          "maxMs": 5
+        },
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 10,
+          "p50Ms": 10,
+          "p95Ms": 10,
+          "maxMs": 10
+        }
+      ],
+      "native": {
+        "processBytes": 209616896,
+        "cpuPercent": 1.6333407,
+        "availableBytes": 6477611008,
+        "editorBusy": false,
+        "editor": null
+      },
+      "screenLocked": false,
+      "capturedAt": 1793348128.474155,
+      "processes": [
+        {
+          "pid": 79127,
+          "parent": 79081,
+          "rssBytes": 209616896,
+          "name": "/var/folders/hw/s37zjtj92k32vbk6clw5kn3w0000gn/T/fonicca-foreground-7komwjvv/fonicca-profile"
+        },
+        {
+          "pid": 79280,
+          "parent": 1,
+          "rssBytes": 50397184,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 79281,
+          "parent": 1,
+          "rssBytes": 16564224,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 79282,
+          "parent": 1,
+          "rssBytes": 277413888,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 901200798524166,
+          "mach_continuous_time_ns": 2047739736899750,
+          "wall_time_s": 815040928.405311,
+          "date": "2026-10-30T11:15:28.405+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 79282,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 198509456,
+            "auxiliary": {
+              "phys_footprint_peak": 831112008,
+              "phys_footprint": 198542224
+            }
+          },
+          {
+            "name": "fonicca-profile",
+            "pid": 79127,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 150848808,
+            "auxiliary": {
+              "phys_footprint_peak": 151160416,
+              "phys_footprint": 150881576
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 79280,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 28215096,
+            "auxiliary": {
+              "phys_footprint_peak": 68405168,
+              "phys_footprint": 28247864
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 79281,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 8077792,
+            "auxiliary": {
+              "phys_footprint_peak": 8290784,
+              "phys_footprint": 8110560
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 385389008,
+            "swapped": 45072384,
+            "clean": 45514752,
+            "reclaimable": 553828352,
+            "wired": 43057152,
+            "regions": 26672
+          }
+        },
+        "total footprint": 385389008,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 901200851019666,
+          "mach_continuous_time_ns": 2047739789395250,
+          "wall_time_s": 815040928.457807,
+          "date": "2026-10-30T11:15:28.458+03:00"
+        },
+        "page size": 16384
+      }
+    }
+  ],
+  "finished": {
+    "ok": true,
+    "visibility": "visible",
+    "timings": [
+      {
+        "name": "editor.draw",
+        "calls": 37,
+        "errors": 0,
+        "lastMs": 9.999999999992724,
+        "p50Ms": 4,
+        "p95Ms": 8,
+        "maxMs": 9.999999999992724
+      },
+      {
+        "name": "editor_open",
+        "calls": 1,
+        "errors": 0,
+        "lastMs": 1429,
+        "p50Ms": 1429,
+        "p95Ms": 1429,
+        "maxMs": 1429
+      },
+      {
+        "name": "editor_clipboard",
+        "calls": 1,
+        "errors": 0,
+        "lastMs": 5,
+        "p50Ms": 5,
+        "p95Ms": 5,
+        "maxMs": 5
+      },
+      {
+        "name": "editor_wave",
+        "calls": 42,
+        "errors": 0,
+        "lastMs": 7,
+        "p50Ms": 7.000000000007276,
+        "p95Ms": 17,
+        "maxMs": 1434
+      },
+      {
+        "name": "editor_apply.fadeOut",
+        "calls": 10,
+        "errors": 0,
+        "lastMs": 10,
+        "p50Ms": 4,
+        "p95Ms": 13,
+        "maxMs": 13
+      },
+      {
+        "name": "editor_undo",
+        "calls": 10,
+        "errors": 0,
+        "lastMs": 3,
+        "p50Ms": 3,
+        "p95Ms": 5,
+        "maxMs": 5
+      },
+      {
+        "name": "editor_close",
+        "calls": 1,
+        "errors": 0,
+        "lastMs": 10,
+        "p50Ms": 10,
+        "p95Ms": 10,
+        "maxMs": 10
+      }
+    ]
+  },
+  "limits": [
+    "One macOS ARM64 dev-test profile GUI observation; no before/after WebView comparison or cross-platform guarantee.",
+    "Metadata rows are synthetic; only two audio paths exist. Library operations and editor PCM/waveform rendering use real native IPC.",
+    "Per-process ps RSS and footprint have different accounting. PCM bytes include mmap-backed storage and must not be added to RSS. Do not sum process RSS as disjoint physical memory.",
+    "WebKit attribution uses newly appearing PIDs relative to the before-launch snapshot and validates their disappearance after stopping only this host.",
+    "Action-to-state samples include polling; IPC timing summaries are recorded separately. Canvas submission is not GPU completion.",
+    "No real audio-device playback, external models, saves to user files, app installation, release or publication."
+  ],
+  "sourceRevision": "6e8c893c598341a1eec7397420c56e149d37b273",
+  "sourceSha256": {
+    "src/main.ts": "6959b4c14098197c5116d3e7081ee2c5111c9ab78ae8471f60050524b1466efd",
+    "src/App.vue": "838038776e499053b9ddd32e2db70ab4ddbca5b49ca61cd6d443eef55390dea3",
+    "src/components/EditorView.vue": "f13e2eeed10af9c30007663034e0f8654e1ade68932db6ba158c08da8d5db775",
+    "src/stores/editor.ts": "b23dd1d6a664270bf467d57859a659edee4497edab26a7779f592cb88c4bfcee",
+    "src-tauri/src/editor_commands.rs": "73f4d30f3eccf24bebeecb502c829711e93f0333458e73993893b832c19d4f84",
+    "src-tauri/Cargo.toml": "e9c0ec5a60a61709d37d6dfd668fb69f524e75338da52a9bdb2cdcf540fbc82c",
+    "src-tauri/Cargo.lock": "f641af7ef3288051326446a53928a5bb266b2c71545d01b93a13d6887590444a"
+  },
+  "reproduction": {
+    "probeTemplate": "import { invoke as probeInvoke } from '@tauri-apps/api/core'\nimport { editorTimings as probeTimings } from './editor-performance'\nconst probeSleep = ms => new Promise(resolve => setTimeout(resolve, ms))\nasync function probeUntil(check, label, limit = 30000) {\n  const start=performance.now()\n  while(!check()) { if(performance.now()-start>limit)throw new Error('Timeout: '+label); await probeSleep(20) }\n}\nasync function probePost(route, data) {\n  const res=await fetch('/'+route,{method:'POST',headers:{'content-type':'application/json','x-fixture-token':PROBE_TOKEN},body:JSON.stringify(data)})\n  if(!res.ok)throw new Error('Controller '+route+': '+await res.text())\n  return res.json()\n}\nasync function probeCheckpoint(stage, extra={}) {\n  if(document.visibilityState!=='visible')throw new Error('WebView is hidden at '+stage)\n  const app=document.querySelector('#app').__vue_app__, stores=app.config.globalProperties.$pinia._s\n  const library=stores.get('library'), editor=stores.get('editor')\n  return probePost('checkpoint',{stage,visibility:document.visibilityState,focused:document.hasFocus(),viewport:{width:innerWidth,height:innerHeight,dpr:devicePixelRatio},rows:document.querySelectorAll('.sample-list .row').length,canvases:document.querySelectorAll('canvas').length,heapAvailable:!!performance.memory,heapBytes:performance.memory?.usedJSHeapSize??null,library:library?.pageDiagnostics(),total:library?.total,editor:{open:editor?.open,frames:editor?.state?.frames??0,processing:editor?.processing,dirty:editor?.state?.dirty},timings:probeTimings.snapshot(),native:await probeInvoke('debug_snapshot'),...extra})\n}\nasync function probeScenario() {\n  await getCurrentWindow().show()\n  await getCurrentWindow().setFocus()\n  await probeUntil(()=>document.visibilityState==='visible','visible WebView')\n  const app=document.querySelector('#app').__vue_app__, stores=app.config.globalProperties.$pinia._s\n  const library=stores.get('library'), editor=stores.get('editor')\n  await probeUntil(()=>library.total===100000 && document.querySelector('.sample-list .row'),'100k real SQLite library')\n  await probeSleep(1200)\n  await probeCheckpoint('library-loaded')\n  const scroll=document.querySelector('.sample-list [tabindex=\"0\"][aria-label=\"All samples\"]')\n  if(!scroll||scroll.scrollHeight<3000000)throw new Error('Missing library viewport')\n  const frameGaps=[],start=performance.now();let last,raf\n  function frame(t){if(last!==undefined)frameGaps.push(t-last);last=t;raf=requestAnimationFrame(frame)}\n  raf=requestAnimationFrame(frame)\n  for(let i=1;i<=35;i++){scroll.scrollTop=i*90000;await probeSleep(80)}\n  await probeSleep(1200);cancelAnimationFrame(raf)\n  await probeCheckpoint('library-scrolled',{elapsedMs:performance.now()-start,frameGapsMs:frameGaps,scrollTop:scroll.scrollTop})\n  for(let i=0;i<10;i++){\n    library.query='Sample'+String(i*9000).padStart(8,'0')\n    await probeSleep(10)\n    library.scope={kind:'favorites'}\n    library.query=''\n    await probeSleep(10)\n    library.scope={kind:'all'}\n  }\n  await probeSleep(1500)\n  scroll.scrollTop=0\n  await probeUntil(()=>library.total===100000 && document.querySelector('.sample-list .row[data-index=\"0\"]'),'restored scope')\n  await probeCheckpoint('library-restored',{rapidScopeChanges:10})\n  for(const [label,id,seconds] of [['short',1,30],['long',2,1200]]){\n    probeTimings.reset()\n    await editor.openSample({id,name:label+' synthetic',path:PROBE_AUDIO+'/'+label+'.wav',ext:'wav',bpm:120})\n    await probeUntil(()=>!editor.loading && editor.state?.frames===seconds*44100 && document.querySelector('[data-editor-panel] canvas'),'native editor '+label)\n    await probeUntil(()=>probeTimings.snapshot().some(m=>m.name==='editor_wave'&&m.calls>0),'native waveform '+label)\n    await probeSleep(1300)\n    await probeCheckpoint('editor-'+label+'-loaded')\n    const actions=[]\n    for(let n=0;n<10;n++){\n      editor.selection={start:0,end:3*44100}\n      const t=performance.now();editor.fade('out')\n      await probeUntil(()=>!editor.processing && editor.state.canUndo,'fade completion')\n      const stateMs=performance.now()-t\n      await probeSleep(100)\n      await editor.undo()\n      await probeUntil(()=>!editor.processing && !editor.state.dirty,'undo completion')\n      actions.push({iteration:n+1,commandToStateMs:stateMs})\n      await probeSleep(100)\n    }\n    await probeSleep(1200)\n    await probeCheckpoint('editor-'+label+'-edited',{actions})\n    if(!await editor.closeEmbedded())throw new Error('Cannot close clean editor')\n    await probeSleep(1500)\n    await probeCheckpoint('editor-'+label+'-closed')\n  }\n  await probePost('finished',{ok:true,visibility:document.visibilityState,timings:probeTimings.snapshot()})\n}\nasync function probeStart(){\n  await getCurrentWindow().show()\n  await getCurrentWindow().setFocus()\n  const info=await probeInvoke('app_info')\n  if(!info.dbPath.includes('fonicca-foreground-'))throw new Error('Unsafe native profile path')\n  await probePost('seed',{info})\n  await mount()\n  await probeScenario()\n}\nprobeStart().catch(async error=>{console.error(error);try{await probePost('finished',{ok:false,error:String(error),visibility:document.visibilityState})}catch{}})\n",
+    "controllerTemplate": "from pathlib import Path\nfrom functools import partial\nfrom http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer\nimport json,sqlite3,subprocess,threading,time,re,os,hashlib,sys\nroot=Path(Path('/tmp/fonicca-foreground-root.txt').read_text())\ntoken=(root/'token').read_text()\nreports=[];done=threading.Event();seeded=False;guard=threading.Lock();host=None\n\ndef locked():\n text=subprocess.check_output(['ioreg','-n','Root','-d1'],text=True)\n m=re.search(r'\"IOConsoleLocked\" = (Yes|No)',text)\n if not m: raise RuntimeError('Cannot verify desktop state')\n return m[1]=='Yes'\n\ndef processes():\n text=subprocess.check_output(['ps','-axo','pid=,ppid=,rss=,comm='],text=True)\n rows=[]\n for line in text.splitlines():\n  p=line.strip().split(None,3)\n  if len(p)==4:\n   rows.append({'pid':int(p[0]),'parent':int(p[1]),'rssBytes':int(p[2])*1024,'name':p[3]})\n return rows\n\ndef webkit(p):return 'com.apple.WebKit.'in p['name']\nif locked():raise SystemExit('Desktop is locked: do not start a foreground profile')\nprior={p['pid']for p in processes()if webkit(p)}\n\ndef seed(info):\n global seeded\n if Path(info['dbPath']).resolve()!=(root/'data/library.db').resolve():raise RuntimeError('Unexpected app data directory')\n if Path(info['modelsDir']).resolve()!=(root/'data/models').resolve():raise RuntimeError('Unexpected model directory')\n with guard:\n  if seeded:return {'seeded':True}\n  c=sqlite3.connect(root/'data/library.db',timeout=30)\n  def natural(a,b):\n   def key(s):return [(1,int(p),len(p))if p.isdigit()else(0,p.lower())for p in re.split(r'(\\d+)',s)]\n   x,y=key(a),key(b);return (x>y)-(x<y)\n  c.create_collation('FONICCA_NATURAL',natural)\n  if c.execute('select count(*) from samples').fetchone()[0]!=0 or c.execute('select count(*) from sources').fetchone()[0]!=0:raise RuntimeError('Private database was not empty')\n  c.execute('insert into sources(id,path,added_at) values(1,?,?)',(str(root/'audio'),int(time.time())))\n  rows=[]\n  for i in range(1,100001):\n   if i<=2:\n    label,seconds=('short',30)if i==1 else('long',1200)\n    path=root/'audio'/f'{label}.wav';name=f'000 {label} synthetic';size=path.stat().st_size\n   else:\n    seconds=1;path=root/'audio/metadata'/f'{i:08d}.wav';name=f'Sample{i:08d}';size=100\n   rows.append((i,str(path),name,'wav',size,1,float(seconds),44100,2,32,i,1,'long'if seconds>1 else'oneshot',999,1 if i%7==0 else 0))\n  c.executemany('insert into samples(id,source_id,path,name,ext,size,mtime,duration,sample_rate,channels,bit_depth,fingerprint,analysis_version,kind,category_version,favorite) values(?,1,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',rows)\n  c.commit();count=c.execute('select count(*) from samples').fetchone()[0];c.close()\n  seeded=True\n  return {'seeded':True,'count':count}\n\nclass Handler(SimpleHTTPRequestHandler):\n def log_message(self,fmt,*args):\n  with (root/'http.log').open('a')as f:f.write((fmt%args)+'\\n')\n def send_json(self,status,value):\n  data=json.dumps(value).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)\n def do_GET(self):\n  if self.path=='/favicon.ico':self.send_response(204);self.end_headers();return\n  return super().do_GET()\n def do_POST(self):\n  try:\n   if self.headers.get('x-fixture-token')!=token:raise RuntimeError('Wrong private fixture token')\n   value=json.loads(self.rfile.read(int(self.headers['Content-Length'])))\n   if self.path=='/seed':return self.send_json(200,seed(value['info']))\n   if self.path=='/checkpoint':\n    if locked():raise RuntimeError('Desktop locked during observation')\n    if value.get('visibility')!='visible':raise RuntimeError('Hidden observation')\n    current=processes();cohort=[p for p in current if p['pid']==host.pid or (webkit(p)and p['pid']not in prior)]\n    if not any('WebContent'in p['name']for p in cohort):raise RuntimeError('Cannot attribute a new WebContent process')\n    command=['footprint']\n    for p in cohort:command+=['-p',str(p['pid'])]\n    target=root/(value['stage']+'-footprint.json');command+=['-j',str(target),'--noCategories','-f','bytes']\n    r=subprocess.run(command,capture_output=True,text=True,timeout=25)\n    if r.returncode:raise RuntimeError('footprint failed: '+r.stderr[-500:])\n    report={**value,'screenLocked':False,'capturedAt':time.time(),'processes':cohort,'footprint':json.loads(target.read_text())}\n    reports.append(report);(root/'checkpoints.json').write_text(json.dumps(reports,indent=2))\n    print(json.dumps({'checkpoint':value['stage'],'rows':value['rows'],'frames':value['editor']['frames'],'visibility':value['visibility'],'processes':[(p['pid'],p['name'].split('/')[-1],p['rssBytes'])for p in cohort]}),flush=True)\n    return self.send_json(200,{'captured':True})\n   if self.path=='/finished':\n    (root/'finished.json').write_text(json.dumps(value,indent=2));done.set();return self.send_json(200,{'finished':True})\n   raise RuntimeError('Unknown route')\n  except Exception as e:\n   print('Controller error: '+str(e),flush=True);self.send_json(500,{'error':str(e)})\n\nserver=ThreadingHTTPServer(('127.0.0.1',1435),partial(Handler,directory=str(root/'frontend')))\nthreading.Thread(target=server.serve_forever,daemon=True).start()\nbinary=root/'fonicca-profile';data=binary.read_bytes()\nif b'app.fonicca.performance-fixture'not in data or str(root/'data').encode()not in data:raise SystemExit('Refusing an unsafe native binary')\nwith (root/'native-run.log').open('w')as log:\n host=subprocess.Popen([str(binary)],stdout=log,stderr=subprocess.STDOUT,cwd=root)\n (root/'host-pid').write_text(str(host.pid))\n print('Isolated native host PID '+str(host.pid),flush=True)\n try:\n  deadline=time.monotonic()+300\n  while not done.wait(.5):\n   if host.poll()is not None:raise RuntimeError('Native host exited '+str(host.returncode))\n   if time.monotonic()>deadline:raise RuntimeError('Foreground profile timed out')\n  finished=json.loads((root/'finished.json').read_text())\n  if not finished.get('ok'):raise RuntimeError('Foreground fixture: '+finished.get('error','failed'))\n finally:\n  host.terminate()\n  try:host.wait(timeout=8)\n  except subprocess.TimeoutExpired:host.kill();host.wait()\n  server.shutdown()\ncohort={p['pid']for stage in reports for p in stage['processes']}\ndeadline=time.monotonic()+35\nwhile time.monotonic()<deadline:\n remaining=cohort&{p['pid']for p in processes()}\n if not remaining:break\n time.sleep(.5)\nresult={'schema':1,'status':'foreground-observations-completed','identifier':'app.fonicca.performance-fixture','appDataOverride':str(root/'data'),'incognito':True,'backend':'Real native IPC and isolated SQLite, no mockIPC. 100k rows: two private synthetic float WAVs and 99998 metadata-only rows. No model inference or audible playback. Sources inserted after startup to avoid scanning metadata-only paths.','beforeWebKitPids':sorted(prior),'nativeHostPid':host.pid,'cohortPids':sorted(cohort),'cohortRemainingAfterHostExit':sorted(remaining),'binarySha256':hashlib.sha256(data).hexdigest(),'checkpointCount':len(reports),'checkpoints':reports,'finished':finished,'limits':['One macOS ARM64 dev-test profile GUI observation; no before/after WebView comparison or cross-platform guarantee.','Metadata rows are synthetic; only two audio paths exist. Library operations and editor PCM/waveform rendering use real native IPC.','Per-process ps RSS and footprint have different accounting. PCM bytes include mmap-backed storage and must not be added to RSS. Do not sum process RSS as disjoint physical memory.','WebKit attribution uses newly appearing PIDs relative to the before-launch snapshot and validates their disappearance after stopping only this host.','Action-to-state samples include polling; IPC timing summaries are recorded separately. Canvas submission is not GPU completion.','No real audio-device playback, external models, saves to user files, app installation, release or publication.']}\n(root/'result.json').write_text(json.dumps(result,indent=2))\nprint(json.dumps({'complete':True,'checkpoints':len(reports),'remainingPids':sorted(remaining),'report':str(root/'result.json')}),flush=True)\n",
+    "frontend": "Normal Vite production build, replacing only main.ts final mount invocation with the private probe. No mockIPC, iframe or native source edits. Token and audio paths substituted into probe template in private build only.",
+    "native": "Compile cargo build --locked --no-default-features with TAURI_CONFIG for unique app.fonicca.performance-fixture identifier, private appDirectoriesOverride, localhost devUrl, incognito window and test-only focus permission. Refuse launch unless both private identifier and data root are present in copied binary. Restore normal debug build afterwards.",
+    "fixture": "Fresh temporary directory. Two synthetic 44.1kHz stereo float32 WAVs, 30 and 1200 seconds, the same decaying 220/330Hz signal as editor/benchmarks.rs. Settings watchFolders=false, autoplay=false, volume=0, analysisThreads=1. SQL metadata seed occurs after native startup migrates an empty private database. No existing sources are registered for scans."
+  },
+  "frontendAssets": [
+    {
+      "file": "index.html",
+      "bytes": 795,
+      "sha256": "e86d728e9e3b0256a3d3d2088c098e6fb5dcafbbe8161b447f32f0c91fd93844"
+    },
+    {
+      "file": "assets/Slider-D0tXFKAp.js",
+      "bytes": 46363,
+      "sha256": "797fc9fe79436b6383ed422b6018a08442a716f8064b5897c5b32a5c04fde542"
+    },
+    {
+      "file": "assets/Hint-CpIiY3DR.js",
+      "bytes": 139475,
+      "sha256": "f2dac9720a7148b75884b26a56c49e51f1c164b13936b92d09a34a0b2479e9da"
+    },
+    {
+      "file": "assets/SettingsDialog-BDs2yjGA.js",
+      "bytes": 62230,
+      "sha256": "679d8ec5f09acd387f9d1fdbd2b557c42c01ee96054a0d745c3d13d128fc1403"
+    },
+    {
+      "file": "assets/App-D7oDf5Af.css",
+      "bytes": 6236,
+      "sha256": "58d42680508f77a817da188ec7e3ba21a57848f5c9f71e3c3475b25b982b6e44"
+    },
+    {
+      "file": "assets/rotate-ccw-f43RlM3F.js",
+      "bytes": 407,
+      "sha256": "316704fb6eda5a655408f8a9889b5dd8bdc9562ea9cfc09063cd4094176d61c5"
+    },
+    {
+      "file": "assets/128x128-dark-CHx_Q2Gs.png",
+      "bytes": 21717,
+      "sha256": "8d7d34fcc84477c3b07f67a12400dd5995eac6bc3a0619f8249dffafb142c43e"
+    },
+    {
+      "file": "assets/128x128-light-puENt2jQ.png",
+      "bytes": 21013,
+      "sha256": "2b130844253373f535c3322e2f646b59816d10d192bd8ab614c2c2ef09706360"
+    },
+    {
+      "file": "assets/index-CQE7L56d.css",
+      "bytes": 89868,
+      "sha256": "05ed3b4de63ea0aefe194f762f0a1279fa079b32a04b53c953b837ebaa000645"
+    },
+    {
+      "file": "assets/LevelMeter-CZ5-_erT.css",
+      "bytes": 3406,
+      "sha256": "2f76da67e0615cba3f80548552d7fc1bd5e3ff1d991e8d92d1c0402ad7be0186"
+    },
+    {
+      "file": "assets/EditorUnsavedDialog-CfmXjX-P.js",
+      "bytes": 46405,
+      "sha256": "3275b0561d77cc70167ac3607d6858af7cc2df857528a486019ca06009381e17"
+    },
+    {
+      "file": "assets/i18n-BRUPIovF.js",
+      "bytes": 251703,
+      "sha256": "b7b60c88baa527f6d31027c52ede7a4fdae22e637651b72311ef0bab65770d69"
+    },
+    {
+      "file": "assets/EditorView-OsDvg2_1.css",
+      "bytes": 2335,
+      "sha256": "4bce8ced6ed1973203f1ec1d0836b8debab6d8f46cbce6b5bcae175d403f66dd"
+    },
+    {
+      "file": "assets/updates-B4-64Abj.js",
+      "bytes": 73306,
+      "sha256": "5b0c8d9b6f40b8a75888fc1943574a4817d22e3e9dd49d26c139ebe63679810e"
+    },
+    {
+      "file": "assets/EditorView-CK7y1e4B.js",
+      "bytes": 80207,
+      "sha256": "5991ef474f3c6dc553768808d469609cd64cb505a97dea56649363ce44b5f131"
+    },
+    {
+      "file": "assets/updates-BwlTzHU6.css",
+      "bytes": 402,
+      "sha256": "c785221b9ebcfdf721d1b55bfb11c0870f82e785767de7abe99e9e02405dd675"
+    },
+    {
+      "file": "assets/DuplicatesView-B6D-z7Nj.js",
+      "bytes": 19579,
+      "sha256": "0c3ae90ff4318c4e81c1dfe0df47b53a4ba2562bc414b9dedadac725f7236173"
+    },
+    {
+      "file": "assets/App-DvqqrvKO.js",
+      "bytes": 232465,
+      "sha256": "d126d5fa46a00527639446c4492afaa92c95b1e292b3a2d7aa95a026c7a4fa67"
+    },
+    {
+      "file": "assets/EditorWindow-DaBZK5R_.js",
+      "bytes": 1276,
+      "sha256": "f4b3192dd69753950c8da7e38eddbf1f10025d85e837282f4205eee1adf1ead6"
+    },
+    {
+      "file": "assets/_plugin-vue_export-helper-DBTLjMFa.js",
+      "bytes": 87751,
+      "sha256": "c74db1f8195c8b4970a7cabf508ffc1e259a81ef1b46d42703a41296bbd47f3b"
+    },
+    {
+      "file": "assets/DebugMonitor-Dz_rktvt.js",
+      "bytes": 7392,
+      "sha256": "6ea5cddab8d5232c00cd7d75d3d93d9fe5cfc4cf70a39bb3faa7a7a2f9cfb5ba"
+    },
+    {
+      "file": "assets/LevelMeter-BYsmtRYz.js",
+      "bytes": 29742,
+      "sha256": "b56a0b01c5e16ad5622c9b2c39780c149e3f830e3224a641212859c495758476"
+    },
+    {
+      "file": "assets/index-NsnV0BTT.js",
+      "bytes": 46290,
+      "sha256": "10683f9fc1d5e7de510c6982195dd848a07fbaa1ccd08af2c1b29a8fa8fc72ba"
+    },
+    {
+      "file": "assets/DuplicatesView-CVItvJ4A.css",
+      "bytes": 1145,
+      "sha256": "c3d10158872a89beabf4b3ee5f2e6be663d5f93ba9573cdfda88c06f1b160c3e"
+    },
+    {
+      "file": "assets/DebugMonitor-Bke1vJXB.css",
+      "bytes": 2204,
+      "sha256": "b22290cbc24e0af087cf55382303126354b81d2a0790d593ae9fbf3a5cbc1d43"
+    },
+    {
+      "file": "assets/activity-BteShBGH.js",
+      "bytes": 263,
+      "sha256": "3a5cb65fafeae6d95628a4cc1bd90e9ea13c793dfd8f951a3a4cd92c17d19538"
+    },
+    {
+      "file": "assets/eye-off-DpgIW0ec.js",
+      "bytes": 459,
+      "sha256": "1c0a5c82f8c80ff68bc91bc49501541396a5c696ad2f057d098ba6aa9505d492"
+    },
+    {
+      "file": "assets/SettingsDialog-DWuj91KN.css",
+      "bytes": 3316,
+      "sha256": "fac0aa76065836c79fdbeb76fc5601bf52e4eeedae08774eb6c13c2d77a16285"
+    }
+  ],
+  "cleanup": {
+    "normalDebugBuildExitCode": 0,
+    "normalDebugBinarySha256": "c31e692427f832f8aae5a8d497604e9202f296a15e8e2f859e490c81a65b93e4",
+    "fixtureIdentifierAbsentFromNormalBinary": true,
+    "privateDataRootAbsentFromNormalBinary": true,
+    "normalBinaryLaunched": false,
+    "temporaryHostAndServerStopped": true
+  }
+}

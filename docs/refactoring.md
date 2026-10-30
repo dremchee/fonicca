@@ -9,7 +9,7 @@ unit test alone does not establish an improvement in interactive performance.
 See the [requirement-to-evidence audit](refactoring-audit.md) for current proof,
 limitations and the remaining foreground measurement.
 
-- [ ] Baseline: short/long audio workloads, library scrolling/search, bounded
+- [x] Baseline: short/long audio workloads, library scrolling/search, bounded
   operation telemetry, separate native/renderer memory interpretation.
 - [x] Editor: extract waveform loading/rendering, pointer selection/markers,
   shortcuts and toolbar; clarify view/store ownership; verify interaction parity.
@@ -593,8 +593,38 @@ Current architecture/dependency follow-up:
   source hashes match the code that produced them. Native signature verification
   and the 12 production browser checks passed separately as recorded above.
 
-Still pending: foreground WebView/editor memory measurements. macOS still reports
-`IOConsoleLocked=Yes` on this follow-up, so the earlier hidden-WebView observation
-cannot complete that requirement. Repeat after unlocking the desktop; do not
-infer total UI memory from native RSS, browser mocks or the bundle byte reduction.
-Completion items remain open until their full evidence exists.
+Final foreground observation:
+
+- macOS became unlocked after the final native repeat. An isolated native host
+  with its own compiled identifier, private data directories and incognito WebView
+  ran the current production UI against real native IPC and SQLite, without mocks.
+  The controller refused launch unless the copied executable contained both the
+  isolated identifier and private directory. No user library/audio was accessed.
+- [Nine foreground checkpoints and reproducibility templates](research/webview-foreground-observation.json):
+  all report visible/focused documents and unlocked desktop. The private database
+  has 100k synthetic metadata rows; two point to real private 30/1200-second WAVs.
+  Scrolls retained at most the configured 12 pages/2400 rows in the observed
+  scenario. Ten rapid search/scope changes returned to the correct library.
+- Both native editor files loaded/rendered, each followed by ten short fades and
+  undos, then closing. All recorded native request timing summaries have zero
+  errors. On the long file, median fade request was 4 ms and undo 3 ms, including
+  transport; canvas submission median 4 ms is not GPU completion. Poll-based
+  action-to-state observations are retained separately.
+- Native/WebContent/GPU/Networking RSS and physical footprint are recorded
+  separately. After long edits the native RSS was about 604 MiB and WebContent
+  about 270 MiB; closing the editor reduced native RSS to about 200 MiB while
+  the live WebContent retained about 265 MiB. This is an observation, not a
+  leak diagnosis, memory-savings comparison or disjoint sum. PCM/cache counters
+  remain separate. No JavaScript heap API was available.
+- A before-launch process snapshot and disappearance after stopping this host
+  validate the attributed WebKit cohort. All four attributed processes exited.
+  An earlier hidden-start attempt timed out before mounting and was discarded;
+  the successful fixture showed/focused its window before awaiting bootstrap.
+- The fixture did not play audible audio, download models, save user files,
+  install an app or publish anything. The report is one macOS ARM64 observation,
+  not a cross-platform or before/after WebView performance guarantee.
+- The normal native debug binary was rebuilt without the fixture identifier or
+  private path and was not launched. The private fixture directory was removed;
+  both its HTTP server and attributed native/WebKit processes have stopped.
+
+All six scoped stages now have evidence; see the completion audit for limitations.
