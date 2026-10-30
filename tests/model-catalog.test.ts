@@ -9,7 +9,7 @@ import { modelCatalog, stemModels, type ModelId } from '../src/model-catalog.gen
 import { modelsForMode } from '../src/stem-models.ts'
 
 const root = resolve(import.meta.dirname, '..')
-const text = readFileSync(join(root, catalogPath), 'utf8')
+const text = readFileSync(join(root, catalogPath), 'utf8').replace(/\r\n/g, '\n')
 const catalog = JSON.parse(text)
 
 test('committed UI/native catalogs are generated from the authoritative pack manifest', () => {
