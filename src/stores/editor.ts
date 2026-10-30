@@ -350,9 +350,9 @@ export const useEditorStore = defineStore('editor', () => {
     })
   }
 
-  function after(next: EditorState) {
+  function after(next: EditorState, audioChanged = true) {
     state.value = next
-    revision.value++
+    if (audioChanged) revision.value++
     // Keep cursor and selection inside the (possibly shorter) audio.
     cursor.value = Math.min(cursor.value, next.frames)
     if (selection.value) {
@@ -361,19 +361,19 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
-  async function changeAudio(action: () => Promise<EditorState>, stop = true) {
+  async function changeAudio(action: () => Promise<EditorState>, stop = true, audioChanged = true) {
     if (loading.value || processing.value || saving.value) return
     processing.value = true
     try {
       if (stop) await stopPlayback()
-      after(await action())
+      after(await action(), audioChanged)
     }
     catch (e) { toast.error(String(e)) }
     finally { processing.value = false }
   }
 
   function apply(op: EditOp, stop = true) {
-    return changeAudio(() => editorApi.apply(op), stop)
+    return changeAudio(() => editorApi.apply(op), stop, !['setMarkers', 'setLoop', 'clearLoop'].includes(op.op))
   }
 
   function undo() {
