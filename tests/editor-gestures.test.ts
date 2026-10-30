@@ -12,11 +12,12 @@ function setup(t: { after: (cleanup: () => void) => void }) {
   const old = Object.getOwnPropertyDescriptor(globalThis, 'window')
   const target = new EventTarget()
   Object.defineProperty(globalThis, 'window', { value: target, configurable: true })
-  const calls = { play: 0, update: 0, markers: 0 }
+  const calls = { play: 0, update: 0, markers: 0, loops: 0, stop: 0 }
   const editor: GestureEditor = {
     state: { loop: null, markers: [] }, regions: [], selection: null, cursor: 0, playing: false,
     zeroSnap: async frames => frames,
-    setMarkers: () => { calls.markers++ }, stopPlayback: () => {},
+    setMarkers: () => { calls.markers++ }, stopPlayback: () => { calls.stop++ },
+    setLoopPoints: async range => { editor.state!.loop = { ...range }; calls.loops++; return true },
     play: () => { calls.play++ }, updatePlaybackRange: () => { calls.update++ },
   }
   const canvas = shallowRef({ getBoundingClientRect: () => ({ left: 0, top: 0, width: 100 }) } as HTMLCanvasElement)
@@ -96,4 +97,101 @@ test('marker dragging stays between neighbours and a cancelled drag never commit
   await setImmediate()
   assert.equal(v.calls.markers, 1)
   assert.equal(v.gestures.draggedMarkers.value, null)
+})
+
+test('saved loop boundaries preview live and commit once with the opposite edge fixed', async t => {
+  const v = setup(t)
+  v.editor.state!.loop = { start: 200, end: 600 }
+  v.gestures.updateHover(mouse('mousemove', 20))
+  assert.equal(v.gestures.hoverEdge.value, 'start')
+  v.gestures.onMouseDown(mouse('mousedown', 20))
+  v.target.dispatchEvent(mouse('mousemove', 30))
+  v.target.dispatchEvent(mouse('mousemove', 35))
+  assert.deepEqual(v.gestures.draggedLoop.value, { start: 350, end: 600 })
+  assert.deepEqual(v.editor.state!.loop, { start: 200, end: 600 })
+  assert.equal(v.calls.loops, 0)
+  v.target.dispatchEvent(mouse('mouseup', 40))
+  await setImmediate()
+  assert.deepEqual(v.editor.state!.loop, { start: 400, end: 600 })
+  assert.deepEqual(v.editor.selection, { start: 400, end: 600 })
+  assert.equal(v.calls.loops, 1)
+  assert.equal(v.calls.play, 0)
+  assert.equal(v.gestures.draggedLoop.value, null)
+})
+
+test('resizing a playing saved loop updates its audible range without stopping or restarting', async t => {
+  const v = setup(t)
+  v.editor.state!.loop = { start: 200, end: 600 }
+  v.editor.selection = { start: 200, end: 600 }
+  v.editor.playing = true
+  v.gestures.onMouseDown(mouse('mousedown', 60, { clientY: 17 }))
+  v.target.dispatchEvent(mouse('mousemove', 80))
+  assert.ok(v.calls.update > 0)
+  assert.deepEqual(v.editor.selection, { start: 200, end: 800 })
+  v.target.dispatchEvent(mouse('mouseup', 85))
+  await setImmediate()
+  assert.deepEqual(v.editor.state!.loop, { start: 200, end: 850 })
+  assert.equal(v.calls.loops, 1)
+  assert.equal(v.calls.play, 0)
+  assert.equal(v.calls.stop, 0)
+})
+
+test('loop resize zero-snaps only the moved edge and never crosses its anchor', async t => {
+  const v = setup(t)
+  v.editor.state!.loop = { start: 200, end: 600 }
+  v.zeroSnap.value = true
+  const snapped: number[][] = []
+  v.editor.zeroSnap = async frames => { snapped.push(frames); return [0] }
+  v.gestures.onMouseDown(mouse('mousedown', 60))
+  v.target.dispatchEvent(mouse('mousemove', 5))
+  v.target.dispatchEvent(mouse('mouseup', 5))
+  await setImmediate()
+  assert.deepEqual(snapped, [[201]])
+  assert.deepEqual(v.editor.state!.loop, { start: 200, end: 201 })
+})
+
+test('late loop snapping cannot commit to another track', async t => {
+  const v = setup(t)
+  v.editor.state!.loop = { start: 200, end: 600 }
+  v.zeroSnap.value = true
+  let finish!: (frames: number[]) => void
+  v.editor.zeroSnap = () => new Promise(resolve => { finish = resolve })
+  v.gestures.onMouseDown(mouse('mousedown', 60))
+  v.target.dispatchEvent(mouse('mousemove', 80))
+  v.target.dispatchEvent(mouse('mouseup', 80))
+  v.identity.value = 'new-track'
+  v.editor.state!.loop = { start: 10, end: 100 }
+  finish([799])
+  await setImmediate()
+  assert.deepEqual(v.editor.state!.loop, { start: 10, end: 100 })
+  assert.equal(v.calls.loops, 0)
+  assert.equal(v.gestures.draggedLoop.value, null)
+})
+
+test('a distinct selection retains its own resize edge instead of changing saved loop metadata', async t => {
+  const v = setup(t)
+  v.editor.state!.loop = { start: 200, end: 600 }
+  v.editor.selection = { start: 400, end: 600 }
+  v.gestures.onMouseDown(mouse('mousedown', 60))
+  v.target.dispatchEvent(mouse('mousemove', 80))
+  v.target.dispatchEvent(mouse('mouseup', 80))
+  await setImmediate()
+  assert.deepEqual(v.editor.selection, { start: 400, end: 800 })
+  assert.deepEqual(v.editor.state!.loop, { start: 200, end: 600 })
+  assert.equal(v.calls.loops, 0)
+})
+
+test('a rejected loop edit restores the previous selection and cursor', async t => {
+  const v = setup(t)
+  v.editor.state!.loop = { start: 200, end: 600 }
+  v.editor.cursor = 50
+  v.editor.setLoopPoints = async () => false
+  v.gestures.onMouseDown(mouse('mousedown', 60))
+  v.target.dispatchEvent(mouse('mousemove', 80))
+  v.target.dispatchEvent(mouse('mouseup', 80))
+  await setImmediate()
+  assert.deepEqual(v.editor.state!.loop, { start: 200, end: 600 })
+  assert.equal(v.editor.selection, null)
+  assert.equal(v.editor.cursor, 50)
+  assert.equal(v.gestures.draggedLoop.value, null)
 })

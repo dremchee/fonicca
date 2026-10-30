@@ -515,10 +515,19 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
+  /** One undoable loop-bound edit, preserving the current playback stream. */
+  async function setLoopPoints(range: Span): Promise<boolean> {
+    if (!state.value || loading.value || processing.value || saving.value) return false
+    if (range.start < 0 || range.end > state.value.frames || range.end <= range.start) return false
+    if (state.value.loop?.start === range.start && state.value.loop.end === range.end) return true
+    await apply({ op: 'setLoop', ...range }, false)
+    return state.value?.loop?.start === range.start && state.value.loop.end === range.end
+  }
+
   /** Loop points from the selection; without one, clears them. Playback goes on. */
   async function toggleLoopPoints() {
     if (selection.value)
-      await apply({ op: 'setLoop', ...selection.value }, false)
+      await setLoopPoints(selection.value)
     else if (state.value?.loop)
       await apply({ op: 'clearLoop' }, false)
   }
@@ -688,6 +697,7 @@ export const useEditorStore = defineStore('editor', () => {
     removeDcOffset,
     reverse,
     toggleLoopPoints,
+    setLoopPoints,
     regions,
     setMarkers,
     saveRegions,

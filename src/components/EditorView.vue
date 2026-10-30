@@ -164,12 +164,13 @@ const { beatFrames, beatGrid, gridStep, gridOrigin, gridFrames, isMultiple, snap
   bpm, rate, frames, width, viewStart, viewEnd, downbeat, gridMode, snap,
 })
 
-const { draggedMarkers, hoverEdge, hoverMarker, menuOnRuler, menu, menuRegion,
+const { draggedMarkers, draggedLoop, hoverEdge, hoverMarker, menuOnRuler, menu, menuRegion,
   frameAt, selectLoop, playRegion, addMarkers, removeMarker, toggleSkip,
   onDoubleClick, onContextMenu, onMouseDown, updateHover } = useEditorGestures({
   editor, canvas, frames, rate, viewStart, viewEnd, zeroSnap, x, snapped, badgeAt, ruler: RULER,
   identity: computed(() => `${editor.sample?.id}:${editor.sessionVersion}`),
 })
+const shownLoop = computed(() => draggedLoop.value ?? editor.state?.loop ?? null)
 
 const scheduleDraw = useFrameDraw(draw)
 
@@ -186,7 +187,7 @@ function draw() {
       downbeat: downbeat.value, gridStep, gridFrames, gridOrigin, isMultiple },
     wave: wave.value, waveRange: waveRange.value, look: waveformLook(settings.settings.editorWaveform),
     zoom: vZoom.value, spectral: isSpectrogram.value, spectrum: spectrum.value,
-    selection: editor.selection, loop: editor.state?.loop ?? null, regions: shownRegions.value,
+    selection: editor.selection, loop: shownLoop.value, regions: shownRegions.value,
     markers: shownMarkers.value, slicePreview: slicePreview.value, hoverBadge: hoverBadge.value,
     color: name => (isSpectrogram.value && spectralColors[name]) || style.getPropertyValue(name).trim(),
   }, { drawWave, drawSpectrogram, drawFrequencyAxis })
@@ -221,7 +222,7 @@ watchEffect(() => {
   if (p !== null)
     el.style.transform = `translateX(${localPixel(x(p))}px)`
 })
-watch(() => editor.state?.loop, scheduleDraw)
+watch(shownLoop, scheduleDraw)
 
 // Under the pointer: a faint line and its time on the ruler (and a mark on the
 // minimap), moved through style like the cursor.
@@ -326,7 +327,7 @@ function formatTime(seconds: number, precise = true) {
 const status = computed(() => {
   const sr = rate.value
   const sel = editor.selection
-  const lp = editor.state?.loop
+  const lp = shownLoop.value
   const range = (r: { start: number, end: number }) => `${formatTime(r.start / sr)} – ${formatTime(r.end / sr)} (${formatTime((r.end - r.start) / sr)})`
   return {
     cursor: formatTime(editor.cursor / sr),

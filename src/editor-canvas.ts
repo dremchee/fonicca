@@ -164,6 +164,8 @@ function render(ctx: CanvasRenderingContext2D, scene: EditorCanvasScene, painter
     const b = x(lp.end)
     ctx.fillStyle = color('--primary')
     ctx.fillRect(a, RULER - 4, Math.max(1, b - a), 4)
+    // Small end grips show that the saved loop band can be resized.
+    for (const px of [a, b]) ctx.fillRect(pixel(px - 2), RULER - 8, pixel(4), 8)
     ctx.strokeStyle = color('--foreground')
     ctx.globalAlpha = 0.7
     ctx.setLineDash([3, 3])
