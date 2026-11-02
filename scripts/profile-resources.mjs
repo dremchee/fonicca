@@ -129,7 +129,7 @@ try {
   writeFileSync(join(config.data, 'settings.json'), JSON.stringify({ watchFolders: false, autoplay: false, volume: 0, language: 'en', analysisThreads: 1 }))
   audio(join(config.audio, 'short.wav'), 30); audio(join(config.audio, 'long.wav'), config.seconds)
   console.log('Building isolated production frontend…')
-  await run(process.execPath, [join(repo, 'node_modules/vite/bin/vite.js'), 'build'], { cwd: frontend })
+  await run(process.execPath, [join(repo, 'node_modules/vite/bin/vite.js'), 'build'], { cwd: frontend, echo: true })
   const tauri = JSON.parse(readFileSync(join(native, 'tauri.conf.json')))
   tauri.productName = 'Fonicca Resource Probe'; tauri.identifier = identifier; tauri.mainBinaryName = 'fonicca-resource-probe'
   tauri.build.devUrl = `http://127.0.0.1:${port}`; tauri.build.frontendDist = '../frontend/dist'
@@ -144,7 +144,7 @@ try {
   console.log('Building isolated release bundle (distinct package/library/product, no release credentials)…')
   const bundle = platform() === 'darwin' ? 'app' : platform() === 'win32' ? 'nsis' : 'appimage'
   await run(process.execPath, [join(repo, 'node_modules/@tauri-apps/cli/tauri.js'), 'build', '--ci', '--bundles', bundle, '--', '--locked'], {
-    cwd: native, env: { ...privateEnv, CARGO_TARGET_DIR: join(repo, 'src-tauri/target'), APPIMAGE_EXTRACT_AND_RUN: '1' },
+    cwd: native, echo: true, env: { ...privateEnv, CARGO_TARGET_DIR: join(repo, 'src-tauri/target'), APPIMAGE_EXTRACT_AND_RUN: '1' },
   })
   const bundleDir = join(repo, 'src-tauri/target/release/bundle')
   if (platform() === 'darwin') {
