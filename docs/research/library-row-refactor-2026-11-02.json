@@ -1,0 +1,1519 @@
+{
+  "schema": 1,
+  "date": "2026-11-02",
+  "revision": "e3af9201187583cd3de6600cc807d41ff34c90c4",
+  "dirtyWorktree": true,
+  "scope": "Extract row presentation and loaded-row pinning without changing pagination or playback behavior.",
+  "sourceSha256": {
+    "src/components/SampleList.vue": "f97a0a4d0dfd6a02b80ac3c0951acbc9f4295dcb1c4c87e32fbfb4bf17e83557",
+    "src/components/SampleRow.vue": "ed6ab60edef8ff0e81a08363bff4f0af75c5b174c243dcc9468db18ddcf56821",
+    "src/composables/pinnedPlayback.ts": "3508ffdd38ac2ad26220dc701bd5e3259bb4e180688193920c41590e061f1300",
+    "tests/pinned-playback.test.ts": "6774236c308dd60f57ce354f90968f379beb1dce6ea2da1a3c1e11cdb7eb4e0b",
+    "tests/browser/library-performance.mjs": "424a8e2c000b55b83f4972bf380ce31a5440872979d510e40225ec8b0b241cf2",
+    "tests/browser/sample-row-presentation.mjs": "4ddb1dacfe7a3a5bb806f15a39b16f53ef1fb91d38b5d31aad8975172ac379d1",
+    "tests/browser/sample-row-actions.mjs": "cd077462f31cc774998d61a128403e381cfa6824975219c0477778ac361eb5cb"
+  },
+  "environment": {
+    "fixture": "generated browser mock; fake IPC, no user audio/library",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "renderer": "headless Chrome, development Vite"
+  },
+  "before": [
+    {
+      "entries": 32000,
+      "playback": {
+        "observedRows": 42,
+        "updates": [
+          {
+            "index": 0,
+            "count": 119
+          }
+        ],
+        "elapsedMs": 2028.2000000178814
+      },
+      "requests": [
+        {
+          "offset": 1200,
+          "limit": 200
+        },
+        {
+          "offset": 2600,
+          "limit": 200
+        },
+        {
+          "offset": 3800,
+          "limit": 200
+        },
+        {
+          "offset": 4000,
+          "limit": 200
+        },
+        {
+          "offset": 5200,
+          "limit": 200
+        },
+        {
+          "offset": 6600,
+          "limit": 200
+        },
+        {
+          "offset": 7800,
+          "limit": 200
+        },
+        {
+          "offset": 8000,
+          "limit": 200
+        },
+        {
+          "offset": 9200,
+          "limit": 200
+        },
+        {
+          "offset": 10600,
+          "limit": 200
+        },
+        {
+          "offset": 11800,
+          "limit": 200
+        },
+        {
+          "offset": 12000,
+          "limit": 200
+        },
+        {
+          "offset": 13200,
+          "limit": 200
+        },
+        {
+          "offset": 14600,
+          "limit": 200
+        },
+        {
+          "offset": 15800,
+          "limit": 200
+        },
+        {
+          "offset": 16000,
+          "limit": 200
+        },
+        {
+          "offset": 17200,
+          "limit": 200
+        },
+        {
+          "offset": 18600,
+          "limit": 200
+        },
+        {
+          "offset": 19800,
+          "limit": 200
+        },
+        {
+          "offset": 20000,
+          "limit": 200
+        },
+        {
+          "offset": 21200,
+          "limit": 200
+        },
+        {
+          "offset": 22600,
+          "limit": 200
+        },
+        {
+          "offset": 23800,
+          "limit": 200
+        },
+        {
+          "offset": 24000,
+          "limit": 200
+        },
+        {
+          "offset": 25200,
+          "limit": 200
+        },
+        {
+          "offset": 26600,
+          "limit": 200
+        },
+        {
+          "offset": 27800,
+          "limit": 200
+        },
+        {
+          "offset": 28000,
+          "limit": 200
+        },
+        {
+          "offset": 29200,
+          "limit": 200
+        },
+        {
+          "offset": 30600,
+          "limit": 200
+        },
+        {
+          "offset": 31800,
+          "limit": 200
+        }
+      ],
+      "maxConcurrentReads": 2,
+      "maxRenderedRows": 64,
+      "maxScrollTop": 1151223,
+      "maxRetainedPages": 12,
+      "retained": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "pinnedAtEnd": 1,
+      "frameIntervalsMs": {
+        "p50": 16.699999999999818,
+        "p95": 16.799999999999272,
+        "max": 33.30000000000018
+      },
+      "longTasksMs": []
+    },
+    {
+      "entries": 100000,
+      "playback": {
+        "observedRows": 42,
+        "updates": [
+          {
+            "index": 0,
+            "count": 119
+          }
+        ],
+        "elapsedMs": 2020.199999988079
+      },
+      "requests": [
+        {
+          "offset": 4000,
+          "limit": 200
+        },
+        {
+          "offset": 4200,
+          "limit": 200
+        },
+        {
+          "offset": 8200,
+          "limit": 200
+        },
+        {
+          "offset": 12400,
+          "limit": 200
+        },
+        {
+          "offset": 16600,
+          "limit": 200
+        },
+        {
+          "offset": 20800,
+          "limit": 200
+        },
+        {
+          "offset": 24800,
+          "limit": 200
+        },
+        {
+          "offset": 25000,
+          "limit": 200
+        },
+        {
+          "offset": 29000,
+          "limit": 200
+        },
+        {
+          "offset": 29200,
+          "limit": 200
+        },
+        {
+          "offset": 33200,
+          "limit": 200
+        },
+        {
+          "offset": 37400,
+          "limit": 200
+        },
+        {
+          "offset": 41600,
+          "limit": 200
+        },
+        {
+          "offset": 45800,
+          "limit": 200
+        },
+        {
+          "offset": 49800,
+          "limit": 200
+        },
+        {
+          "offset": 50000,
+          "limit": 200
+        },
+        {
+          "offset": 54000,
+          "limit": 200
+        },
+        {
+          "offset": 58200,
+          "limit": 200
+        },
+        {
+          "offset": 62400,
+          "limit": 200
+        },
+        {
+          "offset": 66600,
+          "limit": 200
+        },
+        {
+          "offset": 70600,
+          "limit": 200
+        },
+        {
+          "offset": 70800,
+          "limit": 200
+        },
+        {
+          "offset": 74800,
+          "limit": 200
+        },
+        {
+          "offset": 75000,
+          "limit": 200
+        },
+        {
+          "offset": 79000,
+          "limit": 200
+        },
+        {
+          "offset": 83200,
+          "limit": 200
+        },
+        {
+          "offset": 87400,
+          "limit": 200
+        },
+        {
+          "offset": 91600,
+          "limit": 200
+        },
+        {
+          "offset": 95600,
+          "limit": 200
+        },
+        {
+          "offset": 95800,
+          "limit": 200
+        },
+        {
+          "offset": 99800,
+          "limit": 200
+        }
+      ],
+      "maxConcurrentReads": 2,
+      "maxRenderedRows": 64,
+      "maxScrollTop": 3599223,
+      "maxRetainedPages": 12,
+      "retained": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "pinnedAtEnd": 1,
+      "frameIntervalsMs": {
+        "p50": 16.699999999999818,
+        "p95": 16.799999999999272,
+        "max": 33.30000000000018
+      },
+      "longTasksMs": []
+    }
+  ],
+  "after": [
+    {
+      "entries": 32000,
+      "playback": {
+        "observedRows": 42,
+        "updates": [
+          {
+            "index": 0,
+            "count": 119
+          }
+        ],
+        "elapsedMs": 2029.9000000059605
+      },
+      "requests": [
+        {
+          "offset": 1200,
+          "limit": 200
+        },
+        {
+          "offset": 2600,
+          "limit": 200
+        },
+        {
+          "offset": 3800,
+          "limit": 200
+        },
+        {
+          "offset": 4000,
+          "limit": 200
+        },
+        {
+          "offset": 5200,
+          "limit": 200
+        },
+        {
+          "offset": 6600,
+          "limit": 200
+        },
+        {
+          "offset": 7800,
+          "limit": 200
+        },
+        {
+          "offset": 8000,
+          "limit": 200
+        },
+        {
+          "offset": 9200,
+          "limit": 200
+        },
+        {
+          "offset": 10600,
+          "limit": 200
+        },
+        {
+          "offset": 11800,
+          "limit": 200
+        },
+        {
+          "offset": 12000,
+          "limit": 200
+        },
+        {
+          "offset": 13200,
+          "limit": 200
+        },
+        {
+          "offset": 14600,
+          "limit": 200
+        },
+        {
+          "offset": 15800,
+          "limit": 200
+        },
+        {
+          "offset": 16000,
+          "limit": 200
+        },
+        {
+          "offset": 17200,
+          "limit": 200
+        },
+        {
+          "offset": 18600,
+          "limit": 200
+        },
+        {
+          "offset": 19800,
+          "limit": 200
+        },
+        {
+          "offset": 20000,
+          "limit": 200
+        },
+        {
+          "offset": 21200,
+          "limit": 200
+        },
+        {
+          "offset": 22600,
+          "limit": 200
+        },
+        {
+          "offset": 23800,
+          "limit": 200
+        },
+        {
+          "offset": 24000,
+          "limit": 200
+        },
+        {
+          "offset": 25200,
+          "limit": 200
+        },
+        {
+          "offset": 26600,
+          "limit": 200
+        },
+        {
+          "offset": 27800,
+          "limit": 200
+        },
+        {
+          "offset": 28000,
+          "limit": 200
+        },
+        {
+          "offset": 29200,
+          "limit": 200
+        },
+        {
+          "offset": 30600,
+          "limit": 200
+        },
+        {
+          "offset": 31800,
+          "limit": 200
+        }
+      ],
+      "maxConcurrentReads": 2,
+      "maxRenderedRows": 64,
+      "maxScrollTop": 1151223,
+      "maxRetainedPages": 12,
+      "retained": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "pinnedAtEnd": 1,
+      "frameIntervalsMs": {
+        "p50": 16.699999999999818,
+        "p95": 16.700000000000728,
+        "max": 16.800000000000182
+      },
+      "longTasksMs": []
+    },
+    {
+      "entries": 100000,
+      "playback": {
+        "observedRows": 42,
+        "updates": [
+          {
+            "index": 0,
+            "count": 119
+          }
+        ],
+        "elapsedMs": 2017.800000011921
+      },
+      "requests": [
+        {
+          "offset": 4000,
+          "limit": 200
+        },
+        {
+          "offset": 4200,
+          "limit": 200
+        },
+        {
+          "offset": 8200,
+          "limit": 200
+        },
+        {
+          "offset": 12400,
+          "limit": 200
+        },
+        {
+          "offset": 16600,
+          "limit": 200
+        },
+        {
+          "offset": 20800,
+          "limit": 200
+        },
+        {
+          "offset": 24800,
+          "limit": 200
+        },
+        {
+          "offset": 25000,
+          "limit": 200
+        },
+        {
+          "offset": 29000,
+          "limit": 200
+        },
+        {
+          "offset": 29200,
+          "limit": 200
+        },
+        {
+          "offset": 33200,
+          "limit": 200
+        },
+        {
+          "offset": 37400,
+          "limit": 200
+        },
+        {
+          "offset": 41600,
+          "limit": 200
+        },
+        {
+          "offset": 45800,
+          "limit": 200
+        },
+        {
+          "offset": 49800,
+          "limit": 200
+        },
+        {
+          "offset": 50000,
+          "limit": 200
+        },
+        {
+          "offset": 54000,
+          "limit": 200
+        },
+        {
+          "offset": 58200,
+          "limit": 200
+        },
+        {
+          "offset": 62400,
+          "limit": 200
+        },
+        {
+          "offset": 66600,
+          "limit": 200
+        },
+        {
+          "offset": 70600,
+          "limit": 200
+        },
+        {
+          "offset": 70800,
+          "limit": 200
+        },
+        {
+          "offset": 74800,
+          "limit": 200
+        },
+        {
+          "offset": 75000,
+          "limit": 200
+        },
+        {
+          "offset": 79000,
+          "limit": 200
+        },
+        {
+          "offset": 83200,
+          "limit": 200
+        },
+        {
+          "offset": 87400,
+          "limit": 200
+        },
+        {
+          "offset": 91600,
+          "limit": 200
+        },
+        {
+          "offset": 95600,
+          "limit": 200
+        },
+        {
+          "offset": 95800,
+          "limit": 200
+        },
+        {
+          "offset": 99800,
+          "limit": 200
+        }
+      ],
+      "maxConcurrentReads": 2,
+      "maxRenderedRows": 64,
+      "maxScrollTop": 3599223,
+      "maxRetainedPages": 12,
+      "retained": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "pinnedAtEnd": 1,
+      "frameIntervalsMs": {
+        "p50": 16.699999999999818,
+        "p95": 16.700000000000273,
+        "max": 33.30000000000018
+      },
+      "longTasksMs": []
+    }
+  ],
+  "presentation": {
+    "before": [
+      {
+        "name": "group",
+        "rows": [
+          {
+            "index": 0,
+            "classes": [
+              "absolute",
+              "focused",
+              "grid",
+              "group-start",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "selected",
+              "stem-parent",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              30,
+              1057.25,
+              32
+            ],
+            "title": "Parent track",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.896314 0.896314 0.905412)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "6px 6px 0px 0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 1,
+            "starFill": "oklab(0.828 0.018348 0.188107)"
+          },
+          {
+            "index": 1,
+            "classes": [
+              "absolute",
+              "grid",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              66,
+              1057.25,
+              32
+            ],
+            "title": "Vocals",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          },
+          {
+            "index": 2,
+            "classes": [
+              "absolute",
+              "grid",
+              "group-end",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              102,
+              1057.25,
+              32
+            ],
+            "title": "Instrumental",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "0px 0px 6px 6px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          }
+        ]
+      },
+      {
+        "name": "playing",
+        "rows": [
+          {
+            "index": 0,
+            "classes": [
+              "absolute",
+              "grid",
+              "group-start",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-parent",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              30,
+              1057.25,
+              32
+            ],
+            "title": "Parent track",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "6px 6px 0px 0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 1,
+            "starFill": "oklab(0.828 0.018348 0.188107)"
+          },
+          {
+            "index": 1,
+            "classes": [
+              "absolute",
+              "focused",
+              "grid",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "playing",
+              "px-3",
+              "row",
+              "selected",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              66,
+              1057.25,
+              32
+            ],
+            "title": "Vocals",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "rgb(109, 74, 255)",
+            "color": "rgb(255, 255, 255)",
+            "radius": "0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          },
+          {
+            "index": 2,
+            "classes": [
+              "absolute",
+              "grid",
+              "group-end",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              102,
+              1057.25,
+              32
+            ],
+            "title": "Instrumental",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "0px 0px 6px 6px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          }
+        ]
+      },
+      {
+        "name": "paused",
+        "rows": [
+          {
+            "index": 0,
+            "classes": [
+              "absolute",
+              "grid",
+              "group-start",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-parent",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              30,
+              1057.25,
+              32
+            ],
+            "title": "Parent track",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "6px 6px 0px 0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 1,
+            "starFill": "oklab(0.828 0.018348 0.188107)"
+          },
+          {
+            "index": 1,
+            "classes": [
+              "absolute",
+              "focused",
+              "grid",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "paused",
+              "px-3",
+              "row",
+              "selected",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              66,
+              1057.25,
+              32
+            ],
+            "title": "Vocals",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "rgb(109, 74, 255)",
+            "color": "rgb(255, 255, 255)",
+            "radius": "0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          },
+          {
+            "index": 2,
+            "classes": [
+              "absolute",
+              "grid",
+              "group-end",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              102,
+              1057.25,
+              32
+            ],
+            "title": "Instrumental",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "0px 0px 6px 6px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          }
+        ]
+      },
+      {
+        "name": "pinned",
+        "rows": [
+          {
+            "index": 1,
+            "classes": [
+              "absolute",
+              "grid",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              -134,
+              1057.25,
+              32
+            ],
+            "title": "Vocals",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          },
+          {
+            "index": 2,
+            "classes": [
+              "absolute",
+              "grid",
+              "group-end",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              -98,
+              1057.25,
+              32
+            ],
+            "title": "Instrumental",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "0px 0px 6px 6px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          },
+          {
+            "index": 0,
+            "classes": [
+              "absolute",
+              "focused",
+              "grid",
+              "inset-x-0",
+              "items-center",
+              "pinned",
+              "playing",
+              "px-3",
+              "row",
+              "selected",
+              "stem-parent",
+              "tabular"
+            ],
+            "pinned": true,
+            "rect": [
+              210.75,
+              28,
+              1069.25,
+              36
+            ],
+            "title": "Parent track",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "rgb(109, 74, 255)",
+            "color": "rgb(255, 255, 255)",
+            "radius": "0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "rgb(255, 255, 255)"
+          }
+        ]
+      }
+    ],
+    "after": [
+      {
+        "name": "group",
+        "rows": [
+          {
+            "index": 0,
+            "classes": [
+              "absolute",
+              "focused",
+              "grid",
+              "group-start",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "selected",
+              "stem-parent",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              30,
+              1057.25,
+              32
+            ],
+            "title": "Parent track",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.896314 0.896314 0.905412)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "6px 6px 0px 0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 1,
+            "starFill": "oklab(0.828 0.018348 0.188107)"
+          },
+          {
+            "index": 1,
+            "classes": [
+              "absolute",
+              "grid",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              66,
+              1057.25,
+              32
+            ],
+            "title": "Vocals",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          },
+          {
+            "index": 2,
+            "classes": [
+              "absolute",
+              "grid",
+              "group-end",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              102,
+              1057.25,
+              32
+            ],
+            "title": "Instrumental",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "0px 0px 6px 6px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          }
+        ]
+      },
+      {
+        "name": "playing",
+        "rows": [
+          {
+            "index": 0,
+            "classes": [
+              "absolute",
+              "grid",
+              "group-start",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-parent",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              30,
+              1057.25,
+              32
+            ],
+            "title": "Parent track",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "6px 6px 0px 0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 1,
+            "starFill": "oklab(0.828 0.018348 0.188107)"
+          },
+          {
+            "index": 1,
+            "classes": [
+              "absolute",
+              "focused",
+              "grid",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "playing",
+              "px-3",
+              "row",
+              "selected",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              66,
+              1057.25,
+              32
+            ],
+            "title": "Vocals",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "rgb(109, 74, 255)",
+            "color": "rgb(255, 255, 255)",
+            "radius": "0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          },
+          {
+            "index": 2,
+            "classes": [
+              "absolute",
+              "grid",
+              "group-end",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              102,
+              1057.25,
+              32
+            ],
+            "title": "Instrumental",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "0px 0px 6px 6px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          }
+        ]
+      },
+      {
+        "name": "paused",
+        "rows": [
+          {
+            "index": 0,
+            "classes": [
+              "absolute",
+              "grid",
+              "group-start",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-parent",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              30,
+              1057.25,
+              32
+            ],
+            "title": "Parent track",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "6px 6px 0px 0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 1,
+            "starFill": "oklab(0.828 0.018348 0.188107)"
+          },
+          {
+            "index": 1,
+            "classes": [
+              "absolute",
+              "focused",
+              "grid",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "paused",
+              "px-3",
+              "row",
+              "selected",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              66,
+              1057.25,
+              32
+            ],
+            "title": "Vocals",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "rgb(109, 74, 255)",
+            "color": "rgb(255, 255, 255)",
+            "radius": "0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          },
+          {
+            "index": 2,
+            "classes": [
+              "absolute",
+              "grid",
+              "group-end",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              102,
+              1057.25,
+              32
+            ],
+            "title": "Instrumental",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "0px 0px 6px 6px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          }
+        ]
+      },
+      {
+        "name": "pinned",
+        "rows": [
+          {
+            "index": 1,
+            "classes": [
+              "absolute",
+              "grid",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              -134,
+              1057.25,
+              32
+            ],
+            "title": "Vocals",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          },
+          {
+            "index": 2,
+            "classes": [
+              "absolute",
+              "grid",
+              "group-end",
+              "grouped",
+              "inset-x-0",
+              "items-center",
+              "px-3",
+              "row",
+              "stem-child",
+              "tabular"
+            ],
+            "pinned": false,
+            "rect": [
+              216.75,
+              -98,
+              1057.25,
+              32
+            ],
+            "title": "Instrumental",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "color(srgb 0.937843 0.93098 0.973922)",
+            "color": "rgb(28, 28, 34)",
+            "radius": "0px 0px 6px 6px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "none"
+          },
+          {
+            "index": 0,
+            "classes": [
+              "absolute",
+              "focused",
+              "grid",
+              "inset-x-0",
+              "items-center",
+              "pinned",
+              "playing",
+              "px-3",
+              "row",
+              "selected",
+              "stem-parent",
+              "tabular"
+            ],
+            "pinned": true,
+            "rect": [
+              210.75,
+              28,
+              1069.25,
+              36
+            ],
+            "title": "Parent track",
+            "titleX": 249.25,
+            "iconX": 221.25,
+            "background": "rgb(109, 74, 255)",
+            "color": "rgb(255, 255, 255)",
+            "radius": "0px",
+            "grid": "16px 728.25px 96px 56px 64px 28px",
+            "stemBadges": 0,
+            "starFill": "rgb(255, 255, 255)"
+          }
+        ]
+      }
+    ],
+    "images": [
+      {
+        "state": "group",
+        "identicalBytes": true,
+        "sha256": "7443863e6cad26ac85179c6bf50d2a4c72e5cee37ee013ebdec041ce4a95f225"
+      },
+      {
+        "state": "playing",
+        "identicalBytes": true,
+        "sha256": "f36e2bad254bc0df6215eaf7ce157ff3778951d57820735e6d56277ae5b12aa6"
+      },
+      {
+        "state": "paused",
+        "identicalBytes": true,
+        "sha256": "f93fcbe3bc1855098512de4435ef030d8b11382dfd39f9c9fea8f6b4d7c5c0e5"
+      },
+      {
+        "state": "pinned",
+        "identicalBytes": true,
+        "sha256": "881ad02269d89c45b13bfa2da738448086c2b08d0f3cccc9e78ea17dd221827e"
+      }
+    ]
+  },
+  "actions": {
+    "passed": [
+      "row selection/play",
+      "pause/resume button",
+      "solid favorite without playback",
+      "modified multi-selection",
+      "drag selection",
+      "stem disclosure",
+      "double-click editor",
+      "pinned row pause and hidden stems",
+      "cursor modifier and coordinates"
+    ]
+  },
+  "hints": {
+    "passed": [
+      "category",
+      "scope line break",
+      "bpm",
+      "accessible description",
+      "hoverable content",
+      "Escape",
+      "shortcut",
+      "name stays tooltip-free",
+      "keyboard focus",
+      "scroll",
+      "context menu",
+      "analysis refresh",
+      "filter removal"
+    ]
+  },
+  "limits": [
+    "No FPS improvement claimed; rAF distribution is within run-to-run variation.",
+    "Fake IPC does not measure native playback, WebKit or GPU completion.",
+    "Row update isolation existed before extraction; preserved rather than newly achieved."
+  ]
+}

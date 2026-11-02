@@ -1,29 +1,24 @@
 <script setup lang="ts">
 import { rowClickSeeks } from '@/row-playback'
 import { useWaveformBackgrounds } from '@/composables/waveformBackgrounds'
-import { useTagColors } from '@/composables/tagColors'
 import type { Sample } from '@/api'
 import { useVirtualizer } from '@tanstack/vue-virtual'
-import { AudioLines, ChevronRight, FolderPlus, Layers, Pause, Play, SearchX, Sparkles, Star, Tag, Volume2, X } from '@lucide/vue'
-import { createReusableTemplate, onKeyStroke, useEventListener, usePreferredReducedMotion, useScroll } from '@vueuse/core'
+import { AudioLines, FolderPlus, Layers, SearchX, Sparkles, Star, Tag, X } from '@lucide/vue'
+import { onKeyStroke, useEventListener, usePreferredReducedMotion, useScroll } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'
 import { isTauri } from '@tauri-apps/api/core'
 import { useI18n } from 'vue-i18n'
-import { categoryHint, categoryLabel, formatBpm, formatDuration, kindLabel, sourceHint } from '@/format'
 import Hint from '@/components/Hint.vue'
 import SampleListHints from '@/components/SampleListHints.vue'
+import SampleRow from '@/components/SampleRow.vue'
+import { usePinnedPlayback } from '@/composables/pinnedPlayback'
 import { Tooltip } from '@/components/ui/tooltip'
-import CategoryIcon from '@/components/icons/CategoryIcon.vue'
 import SampleContextMenu from '@/components/SampleContextMenu.vue'
-import SampleStemProgress from '@/components/SampleStemProgress.vue'
-import { activeStemProgress } from '@/stem-progress'
-import { useStemsStore } from '@/stores/stems'
-import { useApolloStore } from '@/stores/apollo'
 import { useSampleColumns } from '@/composables/sampleColumns'
 import SampleColumnHeader from '@/components/SampleColumnHeader.vue'
 import { useSampleColumnWidths } from '@/composables/sampleColumnWidths'
-import { relativeSampleDirectory, sampleDirectory, sampleColumnLimits, SAMPLE_COLUMNS } from '@/sample-columns'
+import { sampleColumnLimits, SAMPLE_COLUMNS } from '@/sample-columns'
 import { Button } from '@/components/ui/button'
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
@@ -35,16 +30,11 @@ import { useSettingsStore } from '@/stores/settings'
 const ROW_HEIGHT = 36
 
 const { t } = useI18n()
-const { tagStyle } = useTagColors()
 const backgrounds = useWaveformBackgrounds()
 const library = useLibraryStore()
 const player = usePlayerStore()
 const editor = useEditorStore()
 const settings = useSettingsStore()
-const stems = useStemsStore()
-const stemProgress = computed(() => activeStemProgress(stems.progress))
-const apollo = useApolloStore()
-const apolloProgress = computed(() => activeStemProgress(apollo.progress))
 const { total, focusIndex, selectedIds, scope } = storeToRefs(library)
 
 // Keep the former full/compact preference when upgrading to individual columns.
@@ -103,27 +93,14 @@ onKeyStroke(['s', 'ы'], (e) => {
 const scroller = ref<HTMLElement | null>(null)
 const { y: scrollTop } = useScroll(scroller)
 const reducedMotion = usePreferredReducedMotion()
-const playingIndex = computed(() => {
-  if (player.playingId === null) return -1
-  for (const [page, samples] of library.pages) {
-    const offset = samples.findIndex(sample => sample.id === player.playingId && sample.stemParentId == null)
-    if (offset >= 0) return page * PAGE_SIZE + offset
-  }
-  return -1
+const { playingIndex, pinnedSample } = usePinnedPlayback({
+  pages: () => library.pages,
+  playingId: () => player.playingId,
+  scrollTop,
+  pageSize: PAGE_SIZE,
+  rowHeight: ROW_HEIGHT,
 })
-
-const pinnedSample = computed(() => playingIndex.value >= 0 && scrollTop.value >= (playingIndex.value + 1) * ROW_HEIGHT
-  ? library.sampleAt(playingIndex.value) ?? null : null)
 const listSurface = ref<HTMLElement | null>(null)
-const [DefineRow, RenderRow] = createReusableTemplate<{
-  s: Sample
-  item: { index: number, start: number, size: number }
-  stemChild: boolean
-  groupStart: boolean
-  groupEnd: boolean
-  grouped: boolean
-  pinned: boolean
-}>()
 const virtualizer = useVirtualizer(computed(() => ({
   count: total.value,
   getScrollElement: () => scroller.value,
@@ -153,6 +130,7 @@ watch([items, () => library.pages.size], ([list]) => {
 
 // Analyze what is on screen first.
 let prioritizeTimer: ReturnType<typeof setTimeout> | undefined
+onScopeDispose(() => clearTimeout(prioritizeTimer))
 watch(rows, (list) => {
   clearTimeout(prioritizeTimer)
   prioritizeTimer = setTimeout(() => library.prioritizeAnalysis(list.map(r => r.sample)), 300)
@@ -258,96 +236,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
 </script>
 
 <template>
-  <DefineRow v-slot="{ s, item, stemChild, groupStart, groupEnd, grouped, pinned }">
-                  <div
-                    class="row grid items-center px-3 absolute inset-x-0 tabular"
-                    :class="{
-                      selected: selectedIds.has(s.id),
-                      focused: item.index === focusIndex,
-                      playing: player.isPlaying(s.id),
-                      paused: player.playingId === s.id && player.paused,
-                      pinned,
-                      'stem-parent': library.expandedStems.has(s.id),
-                      'stem-child': stemChild,
-                      grouped,
-                      'group-start': groupStart,
-                      'group-end': groupEnd,
-                    }"
-                    :style="{ height: `${pinned ? item.size : item.size - 4}px`, transform: `translateY(${pinned ? 0 : item.start + 2}px)` }"
-                    :data-index="item.index"
-                    :data-pinned="pinned || undefined"
-                    draggable="true"
-                    @mousedown="onMouseDown($event, item.index, s)"
-                    @click="onClick(item.index)"
-                    @dblclick="onDoubleClick(item.index)"
-                    @dragstart="onDragStart($event, s)"
-                  >
-                    <span class="track-icon relative grid place-items-center">
-                      <Volume2 v-if="player.isPlaying(s.id)" class="track-icon-display track-volume size-3.5 text-primary" aria-hidden="true" />
-                      <CategoryIcon v-else :category="s.category" :stem="s.stemKind" class="track-icon-display size-3.5 text-muted-foreground" aria-hidden="true" />
-                      <button
-                        type="button" class="track-play absolute grid place-items-center rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        :aria-label="t(player.isPlaying(s.id) ? 'common.actions.pause' : 'common.actions.play')"
-                        :aria-pressed="player.isPlaying(s.id)" :draggable="false"
-                        @mousedown.stop @dblclick.stop @click.stop="toggleRowPlayback(s)"
-                      >
-                        <Pause v-if="player.isPlaying(s.id)" class="size-3.5 fill-current" />
-                        <Play v-else class="size-3.5 fill-current" />
-                      </button>
-                    </span>
-                    <span class="track-name relative isolate flex items-center gap-2 min-w-0 h-full overflow-hidden">
-                      <svg v-if="backgrounds.pathFor(s)" class="row-waveform pointer-events-none absolute inset-0 -z-1 size-full" viewBox="0 0 1000 100" preserveAspectRatio="none" aria-hidden="true">
-                        <path :d="backgrounds.pathFor(s)" fill="currentColor" />
-                      </svg>
-                      <svg v-if="backgrounds.pathFor(s) && player.playingId === s.id && s.duration" class="row-waveform row-waveform-played pointer-events-none absolute inset-0 -z-1 size-full" viewBox="0 0 1000 100" preserveAspectRatio="none" :style="{ clipPath: `inset(0 ${100 - Math.min(100, Math.max(0, player.position / s.duration * 100))}% 0 0)` }" aria-hidden="true">
-                        <path :d="backgrounds.pathFor(s)" fill="currentColor" />
-                      </svg>
-                      <span class="truncate">{{ s.stemKind ? t(`stems.instruments.${s.stemKind}`) : s.name }}</span>
-                      <SampleStemProgress v-if="stemProgress?.sourceId === s.id" :progress="stemProgress" :name="s.name" />
-                      <SampleStemProgress v-if="apolloProgress?.sourceId === s.id" :progress="apolloProgress" :name="s.name" namespace="apollo" />
-                      <Hint v-if="s.similarity != null && s.id !== similarTo?.id" :text="t('list.similar.howSimilar')" side="top">
-                        <span class="shrink-0 text-[11px] text-primary">{{ Math.round(Math.max(0, s.similarity) * 100) }}%</span>
-                      </Hint>
-                      <button
-                        v-if="s.stemCount && !similarTo" type="button"
-                        class="stem-toggle ml-auto shrink-0 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        :aria-label="t(library.expandedStems.has(s.id) ? 'stems.collapse' : 'stems.expand', { name: s.name })"
-                        :aria-expanded="library.expandedStems.has(s.id)"
-                        @mousedown.stop @dblclick.stop @click.stop="library.toggleStems(s, item.index)"
-                      >
-                        {{ t('stems.badge', { n: s.stemCount }) }}
-                        <ChevronRight class="size-3 transition-transform" :class="{ 'rotate-90': library.expandedStems.has(s.id) }" />
-                      </button>
-                      <span v-else-if="s.stemCount" class="stem-toggle ml-auto shrink-0 rounded px-1.5 py-0.5 text-[10px]">{{ t('stems.badge', { n: s.stemCount }) }}</span>
-                    </span>
-                    <template v-for="column in visibleColumns" :key="column.id">
-                      <span v-if="column.id === 'directory'" class="min-w-0 truncate text-muted-foreground text-xs" :title="sampleDirectory(s.path)">{{ relativeSampleDirectory(s.path, library.sources.find(source => source.id === s.sourceId)?.path) }}</span>
-                      <span v-else-if="column.id === 'tags'" class="flex gap-1 overflow-hidden">
-                        <span v-for="tag in s.tags" :key="tag.id" class="chip tag-color" :style="tagStyle(tag)">{{ tag.name }}</span>
-                      </span>
-                      <span v-else-if="column.id === 'category'" :data-sample-hint="categoryHint(s.categorySource, s.categoryConfidence)" data-grace-area-trigger class="truncate text-xs" :class="s.categorySource === 'audio' ? 'text-muted-foreground' : ''">{{ s.category ? categoryLabel(s.category) : '' }}</span>
-                      <span v-else-if="column.id === 'kind'" class="text-muted-foreground text-xs">
-                        <template v-if="s.kind">{{ kindLabel(s.kind) }}</template>
-                        <span v-else-if="!s.analyzed" class="opacity-50">…</span>
-                      </span>
-                      <span v-else-if="column.id === 'bpm'" :data-sample-hint="sourceHint(s.bpmSource)" data-grace-area-trigger class="text-right" :class="s.bpmSource === 'audio' ? 'text-muted-foreground' : ''">
-                          {{ s.bpm != null ? formatBpm(s.bpm) : '' }}
-                      </span>
-                      <span v-else-if="column.id === 'key'" :data-sample-hint="sourceHint(s.keySource)" data-grace-area-trigger :class="s.keySource === 'audio' ? 'text-muted-foreground' : ''">{{ s.key ?? '' }}</span>
-                      <span v-else-if="column.id === 'length'" class="text-right text-muted-foreground">{{ formatDuration(s.duration) }}</span>
-                      <span v-else-if="column.id === 'type'" class="text-muted-foreground uppercase text-xs">{{ s.ext }}</span>
-                    </template>
-                      <button
-                        class="star grid place-items-center" :class="{ on: s.favorite }"
-                        :data-sample-hint="s.favorite ? t('list.favorite.remove') : t('list.favorite.add')" data-grace-area-trigger data-hint-shortcut="F" data-hint-side="bottom"
-                        :aria-label="s.favorite ? t('list.favorite.remove') : t('list.favorite.add')"
-                        @mousedown.stop
-                        @click.stop="library.toggleFavorite(s)"
-                      >
-                        <span :class="s.favorite ? 'i-lucide-star text-amber-400' : 'i-lucide-star'" class="text-xs" />
-                      </button>
-                  </div>
-  </DefineRow>
+
   <div class="sample-list flex-1 min-w-0 min-h-0 flex flex-col">
     <div v-if="similarTo" class="h-9 shrink-0 px-3 flex items-center gap-2 border-b border-border bg-primary-soft text-sm">
       <AudioLines class="size-4 text-primary" />
@@ -415,14 +304,16 @@ function onDragStart(e: DragEvent, sample: Sample) {
 
               <div v-else class="relative w-full" :style="{ height: `${virtualizer.getTotalSize()}px` }">
                 <template v-for="{ item, sample: s, stemChild, groupStart, groupEnd, grouped } in rows" :key="item.index">
-                  <RenderRow
+                  <SampleRow
                     v-if="s" v-show="!pinnedSample || item.index !== playingIndex"
-                    :s="s" :item="item" :stem-child="!!stemChild" :group-start="groupStart"
-                    :group-end="!!groupEnd" :grouped="!!grouped" :pinned="false"
+                    :sample="s" :item="item" :stem-child="!!stemChild" :group-start="groupStart"
+                    :group-end="!!groupEnd" :grouped="!!grouped" :pinned="false" :visible-columns="visibleColumns"
+                    @press="onMouseDown" @select="onClick" @edit="onDoubleClick" @drag="onDragStart"
+                    @play="toggleRowPlayback" @stems="library.toggleStems" @favorite="library.toggleFavorite"
                   />
                   <div
                     v-else
-                    class="row grid items-center px-3 absolute inset-x-0"
+                    class="row-placeholder grid items-center px-3 absolute inset-x-0"
                     :style="{ height: `${item.size - 4}px`, transform: `translateY(${item.start + 2}px)` }"
                   >
                     <span />
@@ -433,8 +324,10 @@ function onDragStart(e: DragEvent, sample: Sample) {
             </div>
             <Transition name="pinned-track" :duration="reducedMotion === 'reduce' ? 0 : { enter: 140, leave: 100 }">
             <div v-if="pinnedSample" class="pinned-track absolute inset-x-0 top-0 z-10 overflow-hidden bg-primary" :style="{ height: `${ROW_HEIGHT}px` }">
-              <RenderRow :s="pinnedSample" :item="{ index: playingIndex, start: 0, size: ROW_HEIGHT }"
-                :stem-child="false" :group-start="false" :group-end="false" :grouped="false" :pinned="true" />
+              <SampleRow :sample="pinnedSample" :item="{ index: playingIndex, start: 0, size: ROW_HEIGHT }"
+                :stem-child="false" :group-start="false" :group-end="false" :grouped="false" :pinned="true" :visible-columns="visibleColumns"
+                    @press="onMouseDown" @select="onClick" @edit="onDoubleClick" @drag="onDragStart"
+                    @play="toggleRowPlayback" @stems="library.toggleStems" @favorite="library.toggleFavorite" />
             </div>
             </Transition>
             </div>
@@ -455,55 +348,17 @@ function onDragStart(e: DragEvent, sample: Sample) {
 </template>
 
 <style scoped>
-.row-waveform { opacity: 0.1; }
-.row:is(.playing, .paused) .row-waveform { opacity: 0.14; }
-.row-waveform-played { color: var(--primary); opacity: 0.35; }
-.row:is(.playing, .paused) .row-waveform-played { color: var(--primary-foreground); opacity: 0.45; }
-.track-volume :deep(path:first-child) { fill: currentColor; }
-.track-play { width: 24px; height: 24px; opacity: 0; }
-.row:hover .track-play, .track-play:focus-visible { opacity: 1; }
-.row:hover .track-icon-display, .track-icon:focus-within .track-icon-display { opacity: 0; }
-@media (hover: none) {
-  .track-play { opacity: 1; }
-  .track-icon-display { opacity: 0; }
-}
 .header,
-.row,
+.row-placeholder,
 .column-guides {
   grid-template-columns: var(--sample-columns);
   column-gap: 12px;
 }
-.row {
+.row-placeholder {
   inset-inline: 6px;
   padding-inline: calc(0.75rem - 6px);
   border-radius: 6px;
   isolation: isolate;
-}
-.row.grouped {
-  border-radius: 0;
-}
-.row.grouped::before {
-  content: '';
-  position: absolute;
-  inset: -2px 0;
-  z-index: -1;
-  border-radius: inherit;
-  background: inherit;
-  pointer-events: none;
-}
-.row.group-start::before {
-  top: 0;
-}
-.row.group-end::before {
-  bottom: 0;
-}
-.row.group-start {
-  border-start-start-radius: 6px;
-  border-start-end-radius: 6px;
-}
-.row.group-end {
-  border-end-start-radius: 6px;
-  border-end-end-radius: 6px;
 }
 .column-guide {
   position: relative;
@@ -555,74 +410,4 @@ function onDragStart(e: DragEvent, sample: Sample) {
     translate: none;
   }
 }
-.row.stem-parent,
-.row.stem-child {
-  background: color-mix(in srgb, var(--primary) 5%, var(--background));
-}
-.row:hover {
-  background: var(--accent);
-}
-.row.selected {
-  background: color-mix(in srgb, var(--foreground) 8%, var(--background));
-}
-.row.focused:not(.selected):not(.playing):not(.paused) {
-  background: var(--accent);
-}
-.star {
-  justify-self: end;
-  width: 28px;
-  color: var(--muted-foreground);
-  opacity: 0;
-}
-.star.on,
-.row:hover .star,
-.row.selected .star,
-.star:focus-visible {
-  opacity: 1;
-}
-.chip {
-  flex-shrink: 0;
-  padding: 0 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  line-height: 18px;
-}
-.stem-toggle {
-  background: var(--primary);
-  color: var(--primary-foreground);
-  font-weight: 500;
-}
-button.stem-toggle:hover {
-  filter: brightness(0.95);
-}
-.row.pinned {
-  inset-inline: 0;
-  padding-inline: 0.75rem;
-  border-radius: 0;
-  z-index: 3;
-}
-.row.paused .track-play { opacity: 1; }
-.row.paused .track-icon-display { opacity: 0; }
-.row:is(.playing, .paused) {
-  --sample-progress-color: var(--primary-foreground);
-  z-index: 1;
-  background: var(--primary);
-  color: var(--primary-foreground);
-}
-.row:is(.playing, .paused) :deep(.text-muted-foreground) {
-  color: color-mix(in srgb, var(--primary-foreground) 80%, transparent);
-}
-.row:is(.playing, .paused) :deep(.text-primary),
-.row:is(.playing, .paused) :deep(.text-amber-400),
-.row:is(.playing, .paused) .star {
-  color: var(--primary-foreground);
-}
-.row:is(.playing, .paused) .star {
-  opacity: 1;
-}
-.row:is(.playing, .paused) .stem-toggle {
-  background: var(--primary-foreground);
-  color: var(--primary);
-}
-.row:is(.playing, .paused).pinned { z-index: 3; }
 </style>
