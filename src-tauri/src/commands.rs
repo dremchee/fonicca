@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use rusqlite::params;
 use serde::Serialize;
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::duplicates;
 use crate::error::{Error, Result};
@@ -412,22 +412,30 @@ pub fn download_sound_model(app: tauri::AppHandle, state: State<'_, AppState>) -
 #[tauri::command]
 /// Async so rendering a stretched loop happens off the main (UI) thread.
 pub async fn play(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     id: i64,
     start: Option<f64>,
     sync: Option<crate::sync::Target>,
 ) -> Result<crate::sync::Adjust> {
-    let (path, kind, bpm, key): (String, Option<String>, Option<f64>, Option<String>) =
-        state.db.lock().unwrap().query_row(
-            "SELECT path, kind, bpm, musical_key FROM samples WHERE id = ?1",
-            [id],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
-        )?;
-    let adjust = match &sync {
-        Some(target) => crate::sync::plan(kind.as_deref(), bpm, key.as_deref(), target),
-        None => crate::sync::Adjust::NONE,
-    };
-    state.player.play(std::path::Path::new(&path), start.unwrap_or(0.0), adjust)
+    let request = state.player.begin_request();
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = app.state::<AppState>();
+        let result = (|| {
+            let (path, kind, bpm, key): (String, Option<String>, Option<f64>, Option<String>) =
+                state.db.lock().unwrap().query_row(
+                    "SELECT path, kind, bpm, musical_key FROM samples WHERE id = ?1", [id],
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+                )?;
+            let adjust = match &sync {
+                Some(target) => crate::sync::plan(kind.as_deref(), bpm, key.as_deref(), target),
+                None => crate::sync::Adjust::NONE,
+            };
+            state.player.play_request(request, std::path::Path::new(&path), start.unwrap_or(0.0), adjust)
+        })();
+        if result.is_err() { state.player.fail_request(request); }
+        result
+    }).await.map_err(|e| Error::Other(e.to_string()))?
 }
 
 #[tauri::command]

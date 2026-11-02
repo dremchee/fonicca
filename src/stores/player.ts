@@ -26,6 +26,7 @@ export const usePlayerStore = defineStore('player', () => {
   let frame = 0
   let tracking = 0
   let needsResync = false
+  let pending: { sample: Sample, start: number } | null = null
 
   function isPlaying(id: number) {
     return playingId.value === id && !paused.value
@@ -59,10 +60,14 @@ export const usePlayerStore = defineStore('player', () => {
 
   async function play(sample: Sample, start = 0) {
     error.value = null
-    tracking++
+    const version = ++tracking
+    pending = { sample, start }
     cancelAnimationFrame(frame)
     try {
-      adjust.value = await api.play(sample.id, start, syncTarget.value)
+      const applied = await api.play(sample.id, start, syncTarget.value)
+      if (version !== tracking) return
+      pending = null
+      adjust.value = applied
       playing.value = sample
       playingId.value = sample.id
       paused.value = false
@@ -71,6 +76,8 @@ export const usePlayerStore = defineStore('player', () => {
       track()
     }
     catch (e) {
+      if (version !== tracking) return
+      pending = null
       playingId.value = null
       paused.value = false
       error.value = String(e)
@@ -86,6 +93,7 @@ export const usePlayerStore = defineStore('player', () => {
   async function stop() {
     cancelAnimationFrame(frame)
     tracking++
+    pending = null
     playingId.value = null
     paused.value = false
     position.value = 0
@@ -98,6 +106,8 @@ export const usePlayerStore = defineStore('player', () => {
       return
     cancelAnimationFrame(frame)
     const version = ++tracking
+    if (pending) needsResync = true
+    pending = null
     try {
       const pos = await api.pause()
       if (version !== tracking || id !== playingId.value)
@@ -111,9 +121,9 @@ export const usePlayerStore = defineStore('player', () => {
       position.value = pos
     }
     catch (e) {
+      if (version !== tracking || id !== playingId.value) return
       error.value = String(e)
-      if (version === tracking && id === playingId.value)
-        track()
+      track()
     }
   }
 
@@ -124,7 +134,8 @@ export const usePlayerStore = defineStore('player', () => {
       return
     }
     const id = playingId.value
-    const version = tracking
+    const version = ++tracking
+    pending = null
     try {
       const resumed = await api.resume()
       if (version !== tracking || id !== playingId.value)
@@ -137,7 +148,7 @@ export const usePlayerStore = defineStore('player', () => {
       track()
     }
     catch (e) {
-      error.value = String(e)
+      if (version === tracking && id === playingId.value) error.value = String(e)
     }
   }
 
@@ -151,9 +162,14 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   async function seek(sample: Sample, pos: number) {
-    if (playingId.value === sample.id) {
+    if (playingId.value === sample.id && !pending) {
+      const version = ++tracking
+      pending = null
+      cancelAnimationFrame(frame)
       position.value = pos
-      await api.seek(pos)
+      try { await api.seek(pos) }
+      catch (e) { if (version === tracking) error.value = String(e) }
+      if (version === tracking && !paused.value) track()
     }
     else {
       await play(sample, pos)
@@ -162,11 +178,13 @@ export const usePlayerStore = defineStore('player', () => {
 
   // Changing the project tempo/key restarts the playing sample where it was.
   watch(syncTarget, (next, prev) => {
-    if (JSON.stringify(next) !== JSON.stringify(prev) && playingSample.value) {
-      if (paused.value)
-        needsResync = true
-      else
-        play(playingSample.value, position.value)
+    if (JSON.stringify(next) !== JSON.stringify(prev)) {
+      // Retarget the requested track, not the old one still playing during decode.
+      if (pending) void play(pending.sample, pending.start)
+      else if (playingSample.value) {
+        if (paused.value) needsResync = true
+        else void play(playingSample.value, position.value)
+      }
     }
   })
 

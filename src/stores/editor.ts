@@ -355,6 +355,7 @@ export const useEditorStore = defineStore('editor', () => {
   const clipboard = ref<ClipInfo | null>(null)
   let frame = 0
   let playbackVersion = 0
+  let startingPlayback = false
 
   const canOverwrite = computed(() => !!state.value?.canReplaceOriginal)
 
@@ -686,6 +687,7 @@ export const useEditorStore = defineStore('editor', () => {
     if (!state.value)
       return
     const version = ++playbackVersion
+    startingPlayback = true
     cancelAnimationFrame(frame)
     const s = selection.value
     const [start, end] = s ? [s.start, s.end] : [cursor.value, state.value.frames]
@@ -699,8 +701,13 @@ export const useEditorStore = defineStore('editor', () => {
       track(version)
     }
     catch (e) {
-      if (version === playbackVersion) toast.error(String(e))
+      if (version === playbackVersion) {
+        playing.value = false
+        playhead.value = null
+        toast.error(String(e))
+      }
     }
+    finally { if (version === playbackVersion) startingPlayback = false }
   }
 
   async function updatePlaybackRange() {
@@ -716,13 +723,14 @@ export const useEditorStore = defineStore('editor', () => {
         playhead.value = null
       }
     }
-    catch (e) { toast.error(String(e)) }
+    catch (e) { if (version === playbackVersion) toast.error(String(e)) }
   }
 
   function stopPlayback() {
     playbackVersion++
     cancelAnimationFrame(frame)
-    const stopped = playing.value ? api.stop() : Promise.resolve()
+    const stopped = playing.value || startingPlayback ? api.stop() : Promise.resolve()
+    startingPlayback = false
     playing.value = false
     playhead.value = null
     return stopped

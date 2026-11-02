@@ -40,10 +40,14 @@ export async function measureLibraryPerformance(page, baseUrl, size = 32000) {
     try {
       await wait(200)
       const first = library.sampleAt(0)
-      const { useWaveformBackgrounds } = await import('/src/composables/waveformBackgrounds.ts')
+      // Use the cache held by the live row, including after Vite adds HMR URLs.
+      let rowCache = document.querySelector('.sample-list [data-index]')?.__vueParentComponent
+      while (rowCache && !rowCache.setupState?.backgrounds) rowCache = rowCache.parent
+      if (!rowCache) throw new Error('No live row waveform cache')
+      const backgrounds = rowCache.setupState.backgrounds
       const values = new Float32Array(256 * 6)
       for (let i = 0; i < values.length; i += 6) { values[i] = -.5; values[i + 1] = .5 }
-      useWaveformBackgrounds().remember(first, { count: 256, lanes: 1, samples: false, stride: 6, values })
+      backgrounds.remember(first, { count: 256, lanes: 1, samples: false, stride: 6, values })
       player.playingId = first.id
       player.paused = false
       await wait(60)

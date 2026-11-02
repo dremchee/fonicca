@@ -190,8 +190,17 @@ fn next_revision() -> u64 {
     EDIT_REVISION.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
+/// Cancellation belongs to active work, not to the audio storage or undo history.
+#[derive(Clone, Default)]
+pub(crate) struct AnalysisToken(std::sync::Arc<std::sync::atomic::AtomicBool>);
+impl AnalysisToken {
+    pub fn cancelled(&self) -> bool { self.0.load(std::sync::atomic::Ordering::Relaxed) }
+    fn cancel(&self) { self.0.store(true, std::sync::atomic::Ordering::Relaxed); }
+}
+
 /// An open file with its edit history.
 pub struct Session {
+    analysis_token: AnalysisToken,
     opened_ms: f64,
     last_wave_us: std::sync::atomic::AtomicU64,
     diagnostics_inventory: std::sync::Mutex<Option<diagnostics::Inventory>>,
@@ -239,6 +248,10 @@ pub struct State {
 
 struct AudioSnapshot { audio: BlockAudio, loop_points: Option<Loop>, markers: Vec<Marker> }
 
+impl Drop for Session {
+    fn drop(&mut self) { self.analysis_token.cancel(); }
+}
+
 impl Session {
     #[cfg(test)]
     pub fn open(sample_id: i64, path: &Path, bit_depth: Option<u32>) -> Result<Self> {
@@ -256,6 +269,7 @@ impl Session {
         let original_markers = markers::normalized(markers::read_markers(path), frames);
         if cancelled() { return Err(Error::Other("editor opening cancelled".into())); }
         Ok(Self {
+            analysis_token: AnalysisToken::default(),
             opened_ms: opened_at.elapsed().as_secs_f64() * 1000.0,
             last_wave_us: std::sync::atomic::AtomicU64::new(0),
             diagnostics_inventory: Default::default(),
@@ -304,6 +318,12 @@ impl Session {
         self.save_in_flight.load(std::sync::atomic::Ordering::Acquire)
     }
 
+    pub(crate) fn analysis_token(&self) -> AnalysisToken { self.analysis_token.clone() }
+    pub(crate) fn cancel_analysis(&mut self) {
+        self.analysis_token.cancel();
+        self.analysis_token = AnalysisToken::default();
+    }
+
     pub fn audio_revision(&self) -> u64 { self.audio_revision }
 
     pub fn spectrogram(&self) -> Option<std::sync::Arc<spectrogram::Spectrogram>> {
@@ -322,6 +342,7 @@ impl Session {
         if op.changes_audio() {
             self.audio_revision = next_revision();
             self.spectrum = None;
+            self.cancel_analysis();
         }
     }
 
