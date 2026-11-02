@@ -237,7 +237,8 @@ onBeforeUnmount(() => {
     <span class="horizontal-clip" aria-hidden="true" />
   </component>
   <div v-else
-    class="level-meter w-[52px] shrink-0 flex flex-col border-l border-border bg-card px-1.5 select-none"
+    class="level-meter shrink-0 flex flex-col border-l border-border bg-card px-1.5 select-none"
+    :class="{ 'split-meter': splitChannels }"
     :style="{ paddingTop: `${topInset ?? 0}px` }"
     role="group" :aria-label="t('player.meter.title')" :title="t('player.meter.title')"
   >
@@ -245,7 +246,7 @@ onBeforeUnmount(() => {
       <div class="flex gap-[3px]">
         <span class="w-3.5 shrink-0 text-[9px] text-muted-foreground text-right leading-none">{{ splitChannels ? (groupIndex === 0 ? 'L' : 'R') : '' }}</span>
         <button
-          class="h-1.5 w-[25px] rounded-sm transition-colors"
+          class="clip-indicator h-1.5 rounded-sm transition-colors"
           :class="groupClipped(groupIndex) ? 'bg-destructive' : 'bg-muted'"
           :aria-label="t(groupClipped(groupIndex) ? 'player.meter.clip' : 'player.meter.noClip')"
           :aria-pressed="groupClipped(groupIndex)"
@@ -258,7 +259,7 @@ onBeforeUnmount(() => {
         <div class="relative w-3.5 shrink-0 text-[9px] leading-none text-muted-foreground tabular" aria-hidden="true">
           <span v-for="db in ticks" :key="db" class="absolute right-0 translate-y-1/2" :style="{ bottom: pct(db) }">{{ -db }}</span>
         </div>
-        <div v-for="(ch, i) in group" :key="i" class="bar" :class="{ 'mono-bar': splitChannels }" :style="{ backgroundImage: barGradient }" aria-hidden="true">
+        <div v-for="(ch, i) in group" :key="i" class="bar" :style="{ backgroundImage: barGradient }" aria-hidden="true">
           <!-- Covers from the top: the unlit part, then the peak part dimmed above the RMS. -->
           <div class="cover" :style="{ height: `calc(100% - ${pct(ch.peak)})` }" />
           <div class="cover dim" :style="{ bottom: pct(ch.rms), height: `max(0%, calc(${pct(ch.peak)} - ${pct(ch.rms)}))` }" />
@@ -272,6 +273,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.level-meter { --meter-track-width: 25px; width: 52px; }
+.level-meter.split-meter { --meter-track-width: 11px; width: 38px; }
+.clip-indicator { width: var(--meter-track-width); }
+
 .vu-control { display: block; padding: 0; border: 0; background: transparent; flex-shrink: 0; border-radius: 5px; }
 .vu-control:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
 .horizontal-meter {
@@ -355,8 +360,6 @@ onBeforeUnmount(() => {
   border-radius: 2px;
   overflow: hidden;
 }
-
-.mono-bar { width: 25px; }
 
 .cover {
   position: absolute;

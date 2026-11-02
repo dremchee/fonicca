@@ -31,8 +31,14 @@ const canvas = ref<HTMLCanvasElement | null>(null)
 useWaveRenderer(canvas)
 const wave = shallowRef<Wave | null>(null)
 const { geometry, style: canvasStyle, snapX, pixelRatio } = usePixelCanvas(box)
-const line = computed(() => 1 / geometry.value.ratio)
-const dotSize = computed(() => Math.round(5 * geometry.value.ratio) / geometry.value.ratio)
+const line = computed(() => Math.round(2 * geometry.value.ratio) / geometry.value.ratio)
+const dotPixels = computed(() => {
+  const pixels = Math.round(7 * geometry.value.ratio)
+  const borderPixels = Math.round(line.value * geometry.value.ratio)
+  // Matching parity centres the dot on the border without half-device-pixel edges.
+  return pixels + ((pixels - borderPixels) % 2 === 0 ? 0 : 1)
+})
+const dotSize = computed(() => dotPixels.value / geometry.value.ratio)
 
 const frames = () => editor.state?.frames ?? 0
 const minimumSpan = computed(() => Math.min(64, frames()))
@@ -41,20 +47,19 @@ const endX = computed(() => snapX(geometry.value.left + props.viewEnd / Math.max
 const hitSize = computed(() => Math.round(12 * geometry.value.ratio) / geometry.value.ratio)
 const windowStyle = computed(() => {
   const ratio = geometry.value.ratio
-  const dotPixels = Math.round(5 * ratio)
-  // Matching parity keeps a CSS-centred dot on physical pixels as well.
-  let heightPixels = Math.max(dotPixels, Math.round(geometry.value.height * ratio) - 2)
-  if ((heightPixels - dotPixels) % 2) heightPixels--
+  // Matching parity keeps the vertical centre on the same physical-pixel grid.
+  let heightPixels = Math.max(dotPixels.value, Math.round(geometry.value.height * ratio) - 2)
+  if ((heightPixels - dotPixels.value) % 2) heightPixels--
   const width = Math.min(geometry.value.width, Math.max(2 * line.value, endX.value - startX.value))
   const left = Math.max(geometry.value.left, Math.min(startX.value, geometry.value.left + geometry.value.width - width))
   return {
-    transform: `translate(${left}px, ${geometry.value.top + line.value}px)`,
+    transform: `translate(${left}px, ${geometry.value.top + 1 / ratio}px)`,
     width: `${width}px`,
     height: `${heightPixels / ratio}px`,
     '--window-line': `${line.value}px`,
     '--dot-size': `${dotSize.value}px`,
     '--hit-size': `${hitSize.value}px`,
-    '--edge-phase': `${(dotPixels % 2) / (2 * ratio)}px`,
+    '--edge-inset': `${line.value / 2}px`,
   }
 })
 const timeAt = (frame: number) => {
@@ -262,14 +267,14 @@ function onWheel(e: WheelEvent) {
 .view-pan { position: absolute; inset: 0; }
 .view-pan:focus-visible { outline: 2px solid var(--ring); outline-offset: -3px; }
 .resize-handle { position: absolute; z-index: 2; top: 0; bottom: 0; width: var(--hit-size); display: grid; place-items: center; border: 0; padding: 0; background: transparent; color: var(--primary); cursor: ew-resize; outline: none; }
-.resize-handle[data-edge="start"] { left: calc(var(--edge-phase) - var(--hit-size) / 2); }
-.resize-handle[data-edge="end"] { right: calc(var(--edge-phase) - var(--hit-size) / 2); }
+.resize-handle[data-edge="start"] { left: calc(var(--edge-inset) - var(--hit-size) / 2); }
+.resize-handle[data-edge="end"] { right: calc(var(--edge-inset) - var(--hit-size) / 2); }
 .resize-handle > span { width: var(--dot-size); height: var(--dot-size); border-radius: 50%; background: currentColor; opacity: 0.8; pointer-events: none; }
 .resize-handle:hover > span, .resize-handle.active > span, .resize-handle:focus-visible > span { opacity: 1; }
 .resize-handle:focus-visible > span { outline: 2px solid var(--ring); outline-offset: 2px; }
 /* Tiny zoom windows keep separate grab areas; file edges keep dots inside the map. */
-.view-window.narrow .resize-handle[data-edge="start"] { left: calc(var(--edge-phase) - var(--hit-size) * 1.5); }
-.view-window.narrow .resize-handle[data-edge="end"] { right: calc(var(--edge-phase) - var(--hit-size) * 1.5); }
+.view-window.narrow .resize-handle[data-edge="start"] { left: calc(var(--edge-inset) - var(--hit-size) * 1.5); }
+.view-window.narrow .resize-handle[data-edge="end"] { right: calc(var(--edge-inset) - var(--hit-size) * 1.5); }
 .view-window.at-start .resize-handle[data-edge="start"] { left: 0; justify-items: start; }
 .view-window.at-end .resize-handle[data-edge="end"] { right: 0; justify-items: end; }
 .view-window.narrow.at-start .resize-handle[data-edge="end"] { left: var(--hit-size); right: auto; justify-items: start; }
