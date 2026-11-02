@@ -1,0 +1,4648 @@
+{
+  "schema": 1,
+  "status": "measured",
+  "error": null,
+  "platform": "darwin",
+  "bundle": "app",
+  "nativeProfile": "release",
+  "mode": "memory",
+  "identifier": "app.fonicca.resourceprobe",
+  "nativeHostPid": 65103,
+  "sourceRevision": "b6692e2ae6f3c7a304f1ec2854e6817af5c780f3",
+  "binarySha256": "c938d48116df45d13fa75622897f487155251a1f2cb6c72dde248b999e2d7d0f",
+  "beforeWebKitPids": [
+    2542,
+    2543,
+    10046,
+    55535,
+    55536,
+    55537,
+    77712,
+    77713,
+    77714
+  ],
+  "cohortPids": [
+    65103,
+    65133,
+    65135,
+    65136,
+    65509
+  ],
+  "cohortRemainingAfterHostExit": [],
+  "checkpoints": [
+    {
+      "stage": "baseline",
+      "window": "main",
+      "visibility": "visible",
+      "focused": false,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 1
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": null,
+      "canvases": 0,
+      "rows": 38,
+      "library": {
+        "retainedPages": 1,
+        "retainedRows": 200,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 100000,
+      "editor": {
+        "open": false,
+        "frames": 0
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 115212288,
+        "cpuPercent": null,
+        "availableBytes": 8204959744,
+        "editorBusy": false,
+        "editor": null
+      },
+      "timings": [
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 9,
+          "p50Ms": 9,
+          "p95Ms": 9,
+          "maxMs": 9
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793653362.9669409,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 115965952,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 38010880,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 16662528,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 122421248,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152545798010000,
+          "mach_continuous_time_ns": 285392577286750,
+          "wall_time_s": 815346162.890754,
+          "date": "2026-11-03T00:02:42.891+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 98730752,
+            "auxiliary": {
+              "phys_footprint_peak": 124568320,
+              "phys_footprint": 98763520
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 35062840,
+            "auxiliary": {
+              "phys_footprint_peak": 36586552,
+              "phys_footprint": 35095608
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 15024872,
+            "auxiliary": {
+              "phys_footprint_peak": 27493096,
+              "phys_footprint": 15057640
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 5521912,
+            "auxiliary": {
+              "phys_footprint_peak": 6259192,
+              "phys_footprint": 5554680
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 154078232,
+            "swapped": 0,
+            "clean": 31473664,
+            "reclaimable": 51789824,
+            "wired": 14680064,
+            "regions": 24885
+          }
+        },
+        "total footprint": 154078232,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152545858348625,
+          "mach_continuous_time_ns": 285392637625375,
+          "wall_time_s": 815346162.951093,
+          "date": "2026-11-03T00:02:42.951+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "library-scrolled",
+      "window": "main",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 1
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": null,
+      "canvases": 0,
+      "rows": 38,
+      "library": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 100000,
+      "editor": {
+        "open": false,
+        "frames": 0
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 117637120,
+        "cpuPercent": 29.023603,
+        "availableBytes": 8075378688,
+        "editorBusy": false,
+        "editor": null
+      },
+      "timings": [
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 9,
+          "p50Ms": 9,
+          "p95Ms": 9,
+          "maxMs": 9
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793653366.4211662,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 117637120,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 47988736,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 16728064,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 268533760,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152549255964166,
+          "mach_continuous_time_ns": 285396035240916,
+          "wall_time_s": 815346166.348716,
+          "date": "2026-11-03T00:02:46.349+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 176882528,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 176915296
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 36652136,
+            "auxiliary": {
+              "phys_footprint_peak": 36815976,
+              "phys_footprint": 36684904
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 24134928,
+            "auxiliary": {
+              "phys_footprint_peak": 44827872,
+              "phys_footprint": 24167696
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 5571064,
+            "auxiliary": {
+              "phys_footprint_peak": 6259192,
+              "phys_footprint": 5603832
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 242978512,
+            "swapped": 0,
+            "clean": 31473664,
+            "reclaimable": 407633920,
+            "wired": 20529152,
+            "regions": 26558
+          }
+        },
+        "total footprint": 242978512,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152549309357458,
+          "mach_continuous_time_ns": 285396088634208,
+          "wall_time_s": 815346166.40211,
+          "date": "2026-11-03T00:02:46.402+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "cycle-1-opened",
+      "window": "main",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 1
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 2,
+        "destroyed": 0,
+        "destroyCalls": 0,
+        "live": 2,
+        "lanes": 3
+      },
+      "canvases": 2,
+      "rows": 29,
+      "library": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 100000,
+      "editor": {
+        "open": true,
+        "frames": 52920000,
+        "dirty": false
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 616103936,
+        "cpuPercent": 47.101536,
+        "availableBytes": 8186413056,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 2,
+          "logicalBytes": 423360000,
+          "ramBytes": 0,
+          "diskBytes": 423360000,
+          "storageCount": 1,
+          "cacheBytes": 92608740,
+          "undoSteps": 0,
+          "redoSteps": 0,
+          "openedMs": 612.4332919999999,
+          "lastWaveMs": 1129.301
+        }
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 5,
+          "errors": 0,
+          "lastMs": 7.999999999996362,
+          "p50Ms": 1,
+          "p95Ms": 7.999999999996362,
+          "maxMs": 7.999999999996362
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 614.0000000000036,
+          "p50Ms": 614.0000000000036,
+          "p95Ms": 614.0000000000036,
+          "maxMs": 614.0000000000036
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 7.999999999996362,
+          "p50Ms": 7.999999999996362,
+          "p95Ms": 7.999999999996362,
+          "maxMs": 7.999999999996362
+        },
+        {
+          "name": "editor_wave",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 1170,
+          "p50Ms": 1128,
+          "p95Ms": 1170,
+          "maxMs": 1170
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793653369.638342,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 616120320,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 45268992,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 13484032,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 203620352,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152552473294333,
+          "mach_continuous_time_ns": 285399252571083,
+          "wall_time_s": 815346169.566054,
+          "date": "2026-11-03T00:02:49.566+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 202507104,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 202539872
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 130319872,
+            "auxiliary": {
+              "phys_footprint_peak": 165398016,
+              "phys_footprint": 130352640
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 39765288,
+            "auxiliary": {
+              "phys_footprint_peak": 50464040,
+              "phys_footprint": 39798056
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6750712,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6783480
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 379080832,
+            "swapped": 30113792,
+            "clean": 455917568,
+            "reclaimable": 339869696,
+            "wired": 12042240,
+            "regions": 26791
+          }
+        },
+        "total footprint": 379080832,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152552528258416,
+          "mach_continuous_time_ns": 285399307535166,
+          "wall_time_s": 815346169.621018,
+          "date": "2026-11-03T00:02:49.621+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "cycle-1-spectrum",
+      "window": "main",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 1
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 2,
+        "destroyed": 0,
+        "destroyCalls": 0,
+        "live": 2,
+        "lanes": 3
+      },
+      "canvases": 2,
+      "rows": 29,
+      "library": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 100000,
+      "editor": {
+        "open": true,
+        "frames": 52920000,
+        "dirty": false
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 637140992,
+        "cpuPercent": 50.163708,
+        "availableBytes": 8163311616,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 2,
+          "logicalBytes": 423360000,
+          "ramBytes": 2097152,
+          "diskBytes": 423360000,
+          "storageCount": 2,
+          "cacheBytes": 106069652,
+          "undoSteps": 0,
+          "redoSteps": 1,
+          "openedMs": 612.4332919999999,
+          "lastWaveMs": 0.664
+        }
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 21,
+          "errors": 0,
+          "lastMs": 5,
+          "p50Ms": 3,
+          "p95Ms": 5,
+          "maxMs": 7.999999999996362
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 614.0000000000036,
+          "p50Ms": 614.0000000000036,
+          "p95Ms": 614.0000000000036,
+          "maxMs": 614.0000000000036
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 7.999999999996362,
+          "p50Ms": 7.999999999996362,
+          "p95Ms": 7.999999999996362,
+          "maxMs": 7.999999999996362
+        },
+        {
+          "name": "editor_wave",
+          "calls": 34,
+          "errors": 0,
+          "lastMs": 6,
+          "p50Ms": 5,
+          "p95Ms": 1128,
+          "maxMs": 1170
+        },
+        {
+          "name": "editor_apply.fadeOut",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 2,
+          "p95Ms": 7,
+          "maxMs": 7
+        },
+        {
+          "name": "editor_undo",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 4,
+          "p50Ms": 2,
+          "p95Ms": 6,
+          "maxMs": 6
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 1418.9999999999964,
+          "p50Ms": 1418.9999999999964,
+          "p95Ms": 1418.9999999999964,
+          "maxMs": 1418.9999999999964
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793653372.804172,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 637140992,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 52117504,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 13549568,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 248954880,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152555638560041,
+          "mach_continuous_time_ns": 285402417836791,
+          "wall_time_s": 815346172.731327,
+          "date": "2026-11-03T00:02:52.731+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 210224016,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 210256784
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 153224728,
+            "auxiliary": {
+              "phys_footprint_peak": 165398016,
+              "phys_footprint": 153257496
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 37750080,
+            "auxiliary": {
+              "phys_footprint_peak": 50464040,
+              "phys_footprint": 37782848
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6603256,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6636024
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 407539936,
+            "swapped": 30654464,
+            "clean": 456261632,
+            "reclaimable": 377831424,
+            "wired": 12025856,
+            "regions": 26830
+          }
+        },
+        "total footprint": 407539936,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152555693847250,
+          "mach_continuous_time_ns": 285402473124000,
+          "wall_time_s": 815346172.786615,
+          "date": "2026-11-03T00:02:52.787+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "cycle-1-closed",
+      "window": "main",
+      "visibility": "visible",
+      "focused": false,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 1
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 2,
+        "destroyed": 2,
+        "destroyCalls": 2,
+        "live": 0,
+        "lanes": 0
+      },
+      "canvases": 0,
+      "rows": 38,
+      "library": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 100000,
+      "editor": {
+        "open": false,
+        "frames": 0
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 214548480,
+        "cpuPercent": 2.849765,
+        "availableBytes": 8114044928,
+        "editorBusy": false,
+        "editor": null
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 23,
+          "errors": 0,
+          "lastMs": 3,
+          "p50Ms": 3,
+          "p95Ms": 5,
+          "maxMs": 7.999999999996362
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 614.0000000000036,
+          "p50Ms": 614.0000000000036,
+          "p95Ms": 614.0000000000036,
+          "maxMs": 614.0000000000036
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 7.999999999996362,
+          "p50Ms": 7.999999999996362,
+          "p95Ms": 7.999999999996362,
+          "maxMs": 7.999999999996362
+        },
+        {
+          "name": "editor_wave",
+          "calls": 35,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 5,
+          "p95Ms": 1128,
+          "maxMs": 1170
+        },
+        {
+          "name": "editor_apply.fadeOut",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 2,
+          "p95Ms": 7,
+          "maxMs": 7
+        },
+        {
+          "name": "editor_undo",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 4,
+          "p50Ms": 2,
+          "p95Ms": 6,
+          "maxMs": 6
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 1418.9999999999964,
+          "p50Ms": 1418.9999999999964,
+          "p95Ms": 1418.9999999999964,
+          "maxMs": 1418.9999999999964
+        },
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 26.999999999996362,
+          "p50Ms": 26.999999999996362,
+          "p95Ms": 26.999999999996362,
+          "maxMs": 26.999999999996362
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793653376.033351,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 214581248,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 52527104,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 13565952,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 250298368,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152558870429458,
+          "mach_continuous_time_ns": 285405649706208,
+          "wall_time_s": 815346175.963204,
+          "date": "2026-11-03T00:02:55.963+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 208487312,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 208520080
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 153076960,
+            "auxiliary": {
+              "phys_footprint_peak": 165398016,
+              "phys_footprint": 153109728
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 40666408,
+            "auxiliary": {
+              "phys_footprint_peak": 50464040,
+              "phys_footprint": 40699176
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6554104,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6586872
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 408522640,
+            "swapped": 28590080,
+            "clean": 32899072,
+            "reclaimable": 367362048,
+            "wired": 27115520,
+            "regions": 26721
+          }
+        },
+        "total footprint": 408522640,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152558922980375,
+          "mach_continuous_time_ns": 285405702257125,
+          "wall_time_s": 815346176.015755,
+          "date": "2026-11-03T00:02:56.016+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "cycle-2-opened",
+      "window": "main",
+      "visibility": "visible",
+      "focused": false,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 1
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 4,
+        "destroyed": 2,
+        "destroyCalls": 2,
+        "live": 2,
+        "lanes": 3
+      },
+      "canvases": 2,
+      "rows": 29,
+      "library": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 100000,
+      "editor": {
+        "open": true,
+        "frames": 52920000,
+        "dirty": false
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 658325504,
+        "cpuPercent": 46.51156,
+        "availableBytes": 8146501632,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 2,
+          "logicalBytes": 423360000,
+          "ramBytes": 0,
+          "diskBytes": 423360000,
+          "storageCount": 1,
+          "cacheBytes": 92608740,
+          "undoSteps": 0,
+          "redoSteps": 0,
+          "openedMs": 534.232875,
+          "lastWaveMs": 784.789
+        }
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 5,
+          "errors": 0,
+          "lastMs": 7,
+          "p50Ms": 1,
+          "p95Ms": 7,
+          "maxMs": 7
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 536,
+          "p50Ms": 536,
+          "p95Ms": 536,
+          "maxMs": 536
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 5,
+          "p50Ms": 5,
+          "p95Ms": 5,
+          "maxMs": 5
+        },
+        {
+          "name": "editor_wave",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 792,
+          "p50Ms": 784,
+          "p95Ms": 792,
+          "maxMs": 792
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793653378.851382,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 658358272,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 54509568,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 13565952,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 250855424,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152561685170916,
+          "mach_continuous_time_ns": 285408464447666,
+          "wall_time_s": 815346178.777952,
+          "date": "2026-11-03T00:02:58.778+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 213959568,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 213992336
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 167724592,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 167757360
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 39159104,
+            "auxiliary": {
+              "phys_footprint_peak": 60491072,
+              "phys_footprint": 39191872
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6537720,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6570488
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 427118840,
+            "swapped": 28311552,
+            "clean": 456261632,
+            "reclaimable": 387203072,
+            "wired": 12058624,
+            "regions": 26821
+          }
+        },
+        "total footprint": 427118840,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152561740462791,
+          "mach_continuous_time_ns": 285408519739541,
+          "wall_time_s": 815346178.833244,
+          "date": "2026-11-03T00:02:58.833+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "cycle-2-spectrum",
+      "window": "main",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 1
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 4,
+        "destroyed": 2,
+        "destroyCalls": 2,
+        "live": 2,
+        "lanes": 3
+      },
+      "canvases": 2,
+      "rows": 29,
+      "library": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 100000,
+      "editor": {
+        "open": true,
+        "frames": 52920000,
+        "dirty": false
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 640008192,
+        "cpuPercent": 50.091183,
+        "availableBytes": 8156545024,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 2,
+          "logicalBytes": 423360000,
+          "ramBytes": 2097152,
+          "diskBytes": 423360000,
+          "storageCount": 2,
+          "cacheBytes": 106069652,
+          "undoSteps": 0,
+          "redoSteps": 1,
+          "openedMs": 534.232875,
+          "lastWaveMs": 0.709
+        }
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 22,
+          "errors": 0,
+          "lastMs": 5.000000000007276,
+          "p50Ms": 3,
+          "p95Ms": 5.000000000007276,
+          "maxMs": 7
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 536,
+          "p50Ms": 536,
+          "p95Ms": 536,
+          "maxMs": 536
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 5,
+          "p50Ms": 5,
+          "p95Ms": 5,
+          "maxMs": 5
+        },
+        {
+          "name": "editor_wave",
+          "calls": 34,
+          "errors": 0,
+          "lastMs": 3,
+          "p50Ms": 5,
+          "p95Ms": 784,
+          "maxMs": 792
+        },
+        {
+          "name": "editor_apply.fadeOut",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 2,
+          "p95Ms": 10,
+          "maxMs": 10
+        },
+        {
+          "name": "editor_undo",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 2,
+          "p95Ms": 4,
+          "maxMs": 4
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 1430,
+          "p50Ms": 1430,
+          "p95Ms": 1430,
+          "maxMs": 1430
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793653382.0310469,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 640008192,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 61571072,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 13582336,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 268058624,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152564866311791,
+          "mach_continuous_time_ns": 285411645588541,
+          "wall_time_s": 815346181.959101,
+          "date": "2026-11-03T00:03:01.959+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 223658896,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 223691664
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 149292568,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 149325336
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 37586240,
+            "auxiliary": {
+              "phys_footprint_peak": 60491072,
+              "phys_footprint": 37619008
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6537720,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6570488
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 416813280,
+            "swapped": 27639808,
+            "clean": 456261632,
+            "reclaimable": 393723904,
+            "wired": 12042240,
+            "regions": 26876
+          }
+        },
+        "total footprint": 416813280,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152564920398208,
+          "mach_continuous_time_ns": 285411699674958,
+          "wall_time_s": 815346182.013187,
+          "date": "2026-11-03T00:03:02.013+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "cycle-2-closed",
+      "window": "main",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 1
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 4,
+        "destroyed": 4,
+        "destroyCalls": 4,
+        "live": 0,
+        "lanes": 0
+      },
+      "canvases": 0,
+      "rows": 38,
+      "library": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 100000,
+      "editor": {
+        "open": false,
+        "frames": 0
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 216645632,
+        "cpuPercent": 2.4249055,
+        "availableBytes": 8259993600,
+        "editorBusy": false,
+        "editor": null
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 24,
+          "errors": 0,
+          "lastMs": 3,
+          "p50Ms": 3,
+          "p95Ms": 5.000000000007276,
+          "maxMs": 7
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 536,
+          "p50Ms": 536,
+          "p95Ms": 536,
+          "maxMs": 536
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 5,
+          "p50Ms": 5,
+          "p95Ms": 5,
+          "maxMs": 5
+        },
+        {
+          "name": "editor_wave",
+          "calls": 35,
+          "errors": 0,
+          "lastMs": 3,
+          "p50Ms": 5,
+          "p95Ms": 784,
+          "maxMs": 792
+        },
+        {
+          "name": "editor_apply.fadeOut",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 2,
+          "p95Ms": 10,
+          "maxMs": 10
+        },
+        {
+          "name": "editor_undo",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 2,
+          "p95Ms": 4,
+          "maxMs": 4
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 1430,
+          "p50Ms": 1430,
+          "p95Ms": 1430,
+          "maxMs": 1430
+        },
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 24,
+          "p50Ms": 24,
+          "p95Ms": 24,
+          "maxMs": 24
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793653385.266156,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 216645632,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 62144512,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 13647872,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 270991360,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152568101036208,
+          "mach_continuous_time_ns": 285414880312958,
+          "wall_time_s": 815346185.193833,
+          "date": "2026-11-03T00:03:05.194+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 233898896,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 233931664
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 149079264,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 149112032
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 39044440,
+            "auxiliary": {
+              "phys_footprint_peak": 60491072,
+              "phys_footprint": 39077208
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6554104,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6586872
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 428314560,
+            "swapped": 27557888,
+            "clean": 32899072,
+            "reclaimable": 385712128,
+            "wired": 27115520,
+            "regions": 26805
+          }
+        },
+        "total footprint": 428314560,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152568153876958,
+          "mach_continuous_time_ns": 285414933153708,
+          "wall_time_s": 815346185.246674,
+          "date": "2026-11-03T00:03:05.247+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "cycle-3-opened",
+      "window": "main",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 1
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 6,
+        "destroyed": 4,
+        "destroyCalls": 4,
+        "live": 2,
+        "lanes": 3
+      },
+      "canvases": 2,
+      "rows": 29,
+      "library": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 100000,
+      "editor": {
+        "open": true,
+        "frames": 52920000,
+        "dirty": false
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 626933760,
+        "cpuPercent": 46.514973,
+        "availableBytes": 8321925120,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 2,
+          "logicalBytes": 423360000,
+          "ramBytes": 0,
+          "diskBytes": 423360000,
+          "storageCount": 1,
+          "cacheBytes": 92608740,
+          "undoSteps": 0,
+          "redoSteps": 0,
+          "openedMs": 530.354958,
+          "lastWaveMs": 792.625
+        }
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 5,
+          "errors": 0,
+          "lastMs": 7,
+          "p50Ms": 1,
+          "p95Ms": 7,
+          "maxMs": 7
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 531,
+          "p50Ms": 531,
+          "p95Ms": 531,
+          "maxMs": 531
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 4.999999999992724,
+          "p50Ms": 4.999999999992724,
+          "p95Ms": 4.999999999992724,
+          "maxMs": 4.999999999992724
+        },
+        {
+          "name": "editor_wave",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 800.0000000000073,
+          "p50Ms": 793,
+          "p95Ms": 800.0000000000073,
+          "maxMs": 800.0000000000073
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793653388.11098,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 626933760,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 64307200,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 13664256,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 277463040,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152570945296708,
+          "mach_continuous_time_ns": 285417724573458,
+          "wall_time_s": 815346188.0381,
+          "date": "2026-11-03T00:03:08.038+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 241566632,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 241599400
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 131532312,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 131565080
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 41239896,
+            "auxiliary": {
+              "phys_footprint_peak": 60491072,
+              "phys_footprint": 41272664
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6554104,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6586872
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 420630800,
+            "swapped": 26509312,
+            "clean": 456261632,
+            "reclaimable": 400048128,
+            "wired": 12042240,
+            "regions": 26888
+          }
+        },
+        "total footprint": 420630800,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152571000074750,
+          "mach_continuous_time_ns": 285417779351500,
+          "wall_time_s": 815346188.092878,
+          "date": "2026-11-03T00:03:08.093+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "cycle-3-spectrum",
+      "window": "main",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 1
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 6,
+        "destroyed": 4,
+        "destroyCalls": 4,
+        "live": 2,
+        "lanes": 3
+      },
+      "canvases": 2,
+      "rows": 29,
+      "library": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 100000,
+      "editor": {
+        "open": true,
+        "frames": 52920000,
+        "dirty": false
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 640303104,
+        "cpuPercent": 48.728622,
+        "availableBytes": 8309489664,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 2,
+          "logicalBytes": 423360000,
+          "ramBytes": 2097152,
+          "diskBytes": 423360000,
+          "storageCount": 2,
+          "cacheBytes": 106069652,
+          "undoSteps": 0,
+          "redoSteps": 1,
+          "openedMs": 530.354958,
+          "lastWaveMs": 0.73
+        }
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 21,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 3,
+          "p95Ms": 4,
+          "maxMs": 7
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 531,
+          "p50Ms": 531,
+          "p95Ms": 531,
+          "maxMs": 531
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 4.999999999992724,
+          "p50Ms": 4.999999999992724,
+          "p95Ms": 4.999999999992724,
+          "maxMs": 4.999999999992724
+        },
+        {
+          "name": "editor_wave",
+          "calls": 34,
+          "errors": 0,
+          "lastMs": 4,
+          "p50Ms": 4,
+          "p95Ms": 793,
+          "maxMs": 800.0000000000073
+        },
+        {
+          "name": "editor_apply.fadeOut",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 2,
+          "p95Ms": 8,
+          "maxMs": 8
+        },
+        {
+          "name": "editor_undo",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 4,
+          "p50Ms": 2,
+          "p95Ms": 10,
+          "maxMs": 10
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 1413,
+          "p50Ms": 1413,
+          "p95Ms": 1413,
+          "maxMs": 1413
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793653391.285611,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 640303104,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 58654720,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 13680640,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 284000256,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152574118729000,
+          "mach_continuous_time_ns": 285420898005750,
+          "wall_time_s": 815346191.21154,
+          "date": "2026-11-03T00:03:11.212+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 202326952,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 202359720
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 144885272,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 144918040
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 25806144,
+            "auxiliary": {
+              "phys_footprint_peak": 60491072,
+              "phys_footprint": 25838912
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6570488,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6603256
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 379326712,
+            "swapped": 26492928,
+            "clean": 456261632,
+            "reclaimable": 454868992,
+            "wired": 12025856,
+            "regions": 26868
+          }
+        },
+        "total footprint": 379326712,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152574172948125,
+          "mach_continuous_time_ns": 285420952224875,
+          "wall_time_s": 815346191.265759,
+          "date": "2026-11-03T00:03:11.266+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "detached-rendered",
+      "window": "editor-detached-1",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1100,
+        "height": 560,
+        "dpr": 1
+      },
+      "callbacks": 5,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 2,
+        "destroyed": 0,
+        "destroyCalls": 0,
+        "live": 2,
+        "lanes": 3
+      },
+      "canvases": 2,
+      "rows": 0,
+      "editor": {
+        "open": true,
+        "frames": 52920000,
+        "dirty": false
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 652017664,
+        "cpuPercent": 5.9749227,
+        "availableBytes": 8289927168,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 2,
+          "logicalBytes": 423360000,
+          "ramBytes": 2097152,
+          "diskBytes": 423360000,
+          "storageCount": 2,
+          "cacheBytes": 106069652,
+          "undoSteps": 0,
+          "redoSteps": 1,
+          "openedMs": 530.354958,
+          "lastWaveMs": 0.904
+        }
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 4,
+          "errors": 0,
+          "lastMs": 3,
+          "p50Ms": 2,
+          "p95Ms": 10,
+          "maxMs": 10
+        },
+        {
+          "name": "editor_prepare_transfer",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 9,
+          "p50Ms": 9,
+          "p95Ms": 9,
+          "maxMs": 9
+        },
+        {
+          "name": "editor_accept_transfer",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 4,
+          "p50Ms": 4,
+          "p95Ms": 4,
+          "maxMs": 4
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 39,
+          "p50Ms": 13.999999999999972,
+          "p95Ms": 39,
+          "maxMs": 39
+        },
+        {
+          "name": "editor_wave",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 13,
+          "p50Ms": 13,
+          "p95Ms": 13,
+          "maxMs": 13
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793653394.4007978,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 652017664,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 61964288,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 14663680,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 284000256,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        },
+        {
+          "pid": 65509,
+          "parent": 1,
+          "rssBytes": 108347392,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152577231530000,
+          "mach_continuous_time_ns": 285424010806750,
+          "wall_time_s": 815346194.324348,
+          "date": "2026-11-03T00:03:14.324+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 207750056,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 207782824
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 147654192,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 147686960
+            }
+          },
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65509,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 91456232,
+            "auxiliary": {
+              "phys_footprint_peak": 110150376,
+              "phys_footprint": 91489000
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 42583408,
+            "auxiliary": {
+              "phys_footprint_peak": 60491072,
+              "phys_footprint": 42616176
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6586872,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6619640
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 495719464,
+            "swapped": 22069248,
+            "clean": 460783616,
+            "reclaimable": 444432384,
+            "wired": 33538048,
+            "regions": 33040
+          }
+        },
+        "total footprint": 495719464,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152577287295166,
+          "mach_continuous_time_ns": 285424066571916,
+          "wall_time_s": 815346194.380113,
+          "date": "2026-11-03T00:03:14.380+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "cycle-3-returned",
+      "window": "main",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 1
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 8,
+        "destroyed": 6,
+        "destroyCalls": 6,
+        "live": 2,
+        "lanes": 3
+      },
+      "canvases": 2,
+      "rows": 29,
+      "library": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 100000,
+      "editor": {
+        "open": true,
+        "frames": 52920000,
+        "dirty": false
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 652263424,
+        "cpuPercent": 3.0044718,
+        "availableBytes": 8317353984,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 2,
+          "logicalBytes": 423360000,
+          "ramBytes": 2097152,
+          "diskBytes": 423360000,
+          "storageCount": 2,
+          "cacheBytes": 106069652,
+          "undoSteps": 0,
+          "redoSteps": 1,
+          "openedMs": 530.354958,
+          "lastWaveMs": 1.203
+        }
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 25,
+          "errors": 0,
+          "lastMs": 2.000000000007276,
+          "p50Ms": 3,
+          "p95Ms": 7,
+          "maxMs": 9.999999999992724
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 531,
+          "p50Ms": 531,
+          "p95Ms": 531,
+          "maxMs": 531
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 6,
+          "p50Ms": 4.999999999992724,
+          "p95Ms": 6,
+          "maxMs": 6
+        },
+        {
+          "name": "editor_wave",
+          "calls": 37,
+          "errors": 0,
+          "lastMs": 5,
+          "p50Ms": 4,
+          "p95Ms": 793,
+          "maxMs": 800.0000000000073
+        },
+        {
+          "name": "editor_apply.fadeOut",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 2,
+          "p95Ms": 8,
+          "maxMs": 8
+        },
+        {
+          "name": "editor_undo",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 4,
+          "p50Ms": 2,
+          "p95Ms": 10,
+          "maxMs": 10
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 1413,
+          "p50Ms": 1413,
+          "p95Ms": 1413,
+          "maxMs": 1413
+        },
+        {
+          "name": "editor_detach_window",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 362,
+          "p50Ms": 362,
+          "p95Ms": 362,
+          "maxMs": 362
+        },
+        {
+          "name": "editor_prepare_transfer",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 3.999999999992724,
+          "p50Ms": 3.999999999992724,
+          "p95Ms": 3.999999999992724,
+          "maxMs": 3.999999999992724
+        },
+        {
+          "name": "editor_accept_transfer",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 11.000000000007276,
+          "p50Ms": 11.000000000007276,
+          "p95Ms": 11.000000000007276,
+          "maxMs": 11.000000000007276
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793653396.223395,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 652263424,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 59621376,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 14729216,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 285261824,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152579059760750,
+          "mach_continuous_time_ns": 285425839037500,
+          "wall_time_s": 815346196.152583,
+          "date": "2026-11-03T00:03:16.153+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 218170280,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 218203048
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 147654192,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 147686960
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 54592856,
+            "auxiliary": {
+              "phys_footprint_peak": 61064536,
+              "phys_footprint": 54625624
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6521336,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6554104
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 426676520,
+            "swapped": 21659648,
+            "clean": 460881920,
+            "reclaimable": 414531584,
+            "wired": 20004864,
+            "regions": 26978
+          }
+        },
+        "total footprint": 426676520,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152579113156583,
+          "mach_continuous_time_ns": 285425892433333,
+          "wall_time_s": 815346196.205979,
+          "date": "2026-11-03T00:03:16.206+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "cycle-3-closed",
+      "window": "main",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 1
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 8,
+        "destroyed": 8,
+        "destroyCalls": 8,
+        "live": 0,
+        "lanes": 0
+      },
+      "canvases": 0,
+      "rows": 38,
+      "library": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 100000,
+      "editor": {
+        "open": false,
+        "frames": 0
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 228900864,
+        "cpuPercent": 2.2764704,
+        "availableBytes": 8362213376,
+        "editorBusy": false,
+        "editor": null
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 25,
+          "errors": 0,
+          "lastMs": 2.000000000007276,
+          "p50Ms": 3,
+          "p95Ms": 7,
+          "maxMs": 9.999999999992724
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 531,
+          "p50Ms": 531,
+          "p95Ms": 531,
+          "maxMs": 531
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 6,
+          "p50Ms": 4.999999999992724,
+          "p95Ms": 6,
+          "maxMs": 6
+        },
+        {
+          "name": "editor_wave",
+          "calls": 37,
+          "errors": 0,
+          "lastMs": 5,
+          "p50Ms": 4,
+          "p95Ms": 793,
+          "maxMs": 800.0000000000073
+        },
+        {
+          "name": "editor_apply.fadeOut",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 2,
+          "p95Ms": 8,
+          "maxMs": 8
+        },
+        {
+          "name": "editor_undo",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 4,
+          "p50Ms": 2,
+          "p95Ms": 10,
+          "maxMs": 10
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 1413,
+          "p50Ms": 1413,
+          "p95Ms": 1413,
+          "maxMs": 1413
+        },
+        {
+          "name": "editor_detach_window",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 362,
+          "p50Ms": 362,
+          "p95Ms": 362,
+          "maxMs": 362
+        },
+        {
+          "name": "editor_prepare_transfer",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 3.999999999992724,
+          "p50Ms": 3.999999999992724,
+          "p95Ms": 3.999999999992724,
+          "maxMs": 3.999999999992724
+        },
+        {
+          "name": "editor_accept_transfer",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 11.000000000007276,
+          "p50Ms": 11.000000000007276,
+          "p95Ms": 11.000000000007276,
+          "maxMs": 11.000000000007276
+        },
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 8.999999999992724,
+          "p50Ms": 8.999999999992724,
+          "p95Ms": 8.999999999992724,
+          "maxMs": 8.999999999992724
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793653398.9269671,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 228900864,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 53624832,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 14729216,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 280510464,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152581764037166,
+          "mach_continuous_time_ns": 285428543313916,
+          "wall_time_s": 815346198.856866,
+          "date": "2026-11-03T00:03:18.857+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 163890064,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 163922832
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 147440888,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 147473656
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 25462080,
+            "auxiliary": {
+              "phys_footprint_peak": 61064536,
+              "phys_footprint": 25494848
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6521336,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6554104
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 343052224,
+            "swapped": 21594112,
+            "clean": 37519360,
+            "reclaimable": 488718336,
+            "wired": 1556480,
+            "regions": 26897
+          }
+        },
+        "total footprint": 343052224,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152581816853416,
+          "mach_continuous_time_ns": 285428596130166,
+          "wall_time_s": 815346198.909682,
+          "date": "2026-11-03T00:03:18.910+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "closed-with-pending-spectrum",
+      "window": "main",
+      "visibility": "visible",
+      "focused": false,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 1
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 10,
+        "destroyed": 10,
+        "destroyCalls": 10,
+        "live": 0,
+        "lanes": 0
+      },
+      "canvases": 0,
+      "rows": 29,
+      "library": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 100000,
+      "editor": {
+        "open": false,
+        "frames": 0
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 215973888,
+        "cpuPercent": 41.924164,
+        "availableBytes": 8277278720,
+        "editorBusy": false,
+        "editor": null
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 6,
+          "errors": 0,
+          "lastMs": 3,
+          "p50Ms": 1,
+          "p95Ms": 6.999999999992724,
+          "maxMs": 6.999999999992724
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 534.9999999999927,
+          "p50Ms": 534.9999999999927,
+          "p95Ms": 534.9999999999927,
+          "maxMs": 534.9999999999927
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 5,
+          "p50Ms": 5,
+          "p95Ms": 5,
+          "maxMs": 5
+        },
+        {
+          "name": "editor_wave",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 1385,
+          "p50Ms": 1376,
+          "p95Ms": 1385,
+          "maxMs": 1385
+        },
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 18,
+          "p50Ms": 18,
+          "p95Ms": 18,
+          "maxMs": 18
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 1,
+          "lastMs": 36,
+          "p50Ms": 36,
+          "p95Ms": 36,
+          "maxMs": 36
+        }
+      ],
+      "sinceCloseMs": 25.999999999992724,
+      "screenLocked": false,
+      "capturedAt": 1793653402.691937,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 215990272,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 50315264,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 14843904,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 280215552,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152585529339208,
+          "mach_continuous_time_ns": 285432308615958,
+          "wall_time_s": 815346202.622177,
+          "date": "2026-11-03T00:03:22.622+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 190120848,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 190153616
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 134186232,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 134219000
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 44139840,
+            "auxiliary": {
+              "phys_footprint_peak": 61064536,
+              "phys_footprint": 44172608
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6521336,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6554104
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 374706112,
+            "swapped": 22102016,
+            "clean": 37519360,
+            "reclaimable": 442056704,
+            "wired": 34979840,
+            "regions": 26954
+          }
+        },
+        "total footprint": 374706112,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152585581429541,
+          "mach_continuous_time_ns": 285432360706291,
+          "wall_time_s": 815346202.674267,
+          "date": "2026-11-03T00:03:22.674+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "pending-work-drained",
+      "window": "main",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 1
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 10,
+        "destroyed": 10,
+        "destroyCalls": 10,
+        "live": 0,
+        "lanes": 0
+      },
+      "canvases": 0,
+      "rows": 38,
+      "library": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 100000,
+      "editor": {
+        "open": false,
+        "frames": 0
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 215990272,
+        "cpuPercent": 0.29098138,
+        "availableBytes": 8170700800,
+        "editorBusy": false,
+        "editor": null
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 6,
+          "errors": 0,
+          "lastMs": 3,
+          "p50Ms": 1,
+          "p95Ms": 6.999999999992724,
+          "maxMs": 6.999999999992724
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 534.9999999999927,
+          "p50Ms": 534.9999999999927,
+          "p95Ms": 534.9999999999927,
+          "maxMs": 534.9999999999927
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 5,
+          "p50Ms": 5,
+          "p95Ms": 5,
+          "maxMs": 5
+        },
+        {
+          "name": "editor_wave",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 1385,
+          "p50Ms": 1376,
+          "p95Ms": 1385,
+          "maxMs": 1385
+        },
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 18,
+          "p50Ms": 18,
+          "p95Ms": 18,
+          "maxMs": 18
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 1,
+          "lastMs": 36,
+          "p50Ms": 36,
+          "p95Ms": 36,
+          "maxMs": 36
+        }
+      ],
+      "sinceCloseMs": 220.99999999999272,
+      "screenLocked": false,
+      "capturedAt": 1793653402.861851,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 215990272,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 50315264,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 14843904,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 280215552,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152585697404416,
+          "mach_continuous_time_ns": 285432476681166,
+          "wall_time_s": 815346202.790242,
+          "date": "2026-11-03T00:03:22.790+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 190120848,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 190153616
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 134169848,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 134202616
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 44139840,
+            "auxiliary": {
+              "phys_footprint_peak": 61064536,
+              "phys_footprint": 44172608
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6521336,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6554104
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 374689728,
+            "swapped": 22102016,
+            "clean": 37519360,
+            "reclaimable": 442056704,
+            "wired": 34979840,
+            "regions": 26952
+          }
+        },
+        "total footprint": 374689728,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152585750937250,
+          "mach_continuous_time_ns": 285432530214000,
+          "wall_time_s": 815346202.843775,
+          "date": "2026-11-03T00:03:22.844+03:00"
+        },
+        "page size": 16384
+      }
+    },
+    {
+      "stage": "settled-after-close",
+      "window": "main",
+      "visibility": "visible",
+      "focused": false,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 1
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 10,
+        "destroyed": 10,
+        "destroyCalls": 10,
+        "live": 0,
+        "lanes": 0
+      },
+      "canvases": 0,
+      "rows": 38,
+      "library": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 100000,
+      "editor": {
+        "open": false,
+        "frames": 0
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 215810048,
+        "cpuPercent": 1.004854,
+        "availableBytes": 8260567040,
+        "editorBusy": false,
+        "editor": null
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 6,
+          "errors": 0,
+          "lastMs": 3,
+          "p50Ms": 1,
+          "p95Ms": 6.999999999992724,
+          "maxMs": 6.999999999992724
+        },
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 534.9999999999927,
+          "p50Ms": 534.9999999999927,
+          "p95Ms": 534.9999999999927,
+          "maxMs": 534.9999999999927
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 5,
+          "p50Ms": 5,
+          "p95Ms": 5,
+          "maxMs": 5
+        },
+        {
+          "name": "editor_wave",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 1385,
+          "p50Ms": 1376,
+          "p95Ms": 1385,
+          "maxMs": 1385
+        },
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 18,
+          "p50Ms": 18,
+          "p95Ms": 18,
+          "maxMs": 18
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 1,
+          "lastMs": 36,
+          "p50Ms": 36,
+          "p95Ms": 36,
+          "maxMs": 36
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793653413.067778,
+      "processes": [
+        {
+          "pid": 65103,
+          "parent": 65100,
+          "rssBytes": 215826432,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 65133,
+          "parent": 1,
+          "rssBytes": 50331648,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 65135,
+          "parent": 1,
+          "rssBytes": 14811136,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 65136,
+          "parent": 1,
+          "rssBytes": 279855104,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": {
+        "unit": "byte",
+        "bytes per unit": 1,
+        "start_time": {
+          "mach_absolute_time_ns": 152595905132625,
+          "mach_continuous_time_ns": 285442684409375,
+          "wall_time_s": 815346212.997995,
+          "date": "2026-11-03T00:03:32.998+03:00"
+        },
+        "processes": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 168854416,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 168887184
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 133956856,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 133989624
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 26166592,
+            "auxiliary": {
+              "phys_footprint_peak": 61064536,
+              "phys_footprint": 26199360
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6406648,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6439416
+            }
+          }
+        ],
+        "errors": [],
+        "warnings": [],
+        "summary": {
+          "total": {
+            "dirty": 335122368,
+            "swapped": 22036480,
+            "clean": 37519360,
+            "reclaimable": 481427456,
+            "wired": 14761984,
+            "regions": 26888
+          }
+        },
+        "total footprint": 335122368,
+        "shared": [],
+        "end_time": {
+          "mach_absolute_time_ns": 152595957317833,
+          "mach_continuous_time_ns": 285442736594583,
+          "wall_time_s": 815346213.05018,
+          "date": "2026-11-03T00:03:33.050+03:00"
+        },
+        "page size": 16384
+      }
+    }
+  ],
+  "finished": {
+    "ok": true
+  },
+  "limits": [
+    "Generated private audio/SQLite and production UI/native IPC; probe and renderer counters are injected only in a copied checkout.",
+    "Native RSS and per-process WebKit RSS/footprint are distinct observations, not disjoint physical totals.",
+    "No forced JavaScript GC; residual RSS alone is not proof of a leak.",
+    "Non-macOS smoke mode checks the scene but does not attribute WebView child memory.",
+    "Cohort attribution is accepted only if all candidate processes disappear after this host stops."
+  ],
+  "normalBinary": {
+    "before": "dc985290ebcbc44d388722271c0d075ec8b5711d490cbdf38381dfa98e8cdf49",
+    "after": "dc985290ebcbc44d388722271c0d075ec8b5711d490cbdf38381dfa98e8cdf49",
+    "releaseBefore": null,
+    "releaseAfter": null,
+    "unchanged": true
+  },
+  "sourceSha256": {
+    "src/main.ts": "6959b4c14098197c5116d3e7081ee2c5111c9ab78ae8471f60050524b1466efd",
+    "src/App.vue": "38809b10da8af40eec4acd39e197a3b4778aefb0f2babf004b60c04691f58cf2",
+    "src/EditorWindow.vue": "134c5e38101137704e50b42418788a32818caae6b9e609f0b14bd3fb0312a419",
+    "src/waveform-gl.ts": "57e2207452dfb5a9eed8383acbcaaddc5b64ed078fadce7b730140f1c9dcf2b7",
+    "src/stores/editor.ts": "d58b2924aac4ebbbf9d74a9e2e5d81ebed51b4247e8f2bc494ec7712c4ec11a4",
+    "src/components/EditorView.vue": "d4f7c50c914803fb6035a95b7691b74b09193f4d5c771279ca8e392d579dc256",
+    "src/composables/editor/spectrogram.ts": "c2fc63faa343c4329cde3e04909ee900c73f3c93d801e7bb58d80eba4f4c2c04",
+    "src-tauri/src/lib.rs": "f2b658b79931e69f88cbdf9a62b0513ffbecfd0579cf30c297e214f00bfac173",
+    "src-tauri/src/editor.rs": "6d69f828132ed65343df163581ada732bc8c9b2c4a7683ee41a6746a1c468304",
+    "src-tauri/src/editor/spectrogram.rs": "7b5e868b3a6c0bb201ed6dabe1970f7b3088fc5d8355e0830edb096359f89b9f",
+    "src-tauri/src/editor_commands.rs": "722efbea3bb00b6f964b38152ff9165f4bc1a25699624e1c466c89504afbbd5f",
+    "src-tauri/src/editor_commands/transfer.rs": "7f1b1ced340d1f37d10a7c6c4668621d7f3a42e4feca016fcdfe06bad616e723",
+    "scripts/profile-resources.mjs": "0399891c89d884055b3571126d372559c4d4ea922114d0b103b86ce709ce099a",
+    "scripts/resource-profile/probe.ts": "030b43cfd4291de16d5338d21981f1a8211b299c10d67d4ee95e459672e6981d",
+    "scripts/resource-profile/controller.py": "f35c15c2370fc63ed8ad9741d4949327ee7d554e168997caa342e29a1abd1f41",
+    "scripts/resource-profile/report.mjs": "d9bd884d29b16fc7e79acb4d172437e410b63a98950843e4cfffc4de9eafc983"
+  },
+  "sourceSnapshot": "Captured before copying and probe transforms; copied production files verified against these hashes.",
+  "sourceChangedDuringRun": [],
+  "audit": {
+    "passed": true,
+    "checks": [
+      {
+        "name": "scenario completed",
+        "passed": true,
+        "evidence": null
+      },
+      {
+        "name": "all lifecycle stages recorded",
+        "passed": true,
+        "evidence": []
+      },
+      {
+        "name": "visible unlocked observations",
+        "passed": true
+      },
+      {
+        "name": "native host observed",
+        "passed": true
+      },
+      {
+        "name": "ordinary binary unchanged",
+        "passed": true,
+        "evidence": {
+          "before": "dc985290ebcbc44d388722271c0d075ec8b5711d490cbdf38381dfa98e8cdf49",
+          "after": "dc985290ebcbc44d388722271c0d075ec8b5711d490cbdf38381dfa98e8cdf49",
+          "releaseBefore": null,
+          "releaseAfter": null,
+          "unchanged": true
+        }
+      },
+      {
+        "name": "attributed processes exited",
+        "passed": true,
+        "evidence": []
+      },
+      {
+        "name": "closed editors release native sessions",
+        "passed": true
+      },
+      {
+        "name": "closed editors release renderer ownership",
+        "passed": true
+      },
+      {
+        "name": "closed editors leave no animation frame",
+        "passed": true
+      },
+      {
+        "name": "callbacks return to baseline",
+        "passed": true,
+        "evidence": {
+          "baseline": 45,
+          "closed": [
+            {
+              "stage": "cycle-1-closed",
+              "callbacks": 45
+            },
+            {
+              "stage": "cycle-2-closed",
+              "callbacks": 45
+            },
+            {
+              "stage": "cycle-3-closed",
+              "callbacks": 45
+            },
+            {
+              "stage": "settled-after-close",
+              "callbacks": 45
+            }
+          ]
+        }
+      },
+      {
+        "name": "pending work eventually drains",
+        "passed": true,
+        "evidence": 220.99999999999272
+      },
+      {
+        "name": "library cache stays bounded",
+        "passed": true
+      }
+    ],
+    "memory": [
+      {
+        "stage": "baseline",
+        "window": "main",
+        "nativeRssBytes": 115965952,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 38010880
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 16662528
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 122421248
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 98730752,
+            "auxiliary": {
+              "phys_footprint_peak": 124568320,
+              "phys_footprint": 98763520
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 35062840,
+            "auxiliary": {
+              "phys_footprint_peak": 36586552,
+              "phys_footprint": 35095608
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 15024872,
+            "auxiliary": {
+              "phys_footprint_peak": 27493096,
+              "phys_footprint": 15057640
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 5521912,
+            "auxiliary": {
+              "phys_footprint_peak": 6259192,
+              "phys_footprint": 5554680
+            }
+          }
+        ],
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "library-scrolled",
+        "window": "main",
+        "nativeRssBytes": 117637120,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 47988736
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 16728064
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 268533760
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 176882528,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 176915296
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 36652136,
+            "auxiliary": {
+              "phys_footprint_peak": 36815976,
+              "phys_footprint": 36684904
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 24134928,
+            "auxiliary": {
+              "phys_footprint_peak": 44827872,
+              "phys_footprint": 24167696
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 5571064,
+            "auxiliary": {
+              "phys_footprint_peak": 6259192,
+              "phys_footprint": 5603832
+            }
+          }
+        ],
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "cycle-1-opened",
+        "window": "main",
+        "nativeRssBytes": 616120320,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 45268992
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 13484032
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 203620352
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 202507104,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 202539872
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 130319872,
+            "auxiliary": {
+              "phys_footprint_peak": 165398016,
+              "phys_footprint": 130352640
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 39765288,
+            "auxiliary": {
+              "phys_footprint_peak": 50464040,
+              "phys_footprint": 39798056
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6750712,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6783480
+            }
+          }
+        ],
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "cycle-1-spectrum",
+        "window": "main",
+        "nativeRssBytes": 637140992,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 52117504
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 13549568
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 248954880
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 210224016,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 210256784
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 153224728,
+            "auxiliary": {
+              "phys_footprint_peak": 165398016,
+              "phys_footprint": 153257496
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 37750080,
+            "auxiliary": {
+              "phys_footprint_peak": 50464040,
+              "phys_footprint": 37782848
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6603256,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6636024
+            }
+          }
+        ],
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "cycle-1-closed",
+        "window": "main",
+        "nativeRssBytes": 214581248,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 52527104
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 13565952
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 250298368
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 208487312,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 208520080
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 153076960,
+            "auxiliary": {
+              "phys_footprint_peak": 165398016,
+              "phys_footprint": 153109728
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 40666408,
+            "auxiliary": {
+              "phys_footprint_peak": 50464040,
+              "phys_footprint": 40699176
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6554104,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6586872
+            }
+          }
+        ],
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "cycle-2-opened",
+        "window": "main",
+        "nativeRssBytes": 658358272,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 54509568
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 13565952
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 250855424
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 213959568,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 213992336
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 167724592,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 167757360
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 39159104,
+            "auxiliary": {
+              "phys_footprint_peak": 60491072,
+              "phys_footprint": 39191872
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6537720,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6570488
+            }
+          }
+        ],
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "cycle-2-spectrum",
+        "window": "main",
+        "nativeRssBytes": 640008192,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 61571072
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 13582336
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 268058624
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 223658896,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 223691664
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 149292568,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 149325336
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 37586240,
+            "auxiliary": {
+              "phys_footprint_peak": 60491072,
+              "phys_footprint": 37619008
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6537720,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6570488
+            }
+          }
+        ],
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "cycle-2-closed",
+        "window": "main",
+        "nativeRssBytes": 216645632,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 62144512
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 13647872
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 270991360
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 233898896,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 233931664
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 149079264,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 149112032
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 39044440,
+            "auxiliary": {
+              "phys_footprint_peak": 60491072,
+              "phys_footprint": 39077208
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6554104,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6586872
+            }
+          }
+        ],
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "cycle-3-opened",
+        "window": "main",
+        "nativeRssBytes": 626933760,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 64307200
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 13664256
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 277463040
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 241566632,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 241599400
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 131532312,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 131565080
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 41239896,
+            "auxiliary": {
+              "phys_footprint_peak": 60491072,
+              "phys_footprint": 41272664
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6554104,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6586872
+            }
+          }
+        ],
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "cycle-3-spectrum",
+        "window": "main",
+        "nativeRssBytes": 640303104,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 58654720
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 13680640
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 284000256
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 202326952,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 202359720
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 144885272,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 144918040
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 25806144,
+            "auxiliary": {
+              "phys_footprint_peak": 60491072,
+              "phys_footprint": 25838912
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6570488,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6603256
+            }
+          }
+        ],
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "detached-rendered",
+        "window": "editor-detached-1",
+        "nativeRssBytes": 652017664,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 61964288
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 14663680
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 284000256
+          },
+          {
+            "pid": 65509,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 108347392
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 207750056,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 207782824
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 147654192,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 147686960
+            }
+          },
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65509,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 91456232,
+            "auxiliary": {
+              "phys_footprint_peak": 110150376,
+              "phys_footprint": 91489000
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 42583408,
+            "auxiliary": {
+              "phys_footprint_peak": 60491072,
+              "phys_footprint": 42616176
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6586872,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6619640
+            }
+          }
+        ],
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "cycle-3-returned",
+        "window": "main",
+        "nativeRssBytes": 652263424,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 59621376
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 14729216
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 285261824
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 218170280,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 218203048
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 147654192,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 147686960
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 54592856,
+            "auxiliary": {
+              "phys_footprint_peak": 61064536,
+              "phys_footprint": 54625624
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6521336,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6554104
+            }
+          }
+        ],
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "cycle-3-closed",
+        "window": "main",
+        "nativeRssBytes": 228900864,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 53624832
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 14729216
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 280510464
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 163890064,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 163922832
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 147440888,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 147473656
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 25462080,
+            "auxiliary": {
+              "phys_footprint_peak": 61064536,
+              "phys_footprint": 25494848
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6521336,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6554104
+            }
+          }
+        ],
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "closed-with-pending-spectrum",
+        "window": "main",
+        "nativeRssBytes": 215990272,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 50315264
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 14843904
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 280215552
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 190120848,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 190153616
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 134186232,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 134219000
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 44139840,
+            "auxiliary": {
+              "phys_footprint_peak": 61064536,
+              "phys_footprint": 44172608
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6521336,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6554104
+            }
+          }
+        ],
+        "sinceCloseMs": 25.999999999992724
+      },
+      {
+        "stage": "pending-work-drained",
+        "window": "main",
+        "nativeRssBytes": 215990272,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 50315264
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 14843904
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 280215552
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 190120848,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 190153616
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 134169848,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 134202616
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 44139840,
+            "auxiliary": {
+              "phys_footprint_peak": 61064536,
+              "phys_footprint": 44172608
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6521336,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6554104
+            }
+          }
+        ],
+        "sinceCloseMs": 220.99999999999272
+      },
+      {
+        "stage": "settled-after-close",
+        "window": "main",
+        "nativeRssBytes": 215826432,
+        "webkitRss": [
+          {
+            "pid": 65133,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 50331648
+          },
+          {
+            "pid": 65135,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 14811136
+          },
+          {
+            "pid": 65136,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 279855104
+          }
+        ],
+        "footprint": [
+          {
+            "name": "com.apple.WebKit.WebContent",
+            "pid": 65136,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 168854416,
+            "auxiliary": {
+              "phys_footprint_peak": 381748064,
+              "phys_footprint": 168887184
+            }
+          },
+          {
+            "name": "fonicca-resource-probe",
+            "pid": 65103,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 133956856,
+            "auxiliary": {
+              "phys_footprint_peak": 182584880,
+              "phys_footprint": 133989624
+            }
+          },
+          {
+            "name": "com.apple.WebKit.GPU",
+            "pid": 65133,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 26166592,
+            "auxiliary": {
+              "phys_footprint_peak": 61064536,
+              "phys_footprint": 26199360
+            }
+          },
+          {
+            "name": "com.apple.WebKit.Networking",
+            "pid": 65135,
+            "translated": false,
+            "page size": 16384,
+            "footprint": 6406648,
+            "auxiliary": {
+              "phys_footprint_peak": 6963704,
+              "phys_footprint": 6439416
+            }
+          }
+        ],
+        "sinceCloseMs": null
+      }
+    ],
+    "limits": [
+      "Ownership counters do not measure JavaScript garbage collection or GPU driver memory.",
+      "Per-process RSS/footprint are not disjoint physical totals and must not be summed with PCM counters.",
+      "No RSS limit or memory-leak conclusion is inferred from one process snapshot."
+    ]
+  }
+}

@@ -47,6 +47,16 @@ DSP time. Device playback and model inference are outside this scenario.
 - `resource-lifecycle-after-cancellation-2026-11-02.json`: all lifecycle stages ran,
   but the ordinary debug binary changed during the run. The strict isolation gate
   rejects it; its memory values are diagnostic evidence only.
+- `resource-lifecycle-verified-2026-11-02.json`: completed repeat after cancellation;
+  all 16 stages and 12 recorded gates passed, with unchanged ordinary binaries and
+  no source changes. At the first post-close checkpoint (26 ms), the spectrogram
+  request had already drained and native RSS was 206.0 MiB. The later drain
+  checkpoint includes the intervening OS memory observation overhead, so its
+  221 ms timestamp is not the cancellation duration. Closed stages had zero live
+  renderer owners, lanes, canvases and RAF; callbacks returned to 45. All attributed
+  processes exited. The final request explicitly awaited wave completion; baseline
+  pending snapshots also show only spectrum work, but timings are observations
+  from separate runs, not a controlled latency benchmark.
 
 The production fix gives each native editor session a cooperative analysis token.
 Audio edits, undo/redo, transfer and session destruction cancel old work. STFT checks

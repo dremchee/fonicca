@@ -15,6 +15,8 @@ test('resource audit rejects incomplete evidence and retained native/UI resource
     (r: any) => { r.finished.ok = false },
     (r: any) => { r.checkpoints = r.checkpoints.filter((p: any) => p.stage !== 'detached-rendered') },
     (r: any) => { r.normalBinary.unchanged = false },
+    (r: any) => { r.sourceChangedDuringRun = ['src/main.ts'] },
+    (r: any) => { delete r.checkpoints[0].processes },
     (r: any) => { r.cohortRemainingAfterHostExit = [123] },
     (r: any) => { r.checkpoints.find((p: any) => p.stage === 'cycle-1-closed').resources.live = 1 },
     (r: any) => { r.checkpoints.find((p: any) => p.stage === 'cycle-1-closed').pendingRaf = 1 },
