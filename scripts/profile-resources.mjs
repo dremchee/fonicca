@@ -165,6 +165,21 @@ try {
     await run(join(bundleDir, 'appimage', image), ['--appimage-extract'], { cwd: root })
     config.binary = join(root, 'squashfs-root/usr/bin/fonicca-resource-probe')
     config.launch = join(root, 'squashfs-root/AppRun')
+    // Inspect the actual extracted package, not a raw-binary substitute.
+    await run(python, ['-c', `
+from pathlib import Path
+import subprocess, sys
+app = Path(sys.argv[1])
+print('AppImage launcher:', subprocess.check_output(['file', str(app / 'AppRun')], text=True).strip(), flush=True)
+strings = subprocess.check_output(['strings', str(app / 'AppRun')], text=True)
+print('AppRun environment-related strings:', flush=True)
+for line in [line for line in strings.splitlines() if any(key in line for key in ['GST_', 'LD_LIBRARY_PATH', 'WEBKIT', 'APPDIR', 'XDG_DATA'])][:60]:
+    print(line, flush=True)
+plugins = sorted(path for path in app.rglob('*') if any(key in path.name.lower() for key in ['gstreamer', 'gstapp', 'gst-plugin-scanner']))
+print('Bundled GStreamer paths (%d total, first 80):' % len(plugins), flush=True)
+for path in plugins[:80]:
+    print(str(path.relative_to(app)), flush=True)
+`, join(root, 'squashfs-root')], { echo: true })
   }
   config.bundle = bundle
   writeFileSync(join(root, 'controller.json'), JSON.stringify(config))
