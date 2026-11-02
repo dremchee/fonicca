@@ -87,5 +87,14 @@ the editor but failed native window transfer with `appsink not found`, even thou
 the host's base/good plugins were installed. Packaging and actual transfer must
 both pass; a successful host `gst-inspect` alone does not validate the AppImage.
 
+Linux uses the application's normal shared WebKit context with its data directory
+overridden to the private fixture. Injecting incognito into both windows caused a
+fixture-only transfer timeout: Wry 0.57 creates a fresh ephemeral context per view,
+whereas Tauri runtime 2.12 caches custom-protocol registration by the shared data
+directory. The second ephemeral context therefore had no application protocol.
+macOS/Windows probes keep their existing private-browsing setting. Reports record
+the mode explicitly; database/model directories are verified before seeding on
+every platform.
+
 Passing Node/Rust tests, YAML parsing or a macOS measurement does not establish that
 Windows/Linux packaged UI smoke passed. Actual workflow results must be inspected.

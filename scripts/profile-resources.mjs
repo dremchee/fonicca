@@ -20,6 +20,11 @@ if (existsSync(reportPath)) throw Error('Refusing to overwrite an existing repor
 const root = mkdtempSync(join(tmpdir(), 'fonicca-resources-'))
 const frontend = join(root, 'frontend'), native = join(root, 'native')
 const identifier = 'app.fonicca.resourceprobe'
+// Linux Wry creates a separate ephemeral context per incognito WebView, while
+// Tauri caches protocol registration by data directory. A second window then
+// loses its app protocol. Match production there; appDirectoriesOverride already
+// gives both views a private shared data directory.
+const privateBrowsing = platform() !== 'linux'
 const sha = path => createHash('sha256').update(readFileSync(path)).digest('hex')
 const ordinaryBinary = join(repo, 'src-tauri/target/debug', platform() === 'win32' ? 'fonicca.exe' : 'fonicca')
 const ordinaryRelease = join(repo, 'src-tauri/target/release', platform() === 'win32' ? 'fonicca.exe' : 'fonicca')
@@ -67,7 +72,7 @@ function audio(path, seconds) {
 }
 const port = await new Promise(accept => { const server = createServer(); server.listen(0, '127.0.0.1', () => { const port = server.address().port; server.close(() => accept(port)) }) })
 const config = { identifier, token: randomBytes(24).toString('hex'), rows: smoke ? 1000 : 100000,
-  seconds: smoke ? 30 : 1200, cycles: smoke ? 1 : 3, smoke, port, sourceRevision,
+  seconds: smoke ? 30 : 1200, cycles: smoke ? 1 : 3, smoke, port, sourceRevision, privateBrowsing,
   data: join(root, 'data'), audio: join(root, 'audio'), controllerUrl: `http://127.0.0.1:${port}`,
   binary: join(repo, 'src-tauri/target/debug', platform() === 'win32' ? 'fonicca-resource-probe.exe' : 'fonicca-resource-probe') }
 console.log(`Resource fixture: ${root}`)
@@ -98,7 +103,7 @@ try {
     ['Cargo.toml', 'name = "fonicca_lib"', 'name = "fonicca_probe_lib"'],
     ['Cargo.lock', 'name = "fonicca"', 'name = "fonicca-resource-probe"'],
     ['src/main.rs', 'fonicca_lib::run()', 'fonicca_probe_lib::run()'],
-    ['src/editor_commands/transfer.rs', '.title(title).inner_size', '.incognito(true).title(title).inner_size'],
+    ...(privateBrowsing ? [['src/editor_commands/transfer.rs', '.title(title).inner_size', '.incognito(true).title(title).inner_size']] : []),
   ]) { const path = join(native, file), text = readFileSync(path, 'utf8'); if (!text.includes(before)) throw Error(`Fixture source mismatch: ${file}`); writeFileSync(path, text.replace(before, after)) }
   symlinkSync(native, join(frontend, 'src-tauri'), platform() === 'win32' ? 'junction' : 'dir')
   const capabilityPath = join(native, 'capabilities/default.json'), capability = JSON.parse(readFileSync(capabilityPath))
@@ -135,7 +140,7 @@ try {
   tauri.build.devUrl = `http://127.0.0.1:${port}`; tauri.build.frontendDist = '../frontend/dist'
   tauri.build.beforeBuildCommand = ''; tauri.build.beforeDevCommand = ''
   tauri.app.appDirectoriesOverride = { data: config.data, config: config.data, localData: join(root, 'webview'), cache: join(root, 'cache'), log: join(root, 'logs') }
-  tauri.app.windows[0] = { ...tauri.app.windows[0], width: 1280, height: 760, incognito: true }
+  tauri.app.windows[0] = { ...tauri.app.windows[0], width: 1280, height: 760, incognito: privateBrowsing }
   tauri.plugins.updater.endpoints = []
   tauri.bundle.createUpdaterArtifacts = false
   tauri.bundle.macOS = { ...tauri.bundle.macOS, signingIdentity: '-', providerShortName: null }

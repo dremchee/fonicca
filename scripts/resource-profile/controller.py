@@ -196,6 +196,7 @@ for _ in range(60):
     time.sleep(.5)
 result = {'schema': 1, 'status': 'failed' if failure else 'measured', 'error': failure,
           'platform': sys.platform, 'bundle': config.get('bundle'), 'nativeProfile': 'release', 'mode': 'smoke' if config['smoke'] else 'memory',
+          'privateBrowsing': config.get('privateBrowsing'),
           'identifier': config['identifier'], 'nativeHostPid': host.pid,
           'sourceRevision': config['sourceRevision'], 'binarySha256': hashlib.sha256(binary_data).hexdigest(),
           'beforeWebKitPids': sorted(prior), 'cohortPids': sorted(cohort), 'cohortRemainingAfterHostExit': sorted(remaining),
