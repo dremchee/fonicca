@@ -1,0 +1,37 @@
+{
+  "schema": 1,
+  "date": "2026-11-02",
+  "dirtyWorktree": true,
+  "sourceSha256": {
+    "src/composables/editor/waveform.ts": "2d5a82d8fb8cf474e8109ab326788c26dcbec6e363895499d2e014486332c169",
+    "tests/editor-waveform.test.ts": "1d7f27fbfa456a0668c2ed2e7e147480b12166b882ecf0db9cfcdef6bd4931fd"
+  },
+  "regression": {
+    "viewportCssPixels": 7680,
+    "pixelRatio": 2,
+    "audioFrames": 1000000,
+    "visibleFrames": 200000,
+    "columnsCap": 16384,
+    "smallPans": 20,
+    "explicitRefreshes": 1,
+    "beforeExtraReads": 21,
+    "afterExtraReads": 0,
+    "zoomRefinementReads": 1
+  },
+  "scheduling": {
+    "viewportChangesWhilePending": 50,
+    "readsBeforeFirstResolve": 1,
+    "readsAfterFirstResolve": 2,
+    "maxConcurrent": 1,
+    "readsAfterCloseAndLateResponse": 2,
+    "publishedAfterClose": false
+  },
+  "checks": {
+    "loaderTests": 6,
+    "passed": 6
+  },
+  "limits": [
+    "Synthetic loader tests; not native/GPU timing.",
+    "Already running native work is not forcibly canceled."
+  ]
+}
