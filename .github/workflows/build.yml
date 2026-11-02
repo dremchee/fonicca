@@ -141,7 +141,8 @@ jobs:
           sudo apt-get install --no-install-recommends -y \
             build-essential pkg-config libssl-dev libwebkit2gtk-4.1-dev \
             libayatana-appindicator3-dev librsvg2-dev patchelf \
-            libasound2-dev libudev-dev libfuse2t64 xdg-utils
+            libasound2-dev libudev-dev libfuse2t64 xdg-utils \
+            gstreamer1.0-tools gstreamer1.0-plugins-base gstreamer1.0-plugins-good
 
       - uses: pnpm/action-setup@v6
 
