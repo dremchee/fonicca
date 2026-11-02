@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { sidebarHidden } from '@/composables/sidebarVisibility'
 import { usePixelCanvas } from '@/composables/pixelCanvas'
 import { Spinner } from '@/components/ui/spinner'
 import type { GridMode } from '@/composables/editor/grid'
 import type { Marker } from '@/stores/editor'
-import { Magnet, Maximize2, SlidersHorizontal, ZoomIn, ZoomOut } from '@lucide/vue'
+import { Magnet, Maximize2, PanelLeftClose, PanelLeftOpen, SlidersHorizontal, ZoomIn, ZoomOut } from '@lucide/vue'
 import { useLocalStorage } from '@vueuse/core'
 import { computed, nextTick, ref, shallowRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -643,6 +644,17 @@ const toolbarActions: Record<EditorToolAction, () => unknown> = {
         <Hint :text="t('editor.toolbar.zoomIn')" shortcut="+">
           <Button variant="ghost" size="icon-sm" @click="editor.selection ? zoomToSelection() : zoom(0.5, editor.cursor)">
             <ZoomIn />
+          </Button>
+        </Hint>
+        <Hint v-if="embedded" :text="t(sidebarHidden ? 'sidebar.showSidebar' : 'sidebar.hideSidebar')">
+          <Button
+            variant="ghost" size="icon-sm"
+            :aria-label="t(sidebarHidden ? 'sidebar.showSidebar' : 'sidebar.hideSidebar')"
+            :aria-pressed="!sidebarHidden"
+            @click="sidebarHidden = !sidebarHidden"
+          >
+            <PanelLeftOpen v-if="sidebarHidden" />
+            <PanelLeftClose v-else />
           </Button>
         </Hint>
         <Hint :text="t('editor.toolbar.fit')" shortcut="0">

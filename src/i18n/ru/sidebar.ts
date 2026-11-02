@@ -1,6 +1,8 @@
 import type en from '../en/sidebar'
 
 export default {
+  hideSidebar: 'Скрыть боковую панель',
+  showSidebar: 'Показать боковую панель',
   addFolders: 'Добавить папки',
   backToLibrary: 'К библиотеке',
   settings: 'Настройки',

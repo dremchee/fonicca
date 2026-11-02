@@ -18,7 +18,7 @@ import { t } from '@/i18n'
 import { usePlayerStore } from '@/stores/player'
 import { useWaveformBackgrounds } from '@/composables/waveformBackgrounds'
 
-const PAGE_SIZE = 200
+export const PAGE_SIZE = 200
 
 /** "1,234 samples" in the current language. */
 function countSamples(n: number) {
@@ -69,7 +69,19 @@ export const useLibraryStore = defineStore('library', () => {
   const pageCache = createLibraryPages({
     pages, pageSize: PAGE_SIZE,
     fetch: page => api.listSamples(filter.value, page * PAGE_SIZE, PAGE_SIZE),
-    protectedPages: () => focusIndex.value < 0 ? [] : [Math.floor(focusIndex.value / PAGE_SIZE)],
+    protectedPages: () => {
+      const protectedPages = focusIndex.value < 0 ? [] : [Math.floor(focusIndex.value / PAGE_SIZE)]
+      const playingId = usePlayerStore().playingId
+      if (playingId !== null) {
+        for (const [page, samples] of pages) {
+          if (samples.some(sample => sample.id === playingId)) {
+            protectedPages.push(page)
+            break
+          }
+        }
+      }
+      return protectedPages
+    },
   })
   const { sampleAt, ensureRange, ensureVisibleRange } = pageCache
   onScopeDispose(pageCache.dispose)

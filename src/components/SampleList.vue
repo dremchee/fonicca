@@ -5,7 +5,7 @@ import { useTagColors } from '@/composables/tagColors'
 import type { Sample } from '@/api'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { AudioLines, ChevronRight, FolderPlus, Layers, Pause, Play, SearchX, Sparkles, Star, Tag, Volume2, X } from '@lucide/vue'
-import { onKeyStroke, useEventListener } from '@vueuse/core'
+import { createReusableTemplate, onKeyStroke, useEventListener, usePreferredReducedMotion, useScroll } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, ref, watch } from 'vue'
 import { isTauri } from '@tauri-apps/api/core'
@@ -28,7 +28,7 @@ import { Button } from '@/components/ui/button'
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { openEditor, useEditorStore } from '@/stores/editor'
-import { useLibraryStore } from '@/stores/library'
+import { PAGE_SIZE, useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -101,7 +101,29 @@ onKeyStroke(['s', 'ы'], (e) => {
 })
 
 const scroller = ref<HTMLElement | null>(null)
+const { y: scrollTop } = useScroll(scroller)
+const reducedMotion = usePreferredReducedMotion()
+const playingIndex = computed(() => {
+  if (player.playingId === null) return -1
+  for (const [page, samples] of library.pages) {
+    const offset = samples.findIndex(sample => sample.id === player.playingId && sample.stemParentId == null)
+    if (offset >= 0) return page * PAGE_SIZE + offset
+  }
+  return -1
+})
 
+const pinnedSample = computed(() => playingIndex.value >= 0 && scrollTop.value >= (playingIndex.value + 1) * ROW_HEIGHT
+  ? library.sampleAt(playingIndex.value) ?? null : null)
+const listSurface = ref<HTMLElement | null>(null)
+const [DefineRow, RenderRow] = createReusableTemplate<{
+  s: Sample
+  item: { index: number, start: number, size: number }
+  stemChild: boolean
+  groupStart: boolean
+  groupEnd: boolean
+  grouped: boolean
+  pinned: boolean
+}>()
 const virtualizer = useVirtualizer(computed(() => ({
   count: total.value,
   getScrollElement: () => scroller.value,
@@ -236,87 +258,24 @@ function onDragStart(e: DragEvent, sample: Sample) {
 </script>
 
 <template>
-  <div class="sample-list flex-1 min-w-0 min-h-0 flex flex-col">
-    <div v-if="similarTo" class="h-9 shrink-0 px-3 flex items-center gap-2 border-b border-border bg-primary-soft text-sm">
-      <AudioLines class="size-4 text-primary" />
-      <span class="truncate">{{ t('list.similar.soundsLike') }} <span class="font-medium">{{ similarTo.name }}</span></span>
-      <span class="text-muted-foreground text-xs">{{ t('list.similar.mostSimilarFirst') }}</span>
-      <Hint :text="t('list.similar.back')" shortcut="Esc">
-        <Button variant="ghost" size="icon-sm" class="ml-auto" :aria-label="t('list.similar.back')" @click="library.exitSimilar()">
-          <X />
-        </Button>
-      </Hint>
-    </div>
-    <div ref="tableViewport" class="table-viewport flex-1 min-w-0 min-h-0 overflow-x-auto">
-      <div class="table-content relative flex flex-col h-full" :style="total > 0 ? tableStyle : undefined">
-        <div v-if="total > 0" class="header grid items-center px-3 h-8 border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
-          <span />
-          <SampleColumnHeader
-            :direction="similarTo ? null : library.sort.by === 'name' ? library.sort.direction : null"
-            :sort-disabled="!!similarTo" @sort="library.setSort('name')"
-            :label="t('list.columns.name')" :min-width="sampleColumnLimits('name').min" :max-width="sampleColumnLimits('name').max"
-            @resize="previewColumnWidth('name', $event)" @commit="commitColumnWidth('name', $event)"
-            @cancel="cancelColumnResize" @reset="resetColumnWidths('name')"
-          />
-          <SampleColumnHeader
-            v-for="column in visibleColumns" :key="column.id"
-            :direction="similarTo ? null : library.sort.by === column.id ? library.sort.direction : null"
-            :sort-disabled="!!similarTo || column.id === 'directory'" @sort="column.id !== 'directory' && library.setSort(column.id)"
-            :label="column.id === 'bpm' ? 'BPM' : t(`list.columns.${column.id}`)"
-            :min-width="sampleColumnLimits(column.id).min" :max-width="sampleColumnLimits(column.id).max"
-            :align-right="column.id === 'bpm' || column.id === 'length'"
-            @resize="previewColumnWidth(column.id, $event)" @commit="commitColumnWidth(column.id, $event)"
-            @cancel="cancelColumnResize" @reset="resetColumnWidths(column.id)"
-          />
-          <span aria-hidden="true" />
-        </div>
-
-        <Tooltip>
-        <ContextMenu v-model:open="menuOpen">
-          <ContextMenuTrigger as-child :disabled="nativeMenus">
-            <div ref="scroller" class="flex-1 min-h-0 overflow-y-auto outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" tabindex="0" :aria-label="t('sidebar.allSamples')" @contextmenu="onContextMenu">
-              <Empty v-if="total === 0" class="h-full">
-                <EmptyHeader>
-                  <EmptyMedia variant="icon">
-                    <component :is="empty.icon" />
-                  </EmptyMedia>
-                  <EmptyTitle>{{ empty.title }}</EmptyTitle>
-                  <EmptyDescription v-if="empty.text">
-                    {{ empty.text }}
-                  </EmptyDescription>
-                </EmptyHeader>
-                <EmptyContent v-if="!library.sources.length || library.query || library.hasAnalysisFilters">
-                  <div class="flex gap-2">
-                    <Button v-if="!library.sources.length" size="sm" @click="library.addSources()">
-                      <FolderPlus /> {{ t('list.empty.addFolders') }}
-                    </Button>
-                    <Button v-if="library.query" variant="outline" size="sm" @click="library.query = ''">
-                      {{ t('list.empty.clearSearch') }}
-                    </Button>
-                    <Button v-if="library.hasAnalysisFilters" variant="outline" size="sm" @click="library.clearAnalysisFilters()">
-                      {{ t('list.empty.clearFilters') }}
-                    </Button>
-                  </div>
-                </EmptyContent>
-              </Empty>
-
-              <div v-else class="relative w-full" :style="{ height: `${virtualizer.getTotalSize()}px` }">
-                <template v-for="{ item, sample: s, stemChild, groupStart, groupEnd, grouped } in rows" :key="item.index">
+  <DefineRow v-slot="{ s, item, stemChild, groupStart, groupEnd, grouped, pinned }">
                   <div
-                    v-if="s"
                     class="row grid items-center px-3 absolute inset-x-0 tabular"
                     :class="{
                       selected: selectedIds.has(s.id),
                       focused: item.index === focusIndex,
                       playing: player.isPlaying(s.id),
+                      paused: player.playingId === s.id && player.paused,
+                      pinned,
                       'stem-parent': library.expandedStems.has(s.id),
                       'stem-child': stemChild,
                       grouped,
                       'group-start': groupStart,
                       'group-end': groupEnd,
                     }"
-                    :style="{ height: `${item.size - 4}px`, transform: `translateY(${item.start + 2}px)` }"
+                    :style="{ height: `${pinned ? item.size : item.size - 4}px`, transform: `translateY(${pinned ? 0 : item.start + 2}px)` }"
                     :data-index="item.index"
+                    :data-pinned="pinned || undefined"
                     draggable="true"
                     @mousedown="onMouseDown($event, item.index, s)"
                     @click="onClick(item.index)"
@@ -388,6 +347,79 @@ function onDragStart(e: DragEvent, sample: Sample) {
                         <span :class="s.favorite ? 'i-lucide-star text-amber-400' : 'i-lucide-star'" class="text-xs" />
                       </button>
                   </div>
+  </DefineRow>
+  <div class="sample-list flex-1 min-w-0 min-h-0 flex flex-col">
+    <div v-if="similarTo" class="h-9 shrink-0 px-3 flex items-center gap-2 border-b border-border bg-primary-soft text-sm">
+      <AudioLines class="size-4 text-primary" />
+      <span class="truncate">{{ t('list.similar.soundsLike') }} <span class="font-medium">{{ similarTo.name }}</span></span>
+      <span class="text-muted-foreground text-xs">{{ t('list.similar.mostSimilarFirst') }}</span>
+      <Hint :text="t('list.similar.back')" shortcut="Esc">
+        <Button variant="ghost" size="icon-sm" class="ml-auto" :aria-label="t('list.similar.back')" @click="library.exitSimilar()">
+          <X />
+        </Button>
+      </Hint>
+    </div>
+    <div ref="tableViewport" class="table-viewport flex-1 min-w-0 min-h-0 overflow-x-auto">
+      <div class="table-content relative flex flex-col h-full" :style="total > 0 ? tableStyle : undefined">
+        <div v-if="total > 0" class="header grid items-center px-3 h-8 border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
+          <span />
+          <SampleColumnHeader
+            :direction="similarTo ? null : library.sort.by === 'name' ? library.sort.direction : null"
+            :sort-disabled="!!similarTo" @sort="library.setSort('name')"
+            :label="t('list.columns.name')" :min-width="sampleColumnLimits('name').min" :max-width="sampleColumnLimits('name').max"
+            @resize="previewColumnWidth('name', $event)" @commit="commitColumnWidth('name', $event)"
+            @cancel="cancelColumnResize" @reset="resetColumnWidths('name')"
+          />
+          <SampleColumnHeader
+            v-for="column in visibleColumns" :key="column.id"
+            :direction="similarTo ? null : library.sort.by === column.id ? library.sort.direction : null"
+            :sort-disabled="!!similarTo || column.id === 'directory'" @sort="column.id !== 'directory' && library.setSort(column.id)"
+            :label="column.id === 'bpm' ? 'BPM' : t(`list.columns.${column.id}`)"
+            :min-width="sampleColumnLimits(column.id).min" :max-width="sampleColumnLimits(column.id).max"
+            :align-right="column.id === 'bpm' || column.id === 'length'"
+            @resize="previewColumnWidth(column.id, $event)" @commit="commitColumnWidth(column.id, $event)"
+            @cancel="cancelColumnResize" @reset="resetColumnWidths(column.id)"
+          />
+          <span aria-hidden="true" />
+        </div>
+
+        <Tooltip>
+        <ContextMenu v-model:open="menuOpen">
+          <ContextMenuTrigger as-child :disabled="nativeMenus">
+            <div ref="listSurface" class="relative isolate flex-1 min-h-0 overflow-hidden" @contextmenu="onContextMenu">
+            <div ref="scroller" class="h-full min-h-0 overflow-y-auto outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" tabindex="0" :aria-label="t('sidebar.allSamples')">
+              <Empty v-if="total === 0" class="h-full">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <component :is="empty.icon" />
+                  </EmptyMedia>
+                  <EmptyTitle>{{ empty.title }}</EmptyTitle>
+                  <EmptyDescription v-if="empty.text">
+                    {{ empty.text }}
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent v-if="!library.sources.length || library.query || library.hasAnalysisFilters">
+                  <div class="flex gap-2">
+                    <Button v-if="!library.sources.length" size="sm" @click="library.addSources()">
+                      <FolderPlus /> {{ t('list.empty.addFolders') }}
+                    </Button>
+                    <Button v-if="library.query" variant="outline" size="sm" @click="library.query = ''">
+                      {{ t('list.empty.clearSearch') }}
+                    </Button>
+                    <Button v-if="library.hasAnalysisFilters" variant="outline" size="sm" @click="library.clearAnalysisFilters()">
+                      {{ t('list.empty.clearFilters') }}
+                    </Button>
+                  </div>
+                </EmptyContent>
+              </Empty>
+
+              <div v-else class="relative w-full" :style="{ height: `${virtualizer.getTotalSize()}px` }">
+                <template v-for="{ item, sample: s, stemChild, groupStart, groupEnd, grouped } in rows" :key="item.index">
+                  <RenderRow
+                    v-if="s" v-show="!pinnedSample || item.index !== playingIndex"
+                    :s="s" :item="item" :stem-child="!!stemChild" :group-start="groupStart"
+                    :group-end="!!groupEnd" :grouped="!!grouped" :pinned="false"
+                  />
                   <div
                     v-else
                     class="row grid items-center px-3 absolute inset-x-0"
@@ -399,10 +431,17 @@ function onDragStart(e: DragEvent, sample: Sample) {
                 </template>
               </div>
             </div>
+            <Transition name="pinned-track" :duration="reducedMotion === 'reduce' ? 0 : { enter: 140, leave: 100 }">
+            <div v-if="pinnedSample" class="pinned-track absolute inset-x-0 top-0 z-10 overflow-hidden bg-primary" :style="{ height: `${ROW_HEIGHT}px` }">
+              <RenderRow :s="pinnedSample" :item="{ index: playingIndex, start: 0, size: ROW_HEIGHT }"
+                :stem-child="false" :group-start="false" :group-end="false" :grouped="false" :pinned="true" />
+            </div>
+            </Transition>
+            </div>
           </ContextMenuTrigger>
           <SampleContextMenu v-if="menuSample" ref="sampleMenu" :native="nativeMenus" :sample="menuSample" @close="menuOpen = false" />
         </ContextMenu>
-        <SampleListHints :viewport="scroller" />
+        <SampleListHints :viewport="listSurface" />
         </Tooltip>
         <div v-if="total > 0" class="column-guides pointer-events-none absolute inset-0 grid px-3" aria-hidden="true">
           <span />
@@ -417,9 +456,9 @@ function onDragStart(e: DragEvent, sample: Sample) {
 
 <style scoped>
 .row-waveform { opacity: 0.1; }
-.row.playing .row-waveform { opacity: 0.14; }
+.row:is(.playing, .paused) .row-waveform { opacity: 0.14; }
 .row-waveform-played { color: var(--primary); opacity: 0.35; }
-.row.playing .row-waveform-played { color: var(--primary-foreground); opacity: 0.45; }
+.row:is(.playing, .paused) .row-waveform-played { color: var(--primary-foreground); opacity: 0.45; }
 .track-volume :deep(path:first-child) { fill: currentColor; }
 .track-play { width: 24px; height: 24px; opacity: 0; }
 .row:hover .track-play, .track-play:focus-visible { opacity: 1; }
@@ -481,7 +520,40 @@ function onDragStart(e: DragEvent, sample: Sample) {
   background: var(--primary);
 }
 .header {
+  position: relative;
+  z-index: 20;
   flex-shrink: 0;
+  background: var(--background);
+  /* Overlap the composited scroll edge without moving rows or columns. */
+  box-shadow: 0 1px 0 var(--border);
+}
+.pinned-track {
+  transform: translateZ(0);
+}
+.pinned-track-enter-active .row {
+  transition: opacity 140ms cubic-bezier(0.16, 1, 0.3, 1), translate 140ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pinned-track-leave-active {
+  pointer-events: none;
+}
+.pinned-track-leave-active .row {
+  transition: opacity 100ms ease-out, translate 100ms ease-out;
+}
+.pinned-track-enter-from .row,
+.pinned-track-leave-to .row {
+  opacity: 0;
+  translate: 0 -3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pinned-track-enter-active .row,
+  .pinned-track-leave-active .row {
+    transition: none;
+  }
+  .pinned-track-enter-from .row,
+  .pinned-track-leave-to .row {
+    opacity: 1;
+    translate: none;
+  }
 }
 .row.stem-parent,
 .row.stem-child {
@@ -493,7 +565,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
 .row.selected {
   background: color-mix(in srgb, var(--foreground) 8%, var(--background));
 }
-.row.focused:not(.selected):not(.playing) {
+.row.focused:not(.selected):not(.playing):not(.paused) {
   background: var(--accent);
 }
 .star {
@@ -523,25 +595,34 @@ function onDragStart(e: DragEvent, sample: Sample) {
 button.stem-toggle:hover {
   filter: brightness(0.95);
 }
-.row.playing {
+.row.pinned {
+  inset-inline: 0;
+  padding-inline: 0.75rem;
+  border-radius: 0;
+  z-index: 3;
+}
+.row.paused .track-play { opacity: 1; }
+.row.paused .track-icon-display { opacity: 0; }
+.row:is(.playing, .paused) {
   --sample-progress-color: var(--primary-foreground);
   z-index: 1;
   background: var(--primary);
   color: var(--primary-foreground);
 }
-.row.playing :deep(.text-muted-foreground) {
+.row:is(.playing, .paused) :deep(.text-muted-foreground) {
   color: color-mix(in srgb, var(--primary-foreground) 80%, transparent);
 }
-.row.playing :deep(.text-primary),
-.row.playing :deep(.text-amber-400),
-.row.playing .star {
+.row:is(.playing, .paused) :deep(.text-primary),
+.row:is(.playing, .paused) :deep(.text-amber-400),
+.row:is(.playing, .paused) .star {
   color: var(--primary-foreground);
 }
-.row.playing .star {
+.row:is(.playing, .paused) .star {
   opacity: 1;
 }
-.row.playing .stem-toggle {
+.row:is(.playing, .paused) .stem-toggle {
   background: var(--primary-foreground);
   color: var(--primary);
 }
+.row:is(.playing, .paused).pinned { z-index: 3; }
 </style>

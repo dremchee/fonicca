@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { sidebarHidden } from '@/composables/sidebarVisibility'
 import { debugMonitorOpen } from '@/composables/debugMonitor'
 import { onKeyStroke } from '@vueuse/core'
 import { isTauri } from '@tauri-apps/api/core'
@@ -177,10 +178,10 @@ onKeyStroke(',', (e) => {
   <TooltipProvider :delay-duration="500" :skip-delay-duration="300">
     <!-- Sidebar and player sizes are in px and saved by the splitters (localStorage). -->
     <ResizablePanelGroup direction="horizontal" auto-save-id="fonicca-layout-columns" class="h-full">
-      <ResizablePanel id="sidebar" :order="1" size-unit="px" :default-size="210" :min-size="170" :max-size="320">
+      <ResizablePanel v-if="!sidebarHidden" id="sidebar" :order="1" size-unit="px" :default-size="210" :min-size="170" :max-size="320">
         <SourceSidebar />
       </ResizablePanel>
-      <ResizableHandle />
+      <ResizableHandle v-if="!sidebarHidden" />
       <!-- The list needs ~520px for its columns; the sidebar gives way before it does. -->
       <ResizablePanel id="main" :order="2" as="main" size-unit="px" :min-size="520" class="min-w-0 flex flex-col">
         <SettingsHost embedded />
