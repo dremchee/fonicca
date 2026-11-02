@@ -456,3 +456,101 @@ fn editor_slices_lock_benchmark() {
     if let Ok(path) = std::env::var("FONICCA_LOCK_BENCH_OUTPUT") { std::fs::write(path, &text).unwrap(); }
     println!("{text}");
 }
+
+#[test]
+#[ignore = "isolated deep-history accounting/RSS workload; FONICCA_HISTORY_BENCH_OUTPUT=/tmp/history.json"]
+fn editor_history_memory_benchmark() {
+    let durations = std::env::var("FONICCA_HISTORY_BENCH_SECONDS").unwrap_or_else(|_| "180,1200".into());
+    let edits: usize = std::env::var("FONICCA_HISTORY_BENCH_EDITS").unwrap_or_else(|_| "400".into()).parse().unwrap();
+    assert!((10..=1000).contains(&edits));
+    let root = tempfile::tempdir().unwrap();
+    let mut system = sysinfo::System::new();
+    let mut scenarios = Vec::new();
+    fn checkpoint(name: &str, session: &Session, system: &mut sysinfo::System) -> serde_json::Value {
+        let started = Instant::now();
+        let usage = serde_json::to_value(session.diagnostics()).unwrap();
+        let first_ms = started.elapsed().as_secs_f64()*1000.0;
+        let mut repeats = Vec::new();
+        for _ in 0..7 {
+            let started = Instant::now();
+            std::hint::black_box(session.diagnostics());
+            repeats.push(started.elapsed().as_secs_f64()*1000.0);
+        }
+        json!({"name":name, "storage":usage, "rssBytes":rss(system), "firstDiagnosticsMs":first_ms,
+            "repeatedDiagnosticsMs":repeats,
+            "snapshotPieceReferences":session.current.samples.piece_count() + session.history.iter().chain(&session.future).map(|s| s.audio.samples.piece_count()).sum::<usize>()})
+    }
+    for seconds in durations.split(',').map(|s| s.parse::<u32>().unwrap()) {
+        assert!((10..=1200).contains(&seconds));
+        let input = root.path().join(format!("history-{seconds}.wav"));
+        fixture(&input, seconds);
+        let rss_before = rss(&mut system);
+        let mut session = Session::open(1, &input, Some(32)).unwrap();
+        let frames = session.audio().frames();
+        let rate = session.audio().sample_rate as usize;
+        let mut checkpoints = vec![checkpoint("open", &session, &mut system)];
+        session.wave(0, frames, 1200, true, false);
+        checkpoints.push(checkpoint("initial_wave", &session, &mut system));
+        let mut edit_ms = Vec::new();
+        for i in 0..edits {
+            let start = i * (frames-rate) / edits;
+            let end = start + rate / 4;
+            let started = Instant::now();
+            session.try_apply(Op::Gain { start, end, db: -1.0 }).unwrap();
+            session.wave(0, frames, 1200, true, false);
+            edit_ms.push(started.elapsed().as_secs_f64()*1000.0);
+            if i+1 == edits/4 || i+1 == edits {
+                checkpoints.push(checkpoint(&format!("local_edits_{}",i+1), &session, &mut system));
+            }
+        }
+        for _ in 0..edits/2 { session.undo(); }
+        checkpoints.push(checkpoint("undo_half", &session, &mut system));
+        for _ in 0..edits/2 { session.redo(); }
+        checkpoints.push(checkpoint("redo_all", &session, &mut system));
+        for _ in 0..edits/2 { session.undo(); }
+        session.try_apply(Op::Gain { start: frames-rate, end: frames, db: -1.0 }).unwrap();
+        session.wave(0,frames,1200,true,false);
+        checkpoints.push(checkpoint("branch_discards_redo", &session, &mut system));
+        for i in 1..=2 {
+            session.try_apply(Op::Gain { start:0, end:frames, db:-1.0 }).unwrap();
+            session.wave(0,frames,1200,true,false);
+            checkpoints.push(checkpoint(&format!("full_edit_{i}"), &session, &mut system));
+        }
+        drop(session);
+        scenarios.push(json!({"seconds":seconds,"localEdits":edits,"editAndWaveMs":edit_ms,
+            "rssBeforeOpen":rss_before,"rssAfterClose":rss(&mut system),"checkpoints":checkpoints}));
+    }
+    let report=json!({"schema":1,"os":std::env::consts::OS,"arch":std::env::consts::ARCH,
+        "note":"Single sequential warm run on generated stereo 44.1kHz WAVs; seven repeated diagnostics calls per checkpoint. RSS includes native mappings and allocator retention, not WebKit. Storage counters exclude piece-vector/marker metadata and temporary workers. No user files or audio device.","scenarios":scenarios});
+    let text=serde_json::to_string_pretty(&report).unwrap();
+    if let Ok(path)=std::env::var("FONICCA_HISTORY_BENCH_OUTPUT") { std::fs::write(path,&text).unwrap(); }
+    println!("{text}");
+}
+
+#[test]
+#[ignore = "synthetic metadata-drag accounting workload; FONICCA_METADATA_BENCH_OUTPUT=/tmp/metadata.json"]
+fn editor_metadata_diagnostics_benchmark() {
+    let root = tempfile::tempdir().unwrap();
+    let input = root.path().join("metadata.wav");
+    fixture(&input,30);
+    let mut session = Session::open(1,&input,Some(32)).unwrap();
+    let frames = session.audio().frames();
+    for i in 0..100 {
+        let start = i*(frames-44100)/100;
+        session.try_apply(Op::Gain { start, end:start+11025, db:-1.0 }).unwrap();
+    }
+    session.wave(0,frames,1200,true,false);
+    let mut checkpoints=Vec::new();
+    for step in 1..=1000 {
+        session.try_apply(Op::SetLoop {start:step,end:step+100}).unwrap();
+        if step%100==0 {
+            let started=Instant::now();
+            let diagnostics=serde_json::to_value(session.diagnostics()).unwrap();
+            checkpoints.push(json!({"metadataEdits":step,"coldDiagnosticsMs":started.elapsed().as_secs_f64()*1000.0,"storage":diagnostics}));
+        }
+    }
+    let report=json!({"schema":1,"note":"One cold inventory after each 100 loop edits, on 100 local edits of a generated stereo 30s WAV. This measures cache misses during metadata changes, not repeated idle polling.","checkpoints":checkpoints});
+    let text=serde_json::to_string_pretty(&report).unwrap();
+    if let Ok(path)=std::env::var("FONICCA_METADATA_BENCH_OUTPUT") {std::fs::write(path,&text).unwrap();}
+    println!("{text}");
+}

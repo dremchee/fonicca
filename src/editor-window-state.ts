@@ -29,3 +29,11 @@ export function readEditorWindowView(search: string, frames: number): EditorWind
     return result
   } catch { return null }
 }
+
+/** Only an explicit, positive safe integer can identify a native handoff. */
+export function readEditorTransferToken(search: string): number | null {
+  const value = new URLSearchParams(search).get('transfer')
+  if (!value || !/^[1-9]\d*$/.test(value)) return null
+  const token = Number(value)
+  return Number.isSafeInteger(token) ? token : null
+}

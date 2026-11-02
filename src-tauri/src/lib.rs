@@ -49,6 +49,7 @@ pub struct AppState {
     /// Waveform overviews of recently previewed samples.
     pub overviews: overview::Cache,
     /// Files open in editor windows, by window label.
+    pub editor_transfers: Mutex<editor_commands::transfer::Transfers>,
     pub editor: Mutex<std::collections::HashMap<String, editor::Session>>,
     pub model_operations: models::Operations,
     pub model_downloading: std::sync::atomic::AtomicBool,
@@ -139,6 +140,7 @@ pub fn run() {
                 similar: Default::default(),
                 overviews: overview::Cache::with_disk(app.path().app_cache_dir()?.join("waveforms")),
                 editor: Default::default(),
+                editor_transfers: Default::default(),
                 model_operations: Default::default(),
                 model_downloading: Default::default(),
                 duplicates_verifying: Default::default(),
@@ -154,7 +156,7 @@ pub fn run() {
                 app_icon::refresh(window.app_handle());
             }
             if matches!(event, tauri::WindowEvent::Destroyed)
-                && window.label().starts_with(editor_commands::WINDOW_PREFIX)
+                && (window.label() == "main" || window.label().starts_with(editor_commands::WINDOW_PREFIX))
             {
                 editor_commands::release(window.app_handle(), window.label());
             }
@@ -166,7 +168,11 @@ pub fn run() {
             basic_pitch::basic_pitch_cancel,
             updates::update_status,
             editor_commands::open_editor_window,
-            editor_commands::editor_detach_window,
+            editor_commands::transfer::editor_detach_window,
+            editor_commands::transfer::editor_attach_window,
+            editor_commands::transfer::editor_prepare_transfer,
+            editor_commands::transfer::editor_accept_transfer,
+            editor_commands::transfer::editor_reject_transfer,
             editor_commands::editor_open,
             editor_commands::editor_close,
             editor_commands::editor_apply,

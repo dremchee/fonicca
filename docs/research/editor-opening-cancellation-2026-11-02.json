@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "date": "2026-11-02",
+  "revision": "e3af9201187583cd3de6600cc807d41ff34c90c4",
+  "dirtyWorktree": true,
+  "scope": "Per-window opening request identity, close/reset invalidation, cooperative streaming decode cancellation and suppression of stale renderer responses.",
+  "sourceSha256": {
+    "src-tauri/src/editor_commands.rs": "b80219bdadb95562c6ef70a7ed71e66985c4a77962fd219431b936be031ba120",
+    "src-tauri/src/editor_commands/opening.rs": "8b2c6cf4e74d4252dfb1e7726b18c56b8a0bd40c01d8b2868a078c7b34737701",
+    "src-tauri/src/editor_commands/transfer.rs": "7f1b1ced340d1f37d10a7c6c4668621d7f3a42e4feca016fcdfe06bad616e723",
+    "src-tauri/src/editor.rs": "019a7672f816a5292ac4d0d668c75fa493c7bfdb3cc42fafea5f7501f485149d",
+    "src-tauri/src/editor/storage.rs": "750609e4b45c7c4ce1810b850b773a274b716e1652bcd0e391bfbe36f6be1ee7",
+    "src/stores/editor.ts": "4accc13e2a0ff90b48d00f4adab4d84ee103b2f4e3af6f172af6aaae344a6ee9",
+    "tests/browser/editor-open-cancellation.mjs": "2b26975f1b9cb2604f3ff09fad2a439c70917628098ab4f2c2160303ad31a31e"
+  },
+  "regression": {
+    "test": "closing_an_empty_editor_invalidates_its_pending_open",
+    "before": {
+      "exitCode": 101,
+      "assertion": "None -> None must still cancel the old open"
+    },
+    "after": {
+      "exitCode": 0,
+      "passed": 1
+    },
+    "note": "The initial regression exercised the real close registry before opening-request invalidation was connected. The final suite also pauses a real generated-WAV decoder and cancels it through registry close."
+  },
+  "verification": {
+    "pnpm test": {
+      "exitCode": 0,
+      "passed": 157
+    },
+    "pnpm build": {
+      "exitCode": 0
+    },
+    "cargo test --manifest-path src-tauri/Cargo.toml --locked --lib": {
+      "exitCode": 0,
+      "passed": 238,
+      "ignored": 42
+    },
+    "cargo check --manifest-path src-tauri/Cargo.toml --locked --lib": {
+      "exitCode": 0,
+      "warnings": 0
+    }
+  },
+  "browser": {
+    "runner": "Headless Playwright CLI on localhost mock, explicit reload between six scenarios",
+    "scenarios": [
+      {
+        "passed": [
+          "reset invalidates late success",
+          "late success cannot clear reset loading",
+          "stale error cannot restore previous track",
+          "newer opening remains loading until its own response",
+          "stale cancellation is silent"
+        ]
+      },
+      {
+        "passed": [
+          "single return button",
+          "transfer guard",
+          "occupied destination keeps source",
+          "close source without discard",
+          "prepare then explicitly accept without decoding",
+          "occupied UI rejects a second offer",
+          "selection/viewport/history preserved",
+          "staged destination blocks competing transitions",
+          "expired acceptance removes staged UI"
+        ]
+      },
+      {
+        "passed": [
+          "pending offer stages before acceptance",
+          "no decode/discard on transfer startup",
+          "history and view preserved",
+          "consumed token removed from URL",
+          "duplicate token does not cancel its pending transfer"
+        ]
+      },
+      {
+        "passed": [
+          "committed reload recovers from an unconsumed URL token",
+          "ownership probe precedes explicit reset",
+          "unowned source is never discarded or decoded"
+        ]
+      },
+      {
+        "passed": [
+          "toolbar action",
+          "duplicate guard",
+          "error recovery preserves edits/history/selection",
+          "retry",
+          "view transfer",
+          "source unmount without closing native session"
+        ]
+      },
+      {
+        "passed": [
+          "surviving native session discarded",
+          "sound stopped",
+          "fresh editor UI",
+          "no save/prompt",
+          "another track opens"
+        ]
+      }
+    ]
+  },
+  "limits": [
+    "Cancellation is cooperative at decoded block boundaries; an individual OS read or decoder packet is not forcibly interrupted.",
+    "Generated fixtures and mock IPC only; no user library, audio devices or real Tauri OS-window smoke test.",
+    "No new process RSS or WebKit memory measurement in this stage."
+  ]
+}

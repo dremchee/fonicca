@@ -194,6 +194,7 @@ fn next_revision() -> u64 {
 pub struct Session {
     opened_ms: f64,
     last_wave_us: std::sync::atomic::AtomicU64,
+    diagnostics_inventory: std::sync::Mutex<Option<diagnostics::Inventory>>,
     revision: u64,
     audio_revision: u64,
     save_in_flight: std::sync::Arc<std::sync::atomic::AtomicBool>,
@@ -239,18 +240,25 @@ pub struct State {
 struct AudioSnapshot { audio: BlockAudio, loop_points: Option<Loop>, markers: Vec<Marker> }
 
 impl Session {
+    #[cfg(test)]
     pub fn open(sample_id: i64, path: &Path, bit_depth: Option<u32>) -> Result<Self> {
+        Self::open_cancellable(sample_id, path, bit_depth, || false)
+    }
+
+    pub fn open_cancellable(sample_id: i64, path: &Path, bit_depth: Option<u32>, cancelled: impl Fn() -> bool) -> Result<Self> {
         let opened_at = std::time::Instant::now();
-        let (data,channels,sample_rate)=storage::decode(path,memory::pcm_budget())?;
+        let (data,channels,sample_rate)=storage::decode_cancellable(path,memory::pcm_budget(), &cancelled)?;
         let audio=BlockAudio::from_storage(data,channels,sample_rate);
         let frames = audio.frames();
         let original_loop = loops::read_smpl_loop(path)
             .map(|l| Loop { start: l.start.min(frames), end: l.end.min(frames) })
             .filter(|l| l.end > l.start);
         let original_markers = markers::normalized(markers::read_markers(path), frames);
+        if cancelled() { return Err(Error::Other("editor opening cancelled".into())); }
         Ok(Self {
             opened_ms: opened_at.elapsed().as_secs_f64() * 1000.0,
             last_wave_us: std::sync::atomic::AtomicU64::new(0),
+            diagnostics_inventory: Default::default(),
             revision: next_revision(),
             audio_revision: next_revision(),
             save_in_flight: Default::default(),
@@ -352,12 +360,13 @@ impl Session {
         self.current = rendered;
         self.ops.push(op); self.redo.clear(); self.future.clear();
         self.revision = next_revision();
+        self.invalidate_diagnostics();
     }
     #[cfg(test)]
     pub fn apply(&mut self,op:Op) {self.try_apply(op).unwrap();}
 
     fn snapshot(&self) -> AudioSnapshot { AudioSnapshot {audio:self.current.clone(),loop_points:self.current_loop,markers:self.current_markers.clone()} }
-    fn restore(&mut self,snapshot:AudioSnapshot) {self.current=snapshot.audio;self.current_loop=snapshot.loop_points;self.current_markers=snapshot.markers;self.revision=next_revision();}
+    fn restore(&mut self,snapshot:AudioSnapshot) {self.current=snapshot.audio;self.current_loop=snapshot.loop_points;self.current_markers=snapshot.markers;self.revision=next_revision();self.invalidate_diagnostics();}
     pub fn undo(&mut self) {
         let Some(op)=self.ops.pop() else {return};
         self.invalidate_spectrogram(&op);
@@ -393,6 +402,7 @@ impl Session {
     #[cfg(test)]
     pub fn mark_saved(&mut self) {
         self.saved = self.ops.clone();
+        self.invalidate_diagnostics();
     }
 }
 

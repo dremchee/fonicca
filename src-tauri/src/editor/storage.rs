@@ -118,14 +118,23 @@ impl Builder {
     }
 }
 
+#[cfg(test)]
 pub(super) fn decode(path: &Path, ram_budget: usize) -> Result<(Arc<Storage>, usize, u32)> {
+    decode_cancellable(path, ram_budget, &|| false)
+}
+
+pub(super) fn decode_cancellable(path: &Path, ram_budget: usize, cancelled: &impl Fn() -> bool) -> Result<(Arc<Storage>, usize, u32)> {
+    let check = || if cancelled() { Err(Error::Other("editor opening cancelled".into())) } else { Ok(()) };
+    check()?;
     let mut builder = Builder::new(ram_budget.min(RAM_CEILING));
     let (mut channels, mut rate) = (0, 0);
     audio::try_stream(path, |samples, ch, sr| {
+        check()?;
         channels = ch;
         rate = sr;
         builder.append(samples)
     })?;
+    check()?;
     if rate == 0 || channels == 0 {
         return Err(Error::Audio("no audio decoded".into()));
     }
@@ -140,6 +149,25 @@ mod tests {
         audio::AudioRead,
         editor::{Op, blocks::BlockAudio},
     };
+    #[test]
+    fn cancellation_aborts_streaming_decode_before_the_full_file_and_works_before_io() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("source.wav");
+        let pcm = Pcm { samples: vec![0.25; 200000], channels: 2, sample_rate: 44100 };
+        crate::editor::write_wav(&path, &pcm, Some(32), None).unwrap();
+        let complete = std::cell::Cell::new(0);
+        let (storage, _, _) = decode_cancellable(&path, 128, &|| { complete.set(complete.get()+1); false }).unwrap();
+        assert!(matches!(storage.as_ref(), Storage::Disk(_)));
+        drop(storage);
+        let checks = std::cell::Cell::new(0);
+        let aborted = decode_cancellable(&path, 128, &|| { checks.set(checks.get()+1); checks.get() >= 4 });
+        assert!(aborted.err().unwrap().to_string().contains("opening cancelled"));
+        assert_eq!(checks.get(), 4);
+        assert!(checks.get() < complete.get());
+        let missing = decode_cancellable(&dir.path().join("missing.wav"), 128, &|| true);
+        assert!(missing.err().unwrap().to_string().contains("opening cancelled"));
+    }
+
     #[test]
     fn spilling_preserves_samples_and_snapshots_keep_the_private_file_alive() {
         let dir = tempfile::tempdir().unwrap();

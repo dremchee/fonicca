@@ -6,6 +6,7 @@ export default {
   },
   unsaved: { dontSave: 'Don’t save', title: 'Unsaved edits', description: 'Save changes to “{name}” before closing or opening another track?' },
   panel: {
+    attach: 'Return editor to the main window',
     viewOptions: 'View options', expand: 'Expand editor', collapse: 'Restore editor', detach: 'Open editor in a separate window' },
   save: {
     exportTitle: 'Save audio',

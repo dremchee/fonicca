@@ -1,0 +1,83 @@
+{
+  "schema": 1,
+  "date": "2026-11-02",
+  "revision": "e3af9201187583cd3de6600cc807d41ff34c90c4",
+  "dirtyWorktree": true,
+  "scope": "Bidirectional editor session transfer, UI readiness acknowledgement and reload/discard behavior. No real Tauri windows, user library or audio devices.",
+  "sourceSha256": {
+    "src-tauri/src/editor_commands.rs": "7f8cf0861ba0c1d7710717ba18f7e4413bb79f10ab725d734030b362a8fb275b",
+    "src-tauri/src/editor_commands/transfer.rs": "0cccdbdd8180ceb2b1cabf382ec611bc9f2b31360843ecce8c8bb44e79f6d8f2",
+    "src-tauri/src/lib.rs": "f2b658b79931e69f88cbdf9a62b0513ffbecfd0579cf30c297e214f00bfac173",
+    "src/stores/editor.ts": "ae7d6f1f48603e00904ac1a4e4d95e7b6fd936244dd3ed350204259f2deec1e0",
+    "src/editor-window-transfer.ts": "1b1e7c08640a4d83cca43c972fca2ad70f8e2e6de92e380405dea1e96862fe07",
+    "src/editor-window-state.ts": "7972095f61566e29258d5a49cd0549aa4e72c8d81306059554283f21cebacfc2",
+    "src/App.vue": "38809b10da8af40eec4acd39e197a3b4778aefb0f2babf004b60c04691f58cf2",
+    "tests/browser/editor-attach.mjs": "bb1c04eb85cb688ad9475aa0aec2b3e33d6ef2a2ee4bc003dabb72bf1bf2cace",
+    "tests/browser/editor-detach.mjs": "bc5a98958b0b1646a0c5a2f95122621f1b936f06e81f30fc31a3b15895b94171",
+    "tests/browser/editor-transfer-startup.mjs": "443574c4bc08b41e8df9e99dbad0ca22e447696e41c8ef945df1878a6dae56b2",
+    "tests/browser/editor-transfer-reload.mjs": "e39fdb0c255b1d7bdc53495cf83967595b7d8a983cdb0406f272c648ad05fba0"
+  },
+  "verification": {
+    "pnpm test": {
+      "exitCode": 0,
+      "passed": 157
+    },
+    "pnpm build": {
+      "exitCode": 0
+    },
+    "cargo test --manifest-path src-tauri/Cargo.toml --locked --lib": {
+      "exitCode": 0,
+      "passed": 232,
+      "ignored": 42
+    }
+  },
+  "browser": {
+    "runner": "Playwright CLI, headless Chromium, isolated localhost mock; explicit reload between scenarios",
+    "scenarios": [
+      {
+        "passed": [
+          "single return button",
+          "transfer guard",
+          "occupied destination keeps source",
+          "close source without discard",
+          "prepare then explicitly accept without decoding",
+          "occupied UI rejects a second offer",
+          "selection/viewport/history preserved",
+          "staged destination blocks competing transitions",
+          "expired acceptance removes staged UI"
+        ]
+      },
+      {
+        "passed": [
+          "pending offer stages before acceptance",
+          "no decode/discard on transfer startup",
+          "history and view preserved",
+          "consumed token removed from URL",
+          "duplicate token does not cancel its pending transfer"
+        ]
+      },
+      {
+        "passed": [
+          "committed reload recovers from an unconsumed URL token",
+          "ownership probe precedes explicit reset",
+          "unowned source is never discarded or decoded"
+        ]
+      },
+      {
+        "passed": [
+          "toolbar action",
+          "duplicate guard",
+          "error recovery preserves edits/history/selection",
+          "retry",
+          "view transfer",
+          "source unmount without closing native session"
+        ]
+      }
+    ]
+  },
+  "limits": [
+    "Native ownership invariants are unit-tested against generated temporary WAVs, not OS window automation.",
+    "Does not test process crashes or real WindowServer behavior.",
+    "Separate opening-request identity still needs follow-up for close/reset during decode from an empty editor."
+  ]
+}

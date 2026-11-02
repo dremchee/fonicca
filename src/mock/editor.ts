@@ -114,7 +114,11 @@ export function editorCommand(cmd: string, args: any): unknown {
       diskBytes: 0, storageCount: history.length + 1, cacheBytes: 524288,
       undoSteps: history.length, redoSteps: future.length, openedMs: 128.4, lastWaveMs: 12.6,
     }
+    case 'editor_accept_transfer':
+    case 'editor_reject_transfer':
     case 'editor_close': return null
+    case 'editor_prepare_transfer': return { state: state(), name: 'Drum Loop 120', ext: 'wav', path: currentPath, bpm: BPM }
+    case 'editor_attach_window':
     case 'editor_detach_window': throw new Error('Opening a native editor window is available in the desktop app.')
     case 'editor_open':
       if (args.reuse) return { state: state(), name: 'Drum Loop 120', ext: 'wav', path: currentPath, bpm: BPM }

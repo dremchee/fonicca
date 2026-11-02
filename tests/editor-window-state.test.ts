@@ -19,3 +19,11 @@ test('window view input is bounded, malformed URLs do not break opening a sessio
   })
   assert.equal(readEditorWindowView(query({ cursor: 0, selection: { start: 20, end: 10 } }), 100).selection, null)
 })
+
+test('transfer tokens reject malformed, fractional and unsafe IDs', async () => {
+  const { readEditorTransferToken } = await import('../src/editor-window-state.ts')
+  assert.equal(readEditorTransferToken('?editor=1&transfer=42'), 42)
+  for (const value of ['', '0', '-1', '1.5', 'NaN', '01', '1e2', '9007199254740992']) {
+    assert.equal(readEditorTransferToken(`?transfer=${encodeURIComponent(value)}`), null)
+  }
+})

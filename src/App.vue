@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { sidebarHidden } from '@/composables/sidebarVisibility'
 import { debugMonitorOpen } from '@/composables/debugMonitor'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import type { EditorWindowView } from '@/editor-window-state'
 import { onKeyStroke } from '@vueuse/core'
 import { isTauri } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { storeToRefs } from 'pinia'
-import { computed, defineAsyncComponent, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BatchDialog from '@/components/BatchDialog.vue'
 import StemDialog from '@/components/StemDialog.vue'
@@ -52,8 +54,13 @@ const { focused } = storeToRefs(library)
 const toolbar = useTemplateRef<InstanceType<typeof LibraryToolbar>>('toolbar')
 const search = computed(() => toolbar.value?.searchElement)
 
+let unlistenEditorAttach: UnlistenFn | undefined
+onUnmounted(() => unlistenEditorAttach?.())
 onMounted(async () => {
   await editor.reset()
+  unlistenEditorAttach = await listen<{ token: number, view: EditorWindowView }>('editor-return-offered', ({ payload }) => {
+    void editor.adoptWindow(payload.token, payload.view)
+  })
   await Promise.all([settings.init(), library.init(), duplicates.init(), useStemsStore().init(), useApolloStore().init(), useBasicPitchStore().init()])
   void useUpdatesStore().init()
   if (isTauri()) {

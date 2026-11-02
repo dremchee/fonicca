@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { Curve, Marker } from '@/stores/editor'
 import type { EditorToolAction } from '@/editor-tools'
-import { ArrowLeftRight, ArrowUpToLine, ChevronDown, ClipboardPaste, Copy, Crop, Eraser,
-  ExternalLink, IterationCw, Maximize2, Minimize2, Music, Play, Redo2, Repeat, Scissors, Square,
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpToLine, ClipboardPaste, Copy, Crop, Eraser,
+  ExternalLink, IterationCw, Music, Play, Redo2, Repeat, Scissors, Square,
   Undo2, Volume1, Volume2, VolumeX, X } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
 import { EDITOR_TOOLS, EDITOR_TOGGLE_CLASS } from '@/editor-tools'
@@ -13,14 +13,13 @@ import EditorSlicer from '@/components/EditorSlicer.vue'
 import FadeIcon from '@/components/icons/FadeIcon.vue'
 import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Toggle } from '@/components/ui/toggle'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-const props = defineProps<{ embedded: boolean, expanded: boolean, canUndo: boolean, canRedo: boolean,
+const props = defineProps<{ embedded: boolean, canUndo: boolean, canRedo: boolean,
   hasSelection: boolean, hasLoop: boolean, hasClipboard: boolean, playing: boolean,
   canExportMidi: boolean, canDetach: boolean, beatFrames: number, downbeat: number, zeroSnap: boolean }>()
-const emit = defineEmits<{ action: [action: EditorToolAction], close: [], toggleExpand: [], detach: [] }>()
+const emit = defineEmits<{ action: [action: EditorToolAction], close: [], detach: [] }>()
 const curve = defineModel<Curve>('curve', { required: true })
 const looping = defineModel<boolean>('looping', { required: true })
 const preview = defineModel<Marker[]>('preview', { required: true })
@@ -35,7 +34,7 @@ const curves: { value: Curve, label: string }[] = [
 </script>
 
 <template>
-    <div class="h-11 shrink-0 px-3 flex items-center gap-1 border-b border-border">
+    <div class="editor-toolbar h-9 shrink-0 px-3 flex items-center gap-1 border-b border-border">
       <ToolbarOverflow :items="EDITOR_TOOLS" :overflow-items="secondaryTools">
         <template #default="{ item }">
           <Hint v-if="item === 'undo'" :text="t('editor.toolbar.undo')" shortcut="⌘Z">
@@ -158,24 +157,12 @@ const curves: { value: Curve, label: string }[] = [
       </ToolbarOverflow>
       <div class="shrink-0 flex items-center gap-1 pl-2 border-l border-border">
         <EditorSaveMenu />
-        <DropdownMenu v-if="props.embedded">
-          <DropdownMenuTrigger as-child>
-            <Button variant="ghost" size="sm" class="gap-1 px-2" :aria-label="t('editor.panel.viewOptions')">
-              <Minimize2 v-if="props.expanded" /><Maximize2 v-else /><ChevronDown class="size-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuGroup>
-              <DropdownMenuItem @select="emit('toggleExpand')">
-                <Minimize2 v-if="props.expanded" /><Maximize2 v-else />
-                {{ t(props.expanded ? 'editor.panel.collapse' : 'editor.panel.expand') }}
-              </DropdownMenuItem>
-              <DropdownMenuItem :disabled="!canDetach" @select="emit('detach')">
-                <ExternalLink />{{ t('editor.panel.detach') }}
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Hint :text="t(props.embedded ? 'editor.panel.detach' : 'editor.panel.attach')">
+          <Button variant="ghost" size="icon-sm" :disabled="!canDetach"
+            :aria-label="t(props.embedded ? 'editor.panel.detach' : 'editor.panel.attach')" @click="emit('detach')">
+            <ExternalLink v-if="props.embedded" /><ArrowDownLeft v-else />
+          </Button>
+        </Hint>
         <Button v-if="props.embedded" variant="ghost" size="icon-sm" :aria-label="t('common.actions.close')" @click="emit('close')"><X /></Button>
       </div>
     </div>

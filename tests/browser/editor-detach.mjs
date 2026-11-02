@@ -22,10 +22,14 @@ export async function checkEditorDetach(page) {
       return original(cmd, args, options)
     }
   })
-  const button = page.getByRole('button', { name: 'Open editor in a separate window', exact: true })
+  const button = page.locator('button[aria-label="Open editor in a separate window"]')
   try {
     await button.click()
     check(await button.isDisabled(), 'handoff must disable the button')
+    check(await page.evaluate(() => {
+      const e = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('editor')
+      return e.state?.dirty && e.sample && window.__detachCheck.closed === 0
+    }), 'source UI cleared before the target accepted')
     check(await page.evaluate(async () => {
       const e = document.querySelector('#app').__vue_app__.config.globalProperties.$pinia._s.get('editor')
       return !await e.detachWindow() && window.__detachCheck.requests.length === 1

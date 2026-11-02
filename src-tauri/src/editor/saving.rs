@@ -235,6 +235,7 @@ impl Snapshot {
             session.has_saved_target = true;
             session.export_sample_rate = self.sample_rate;
             session.saved = self.ops.clone();
+            session.invalidate_diagnostics();
             if let Some(id) = indexed_id {
                 session.sample_id = id;
             }

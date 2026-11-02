@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { sidebarHidden } from '@/composables/sidebarVisibility'
 import { usePixelCanvas } from '@/composables/pixelCanvas'
 import { Spinner } from '@/components/ui/spinner'
 import type { GridMode } from '@/composables/editor/grid'
 import type { Marker } from '@/stores/editor'
-import { Magnet, Maximize2, PanelLeftClose, PanelLeftOpen, SlidersHorizontal, ZoomIn, ZoomOut } from '@lucide/vue'
+import { Magnet, Maximize2, SlidersHorizontal, ZoomIn, ZoomOut } from '@lucide/vue'
 import { useLocalStorage } from '@vueuse/core'
 import { computed, nextTick, ref, shallowRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -359,15 +358,15 @@ const toolbarActions: Record<EditorToolAction, () => unknown> = {
     </header>
 
     <EditorToolbar
-      :embedded="props.embedded" :expanded="props.expanded"
+      :embedded="props.embedded"
       :can-detach="!!editor.state && !editor.loading && !editor.processing && !editor.saving"
       :can-undo="!!editor.state?.canUndo" :can-redo="!!editor.state?.canRedo"
       :has-selection="!!editor.selection" :has-loop="!!editor.state?.loop" :has-clipboard="!!editor.clipboard"
       :playing="editor.playing" :can-export-midi="!!editor.sample && !!frames && !editor.processing"
       :beat-frames="beatFrames" :downbeat="downbeat" :zero-snap="zeroSnap"
       v-model:curve="editor.curve" v-model:looping="editor.looping" v-model:preview="slicePreview"
-      @action="action => toolbarActions[action]()" @close="emit('close')" @toggle-expand="emit('toggleExpand')"
-      @detach="editor.detachWindow({ start: viewStart, end: viewEnd, zoom: vZoom, bpm, downbeat })"
+      @action="action => toolbarActions[action]()" @close="emit('close')"
+      @detach="editor.detachWindow({ start: viewStart, end: viewEnd, zoom: vZoom, bpm, downbeat }, !props.embedded)"
     />
 
     <EditorMinimap
@@ -644,17 +643,6 @@ const toolbarActions: Record<EditorToolAction, () => unknown> = {
         <Hint :text="t('editor.toolbar.zoomIn')" shortcut="+">
           <Button variant="ghost" size="icon-sm" @click="editor.selection ? zoomToSelection() : zoom(0.5, editor.cursor)">
             <ZoomIn />
-          </Button>
-        </Hint>
-        <Hint v-if="embedded" :text="t(sidebarHidden ? 'sidebar.showSidebar' : 'sidebar.hideSidebar')">
-          <Button
-            variant="ghost" size="icon-sm"
-            :aria-label="t(sidebarHidden ? 'sidebar.showSidebar' : 'sidebar.hideSidebar')"
-            :aria-pressed="!sidebarHidden"
-            @click="sidebarHidden = !sidebarHidden"
-          >
-            <PanelLeftOpen v-if="sidebarHidden" />
-            <PanelLeftClose v-else />
           </Button>
         </Hint>
         <Hint :text="t('editor.toolbar.fit')" shortcut="0">

@@ -54,11 +54,16 @@ impl Samples {
         }
     }
     pub(super) fn measure(&self, usage: &mut super::diagnostics::StorageUsage) {
+        // Metadata-only history snapshots share this immutable list. Scanning
+        // it again cannot add a storage or peak slot to the inventory.
+        if !usage.include_samples(Arc::as_ptr(&self.pieces) as usize) { return; }
         for piece in self.pieces.iter() {
             usage.include(&piece.data);
             usage.include_peaks(&piece.peaks);
         }
     }
+    #[cfg(test)]
+    pub(super) fn piece_count(&self) -> usize { self.pieces.len() }
     pub fn len(&self) -> usize {
         self.len
     }

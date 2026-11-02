@@ -9,6 +9,9 @@ use crate::editor::{self, Op, Session, State as EditorState};
 use crate::error::{Error, Result};
 use crate::AppState;
 
+pub mod transfer;
+mod opening;
+
 pub const WINDOW_PREFIX: &str = "editor-";
 
 #[cfg(test)]
@@ -16,7 +19,7 @@ mod handoff_tests {
     use super::*;
     use crate::audio::AudioRead;
 
-    fn session(root: &Path) -> Session {
+    pub(super) fn session(root: &Path) -> Session {
         let path = root.join("track.wav");
         let spec = hound::WavSpec { channels: 1, sample_rate: 44100, bits_per_sample: 32, sample_format: hound::SampleFormat::Float };
         let mut wav = hound::WavWriter::create(&path, spec).unwrap();
@@ -52,6 +55,21 @@ mod handoff_tests {
     }
 
     #[test]
+    fn decode_cannot_overwrite_a_session_adopted_or_changed_while_it_was_running() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut sessions = std::collections::HashMap::new();
+        assert!(ensure_open_target(&sessions, "main", None).is_ok());
+        sessions.insert("main".into(), session(dir.path()));
+        assert!(ensure_open_target(&sessions, "main", None).is_err());
+        let expected = Some(sessions["main"].revision());
+        assert!(ensure_open_target(&sessions, "main", expected).is_ok());
+        sessions.get_mut("main").unwrap().try_apply(Op::Gain { start: 0, end: 10, db: -6.0 }).unwrap();
+        assert!(ensure_open_target(&sessions, "main", expected).is_err());
+        sessions.remove("main");
+        assert!(ensure_open_target(&sessions, "main", expected).is_err());
+    }
+
+    #[test]
     fn handoff_rejects_an_existing_target_or_pending_save_without_losing_either_session() {
         let dir = tempfile::tempdir().unwrap();
         let source = session(dir.path());
@@ -63,6 +81,7 @@ mod handoff_tests {
         move_session(&mut sessions, "main", "editor-7").unwrap();
         sessions.insert("main".into(), session(dir.path()));
         assert!(move_session(&mut sessions, "main", "editor-7").is_err());
+        assert!(move_session(&mut sessions, "editor-7", "main").is_err());
         assert_eq!(sessions.len(), 2);
         assert!(move_session(&mut sessions, "absent", "other").is_err());
     }
@@ -70,46 +89,17 @@ mod handoff_tests {
 
 fn move_session(sessions: &mut std::collections::HashMap<String, Session>, from: &str, to: &str) -> Result<()> {
     if sessions.contains_key(to) { return Err(Error::Other("destination editor already has a session".into())); }
-    let source = sessions.get(from).ok_or_else(|| Error::Other("no editor session to detach".into()))?;
+    let source = sessions.get(from).ok_or_else(|| Error::Other("no editor session to transfer".into()))?;
     if source.save_pending() { return Err(Error::Other("wait for the current save to finish".into())); }
     let session = sessions.remove(from).unwrap();
     sessions.insert(to.to_string(), session);
     Ok(())
 }
 
-/// Move the live session, including history and shared PCM, into a new window.
-#[tauri::command]
-pub async fn editor_detach_window(app: AppHandle, state: State<'_, AppState>, window: Window, view: serde_json::Value) -> Result<()> {
-    if window.label() != "main" { return Err(Error::Other("only the embedded editor can be detached".into())); }
-    let view = serde_json::to_string(&view).map_err(|e| Error::Other(e.to_string()))?;
-    if view.len() > 4096 { return Err(Error::Other("editor view state is too large".into())); }
-    let (label, url, title) = {
-        let mut sessions = state.editor.lock().unwrap();
-        let session = sessions.get("main").ok_or_else(|| Error::Other("no editor session to detach".into()))?;
-        let label = format!("{WINDOW_PREFIX}detached-{}", session.revision());
-        let mut url = tauri::Url::parse("http://localhost/index.html").unwrap();
-        url.query_pairs_mut().append_pair("editor", &session.sample_id.to_string()).append_pair("detached", "1").append_pair("view", &view);
-        let title = session.path.file_name().unwrap_or_default().to_string_lossy().into_owned();
-        move_session(&mut sessions, "main", &label)?;
-        (label, format!("index.html?{}", url.query().unwrap()), title)
-    };
-    let builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::App(url.into()))
-        .title(title).inner_size(1100.0, 560.0).min_inner_size(640.0, 360.0).visible(false);
-    #[cfg(target_os = "macos")]
-    let builder = builder.title_bar_style(tauri::TitleBarStyle::Overlay).hidden_title(true);
-    if let Err(error) = builder.build() {
-        let mut sessions = state.editor.lock().unwrap();
-        // No source replacement is permitted while the frontend handoff is pending.
-        if !sessions.contains_key("main") {
-            if let Some(session) = sessions.remove(&label) { sessions.insert("main".into(), session); }
-        }
-        return Err(Error::Other(format!("cannot open editor window: {error}")));
-    }
-    crate::show_window_fallback(&app, &label);
-    Ok(())
-}
 
 fn with_session<T>(state: &AppState, window: &Window, f: impl FnOnce(&mut Session) -> Result<T>) -> Result<T> {
+    let transfers = state.editor_transfers.lock().unwrap();
+    transfers.guard(window.label())?;
     let mut sessions = state.editor.lock().unwrap();
     let session =
         sessions.get_mut(window.label()).ok_or_else(|| Error::Other("no file is open in this window".into()))?;
@@ -154,6 +144,15 @@ pub struct Opened {
     bpm: Option<f64>,
 }
 
+// Decode runs outside the lock. Even an explicit discard only authorizes
+// replacing the session observed before decoding, never a newly adopted one.
+fn ensure_open_target(sessions: &std::collections::HashMap<String, Session>, label: &str, expected: Option<u64>) -> Result<()> {
+    if sessions.get(label).map(Session::revision) != expected {
+        return Err(Error::Other("editor changed while decoding the replacement".into()));
+    }
+    Ok(())
+}
+
 /// Loads the sample into this window's session.
 #[tauri::command]
 pub async fn editor_open(state: State<'_, AppState>, window: Window, id: i64, discard_existing: Option<bool>, reuse: Option<bool>) -> Result<Opened> {
@@ -166,42 +165,46 @@ pub async fn editor_open(state: State<'_, AppState>, window: Window, id: i64, di
         return Ok(Opened { state: current, name: path.file_stem().unwrap_or_default().to_string_lossy().into_owned(),
             ext: path.extension().unwrap_or_default().to_string_lossy().into_owned(), path: path.to_string_lossy().into_owned(), bpm });
     }
-    // Keep the current session intact until the replacement has decoded successfully.
-    if !discard_existing.unwrap_or(false) && state.editor.lock().unwrap().get(window.label()).is_some_and(|s| s.state().dirty) {
-        return Err(Error::Other("editor has unsaved changes".into()));
-    }
-    let (path, name, ext, bit_depth, bpm): (String, String, String, Option<u32>, Option<f64>) =
+    let request = opening::Lease::begin(&state.editor_transfers, &state.editor, window.label(), discard_existing.unwrap_or(false))?;
+    // Register before metadata I/O, so close/reset can also cancel that phase.
+    let metadata = {
         state.db.lock().unwrap().query_row(
             "SELECT path, name, ext, bit_depth, bpm FROM samples WHERE id = ?1",
             [id],
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?)),
-        )?;
+        )
+    };
+    let (path, name, ext, bit_depth, bpm): (String, String, String, Option<u32>, Option<f64>) = metadata?;
     let decode_path = path.clone();
-    let session = tauri::async_runtime::spawn_blocking(move || Session::open(id, Path::new(&decode_path), bit_depth))
+    let cancellation = request.cancellation.clone();
+    let session = tauri::async_runtime::spawn_blocking(move || Session::open_cancellable(id, Path::new(&decode_path), bit_depth, || cancellation.cancelled()))
         .await.map_err(|e| Error::Other(e.to_string()))??;
     let s = session.state();
-    let mut sessions = state.editor.lock().unwrap();
-    if !discard_existing.unwrap_or(false) && sessions.get(window.label()).is_some_and(|s| s.state().dirty) {
-        return Err(Error::Other("editor has unsaved changes".into()));
+    {
+        let transfers = state.editor_transfers.lock().unwrap();
+        request.check(&transfers)?;
+        transfers.guard(window.label())?;
+        let mut sessions = state.editor.lock().unwrap();
+        ensure_open_target(&sessions, window.label(), request.expected_revision)?;
+        if !discard_existing.unwrap_or(false) && sessions.get(window.label()).is_some_and(|s| s.state().dirty) {
+            return Err(Error::Other("editor has unsaved changes".into()));
+        }
+        sessions.insert(window.label().to_string(), session);
     }
-    sessions.insert(window.label().to_string(), session);
     Ok(Opened { state: s, name, ext, path, bpm })
 }
 
 /// Close an embedded session only after its edits have been saved or discarded.
 #[tauri::command]
 pub fn editor_close(state: State<'_, AppState>, window: Window, discard: bool) -> Result<()> {
-    let mut sessions = state.editor.lock().unwrap();
-    if !discard && sessions.get(window.label()).is_some_and(|s| s.state().dirty) {
-        return Err(Error::Other("editor has unsaved changes".into()));
-    }
-    sessions.remove(window.label());
-    Ok(())
+    let mut transfers = state.editor_transfers.lock().unwrap();
+    transfers.close(&mut state.editor.lock().unwrap(), window.label(), discard)
 }
 
 /// Frees a window's session (also done when the window is destroyed).
 pub fn release(app: &AppHandle, label: &str) {
     if let Some(state) = app.try_state::<AppState>() {
+        state.editor_transfers.lock().unwrap().release(label);
         state.editor.lock().unwrap().remove(label);
     }
 }
