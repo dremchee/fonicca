@@ -121,3 +121,52 @@ test('read errors are retryable and a disposed editor drops in-flight data', asy
   await setImmediate()
   assert.equal(other.data.value, null)
 })
+
+test('disabled spectrograms ignore late replies and resume after handoff or retry', async () => {
+  const replies: { resolve: (data: Spectrogram) => void, reject: (reason: unknown) => void }[] = []
+  const o = options(() => new Promise((resolve, reject) => replies.push({ resolve, reject })))
+  const scope = effectScope()
+  const view = scope.run(() => useEditorSpectrogram(o))!
+  try {
+    o.enabled.value = false
+    await nextTick()
+    replies[0]!.resolve(spectrum(150, 450, 300))
+    await setImmediate()
+    assert.equal(view.data.value, null)
+    assert.equal(view.error.value, null)
+    o.enabled.value = true
+    await setImmediate()
+    assert.equal(replies.length, 2)
+    o.enabled.value = false
+    await nextTick()
+    replies[1]!.reject('editor analysis cancelled')
+    await setImmediate()
+    assert.equal(view.error.value, null)
+    assert.equal(replies.length, 2)
+    o.enabled.value = true
+    await setImmediate()
+    assert.equal(replies.length, 3)
+    replies[2]!.resolve(spectrum(150, 450, 300, 77))
+    await setImmediate()
+    assert.equal(view.data.value!.values[0], 77)
+  }
+  finally { scope.stop() }
+})
+
+test('cancelled analysis retries current audio without presenting a user error', async () => {
+  let calls = 0
+  const o = options(async (a, b, columns) => {
+    if (++calls === 1) throw 'editor analysis cancelled'
+    return spectrum(a, b, columns, 99)
+  })
+  const scope = effectScope()
+  const view = scope.run(() => useEditorSpectrogram(o))!
+  try {
+    await setImmediate()
+    assert.equal(calls, 2)
+    assert.equal(view.error.value, null)
+    assert.equal(view.data.value!.values[0], 99)
+    assert.equal(view.loading.value, false)
+  }
+  finally { scope.stop() }
+})

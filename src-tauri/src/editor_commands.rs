@@ -36,12 +36,15 @@ mod handoff_tests {
         source.try_apply(Op::Gain { start: 20, end: 60, db: -6.0 }).unwrap();
         source.undo();
         let revision = source.revision();
+        let old_work = source.analysis_token();
         let samples = source.audio().range(0..100).into_owned();
         let state = serde_json::to_value(source.state()).unwrap();
         let mut sessions = std::collections::HashMap::from([("main".to_string(), source)]);
         move_session(&mut sessions, "main", "editor-detached-1").unwrap();
         assert!(!sessions.contains_key("main"));
         let target = sessions.get_mut("editor-detached-1").unwrap();
+        assert!(old_work.cancelled());
+        assert!(!target.analysis_token().cancelled());
         assert_eq!(target.revision(), revision);
         assert_eq!(serde_json::to_value(target.state()).unwrap(), state);
         assert_eq!(target.audio().range(0..100).as_ref(), samples.as_slice());
@@ -91,7 +94,10 @@ fn move_session(sessions: &mut std::collections::HashMap<String, Session>, from:
     if sessions.contains_key(to) { return Err(Error::Other("destination editor already has a session".into())); }
     let source = sessions.get(from).ok_or_else(|| Error::Other("no editor session to transfer".into()))?;
     if source.save_pending() { return Err(Error::Other("wait for the current save to finish".into())); }
-    let session = sessions.remove(from).unwrap();
+    let mut session = sessions.remove(from).unwrap();
+    // Old-owner requests must not retain audio after that renderer disappears.
+    // The new owner keeps the PCM/history/cache and receives a fresh work token.
+    session.cancel_analysis();
     sessions.insert(to.to_string(), session);
     Ok(())
 }
@@ -288,20 +294,23 @@ pub async fn editor_wave(
 pub async fn editor_spectrogram(
     state: State<'_, AppState>, window: Window, start: usize, end: usize, columns: usize,
 ) -> Result<tauri::ipc::Response> {
-    let (cached, pcm, revision) = with_session(&state, &window, |s| {
+    let (cached, pcm, revision, token) = with_session(&state, &window, |s| {
         let cached = s.spectrogram();
         let pcm = if cached.is_none() {
             let audio = s.audio();
             Some(audio.clone())
         } else { None };
-        Ok((cached, pcm, s.audio_revision()))
+        Ok((cached, pcm, s.audio_revision(), s.analysis_token()))
     })?;
     let (spectrum, bytes) = tauri::async_runtime::spawn_blocking(move || -> Result<_> {
+        if token.cancelled() { return Err(Error::Other("editor analysis cancelled".into())); }
         let spectrum = match cached {
             Some(cached) => cached,
-            None => std::sync::Arc::new(editor::spectrogram::Spectrogram::build(&pcm.unwrap())?),
+            None => std::sync::Arc::new(editor::spectrogram::Spectrogram::build_cancellable(&pcm.unwrap(), || token.cancelled())?),
         };
+        if token.cancelled() { return Err(Error::Other("editor analysis cancelled".into())); }
         let bytes = spectrum.range(start, end, columns);
+        if token.cancelled() { return Err(Error::Other("editor analysis cancelled".into())); }
         Ok((spectrum, bytes))
     }).await.map_err(|e| Error::Other(format!("spectrogram analysis failed: {e}")))??;
     with_session(&state, &window, |s| s.cache_spectrogram(revision, spectrum))?;

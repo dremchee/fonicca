@@ -21,7 +21,14 @@ pub struct Spectrogram {
 impl Spectrogram {
     pub(super) fn cache_bytes(&self) -> usize { self.values.capacity() }
 
+    #[cfg(test)]
     pub fn build(pcm: &impl AudioRead) -> Result<Self> {
+        Self::build_cancellable(pcm, || false)
+    }
+
+    pub fn build_cancellable(pcm: &impl AudioRead, cancelled: impl Fn() -> bool) -> Result<Self> {
+        let check = || if cancelled() { Err(Error::Other("editor analysis cancelled".into())) } else { Ok(()) };
+        check()?;
         if pcm.sample_rate() == 0 || pcm.channels() == 0 {
             return Err(Error::Audio("invalid audio format for spectrogram".into()));
         }
@@ -60,6 +67,7 @@ impl Spectrogram {
             })
             .collect();
         for column in 0..columns {
+            check()?;
             power.fill(0.0);
             let centre = column * hop;
             let first=centre.saturating_sub(fft_size/2).min(pcm.frames());
@@ -95,6 +103,7 @@ impl Spectrogram {
                     (((db - FLOOR_DB) / -FLOOR_DB).clamp(0.0, 1.0) * 255.0).round() as u8;
             }
         }
+        check()?;
         Ok(Self {
             frames: pcm.frames(),
             sample_rate: pcm.sample_rate(),
@@ -169,6 +178,30 @@ mod tests {
     }
 
     #[test]
+    fn closing_a_session_cancels_its_in_progress_analysis() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("generated.wav");
+        editor::write_wav(&path, &tone(440.0, 2), Some(32), None).unwrap();
+        let session = Session::open(1, &path, Some(32)).unwrap();
+        let token = session.analysis_token();
+        let audio = session.audio().clone();
+        let (ready, started) = std::sync::mpsc::channel();
+        let (release, resume) = std::sync::mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            let checks = std::cell::Cell::new(0);
+            Spectrogram::build_cancellable(&audio, || {
+                checks.set(checks.get() + 1);
+                if checks.get() == 3 { ready.send(()).unwrap(); resume.recv().unwrap(); }
+                token.cancelled()
+            })
+        });
+        started.recv_timeout(std::time::Duration::from_secs(2)).unwrap();
+        drop(session);
+        release.send(()).unwrap();
+        assert!(worker.join().unwrap().is_err(), "closed session must cancel its retained audio analysis");
+    }
+
+    #[test]
     fn tone_is_in_the_correct_log_band_at_the_correct_level() {
         let s = Spectrogram::build(&tone(1000.0, 1)).unwrap();
         let middle = &s.values[(s.columns / 2) * BINS..(s.columns / 2 + 1) * BINS];
@@ -238,6 +271,7 @@ mod tests {
         editor::write_wav(&path, &tone(440.0, 1), Some(32), None).unwrap();
         let mut s = Session::open(1, &path, Some(32)).unwrap();
         let version = s.audio_revision();
+        let metadata_work = s.analysis_token();
         let cached = Arc::new(Spectrogram::build(s.audio()).unwrap());
         s.cache_spectrogram(version, cached.clone()).unwrap();
         s.apply(Op::SetMarkers {
@@ -249,6 +283,7 @@ mod tests {
         s.undo();
         s.redo();
         assert_eq!(s.audio_revision(), version);
+        assert!(!metadata_work.cancelled());
         assert!(Arc::ptr_eq(&cached, &s.spectrogram().unwrap()));
         s.apply(Op::Gain {
             start: 0,
@@ -256,6 +291,8 @@ mod tests {
             db: -6.0,
         });
         assert!(s.spectrogram().is_none());
+        assert!(metadata_work.cancelled());
+        assert!(!s.analysis_token().cancelled());
         assert!(s.cache_spectrogram(version, cached.clone()).is_err());
         s.cache_spectrogram(s.audio_revision(), cached.clone())
             .unwrap();

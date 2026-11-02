@@ -132,7 +132,8 @@ watch(() => editor.playhead, (frame) => {
   if (editor.playing) follow(frame)
 })
 const { data: spectrum, loading: spectrumLoading, error: spectrumError, refresh: refreshSpectrum } = useEditorSpectrogram({
-  enabled: isSpectrogram, revision: computed(() => editor.revision), frames,
+  enabled: computed(() => isSpectrogram.value && !editor.loading && editor.open),
+  revision: computed(() => editor.revision), frames,
   start: viewStart, end: viewEnd, width, read: editor.spectrogram,
 })
 

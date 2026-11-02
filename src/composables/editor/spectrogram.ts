@@ -53,14 +53,16 @@ export function useEditorSpectrogram(options: Options) {
         error.value = null
         try {
           const result = await read(a, b, columns)
-          if (!disposed && version === revision.value) {
+          if (!disposed && enabled.value && version === revision.value) {
             dataRevision = version
             data.value = result
           }
         }
         catch (e) {
-          if (!disposed && version === revision.value)
-            error.value = String(e)
+          if (!disposed && enabled.value && version === revision.value) {
+            if (String(e) === 'editor analysis cancelled') again = true
+            else error.value = String(e)
+          }
         }
       }
     }
