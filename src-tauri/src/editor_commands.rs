@@ -360,12 +360,18 @@ pub fn editor_zero_snap(state: State<'_, AppState>, window: Window, frames: Vec<
 
 #[tauri::command]
 pub fn editor_play(state: State<'_, AppState>, window: Window, start: usize, end: usize, looping: bool) -> Result<()> {
-    with_session(&state, &window, |s| state.player.play_buffer(s.audio(), start, end, looping))
+    let request = state.player.begin_request();
+    let result = with_session(&state, &window, |s| state.player.play_buffer_request(request, s.audio(), start, end, looping));
+    if result.is_err() { state.player.fail_request(request); }
+    result
 }
 
 #[tauri::command]
 pub fn editor_update_playback(state: State<'_, AppState>, window: Window, start: usize, end: usize, looping: bool) -> Result<bool> {
-    with_session(&state, &window, |s| state.player.update_buffer_range(s.audio(), start, end, looping))
+    let request = state.player.begin_request();
+    let result = with_session(&state, &window, |s| state.player.update_buffer_request(request, s.audio(), start, end, looping));
+    if result.is_err() { state.player.fail_request(request); }
+    result
 }
 
 #[derive(Serialize)]

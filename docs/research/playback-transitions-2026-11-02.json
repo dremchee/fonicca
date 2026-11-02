@@ -1,0 +1,214 @@
+{
+  "schema": 1,
+  "date": "2026-11-02",
+  "revision": "ed8b8623a0e0f370a5e5b2351428c5a113479976",
+  "dirtyWorktree": true,
+  "scope": "Latest playback intent wins in Pinia and native source publication; heavy preparation is serial and does not own the mixer lock.",
+  "sourceSha256": {
+    "src-tauri/src/player.rs": "ffc402a14e3d876a5690cd85f363e506a476ff9f8ec8d36537d908bcc2f6bce9",
+    "src-tauri/src/commands.rs": "f0bffd8e7e4002c13a69ce98fb26ef4ac43d447a1f2fb15a01430e6e28818900",
+    "src-tauri/src/editor_commands.rs": "0ef6061511f2328c88669bb926460021ffb95b1cc1eac10457949c2d52e2871a",
+    "src/stores/player.ts": "e7966c290d386f6d5c55278ce4724a3d3a2cf3a70baffb8973cbe3050a5f8b06",
+    "src/stores/editor.ts": "d58b2924aac4ebbbf9d74a9e2e5d81ebed51b4247e8f2bc494ec7712c4ec11a4",
+    "tests/browser/player-transitions.mjs": "886a344052d70d5e27c88cfded117073809d5f954ed5bf1670c8c1ef5d01b9b1"
+  },
+  "regressions": {
+    "browserBefore": {
+      "latestStartWins": false,
+      "stopSuppressesLateStart": false,
+      "staleErrorPreservesNewTrack": false
+    },
+    "browserAfter": {
+      "latestStartWins": true,
+      "stopSuppressesLateStart": true,
+      "staleErrorPreservesNewTrack": true
+    },
+    "nativeBefore": {
+      "stopRejectsStaleSource": false,
+      "newerSourceRejectsOlderPreparation": false,
+      "note": "Red run after extracting source publication into install, before adding request guards. The source attachment behavior was unchanged at that point."
+    },
+    "nativeAfter": {
+      "stopRejectsStaleSource": true,
+      "newerSourceRejectsOlderPreparation": true
+    }
+  },
+  "nativeCoverage": [
+    "stop/newer request rejects prepared stale source before mixer attachment",
+    "pause/resume/seek invalidate unfinished preparation",
+    "editor and preview share request ordering",
+    "latest load failure stops the prior source; stale failure leaves newer source alone",
+    "thread/channel-controlled old worker cannot attach after stop",
+    "queued superseded preparation fails before opening its path",
+    "successful output switch invalidates pending playback; failed switch preserves it",
+    "real generated WAV: decode, stretch/transpose and positive seek on manually driven mixer",
+    "existing pause/resume, immutable buffer and loop resize behavior preserved"
+  ],
+  "bounds": {
+    "heavyPreviewPreparationsAtOnce": 1,
+    "cancellationCheckpoints": [
+      "before file preparation",
+      "after adjusted decode",
+      "under source-publication gate"
+    ],
+    "requestBookkeeping": "constant-size native generation counter; no per-track history"
+  },
+  "verification": {
+    "frontendTestsPassed": 173,
+    "rustTestsPassed": 250,
+    "rustIgnored": 44,
+    "buildExitCode": 0,
+    "cargoCheckExitCode": 0,
+    "cargoWarnings": 0,
+    "browser": [
+      {
+        "scenario": "checkPlayerTransitions",
+        "result": {
+          "passed": [
+            "latest start wins",
+            "stop suppresses late start",
+            "stale error preserves new track",
+            "stale pause error preserves new track",
+            "stale resume error preserves new track",
+            "stale seek error preserves new track",
+            "tempo change retargets pending track",
+            "old tempo response cannot replace new adjustment",
+            "seek during preparation starts the requested point with current sync",
+            "pause cancels pending resync and keeps its exact source position",
+            "resume re-renders canceled sync at the paused position"
+          ]
+        }
+      },
+      {
+        "scenario": "checkEditorPlaybackTransitions",
+        "result": {
+          "passed": [
+            "pending editor play issues native stop",
+            "late editor play stays stopped",
+            "latest editor play wins",
+            "failed restart clears stale playing state"
+          ]
+        }
+      },
+      {
+        "scenario": "checkLoopResize",
+        "result": {
+          "passed": [
+            "wave edge hover/drag",
+            "live playback bounds",
+            "no restart",
+            "one undo step per drag",
+            "ruler grip without selection",
+            "fixed opposite boundary"
+          ]
+        }
+      },
+      {
+        "scenario": "checkEditorDetach",
+        "result": {
+          "passed": [
+            "toolbar action",
+            "duplicate guard",
+            "error recovery preserves edits/history/selection",
+            "retry",
+            "view transfer",
+            "source unmount without closing native session"
+          ]
+        }
+      },
+      {
+        "scenario": "checkEditorAttach",
+        "result": {
+          "passed": [
+            "single return button",
+            "transfer guard",
+            "occupied destination keeps source",
+            "close source without discard",
+            "prepare then explicitly accept without decoding",
+            "occupied UI rejects a second offer",
+            "selection/viewport/history preserved",
+            "staged destination blocks competing transitions",
+            "expired acceptance removes staged UI"
+          ]
+        }
+      },
+      {
+        "scenario": "checkEditorTransferStartup",
+        "result": {
+          "passed": [
+            "pending offer stages before acceptance",
+            "no decode/discard on transfer startup",
+            "history and view preserved",
+            "consumed token removed from URL",
+            "duplicate token does not cancel its pending transfer"
+          ]
+        }
+      },
+      {
+        "scenario": "checkEditorTransferReload",
+        "result": {
+          "passed": [
+            "committed reload recovers from an unconsumed URL token",
+            "ownership probe precedes explicit reset",
+            "unowned source is never discarded or decoded"
+          ]
+        }
+      },
+      {
+        "scenario": "checkEditorOpenCancellation",
+        "result": {
+          "passed": [
+            "reset invalidates late success",
+            "late success cannot clear reset loading",
+            "stale error cannot restore previous track",
+            "newer opening remains loading until its own response",
+            "stale cancellation is silent"
+          ]
+        }
+      },
+      {
+        "scenario": "checkSampleRowActions",
+        "result": {
+          "passed": [
+            "row selection/play",
+            "pause/resume button",
+            "solid favorite without playback",
+            "modified multi-selection",
+            "drag selection",
+            "stem disclosure",
+            "double-click editor",
+            "pinned row pause and hidden stems",
+            "cursor modifier and coordinates"
+          ]
+        }
+      },
+      {
+        "scenario": "checkLibraryHints",
+        "result": {
+          "passed": [
+            "category",
+            "scope line break",
+            "bpm",
+            "accessible description",
+            "hoverable content",
+            "Escape",
+            "shortcut",
+            "name stays tooltip-free",
+            "keyboard focus",
+            "scroll",
+            "context menu",
+            "analysis refresh",
+            "filter removal"
+          ]
+        }
+      }
+    ]
+  },
+  "limits": [
+    "Tests use generated WAV files, a software-driven rodio mixer and browser fake IPC; no system audio device or user library is used.",
+    "An already running decode or stretch call may finish; cancellation prevents publication and skips superseded waiters but is not a forced DSP interrupt.",
+    "Stop and output changes do not wait for the heavy preparation slot; short source installation/seek still uses the mixer and publication locks.",
+    "No wall-clock latency, FPS or RSS improvement is claimed.",
+    "Cross-platform native device smoke tests were not run."
+  ]
+}
