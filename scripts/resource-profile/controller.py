@@ -1,6 +1,7 @@
 """Private native host controller. Only generated fixtures and this child are touched."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import signal
@@ -160,7 +161,12 @@ def interrupted(*_):
     raise RuntimeError('Controller interrupted')
 signal.signal(signal.SIGTERM, interrupted)
 with (root / 'native.log').open('w') as log:
-    host = subprocess.Popen([config.get('launch', str(binary))], cwd=binary.parent, stdout=log, stderr=subprocess.STDOUT)
+    launch_env = os.environ.copy()
+    if sys.platform.startswith('linux'):
+        # AppRun/GStreamer must not replace the user's shared plugin registry.
+        launch_env['GST_REGISTRY_1_0'] = str(root / 'gstreamer-registry.bin')
+        launch_env.setdefault('GST_DEBUG', '2')
+    host = subprocess.Popen([config.get('launch', str(binary))], cwd=binary.parent, stdout=log, stderr=subprocess.STDOUT, env=launch_env)
     try:
         deadline = time.monotonic() + (240 if config['smoke'] else 600)
         while not done.wait(.5):

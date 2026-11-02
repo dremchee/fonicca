@@ -78,5 +78,14 @@ one lifecycle cycle. Windows installation is deliberately refused outside a
 GitHub-hosted Actions runner. No release is published and no updater credentials
 are used. Workflow artifacts contain the report and failure logs.
 
+Linux observations also log the extracted AppRun's media-related settings and
+bundled GStreamer files. The controller uses a private GStreamer registry and
+captures plugin warnings. The production AppImage enables Tauri's
+[`bundleMediaFramework`](https://v2.tauri.app/reference/config/#appimageconfig)
+so media dependencies are shipped with the WebView. An earlier smoke run reached
+the editor but failed native window transfer with `appsink not found`, even though
+the host's base/good plugins were installed. Packaging and actual transfer must
+both pass; a successful host `gst-inspect` alone does not validate the AppImage.
+
 Passing Node/Rust tests, YAML parsing or a macOS measurement does not establish that
 Windows/Linux packaged UI smoke passed. Actual workflow results must be inspected.

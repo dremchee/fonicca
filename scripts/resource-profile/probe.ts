@@ -54,11 +54,15 @@ function mode(value: 'waveform' | 'spectrogram') {
   button.click()
   return button
 }
+function transferFailure(message: string) {
+  const notices = [...document.querySelectorAll('[data-sonner-toast]')].map(node => node.textContent).join('; ')
+  return Error(notices ? `${message}: ${notices}` : message)
+}
 async function detached() {
   await until(() => editor()?.state && !editor().loading, 'accepted standalone session')
   await sleep(2000)
   await checkpoint('detached-rendered')
-  if (!await editor().detachWindow(undefined, true)) throw Error('Native return failed')
+  if (!await editor().detachWindow(undefined, true)) throw transferFailure('Native return failed')
 }
 async function scenario() {
   const library = stores().get('library'), e = editor()
@@ -93,7 +97,7 @@ async function scenario() {
     mode('waveform')
     await sleep(500)
     if (cycle === config.cycles) {
-      if (!await e.detachWindow()) throw Error('Native detach failed')
+      if (!await e.detachWindow()) throw transferFailure('Native detach failed')
       await until(() => e.state && !e.loading, 'returned native session', 60000)
       await sleep(1500)
       await checkpoint(`cycle-${cycle}-returned`)
