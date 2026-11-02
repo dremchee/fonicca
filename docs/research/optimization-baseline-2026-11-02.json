@@ -1,0 +1,1132 @@
+{
+  "schema": 1,
+  "measuredAt": "2026-11-02T14:37:51.839434+00:00",
+  "sourceRevision": "e3af9201187583cd3de6600cc807d41ff34c90c4",
+  "worktree": "Includes the previously authorized, uncommitted editor window/UI changes; source hashes identify measured implementation.",
+  "sourceSha256": {
+    "src/components/SampleList.vue": "954add6536e05c236171dfc245a329802b1fd87c8afbe703feb4ec94c2073d65",
+    "src/stores/library.ts": "e2ab4fe380ff31dd8a45a9cafa8afdfc4c27e82fbaf2de932b491d7e3651f422",
+    "src/stores/editor.ts": "41616bda890ca3e24a615f316c371e9a8faa386f09b6ea9d058eeeb31214468d",
+    "src/composables/waveformBackgrounds.ts": "f5dcecfca9727e453b3e4250103e0951d8b85919faaf82e27a98da24a7b11e05",
+    "src/composables/editor/waveform.ts": "e3a0cab349550293d197d3441bc91554f34ff5941fd0b00a2646c814ef0b41ac",
+    "src/composables/editor/spectrogram.ts": "af7694546a9a32a2496ad18a896bbddf8ad768635ca0c8640f9650eecc9a8b85",
+    "src-tauri/src/editor_commands.rs": "5192f6e040409b033cf0179d5ae93dc2f36fc3f6811b3aad959a57ae3a440bdb",
+    "src-tauri/src/library.rs": "d664e0a892334ed368c8de0f9c4a3e0bd58e98e4d7acec81392b1bf95599edba",
+    "src-tauri/src/editor/benchmarks.rs": "1c2534b9c3330dcbcdb9e9f8961b764f260c79c3e7b476d03bdc629d4bfc4155",
+    "src-tauri/src/library/benchmarks.rs": "a40b69e2f7695bf541f22c167d03606711054f826743b92e941af42fdace1b8c",
+    "tests/browser/library-performance.mjs": "a1e14189fadd6b7bf8b0de37e16e1d65c69d77588ba31ddbefd3e77ddbaa0a25"
+  },
+  "environment": {
+    "os": "macOS-26.7.1-arm64-arm-64bit-Mach-O",
+    "arch": "arm64",
+    "cpu": "Apple M1 Pro",
+    "ramBytes": 17179869184,
+    "node": "v26.5.0",
+    "powerMode": "Not controlled or measured; do not infer historical speedups.",
+    "browserBuild": "Vite development mock, headless Chromium; not packaged WebKit."
+  },
+  "commands": {
+    "editor": "FONICCA_BENCH_SECONDS=30,180,1200 FONICCA_BENCH_REPEATS=3 FONICCA_BENCH_OUTPUT=/tmp/report.json cargo test --manifest-path src-tauri/Cargo.toml --locked --lib editor_workload_benchmark -- --ignored --nocapture --test-threads=1",
+    "library": "FONICCA_LIBRARY_BENCH_RELATIONS=1 FONICCA_LIBRARY_BENCH_OUTPUT=/tmp/library.json cargo test --manifest-path src-tauri/Cargo.toml --locked --lib library_workload_benchmark -- --ignored --nocapture --test-threads=1",
+    "browser": "measureLibraryPerformance(page, localMockUrl, 32000), then 100000; exported by tests/browser/library-performance.mjs"
+  },
+  "editor": {
+    "arch": "aarch64",
+    "note": "Sequential warm-filesystem runs; no audio device or WebView. Wave includes cache generation. Storage is not process RSS.",
+    "os": "macos",
+    "profile": "dev-test",
+    "scenarios": [
+      {
+        "channels": 2,
+        "operations": {
+          "delete": {
+            "p50Ms": 0.0025830000000000002,
+            "p95Ms": 0.183083,
+            "samplesMs": [
+              0.183083,
+              0.002458,
+              0.0025830000000000002
+            ]
+          },
+          "fade_full": {
+            "p50Ms": 8.952875,
+            "p95Ms": 9.050458,
+            "samplesMs": [
+              9.050458,
+              8.952875,
+              8.3205
+            ]
+          },
+          "fade_short": {
+            "p50Ms": 0.535042,
+            "p95Ms": 0.717083,
+            "samplesMs": [
+              0.717083,
+              0.423792,
+              0.535042
+            ]
+          },
+          "gain_full": {
+            "p50Ms": 3.1205410000000002,
+            "p95Ms": 3.469375,
+            "samplesMs": [
+              2.967834,
+              3.469375,
+              3.1205410000000002
+            ]
+          },
+          "lufs_short": {
+            "p50Ms": 7.470292,
+            "p95Ms": 8.211333,
+            "samplesMs": [
+              7.470292,
+              6.998625,
+              8.211333
+            ]
+          },
+          "normalize_full": {
+            "p50Ms": 5.622041,
+            "p95Ms": 5.862875,
+            "samplesMs": [
+              5.2819579999999995,
+              5.862875,
+              5.622041
+            ]
+          },
+          "open_decode": {
+            "p50Ms": 13.413875,
+            "p95Ms": 20.676791,
+            "samplesMs": [
+              20.676791,
+              11.862458,
+              13.413875
+            ]
+          },
+          "redo_fade": {
+            "p50Ms": 0.000334,
+            "p95Ms": 0.000458,
+            "samplesMs": [
+              0.00029099999999999997,
+              0.000334,
+              0.000458
+            ]
+          },
+          "save": {
+            "p50Ms": 30.999125,
+            "p95Ms": 96.486083,
+            "samplesMs": [
+              30.999125,
+              96.486083,
+              28.455583
+            ]
+          },
+          "stretch_short": {
+            "p50Ms": 33.218583,
+            "p95Ms": 35.936584,
+            "samplesMs": [
+              33.218583,
+              32.934292,
+              35.936584
+            ]
+          },
+          "undo_delete": {
+            "p50Ms": 0.000125,
+            "p95Ms": 0.00033299999999999996,
+            "samplesMs": [
+              0.00033299999999999996,
+              0.000125,
+              8.3e-05
+            ]
+          },
+          "undo_fade": {
+            "p50Ms": 0.000833,
+            "p95Ms": 0.0013340000000000001,
+            "samplesMs": [
+              0.0005,
+              0.0013340000000000001,
+              0.000833
+            ]
+          },
+          "undo_full_fade": {
+            "p50Ms": 0.000375,
+            "p95Ms": 0.000458,
+            "samplesMs": [
+              0.000375,
+              0.000375,
+              0.000458
+            ]
+          },
+          "wave_after_fade": {
+            "p50Ms": 3.400667,
+            "p95Ms": 3.494084,
+            "samplesMs": [
+              3.400667,
+              3.398042,
+              3.494084
+            ]
+          },
+          "wave_cached": {
+            "p50Ms": 1.04175,
+            "p95Ms": 1.09875,
+            "samplesMs": [
+              1.04175,
+              1.040291,
+              1.09875
+            ]
+          },
+          "wave_first": {
+            "p50Ms": 25.852292,
+            "p95Ms": 26.769916000000002,
+            "samplesMs": [
+              26.769916000000002,
+              25.258833000000003,
+              25.852292
+            ]
+          },
+          "wave_pan": {
+            "p50Ms": 0.918416,
+            "p95Ms": 0.920708,
+            "samplesMs": [
+              0.920708,
+              0.918166,
+              0.918416
+            ]
+          },
+          "wave_zoom": {
+            "p50Ms": 0.9833330000000001,
+            "p95Ms": 1.047125,
+            "samplesMs": [
+              1.047125,
+              0.969417,
+              0.9833330000000001
+            ]
+          }
+        },
+        "repetitions": 3,
+        "sampleRate": 44100,
+        "seconds": 30,
+        "storage": {
+          "cacheBytes": 2545620,
+          "diskBytes": 0,
+          "lastWaveMs": 3.493,
+          "logicalBytes": 10584000,
+          "openedMs": 13.411583,
+          "ramBytes": 37748736,
+          "redoSteps": 1,
+          "sampleId": 1,
+          "storageCount": 3,
+          "undoSteps": 1
+        }
+      },
+      {
+        "channels": 2,
+        "operations": {
+          "delete": {
+            "p50Ms": 0.0022919999999999998,
+            "p95Ms": 0.002375,
+            "samplesMs": [
+              0.002375,
+              0.002167,
+              0.0022919999999999998
+            ]
+          },
+          "fade_full": {
+            "p50Ms": 201.16025000000002,
+            "p95Ms": 333.04725,
+            "samplesMs": [
+              333.04725,
+              201.16025000000002,
+              190.704667
+            ]
+          },
+          "fade_short": {
+            "p50Ms": 0.412709,
+            "p95Ms": 0.45054099999999997,
+            "samplesMs": [
+              0.412709,
+              0.41058300000000003,
+              0.45054099999999997
+            ]
+          },
+          "gain_full": {
+            "p50Ms": 182.555958,
+            "p95Ms": 214.422458,
+            "samplesMs": [
+              182.555958,
+              214.422458,
+              166.66466699999998
+            ]
+          },
+          "lufs_short": {
+            "p50Ms": 6.98275,
+            "p95Ms": 7.600166000000001,
+            "samplesMs": [
+              6.98275,
+              7.600166000000001,
+              6.978166
+            ]
+          },
+          "normalize_full": {
+            "p50Ms": 180.94095800000002,
+            "p95Ms": 181.025708,
+            "samplesMs": [
+              181.025708,
+              180.94095800000002,
+              167.471583
+            ]
+          },
+          "open_decode": {
+            "p50Ms": 210.252083,
+            "p95Ms": 227.525125,
+            "samplesMs": [
+              227.525125,
+              210.252083,
+              196.88608399999998
+            ]
+          },
+          "redo_fade": {
+            "p50Ms": 0.00041600000000000003,
+            "p95Ms": 0.000458,
+            "samplesMs": [
+              0.000458,
+              0.00029099999999999997,
+              0.00041600000000000003
+            ]
+          },
+          "save": {
+            "p50Ms": 146.246208,
+            "p95Ms": 235.29262500000002,
+            "samplesMs": [
+              146.246208,
+              235.29262500000002,
+              135.656916
+            ]
+          },
+          "stretch_short": {
+            "p50Ms": 32.83475,
+            "p95Ms": 33.082583,
+            "samplesMs": [
+              32.83475,
+              33.082583,
+              32.573707999999996
+            ]
+          },
+          "undo_delete": {
+            "p50Ms": 0.000125,
+            "p95Ms": 0.000209,
+            "samplesMs": [
+              0.000209,
+              8.3e-05,
+              0.000125
+            ]
+          },
+          "undo_fade": {
+            "p50Ms": 0.000625,
+            "p95Ms": 0.000625,
+            "samplesMs": [
+              0.000625,
+              0.000625,
+              0.000542
+            ]
+          },
+          "undo_full_fade": {
+            "p50Ms": 0.000583,
+            "p95Ms": 0.001959,
+            "samplesMs": [
+              0.00020800000000000001,
+              0.000583,
+              0.001959
+            ]
+          },
+          "wave_after_fade": {
+            "p50Ms": 3.7712499999999998,
+            "p95Ms": 3.812042,
+            "samplesMs": [
+              3.6938750000000002,
+              3.7712499999999998,
+              3.812042
+            ]
+          },
+          "wave_cached": {
+            "p50Ms": 1.317666,
+            "p95Ms": 1.443,
+            "samplesMs": [
+              1.317666,
+              1.443,
+              1.231
+            ]
+          },
+          "wave_first": {
+            "p50Ms": 149.739084,
+            "p95Ms": 167.503458,
+            "samplesMs": [
+              167.503458,
+              149.28074999999998,
+              149.739084
+            ]
+          },
+          "wave_pan": {
+            "p50Ms": 1.321458,
+            "p95Ms": 1.411542,
+            "samplesMs": [
+              1.321458,
+              1.2386249999999999,
+              1.411542
+            ]
+          },
+          "wave_zoom": {
+            "p50Ms": 0.9662499999999999,
+            "p95Ms": 0.985166,
+            "samplesMs": [
+              0.9654159999999999,
+              0.9662499999999999,
+              0.985166
+            ]
+          }
+        },
+        "repetitions": 3,
+        "sampleRate": 44100,
+        "seconds": 180,
+        "storage": {
+          "cacheBytes": 14121744,
+          "diskBytes": 127008000,
+          "lastWaveMs": 3.811,
+          "logicalBytes": 63504000,
+          "openedMs": 196.88408299999998,
+          "ramBytes": 2097152,
+          "redoSteps": 1,
+          "sampleId": 1,
+          "storageCount": 3,
+          "undoSteps": 1
+        }
+      },
+      {
+        "channels": 2,
+        "operations": {
+          "delete": {
+            "p50Ms": 0.003459,
+            "p95Ms": 0.005417,
+            "samplesMs": [
+              0.003459,
+              0.005417,
+              0.002167
+            ]
+          },
+          "fade_full": {
+            "p50Ms": 1104.404458,
+            "p95Ms": 1125.5524169999999,
+            "samplesMs": [
+              1104.404458,
+              1075.720167,
+              1125.5524169999999
+            ]
+          },
+          "fade_short": {
+            "p50Ms": 0.496708,
+            "p95Ms": 0.6395,
+            "samplesMs": [
+              0.496708,
+              0.6395,
+              0.49229199999999995
+            ]
+          },
+          "gain_full": {
+            "p50Ms": 968.26975,
+            "p95Ms": 1009.7965,
+            "samplesMs": [
+              968.26975,
+              1009.7965,
+              916.77175
+            ]
+          },
+          "lufs_short": {
+            "p50Ms": 7.115417,
+            "p95Ms": 7.386292,
+            "samplesMs": [
+              7.077667,
+              7.386292,
+              7.115417
+            ]
+          },
+          "normalize_full": {
+            "p50Ms": 1042.441208,
+            "p95Ms": 1095.099458,
+            "samplesMs": [
+              1042.441208,
+              1095.099458,
+              949.810791
+            ]
+          },
+          "open_decode": {
+            "p50Ms": 1228.654666,
+            "p95Ms": 1248.694875,
+            "samplesMs": [
+              1248.694875,
+              1204.956416,
+              1228.654666
+            ]
+          },
+          "redo_fade": {
+            "p50Ms": 0.000375,
+            "p95Ms": 0.0005,
+            "samplesMs": [
+              0.00025,
+              0.0005,
+              0.000375
+            ]
+          },
+          "save": {
+            "p50Ms": 815.311334,
+            "p95Ms": 824.729666,
+            "samplesMs": [
+              824.729666,
+              810.959459,
+              815.311334
+            ]
+          },
+          "stretch_short": {
+            "p50Ms": 32.76029200000001,
+            "p95Ms": 33.140125,
+            "samplesMs": [
+              32.76029200000001,
+              33.140125,
+              32.560832999999995
+            ]
+          },
+          "undo_delete": {
+            "p50Ms": 0.000125,
+            "p95Ms": 0.000125,
+            "samplesMs": [
+              0.000125,
+              0.000125,
+              8.4e-05
+            ]
+          },
+          "undo_fade": {
+            "p50Ms": 0.000625,
+            "p95Ms": 0.000625,
+            "samplesMs": [
+              0.000625,
+              0.000625,
+              0.000458
+            ]
+          },
+          "undo_full_fade": {
+            "p50Ms": 0.00033299999999999996,
+            "p95Ms": 0.0007080000000000001,
+            "samplesMs": [
+              0.00025,
+              0.0007080000000000001,
+              0.00033299999999999996
+            ]
+          },
+          "wave_after_fade": {
+            "p50Ms": 4.366584,
+            "p95Ms": 4.547833000000001,
+            "samplesMs": [
+              4.366584,
+              4.547833000000001,
+              3.964667
+            ]
+          },
+          "wave_cached": {
+            "p50Ms": 1.5037909999999999,
+            "p95Ms": 1.723583,
+            "samplesMs": [
+              1.5037909999999999,
+              1.723583,
+              1.468917
+            ]
+          },
+          "wave_first": {
+            "p50Ms": 1014.7712499999999,
+            "p95Ms": 1449.058792,
+            "samplesMs": [
+              1449.058792,
+              1014.7712499999999,
+              986.477292
+            ]
+          },
+          "wave_pan": {
+            "p50Ms": 1.7125000000000001,
+            "p95Ms": 1.803875,
+            "samplesMs": [
+              1.641084,
+              1.7125000000000001,
+              1.803875
+            ]
+          },
+          "wave_zoom": {
+            "p50Ms": 0.974208,
+            "p95Ms": 1.111292,
+            "samplesMs": [
+              0.967042,
+              1.111292,
+              0.974208
+            ]
+          }
+        },
+        "repetitions": 3,
+        "sampleRate": 44100,
+        "seconds": 1200,
+        "storage": {
+          "cacheBytes": 92839572,
+          "diskBytes": 846720000,
+          "lastWaveMs": 3.964,
+          "logicalBytes": 423360000,
+          "openedMs": 1228.652625,
+          "ramBytes": 2097152,
+          "redoSteps": 1,
+          "sampleId": 1,
+          "storageCount": 3,
+          "undoSteps": 1
+        }
+      }
+    ],
+    "schema": 1
+  },
+  "library": {
+    "arch": "aarch64",
+    "note": "Warm SQLite page timings at first/middle/last offsets, 200 rows. Query plan omits tag projection subqueries but retains filter/grouping/sort. No WebView or user database.",
+    "os": "macos",
+    "reference": false,
+    "relations": true,
+    "scenarios": [
+      {
+        "entries": 32000,
+        "queries": [
+          {
+            "name": "all_grouped",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              2.6319999999999997,
+              3.418875,
+              7.3804170000000004
+            ],
+            "plan": [
+              "SCAN s USING COVERING INDEX samples_natural_name",
+              "CORRELATED SCALAR SUBQUERY 1",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?)",
+              "CORRELATED SCALAR SUBQUERY 2",
+              "SEARCH l USING COVERING INDEX sample_stems_parent (parent_id=?)",
+              "SEARCH child USING INTEGER PRIMARY KEY (rowid=?)"
+            ],
+            "total": 28800
+          },
+          {
+            "name": "all_flat",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              0.6214999999999999,
+              1.17725,
+              1.6083749999999999
+            ],
+            "plan": [
+              "SCAN s USING COVERING INDEX samples_natural_name"
+            ],
+            "total": 32000
+          },
+          {
+            "name": "category",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              11.516459,
+              37.024625,
+              56.606792000000006
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SEARCH matched USING COVERING INDEX samples_category (category=?)",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 16000
+          },
+          {
+            "name": "directory",
+            "pageCounts": [
+              200,
+              160,
+              200
+            ],
+            "pageTimesMs": [
+              4.740417,
+              5.663625000000001,
+              5.521916
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN matched",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 320
+          },
+          {
+            "name": "search",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              16.587583,
+              43.311166,
+              61.176625
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 2",
+              "SEARCH matched USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN samples_fts VIRTUAL TABLE INDEX 0:M3",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 16000
+          }
+        ]
+      },
+      {
+        "entries": 100000,
+        "queries": [
+          {
+            "name": "all_grouped",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              0.894208,
+              10.797374999999999,
+              25.59175
+            ],
+            "plan": [
+              "SCAN s USING COVERING INDEX samples_natural_name",
+              "CORRELATED SCALAR SUBQUERY 1",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?)",
+              "CORRELATED SCALAR SUBQUERY 2",
+              "SEARCH l USING COVERING INDEX sample_stems_parent (parent_id=?)",
+              "SEARCH child USING INTEGER PRIMARY KEY (rowid=?)"
+            ],
+            "total": 90000
+          },
+          {
+            "name": "all_flat",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              0.6745,
+              2.8556250000000003,
+              4.345666
+            ],
+            "plan": [
+              "SCAN s USING COVERING INDEX samples_natural_name"
+            ],
+            "total": 100000
+          },
+          {
+            "name": "category",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              34.063791,
+              131.762708,
+              192.215458
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SEARCH matched USING COVERING INDEX samples_category (category=?)",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 50000
+          },
+          {
+            "name": "directory",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              16.227375,
+              16.532917,
+              16.588542
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN matched",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 1000
+          },
+          {
+            "name": "search",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              52.055875,
+              159.780125,
+              211.186708
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 2",
+              "SEARCH matched USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN samples_fts VIRTUAL TABLE INDEX 0:M3",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 50000
+          }
+        ]
+      }
+    ],
+    "schema": 1
+  },
+  "browser": [
+    {
+      "entries": 32000,
+      "playback": {
+        "updates": [
+          {
+            "index": 0,
+            "count": 119
+          }
+        ],
+        "elapsedMs": 2022.6000000238419
+      },
+      "requests": [
+        {
+          "offset": 1200,
+          "limit": 200
+        },
+        {
+          "offset": 2600,
+          "limit": 200
+        },
+        {
+          "offset": 3800,
+          "limit": 200
+        },
+        {
+          "offset": 4000,
+          "limit": 200
+        },
+        {
+          "offset": 5200,
+          "limit": 200
+        },
+        {
+          "offset": 6600,
+          "limit": 200
+        },
+        {
+          "offset": 7800,
+          "limit": 200
+        },
+        {
+          "offset": 8000,
+          "limit": 200
+        },
+        {
+          "offset": 9200,
+          "limit": 200
+        },
+        {
+          "offset": 10600,
+          "limit": 200
+        },
+        {
+          "offset": 11800,
+          "limit": 200
+        },
+        {
+          "offset": 12000,
+          "limit": 200
+        },
+        {
+          "offset": 13200,
+          "limit": 200
+        },
+        {
+          "offset": 14600,
+          "limit": 200
+        },
+        {
+          "offset": 15800,
+          "limit": 200
+        },
+        {
+          "offset": 16000,
+          "limit": 200
+        },
+        {
+          "offset": 17200,
+          "limit": 200
+        },
+        {
+          "offset": 18600,
+          "limit": 200
+        },
+        {
+          "offset": 19800,
+          "limit": 200
+        },
+        {
+          "offset": 20000,
+          "limit": 200
+        },
+        {
+          "offset": 21200,
+          "limit": 200
+        },
+        {
+          "offset": 22600,
+          "limit": 200
+        },
+        {
+          "offset": 23800,
+          "limit": 200
+        },
+        {
+          "offset": 24000,
+          "limit": 200
+        },
+        {
+          "offset": 25200,
+          "limit": 200
+        },
+        {
+          "offset": 26600,
+          "limit": 200
+        },
+        {
+          "offset": 27800,
+          "limit": 200
+        },
+        {
+          "offset": 28000,
+          "limit": 200
+        },
+        {
+          "offset": 29200,
+          "limit": 200
+        },
+        {
+          "offset": 30600,
+          "limit": 200
+        },
+        {
+          "offset": 31800,
+          "limit": 200
+        }
+      ],
+      "maxConcurrentReads": 2,
+      "maxRenderedRows": 59,
+      "maxScrollTop": 1151403,
+      "maxRetainedPages": 12,
+      "retained": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "pinnedAtEnd": 1,
+      "frameIntervalsMs": {
+        "p50": 16.699999999999818,
+        "p95": 16.799999999999727,
+        "max": 33.30000000000018
+      },
+      "longTasksMs": []
+    },
+    {
+      "entries": 100000,
+      "playback": {
+        "updates": [
+          {
+            "index": 0,
+            "count": 119
+          }
+        ],
+        "elapsedMs": 2028.800000011921
+      },
+      "requests": [
+        {
+          "offset": 4000,
+          "limit": 200
+        },
+        {
+          "offset": 4200,
+          "limit": 200
+        },
+        {
+          "offset": 8200,
+          "limit": 200
+        },
+        {
+          "offset": 12400,
+          "limit": 200
+        },
+        {
+          "offset": 16600,
+          "limit": 200
+        },
+        {
+          "offset": 20800,
+          "limit": 200
+        },
+        {
+          "offset": 24800,
+          "limit": 200
+        },
+        {
+          "offset": 25000,
+          "limit": 200
+        },
+        {
+          "offset": 29000,
+          "limit": 200
+        },
+        {
+          "offset": 33200,
+          "limit": 200
+        },
+        {
+          "offset": 37400,
+          "limit": 200
+        },
+        {
+          "offset": 41600,
+          "limit": 200
+        },
+        {
+          "offset": 45800,
+          "limit": 200
+        },
+        {
+          "offset": 49800,
+          "limit": 200
+        },
+        {
+          "offset": 50000,
+          "limit": 200
+        },
+        {
+          "offset": 54000,
+          "limit": 200
+        },
+        {
+          "offset": 58200,
+          "limit": 200
+        },
+        {
+          "offset": 62400,
+          "limit": 200
+        },
+        {
+          "offset": 66600,
+          "limit": 200
+        },
+        {
+          "offset": 70800,
+          "limit": 200
+        },
+        {
+          "offset": 74800,
+          "limit": 200
+        },
+        {
+          "offset": 75000,
+          "limit": 200
+        },
+        {
+          "offset": 79000,
+          "limit": 200
+        },
+        {
+          "offset": 83200,
+          "limit": 200
+        },
+        {
+          "offset": 87400,
+          "limit": 200
+        },
+        {
+          "offset": 91600,
+          "limit": 200
+        },
+        {
+          "offset": 95600,
+          "limit": 200
+        },
+        {
+          "offset": 95800,
+          "limit": 200
+        },
+        {
+          "offset": 99800,
+          "limit": 200
+        }
+      ],
+      "maxConcurrentReads": 2,
+      "maxRenderedRows": 59,
+      "maxScrollTop": 3599403,
+      "maxRetainedPages": 12,
+      "retained": {
+        "retainedPages": 12,
+        "retainedRows": 2400,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "pinnedAtEnd": 1,
+      "frameIntervalsMs": {
+        "p50": 16.699999999999818,
+        "p95": 16.700000000000728,
+        "max": 33.40000000000009
+      },
+      "longTasksMs": []
+    }
+  ],
+  "limits": [
+    "Native benchmarks use private synthetic WAVs and SQLite databases, not user files.",
+    "Editor timings exclude IPC, audio-device startup and WebView rendering. PCM counters are not process RSS.",
+    "Three repetitions do not establish a statistically robust p95. Library query timings are one observation per offset.",
+    "Browser playback mutates the position store 120 times; it does not measure real native audio playback. Vue update hooks are development-only instrumentation, restored after the observation.",
+    "Browser scrolling performs 24 large jumps with 100ms waits; frame intervals are not a hardware-independent FPS guarantee.",
+    "No fresh native/WebKit process memory or live separate-window transfer measurement was performed. Historical foreground reports remain separately scoped."
+  ]
+}

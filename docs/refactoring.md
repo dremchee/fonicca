@@ -628,3 +628,12 @@ Final foreground observation:
   both its HTTP server and attributed native/WebKit processes have stopped.
 
 All six scoped stages now have evidence; see the completion audit for limitations.
+
+## Follow-up audit — 2026-11-02
+
+The new UI/window changes have a separate [current audit](optimization-audit-2026-11-02.md)
+and [raw baseline](research/optimization-baseline-2026-11-02.json). The earlier six-stage
+completion and its scoped measurements remain historical. The cycle now covers broad filtered/grouped queries, editor transfer/open cancellation,
+history accounting, row/pinning boundaries and capped waveform requests. The current
+audit links the before/after evidence and final verification. Browser row extraction
+preserves existing playback update isolation; no FPS improvement is claimed.

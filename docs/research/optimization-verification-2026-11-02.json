@@ -1,0 +1,191 @@
+{
+  "schema": 1,
+  "date": "2026-11-02",
+  "revision": "e3af9201187583cd3de6600cc807d41ff34c90c4",
+  "dirtyWorktree": true,
+  "sourceSha256": {
+    "src-tauri/src/editor_commands/opening.rs": "8b2c6cf4e74d4252dfb1e7726b18c56b8a0bd40c01d8b2868a078c7b34737701",
+    "src-tauri/src/editor_commands/transfer.rs": "7f1b1ced340d1f37d10a7c6c4668621d7f3a42e4feca016fcdfe06bad616e723",
+    "src/components/SampleRow.vue": "ed6ab60edef8ff0e81a08363bff4f0af75c5b174c243dcc9468db18ddcf56821",
+    "src/composables/pinnedPlayback.ts": "3508ffdd38ac2ad26220dc701bd5e3259bb4e180688193920c41590e061f1300",
+    "src/editor-window-transfer.ts": "1b1e7c08640a4d83cca43c972fca2ad70f8e2e6de92e380405dea1e96862fe07",
+    "tests/browser/editor-attach.mjs": "bb1c04eb85cb688ad9475aa0aec2b3e33d6ef2a2ee4bc003dabb72bf1bf2cace",
+    "tests/browser/editor-open-cancellation.mjs": "2b26975f1b9cb2604f3ff09fad2a439c70917628098ab4f2c2160303ad31a31e",
+    "tests/browser/editor-transfer-reload.mjs": "c087ad93e08c391d9848eacc454109d7a56412bccc5192ac666fd5efa4c66e2a",
+    "tests/browser/editor-transfer-startup.mjs": "443574c4bc08b41e8df9e99dbad0ca22e447696e41c8ef945df1878a6dae56b2",
+    "tests/browser/library-performance.mjs": "424a8e2c000b55b83f4972bf380ce31a5440872979d510e40225ec8b0b241cf2",
+    "tests/browser/sample-row-actions.mjs": "cd077462f31cc774998d61a128403e381cfa6824975219c0477778ac361eb5cb",
+    "tests/browser/sample-row-presentation.mjs": "4ddb1dacfe7a3a5bb806f15a39b16f53ef1fb91d38b5d31aad8975172ac379d1",
+    "tests/editor-window-transfer.test.ts": "d9874f2d8159e777d661fb5d40f8c49dda049847556adc4c81312fd700fbbca2",
+    "tests/pinned-playback.test.ts": "6774236c308dd60f57ce354f90968f379beb1dce6ea2da1a3c1e11cdb7eb4e0b",
+    "src-tauri/src/editor.rs": "7ce3dcee70cdbd11b836cf14bb29aec9c246c9833f135617048398f45b6bad19",
+    "src-tauri/src/editor/benchmarks.rs": "4f9eec0697296c8589e9b078a39a5cf7b973bfeff3ad13062e4f29a40ff1f38e",
+    "src-tauri/src/editor/blocks.rs": "9f595fe525e4a5b5e60e07ca33a68083d2b283ddf431d532e78bde9ae978b4c4",
+    "src-tauri/src/editor/diagnostics.rs": "a47668b430e1d067d962fdb80a8c1eb391bd40bad13a287b926bedc46336bbe1",
+    "src-tauri/src/editor/saving.rs": "220ccb55ce28bbf9a465e6567384157592dadbffa0c37567ce554bfd254617c2",
+    "src-tauri/src/editor/storage.rs": "750609e4b45c7c4ce1810b850b773a274b716e1652bcd0e391bfbe36f6be1ee7",
+    "src-tauri/src/editor_commands.rs": "b80219bdadb95562c6ef70a7ed71e66985c4a77962fd219431b936be031ba120",
+    "src-tauri/src/lib.rs": "f2b658b79931e69f88cbdf9a62b0513ffbecfd0579cf30c297e214f00bfac173",
+    "src-tauri/src/library.rs": "cbb6ce3ef3d974e8e9582365e8c0842279e6b3347223cc7ca00240e225a13b28",
+    "src-tauri/src/library/benchmarks.rs": "48c18515aa93d4aa1b82f0b39a9ce5b0017bcf2468112d6223d9728e3be5c7ea",
+    "src/App.vue": "38809b10da8af40eec4acd39e197a3b4778aefb0f2babf004b60c04691f58cf2",
+    "src/components/EditorMinimap.vue": "e8f05d0bdad6e9181ee6249016313fee99e1a19af1caad7ef303e5d26bd799e2",
+    "src/components/EditorView.vue": "7e0813c3c57dbe36d2f1830b7303a76bffcaa401a49aa7a09b8a9c7e83d9ebad",
+    "src/components/LevelMeter.vue": "407b55eda89bbc6410c2071e2ddb15de5ccf9e5231e6ff65f4d8cebeca0c7727",
+    "src/components/SampleColumnsMenu.vue": "b3336b4a1d738e7bc7870e84bfb135d4ab132dce6a7d387cc3549593bb58ffa1",
+    "src/components/SampleList.vue": "f97a0a4d0dfd6a02b80ac3c0951acbc9f4295dcb1c4c87e32fbfb4bf17e83557",
+    "src/components/editor/EditorToolbar.vue": "ffa9e365c0c7278fdaf16e2cfd1f1ee1ecd12278985bc7270351cfd96d1a990d",
+    "src/composables/editor/waveform.ts": "2d5a82d8fb8cf474e8109ab326788c26dcbec6e363895499d2e014486332c169",
+    "src/editor-window-state.ts": "7972095f61566e29258d5a49cd0549aa4e72c8d81306059554283f21cebacfc2",
+    "src/i18n/en/editor.ts": "884db044a6f3ea35b2ba0909efdf2cf4f9ea2fc7fee6eb4d87e037e1259a0d39",
+    "src/i18n/ru/editor.ts": "11a7d655a486222620879ab504917a46cc8a46c0b4f822067852dd08f9e64359",
+    "src/mock/editor.ts": "74942264e6add5186a39b2724a81165aad9170b5b4bd1caa66bedf5a14034ae8",
+    "src/stores/editor.ts": "4accc13e2a0ff90b48d00f4adab4d84ee103b2f4e3af6f172af6aaae344a6ee9",
+    "tests/browser/editor-detach.mjs": "bc5a98958b0b1646a0c5a2f95122621f1b936f06e81f30fc31a3b15895b94171",
+    "tests/editor-waveform.test.ts": "1d7f27fbfa456a0668c2ed2e7e147480b12166b882ecf0db9cfcdef6bd4931fd",
+    "tests/editor-window-state.test.ts": "9348e7f8946dd388a5405857e68ed2ee329583b476557117500bfab2f994fbd5"
+  },
+  "checks": [
+    {
+      "command": "pnpm test",
+      "exitCode": 0,
+      "passed": 162
+    },
+    {
+      "command": "pnpm build",
+      "exitCode": 0
+    },
+    {
+      "command": "cargo test --manifest-path src-tauri/Cargo.toml --locked --lib",
+      "exitCode": 0,
+      "passed": 242,
+      "ignored": 44
+    },
+    {
+      "command": "cargo check --manifest-path src-tauri/Cargo.toml --locked --lib",
+      "exitCode": 0,
+      "warnings": 0
+    },
+    {
+      "command": "git diff --check",
+      "exitCode": 0
+    }
+  ],
+  "browser": [
+    {
+      "scenario": "editor-detach",
+      "result": {
+        "passed": [
+          "toolbar action",
+          "duplicate guard",
+          "error recovery preserves edits/history/selection",
+          "retry",
+          "view transfer",
+          "source unmount without closing native session"
+        ]
+      }
+    },
+    {
+      "scenario": "editor-attach",
+      "result": {
+        "passed": [
+          "single return button",
+          "transfer guard",
+          "occupied destination keeps source",
+          "close source without discard",
+          "prepare then explicitly accept without decoding",
+          "occupied UI rejects a second offer",
+          "selection/viewport/history preserved",
+          "staged destination blocks competing transitions",
+          "expired acceptance removes staged UI"
+        ]
+      }
+    },
+    {
+      "scenario": "editor-transfer-startup",
+      "result": {
+        "passed": [
+          "pending offer stages before acceptance",
+          "no decode/discard on transfer startup",
+          "history and view preserved",
+          "consumed token removed from URL",
+          "duplicate token does not cancel its pending transfer"
+        ]
+      }
+    },
+    {
+      "scenario": "editor-transfer-reload",
+      "result": {
+        "passed": [
+          "committed reload recovers from an unconsumed URL token",
+          "ownership probe precedes explicit reset",
+          "unowned source is never discarded or decoded"
+        ]
+      }
+    },
+    {
+      "scenario": "editor-open-cancellation",
+      "result": {
+        "passed": [
+          "reset invalidates late success",
+          "late success cannot clear reset loading",
+          "stale error cannot restore previous track",
+          "newer opening remains loading until its own response",
+          "stale cancellation is silent"
+        ]
+      }
+    },
+    {
+      "scenario": "sample-row-actions",
+      "result": {
+        "passed": [
+          "row selection/play",
+          "pause/resume button",
+          "solid favorite without playback",
+          "modified multi-selection",
+          "drag selection",
+          "stem disclosure",
+          "double-click editor",
+          "pinned row pause and hidden stems",
+          "cursor modifier and coordinates"
+        ]
+      }
+    },
+    {
+      "scenario": "library-hints",
+      "result": {
+        "passed": [
+          "category",
+          "scope line break",
+          "bpm",
+          "accessible description",
+          "hoverable content",
+          "Escape",
+          "shortcut",
+          "name stays tooltip-free",
+          "keyboard focus",
+          "scroll",
+          "context menu",
+          "analysis refresh",
+          "filter removal"
+        ]
+      }
+    }
+  ],
+  "browserRunner": {
+    "headless": true,
+    "channel": "chrome",
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "fixture": "localhost:1433/mock.html, generated data and fake IPC"
+  },
+  "fixtureCorrection": "Reload scenario now performs page.reload itself. Initial fresh-navigation run failed to enter the reload recovery branch; no production recovery change was required.",
+  "limits": [
+    "No user audio or library used.",
+    "No native app launch, installation, commit, push or release.",
+    "Native benchmarks and Rust tests are macOS ARM64, not a cross-platform performance guarantee.",
+    "WebKit RSS and total application heap were not re-profiled."
+  ]
+}
