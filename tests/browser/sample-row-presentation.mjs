@@ -20,10 +20,14 @@ export async function captureSampleRowPresentation(page, baseUrl, outputPrefix) 
     l.focusIndex = 0
     player.playingId = null
     player.paused = false
-    const { useWaveformBackgrounds } = await import('/src/composables/waveformBackgrounds.ts')
+    // Use the cache held by the live row, including after Vite adds HMR URLs.
+    let rowCache = document.querySelector('.sample-list [data-index]')?.__vueParentComponent
+    while (rowCache && !rowCache.setupState?.backgrounds) rowCache = rowCache.parent
+    if (!rowCache) throw new Error('No live row waveform cache')
+    const backgrounds = rowCache.setupState.backgrounds
     const values = new Float32Array(256 * 6)
     for (let i = 0; i < 256; i++) { const a = .15 + .7 * Math.abs(Math.sin(i / 13)); values[i * 6] = -a; values[i * 6 + 1] = a }
-    for (const sample of rows.slice(0, 3)) useWaveformBackgrounds().remember(sample, { count: 256, lanes: 1, samples: false, stride: 6, values })
+    for (const sample of rows.slice(0, 3)) backgrounds.remember(sample, { count: 256, lanes: 1, samples: false, stride: 6, values })
   })
   await page.mouse.move(1279, 899)
   const snapshot = async name => {

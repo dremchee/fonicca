@@ -76,10 +76,14 @@ export async function checkSampleRowActions(page) {
       p._s.get('settings').settings.rowPlaybackMode='alt'
       await p._s.get('player').stop()
       document.querySelector('.sample-list div[tabindex="0"].overflow-y-auto').scrollTop=0
-      const {useWaveformBackgrounds}=await import('/src/composables/waveformBackgrounds.ts')
+      // Use the cache held by the live row, including after Vite adds HMR URLs.
+      let rowCache = document.querySelector('.sample-list [data-index]')?.__vueParentComponent
+      while (rowCache && !rowCache.setupState?.backgrounds) rowCache = rowCache.parent
+      if (!rowCache) throw new Error('No live row waveform cache')
+      const backgrounds = rowCache.setupState.backgrounds
       const values=new Float32Array(256*6)
       for(let i=0;i<256;i++){values[i*6]=-.5;values[i*6+1]=.5}
-      useWaveformBackgrounds().remember(p._s.get('library').sampleAt(2),{count:256,lanes:1,samples:false,stride:6,values})
+      backgrounds.remember(p._s.get('library').sampleAt(2),{count:256,lanes:1,samples:false,stride:6,values})
     })
     await pinned.waitFor({state:'hidden'})
     const name=row(2).locator('.track-name'),box=await name.boundingBox()
