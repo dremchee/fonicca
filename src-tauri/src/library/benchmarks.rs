@@ -9,6 +9,7 @@ fn library_workload_benchmark() {
     let root = tempfile::tempdir().unwrap();
     let reference = std::env::var_os("FONICCA_LIBRARY_BENCH_REFERENCE").is_some();
     let mut scenarios = Vec::new();
+    let repeats = 5;
     for size in [32_000, 100_000] {
         let mut conn = crate::db::open(&root.path().join(format!("library-{size}.db"))).unwrap();
         crate::db::migrate(&mut conn).unwrap();
@@ -35,6 +36,8 @@ fn library_workload_benchmark() {
             ("all_flat", Filter::default()),
             ("category", Filter { category: Some("snare".into()), group_stems: true, ..Filter::default() }),
             ("directory", Filter { source_id: Some(1), directory: Some("/fixture/Pack 2".into()), group_stems: true, ..Filter::default() }),
+            ("single_match", Filter { query: Some("snare 9999".into()), group_stems: true, ..Filter::default() }),
+            ("expanded", Filter { category: Some("snare".into()), group_stems: true, expanded_stems: vec![1, 11, 21], ..Filter::default() }),
             ("search", Filter { query: Some("snare".into()), group_stems: true, ..Filter::default() }),
         ];
         let mut queries = Vec::new();
@@ -46,10 +49,16 @@ fn library_workload_benchmark() {
             let mut counts = Vec::new();
             let total = count(&conn, &filter).unwrap();
             for offset in [0, total / 2, (total - 200).max(0)] {
-                let started = Instant::now();
-                let rows = list(&conn, &filter, offset, 200).unwrap();
-                timings.push(started.elapsed().as_secs_f64() * 1000.0);
-                counts.push(rows.len());
+                let expected = ids_range_ranked(&conn, &filter, None, offset, Some(200)).unwrap();
+                let mut samples = Vec::new();
+                for _ in 0..repeats {
+                    let started = Instant::now();
+                    let rows = list(&conn, &filter, offset, 200).unwrap();
+                    samples.push(started.elapsed().as_secs_f64() * 1000.0);
+                    assert_eq!(rows.iter().map(|row| row.id).collect::<Vec<_>>(), expected);
+                }
+                timings.push(samples);
+                counts.push(expected.len());
             }
             let (from, args, order) = source(&filter, None);
             let sql = format!("EXPLAIN QUERY PLAN SELECT s.id {from} {order} LIMIT 200 OFFSET 0");
@@ -58,10 +67,10 @@ fn library_workload_benchmark() {
         }
         scenarios.push(json!({ "entries": size, "queries": queries }));
     }
-    let report = json!({ "schema": 1, "os": std::env::consts::OS, "arch": std::env::consts::ARCH,
+    let report = json!({ "schema": 2, "repeats": repeats, "os": std::env::consts::OS, "arch": std::env::consts::ARCH,
         "relations": std::env::var_os("FONICCA_LIBRARY_BENCH_RELATIONS").is_some(),
         "reference": reference,
-        "note": "Warm SQLite page timings at first/middle/last offsets, 200 rows. Query plan omits tag projection subqueries but retains filter/grouping/sort. No WebView or user database.", "scenarios": scenarios });
+        "note": "Five warm SQLite page timings per offset at first/middle/last offsets, 200 rows. Query plan omits tag projection subqueries but retains filter/grouping/sort. No WebView or user database.", "scenarios": scenarios });
     let text = serde_json::to_string_pretty(&report).unwrap();
     if let Ok(path) = std::env::var("FONICCA_LIBRARY_BENCH_OUTPUT") { std::fs::write(path, &text).unwrap(); }
     println!("{text}");

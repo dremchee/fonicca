@@ -1,0 +1,1202 @@
+{
+  "schema": 1,
+  "date": "2026-11-02",
+  "revision": "e3af9201187583cd3de6600cc807d41ff34c90c4",
+  "scope": "Dirty working tree. Only SQL pagination and its workload changed in this follow-up; other pending UI/window changes are preserved.",
+  "method": "Same isolated generated databases, five warm observations per page, 200 rows, sequential before/after runs. No user data, WebView or audio. Not a production latency guarantee; unaffected scenarios show machine variance.",
+  "beforeSource": "library.rs from HEAD (SQL unchanged by preceding pending UI work)",
+  "afterSha256": {
+    "src-tauri/src/library.rs": "cbb6ce3ef3d974e8e9582365e8c0842279e6b3347223cc7ca00240e225a13b28",
+    "src-tauri/src/library/benchmarks.rs": "48c18515aa93d4aa1b82f0b39a9ce5b0017bcf2468112d6223d9728e3be5c7ea"
+  },
+  "before": {
+    "arch": "aarch64",
+    "note": "Five warm SQLite page timings per offset at first/middle/last offsets, 200 rows. Query plan omits tag projection subqueries but retains filter/grouping/sort. No WebView or user database.",
+    "os": "macos",
+    "reference": false,
+    "relations": true,
+    "repeats": 5,
+    "scenarios": [
+      {
+        "entries": 32000,
+        "queries": [
+          {
+            "name": "all_grouped",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                0.900958,
+                0.531083,
+                0.52075,
+                0.5199999999999999,
+                0.517
+              ],
+              [
+                3.0907500000000003,
+                3.08575,
+                3.070833,
+                3.087458,
+                3.064125
+              ],
+              [
+                7.189708,
+                7.178917,
+                7.198458,
+                7.141417,
+                7.126416
+              ]
+            ],
+            "plan": [
+              "SCAN s USING COVERING INDEX samples_natural_name",
+              "CORRELATED SCALAR SUBQUERY 1",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?)",
+              "CORRELATED SCALAR SUBQUERY 2",
+              "SEARCH l USING COVERING INDEX sample_stems_parent (parent_id=?)",
+              "SEARCH child USING INTEGER PRIMARY KEY (rowid=?)"
+            ],
+            "total": 28800
+          },
+          {
+            "name": "all_flat",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                0.558625,
+                0.481167,
+                0.47524999999999995,
+                0.479875,
+                0.477458
+              ],
+              [
+                0.8570840000000001,
+                0.859833,
+                0.944458,
+                0.846917,
+                0.8595
+              ],
+              [
+                1.425625,
+                1.382458,
+                1.261917,
+                1.263958,
+                1.2186670000000002
+              ]
+            ],
+            "plan": [
+              "SCAN s USING COVERING INDEX samples_natural_name"
+            ],
+            "total": 32000
+          },
+          {
+            "name": "category",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                12.242166000000001,
+                11.242959,
+                10.950334000000002,
+                12.026333000000001,
+                11.132249999999999
+              ],
+              [
+                39.417209,
+                37.828083,
+                36.357042,
+                35.856291999999996,
+                36.04475
+              ],
+              [
+                53.392458,
+                54.081334,
+                55.403959,
+                56.217000000000006,
+                59.590458999999996
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SEARCH matched USING COVERING INDEX samples_category (category=?)",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 16000
+          },
+          {
+            "name": "directory",
+            "pageCounts": [
+              200,
+              160,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                4.645333,
+                4.43525,
+                4.450082999999999,
+                4.440459,
+                4.469583
+              ],
+              [
+                4.679791,
+                4.693375,
+                4.679333,
+                4.644209,
+                4.647875
+              ],
+              [
+                4.667417,
+                4.702583,
+                4.753916,
+                4.71725,
+                4.680041999999999
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN matched",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 320
+          },
+          {
+            "name": "single_match",
+            "pageCounts": [
+              1,
+              1,
+              1
+            ],
+            "pageTimesMs": [
+              [
+                0.581875,
+                0.49487499999999995,
+                0.49208399999999997,
+                0.488083,
+                0.491958
+              ],
+              [
+                0.487792,
+                0.54475,
+                0.5575000000000001,
+                0.524084,
+                0.5021249999999999
+              ],
+              [
+                0.49675,
+                0.493042,
+                0.49479199999999995,
+                0.49466699999999997,
+                0.49066599999999994
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 2",
+              "SEARCH matched USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN samples_fts VIRTUAL TABLE INDEX 0:M3",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 1
+          },
+          {
+            "name": "expanded",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                17.709208,
+                18.828917,
+                182.505084,
+                21.31075,
+                19.915665999999998
+              ],
+              [
+                45.599000000000004,
+                55.665958,
+                48.190708,
+                45.8465,
+                44.211625
+              ],
+              [
+                63.34954199999999,
+                61.562708,
+                60.710792,
+                60.383667,
+                60.274625
+              ]
+            ],
+            "plan": [
+              "CO-ROUTINE visible",
+              "COMPOUND QUERY",
+              "LEFT-MOST SUBQUERY",
+              "MATERIALIZE roots",
+              "SEARCH s USING COVERING INDEX samples_category (category=?)",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR DISTINCT",
+              "SCAN roots",
+              "UNION ALL",
+              "SCAN r",
+              "SEARCH l USING COVERING INDEX sample_stems_parent (parent_id=?)",
+              "LIST SUBQUERY 4",
+              "SCAN json_each VIRTUAL TABLE INDEX 1:",
+              "CREATE BLOOM FILTER",
+              "SCAN visible",
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "SEARCH parent USING INTEGER PRIMARY KEY (rowid=?)",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 16003
+          },
+          {
+            "name": "search",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                15.613417,
+                15.549999999999999,
+                15.640042,
+                15.702,
+                15.637834
+              ],
+              [
+                40.745542,
+                40.700041,
+                43.701125,
+                42.700291,
+                41.63575
+              ],
+              [
+                59.416792,
+                58.376084,
+                58.078958,
+                58.364792,
+                60.275208
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 2",
+              "SEARCH matched USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN samples_fts VIRTUAL TABLE INDEX 0:M3",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 16000
+          }
+        ]
+      },
+      {
+        "entries": 100000,
+        "queries": [
+          {
+            "name": "all_grouped",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                1.333083,
+                1.2105,
+                1.210375,
+                1.051166,
+                1.0386250000000001
+              ],
+              [
+                18.150459,
+                17.626084,
+                20.683500000000002,
+                30.261291999999997,
+                10.296
+              ],
+              [
+                26.194875,
+                24.380708000000002,
+                22.5955,
+                22.270083,
+                22.251292
+              ]
+            ],
+            "plan": [
+              "SCAN s USING COVERING INDEX samples_natural_name",
+              "CORRELATED SCALAR SUBQUERY 1",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?)",
+              "CORRELATED SCALAR SUBQUERY 2",
+              "SEARCH l USING COVERING INDEX sample_stems_parent (parent_id=?)",
+              "SEARCH child USING INTEGER PRIMARY KEY (rowid=?)"
+            ],
+            "total": 90000
+          },
+          {
+            "name": "all_flat",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                0.57875,
+                0.538541,
+                0.490292,
+                0.487584,
+                0.485417
+              ],
+              [
+                2.1853749999999996,
+                2.161,
+                2.163583,
+                2.1563749999999997,
+                2.15125
+              ],
+              [
+                5.906,
+                4.0062500000000005,
+                4.035958,
+                3.9916250000000004,
+                4.016875
+              ]
+            ],
+            "plan": [
+              "SCAN s USING COVERING INDEX samples_natural_name"
+            ],
+            "total": 100000
+          },
+          {
+            "name": "category",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                31.77,
+                31.713958,
+                31.835416999999996,
+                32.405292,
+                32.586708
+              ],
+              [
+                136.972333,
+                131.36237500000001,
+                127.852667,
+                128.297959,
+                127.18608300000001
+              ],
+              [
+                187.46837499999998,
+                342.774792,
+                259.157959,
+                194.823667,
+                191.546
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SEARCH matched USING COVERING INDEX samples_category (category=?)",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 50000
+          },
+          {
+            "name": "directory",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                13.484375,
+                13.254083999999999,
+                13.276958,
+                13.186125,
+                13.169083
+              ],
+              [
+                14.529416999999999,
+                14.299833,
+                14.249917,
+                14.259958,
+                14.397708
+              ],
+              [
+                14.989167,
+                14.983375,
+                14.962125,
+                14.941416,
+                14.933375
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN matched",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 1000
+          },
+          {
+            "name": "single_match",
+            "pageCounts": [
+              6,
+              3,
+              6
+            ],
+            "pageTimesMs": [
+              [
+                2.617417,
+                2.527375,
+                2.507708,
+                2.5009580000000002,
+                2.496916
+              ],
+              [
+                2.4989169999999996,
+                2.4969580000000002,
+                2.522167,
+                2.4914590000000003,
+                2.493917
+              ],
+              [
+                2.4997079999999996,
+                2.495417,
+                2.5042910000000003,
+                2.4989169999999996,
+                2.4987500000000002
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 2",
+              "SEARCH matched USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN samples_fts VIRTUAL TABLE INDEX 0:M3",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 6
+          },
+          {
+            "name": "expanded",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                54.733041,
+                52.807416,
+                52.931625000000004,
+                52.432167,
+                54.318875000000006
+              ],
+              [
+                147.578667,
+                148.62445899999997,
+                147.764417,
+                146.780833,
+                151.57475
+              ],
+              [
+                208.781708,
+                209.370042,
+                218.52416699999998,
+                216.617875,
+                228.968917
+              ]
+            ],
+            "plan": [
+              "CO-ROUTINE visible",
+              "COMPOUND QUERY",
+              "LEFT-MOST SUBQUERY",
+              "MATERIALIZE roots",
+              "SEARCH s USING COVERING INDEX samples_category (category=?)",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR DISTINCT",
+              "SCAN roots",
+              "UNION ALL",
+              "SCAN r",
+              "SEARCH l USING COVERING INDEX sample_stems_parent (parent_id=?)",
+              "LIST SUBQUERY 4",
+              "SCAN json_each VIRTUAL TABLE INDEX 1:",
+              "CREATE BLOOM FILTER",
+              "SCAN visible",
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "SEARCH parent USING INTEGER PRIMARY KEY (rowid=?)",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 50003
+          },
+          {
+            "name": "search",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                54.295417,
+                54.265916,
+                57.224167,
+                58.01575,
+                54.723708
+              ],
+              [
+                175.519333,
+                175.71404099999998,
+                199.895958,
+                232.50179200000002,
+                318.848042
+              ],
+              [
+                314.18383300000005,
+                202.479042,
+                199.55025,
+                198.145375,
+                203.976083
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 2",
+              "SEARCH matched USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN samples_fts VIRTUAL TABLE INDEX 0:M3",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 50000
+          }
+        ]
+      }
+    ],
+    "schema": 2
+  },
+  "after": {
+    "arch": "aarch64",
+    "note": "Five warm SQLite page timings per offset at first/middle/last offsets, 200 rows. Query plan omits tag projection subqueries but retains filter/grouping/sort. No WebView or user database.",
+    "os": "macos",
+    "reference": false,
+    "relations": true,
+    "repeats": 5,
+    "scenarios": [
+      {
+        "entries": 32000,
+        "queries": [
+          {
+            "name": "all_grouped",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                1.013667,
+                0.653292,
+                0.548542,
+                0.5273749999999999,
+                0.532667
+              ],
+              [
+                3.171625,
+                3.10275,
+                3.087875,
+                3.1163749999999997,
+                3.0855420000000002
+              ],
+              [
+                7.32,
+                7.242875000000001,
+                7.309667,
+                7.3855830000000005,
+                7.415083
+              ]
+            ],
+            "plan": [
+              "SCAN s USING COVERING INDEX samples_natural_name",
+              "CORRELATED SCALAR SUBQUERY 1",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?)",
+              "CORRELATED SCALAR SUBQUERY 2",
+              "SEARCH l USING COVERING INDEX sample_stems_parent (parent_id=?)",
+              "SEARCH child USING INTEGER PRIMARY KEY (rowid=?)"
+            ],
+            "total": 28800
+          },
+          {
+            "name": "all_flat",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                0.594333,
+                0.5233329999999999,
+                0.481,
+                0.5025000000000001,
+                0.542375
+              ],
+              [
+                0.941041,
+                0.8618750000000001,
+                0.9892499999999999,
+                0.887125,
+                0.8655419999999999
+              ],
+              [
+                1.2927920000000002,
+                1.253209,
+                1.262125,
+                1.2755830000000001,
+                1.2406249999999999
+              ]
+            ],
+            "plan": [
+              "SCAN s USING COVERING INDEX samples_natural_name"
+            ],
+            "total": 32000
+          },
+          {
+            "name": "category",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                11.110791,
+                11.542292,
+                11.749625,
+                10.809208,
+                10.751292000000001
+              ],
+              [
+                23.264291999999998,
+                22.073875,
+                21.940166,
+                22.039958,
+                21.767374999999998
+              ],
+              [
+                27.138875,
+                27.105875,
+                27.399292,
+                28.322291999999997,
+                26.99325
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SEARCH matched USING COVERING INDEX samples_category (category=?)",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 16000
+          },
+          {
+            "name": "directory",
+            "pageCounts": [
+              200,
+              160,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                4.726083,
+                4.617834,
+                4.577792,
+                4.573458,
+                4.617208000000001
+              ],
+              [
+                4.757083,
+                4.572667,
+                4.562333,
+                4.577999999999999,
+                4.592333
+              ],
+              [
+                4.748042,
+                4.777458,
+                4.815541,
+                4.76175,
+                4.786916
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN matched",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 320
+          },
+          {
+            "name": "single_match",
+            "pageCounts": [
+              1,
+              1,
+              1
+            ],
+            "pageTimesMs": [
+              [
+                0.5901660000000001,
+                0.5003749999999999,
+                0.5264580000000001,
+                0.5655830000000001,
+                0.526041
+              ],
+              [
+                0.504958,
+                0.502708,
+                0.496833,
+                0.492916,
+                0.491958
+              ],
+              [
+                0.49287500000000006,
+                0.49074999999999996,
+                0.48950000000000005,
+                0.491958,
+                0.49125
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 2",
+              "SEARCH matched USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN samples_fts VIRTUAL TABLE INDEX 0:M3",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 1
+          },
+          {
+            "name": "expanded",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                17.513417,
+                17.340292,
+                17.564957999999997,
+                18.281,
+                17.513917
+              ],
+              [
+                29.446165999999998,
+                29.349916,
+                29.252333,
+                29.180417,
+                29.257624999999997
+              ],
+              [
+                36.5965,
+                36.627374999999994,
+                36.515291999999995,
+                36.621624999999995,
+                36.695125000000004
+              ]
+            ],
+            "plan": [
+              "CO-ROUTINE visible",
+              "COMPOUND QUERY",
+              "LEFT-MOST SUBQUERY",
+              "MATERIALIZE roots",
+              "SEARCH s USING COVERING INDEX samples_category (category=?)",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR DISTINCT",
+              "SCAN roots",
+              "UNION ALL",
+              "SCAN r",
+              "SEARCH l USING COVERING INDEX sample_stems_parent (parent_id=?)",
+              "LIST SUBQUERY 4",
+              "SCAN json_each VIRTUAL TABLE INDEX 1:",
+              "CREATE BLOOM FILTER",
+              "SCAN visible",
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "SEARCH parent USING INTEGER PRIMARY KEY (rowid=?)",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 16003
+          },
+          {
+            "name": "search",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                16.439916,
+                16.182792000000003,
+                16.211833,
+                17.395958,
+                16.233083
+              ],
+              [
+                27.412540999999997,
+                26.951167,
+                27.072208,
+                27.463958,
+                27.078917
+              ],
+              [
+                32.100792000000006,
+                32.094334,
+                31.953207999999997,
+                31.872667,
+                32.207041
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 2",
+              "SEARCH matched USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN samples_fts VIRTUAL TABLE INDEX 0:M3",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 16000
+          }
+        ]
+      },
+      {
+        "entries": 100000,
+        "queries": [
+          {
+            "name": "all_grouped",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                0.714875,
+                0.5419999999999999,
+                0.539709,
+                0.535916,
+                0.529875
+              ],
+              [
+                9.873209000000001,
+                9.841291,
+                9.768791,
+                9.817625,
+                9.850625
+              ],
+              [
+                23.556375,
+                24.657875,
+                23.10625,
+                22.93225,
+                23.614957999999998
+              ]
+            ],
+            "plan": [
+              "SCAN s USING COVERING INDEX samples_natural_name",
+              "CORRELATED SCALAR SUBQUERY 1",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?)",
+              "CORRELATED SCALAR SUBQUERY 2",
+              "SEARCH l USING COVERING INDEX sample_stems_parent (parent_id=?)",
+              "SEARCH child USING INTEGER PRIMARY KEY (rowid=?)"
+            ],
+            "total": 90000
+          },
+          {
+            "name": "all_flat",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                0.623833,
+                0.490917,
+                0.483875,
+                0.48129200000000005,
+                0.480917
+              ],
+              [
+                2.399084,
+                2.3849169999999997,
+                2.4555,
+                2.391917,
+                2.353875
+              ],
+              [
+                6.481375,
+                4.5922920000000005,
+                4.5725,
+                4.598125,
+                4.885583
+              ]
+            ],
+            "plan": [
+              "SCAN s USING COVERING INDEX samples_natural_name"
+            ],
+            "total": 100000
+          },
+          {
+            "name": "category",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                33.147125,
+                34.953084000000004,
+                32.814958999999995,
+                33.120916,
+                33.381750000000004
+              ],
+              [
+                72.012291,
+                72.244958,
+                71.65970800000001,
+                71.970584,
+                72.69158300000001
+              ],
+              [
+                98.8905,
+                95.850833,
+                103.380125,
+                94.136,
+                95.418709
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SEARCH matched USING COVERING INDEX samples_category (category=?)",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 50000
+          },
+          {
+            "name": "directory",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                13.332916,
+                13.755125,
+                13.709292,
+                13.861958000000001,
+                13.807792
+              ],
+              [
+                14.860916,
+                16.478583,
+                14.444417,
+                14.54975,
+                14.150125
+              ],
+              [
+                14.1705,
+                14.20425,
+                14.190292,
+                14.233875,
+                14.153583000000001
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN matched",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 1000
+          },
+          {
+            "name": "single_match",
+            "pageCounts": [
+              6,
+              3,
+              6
+            ],
+            "pageTimesMs": [
+              [
+                2.64025,
+                2.5385,
+                2.514958,
+                2.5391250000000003,
+                2.5353749999999997
+              ],
+              [
+                2.643292,
+                2.527708,
+                2.528916,
+                2.5158340000000003,
+                2.505166
+              ],
+              [
+                2.552833,
+                2.5520840000000002,
+                2.536667,
+                2.513458,
+                2.5171249999999996
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 2",
+              "SEARCH matched USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN samples_fts VIRTUAL TABLE INDEX 0:M3",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 6
+          },
+          {
+            "name": "expanded",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                53.792834,
+                53.996792,
+                53.754999999999995,
+                54.45125,
+                55.289041
+              ],
+              [
+                101.81454199999999,
+                100.69212499999999,
+                100.38600000000001,
+                101.923709,
+                100.991875
+              ],
+              [
+                130.125834,
+                128.966667,
+                128.944375,
+                128.082208,
+                128.576458
+              ]
+            ],
+            "plan": [
+              "CO-ROUTINE visible",
+              "COMPOUND QUERY",
+              "LEFT-MOST SUBQUERY",
+              "MATERIALIZE roots",
+              "SEARCH s USING COVERING INDEX samples_category (category=?)",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR DISTINCT",
+              "SCAN roots",
+              "UNION ALL",
+              "SCAN r",
+              "SEARCH l USING COVERING INDEX sample_stems_parent (parent_id=?)",
+              "LIST SUBQUERY 4",
+              "SCAN json_each VIRTUAL TABLE INDEX 1:",
+              "CREATE BLOOM FILTER",
+              "SCAN visible",
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "SEARCH parent USING INTEGER PRIMARY KEY (rowid=?)",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 50003
+          },
+          {
+            "name": "search",
+            "pageCounts": [
+              200,
+              200,
+              200
+            ],
+            "pageTimesMs": [
+              [
+                53.979666,
+                51.032208000000004,
+                50.711167,
+                51.534167,
+                50.637375
+              ],
+              [
+                88.524666,
+                89.22525,
+                90.09804100000001,
+                89.198167,
+                88.633833
+              ],
+              [
+                112.44800000000001,
+                115.005584,
+                113.19666600000001,
+                112.60166600000001,
+                112.559709
+              ]
+            ],
+            "plan": [
+              "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 2",
+              "SEARCH matched USING INTEGER PRIMARY KEY (rowid=?)",
+              "LIST SUBQUERY 1",
+              "SCAN samples_fts VIRTUAL TABLE INDEX 0:M3",
+              "SEARCH l USING INTEGER PRIMARY KEY (rowid=?) LEFT-JOIN",
+              "USE TEMP B-TREE FOR ORDER BY"
+            ],
+            "total": 50000
+          }
+        ]
+      }
+    ],
+    "schema": 2
+  }
+}

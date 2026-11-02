@@ -302,8 +302,32 @@ pub fn list_ranked(
     let (from, mut args, order) = source(f, ranking);
     args.push(Box::new(limit));
     args.push(Box::new(offset));
+    // Keep metadata subqueries outside the sorting/offset workload. The page
+    // contains IDs only; MATERIALIZED prevents SQLite from flattening it and
+    // evaluating tag/stem projections for candidates discarded by pagination.
+    // Repeat the same order on the small result so ordering never depends on
+    // the iteration order of a CTE, including expanded groups.
+    let (page_fields, page_join, page_order) = if f.group_stems && !f.expanded_stems.is_empty() {
+        ("s.id, v.root_id, v.position",
+         "JOIN samples parent ON parent.id=page.root_id",
+         format!("ORDER BY {}, page.position, s.name COLLATE FONICCA_NATURAL, s.path, s.id", sort_order(f, "parent")))
+    } else {
+        ("s.id", "", format!("ORDER BY {}", sort_order(f, "s")))
+    };
+    // The first page and index-ordered scans already discard rows cheaply.
+    // Delay metadata for deeper grouped/filter pages, where OFFSET otherwise
+    // evaluates projections for rows that the caller never receives.
+    let defer_metadata = offset > 0 && f.group_stems && ranking.is_none()
+        && (!f.expanded_stems.is_empty() || !where_clause(f).0.is_empty());
+    let (prefix, selection) = if defer_metadata {
+        (format!("WITH page AS MATERIALIZED (SELECT {page_fields} {from} {order} LIMIT ? OFFSET ?)"),
+         format!("FROM page JOIN samples s ON s.id=page.id {page_join} {page_order}"))
+    } else {
+        (String::new(), format!("{from} {order} LIMIT ? OFFSET ?"))
+    };
     let mut stmt = conn.prepare_cached(&format!(
-        "SELECT s.id, s.source_id, s.path, s.name, s.ext, s.size, s.duration, s.sample_rate,
+        "{prefix}
+         SELECT s.id, s.source_id, s.path, s.name, s.ext, s.size, s.duration, s.sample_rate,
                 s.channels, s.bit_depth, s.favorite,
                 (SELECT json_group_array(json_object('id', t.id, 'name', t.name)
                                          ORDER BY t.name COLLATE NOCASE)
@@ -315,7 +339,7 @@ pub fn list_ranked(
                 (SELECT parent_id FROM sample_stems WHERE child_id=s.id),
                 (SELECT kind FROM sample_stems WHERE child_id=s.id),
                 (SELECT count(*) FROM sample_stems WHERE parent_id=s.id)
-         {from} {order} LIMIT ? OFFSET ?"
+         {selection}"
     ))?;
     let rows = stmt
         .query_map(params_from_iter(args_iter(&args)), |r| {
@@ -781,6 +805,26 @@ mod tests {
             let visible=ids(&conn,&f).unwrap();
             let i=visible.iter().position(|id| *id==1).unwrap();
             assert_eq!(&visible[i..i+3], &[1,10,11]);
+            // Page boundaries may split a group. Hydrating page metadata must
+            // preserve exactly the order used for range selection, both ways.
+            for direction in [SortDirection::Asc, SortDirection::Desc] {
+                f.sort_direction = direction;
+                let expected = ids(&conn, &f).unwrap();
+                for offset in 0..expected.len() {
+                    let rows = list(&conn, &f, offset as i64, 2).unwrap();
+                    assert_eq!(rows.iter().map(|s| s.id).collect::<Vec<_>>(),
+                        expected[offset..(offset+2).min(expected.len())]);
+                    for row in rows {
+                        if row.id == 1 {
+                            assert_eq!(row.tags, vec![t.clone()]);
+                            assert_eq!(row.stem_count, 2);
+                        } else if row.id == 10 || row.id == 11 {
+                            assert_eq!(row.stem_parent_id, Some(1));
+                            assert_eq!(row.stem_kind.as_deref(), Some(if row.id == 10 { "vocals" } else { "drums" }));
+                        }
+                    }
+                }
+            }
         }
     }
 
