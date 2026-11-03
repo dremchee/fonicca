@@ -51,9 +51,9 @@ export function useLibraryNavigation(expandedStems: Set<number>) {
       scope.value = scopeBeforeSimilar
   }
 
-  function setSort(by: SampleSort['by']) {
+  function setSort(by: SampleSort['by'], direction?: SampleSort['direction']) {
     if (scope.value.kind === 'similar') return
-    sortPreference.value = { by, direction: sort.value.by === by && sort.value.direction === 'asc' ? 'desc' : 'asc' }
+    sortPreference.value = { by, direction: direction ?? (sort.value.by === by && sort.value.direction === 'asc' ? 'desc' : 'asc') }
   }
 
   const hasAnalysisFilters = computed(() =>

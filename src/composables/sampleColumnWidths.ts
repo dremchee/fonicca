@@ -2,12 +2,14 @@ import type { ComputedRef, Ref } from 'vue'
 import type { ResizableSampleColumnId, SAMPLE_COLUMNS } from '@/sample-columns'
 import { useElementSize } from '@vueuse/core'
 import { useSampleColumns } from '@/composables/sampleColumns'
+import { useSampleTable } from '@/composables/sampleTable'
 import { computed, shallowRef } from 'vue'
 import { boundedSampleColumnWidth, sampleTableLayout } from '@/sample-columns'
 
 export function useSampleColumnWidths(columns: ComputedRef<readonly typeof SAMPLE_COLUMNS[number][]>, viewport: Ref<HTMLElement | null>) {
   const { width: viewportWidth } = useElementSize(viewport)
   const { widths: saved } = useSampleColumns()
+  const { table } = useSampleTable()
   const draft = shallowRef<{ id: ResizableSampleColumnId, width: number } | null>(null)
   const tableStyle = computed(() => sampleTableLayout(columns.value, draft.value
     ? { ...saved.value, [draft.value.id]: draft.value.width }
@@ -17,7 +19,7 @@ export function useSampleColumnWidths(columns: ComputedRef<readonly typeof SAMPL
     draft.value = { id, width: boundedSampleColumnWidth(id, width) }
   }
   function commit(id: ResizableSampleColumnId, width: number) {
-    saved.value = { ...saved.value, [id]: boundedSampleColumnWidth(id, width) }
+    table.setColumnSizing(previous => ({ ...previous, [id]: boundedSampleColumnWidth(id, width) }))
     draft.value = null
   }
   function cancel() {
@@ -25,12 +27,14 @@ export function useSampleColumnWidths(columns: ComputedRef<readonly typeof SAMPL
   }
   function reset(id?: ResizableSampleColumnId) {
     if (id) {
-      const next = { ...saved.value }
-      delete next[id]
-      saved.value = next
+      table.setColumnSizing((previous) => {
+        const next = { ...previous }
+        delete next[id]
+        return next
+      })
     }
     else {
-      saved.value = {}
+      table.resetColumnSizing()
     }
     cancel()
   }

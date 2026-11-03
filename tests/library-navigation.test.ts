@@ -56,3 +56,20 @@ test('similar navigation restores its original scope and suspends user sorting',
     assert.equal(view.sort.value.direction, 'desc')
   } finally { owner.stop() }
 })
+
+test('explicit sort directions from column menus are idempotent', () => {
+  const owner = effectScope()
+  try {
+    const view = owner.run(() => useLibraryNavigation(new Set<number>()))!
+    view.setSort('bpm', 'desc')
+    view.setSort('bpm', 'desc')
+    assert.equal(view.filter.value.sortBy, 'bpm')
+    assert.equal(view.filter.value.sortDirection, 'desc')
+    view.setSort('length', 'asc')
+    assert.equal(view.filter.value.sortBy, 'length')
+    assert.equal(view.filter.value.sortDirection, 'asc')
+    view.findSimilar({ id: 10, name: 'Kick' } as Parameters<typeof view.findSimilar>[0])
+    view.setSort('name', 'desc')
+    assert.deepEqual(view.sort.value, { by: 'length', direction: 'asc' })
+  } finally { owner.stop() }
+})

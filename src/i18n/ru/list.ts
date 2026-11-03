@@ -16,6 +16,11 @@ export default {
     selectSamples: 'Выберите семплы для добавления в коллекцию',
   },
   columns: {
+    options: 'Настройки колонки «{name}»',
+    ascending: 'По возрастанию',
+    descending: 'По убыванию',
+    hide: 'Скрыть колонку',
+    resetWidth: 'Сбросить ширину',
     directory: 'Директория',
     sortAscending: 'Сортировать «{name}» по возрастанию',
     sortDescending: 'Сортировать «{name}» по убыванию',

@@ -1,19 +1,32 @@
 <script setup lang="ts">
-import { ArrowDown, ArrowUp } from '@lucide/vue'
+import type { SampleTableColumn } from '@/composables/sampleTable'
+import { ArrowDown, ArrowUp, ArrowUpDown, EyeOff, RotateCcw } from '@lucide/vue'
 import { useEventListener, useResizeObserver } from '@vueuse/core'
-import { onBeforeUnmount, shallowRef, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, shallowRef, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
-const props = defineProps<{ label: string, minWidth: number, maxWidth: number, alignRight?: boolean, direction?: 'asc' | 'desc' | null, sortDisabled?: boolean }>()
-const emit = defineEmits<{ resize: [width: number], commit: [width: number], cancel: [], reset: [], sort: [] }>()
+const props = defineProps<{ column: SampleTableColumn, label: string, alignRight?: boolean }>()
+const emit = defineEmits<{ resize: [width: number], commit: [width: number], cancel: [], reset: [] }>()
 const { t } = useI18n()
+const direction = computed(() => props.column.getIsSorted())
+const menuLabel = computed(() => [
+  t('list.columns.options', { name: props.label }),
+  direction.value ? t(direction.value === 'asc' ? 'list.columns.sortedAscending' : 'list.columns.sortedDescending') : '',
+].filter(Boolean).join(', '))
+const minWidth = computed(() => props.column.columnDef.minSize ?? 44)
+const maxWidth = computed(() => props.column.columnDef.maxSize ?? 800)
 const cell = useTemplateRef<HTMLElement>('cell')
 const width = shallowRef(0)
 const drag = shallowRef<{ pointerId: number, x: number, width: number } | null>(null)
 useResizeObserver(cell, entries => width.value = Math.round(entries[0].contentRect.width))
 
 function bound(value: number) {
-  return Math.min(props.maxWidth, Math.max(props.minWidth, value))
+  return Math.min(maxWidth.value, Math.max(minWidth.value, value))
 }
 function start(e: PointerEvent) {
   if (e.button !== 0 || !e.isPrimary || !cell.value)
@@ -56,8 +69,8 @@ function onKeydown(e: KeyboardEvent) {
   switch (e.key) {
     case 'ArrowLeft': next = width.value - step; break
     case 'ArrowRight': next = width.value + step; break
-    case 'Home': next = props.minWidth; break
-    case 'End': next = props.maxWidth; break
+    case 'Home': next = minWidth.value; break
+    case 'End': next = maxWidth.value; break
     default: return
   }
   e.preventDefault()
@@ -69,18 +82,44 @@ onBeforeUnmount(cancel)
 </script>
 
 <template>
-  <div ref="cell" class="column-heading relative min-w-0 flex items-center h-full" :class="{ 'justify-end': alignRight }">
-    <button
-      type="button" class="sort-heading w-full min-w-0 flex items-center gap-1 h-full rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      :class="{ 'text-foreground': direction, 'justify-end ml-auto': alignRight }"
-      :disabled="sortDisabled" :aria-pressed="!!direction"
-      :aria-label="sortDisabled ? label : t(direction === 'asc' ? 'list.columns.sortDescending' : 'list.columns.sortAscending', { name: label })"
-      :title="direction ? t(direction === 'asc' ? 'list.columns.sortedAscending' : 'list.columns.sortedDescending') : label"
-      @click="emit('sort')"
-    >
-      <span class="truncate">{{ label }}</span>
-      <component :is="direction === 'desc' ? ArrowDown : ArrowUp" v-if="direction" class="size-3 shrink-0" aria-hidden="true" />
-    </button>
+  <div
+    ref="cell" class="column-heading relative min-w-0 flex items-center h-full" :class="{ 'justify-end': alignRight }"
+    :data-column="column.id"
+  >
+    <DropdownMenu>
+      <DropdownMenuTrigger as-child>
+        <Button
+          variant="ghost" size="xs" class="sort-heading min-w-0 max-w-full data-[state=open]:bg-accent"
+          :class="{ 'text-foreground': direction, 'ml-auto': alignRight }"
+          :aria-label="menuLabel"
+        >
+          <span class="truncate">{{ label }}</span>
+          <component
+            :is="direction === 'desc' ? ArrowDown : direction === 'asc' ? ArrowUp : ArrowUpDown"
+            v-if="column.getCanSort()" data-icon="inline-end" class="text-muted-foreground" aria-hidden="true"
+          />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent :align="alignRight ? 'end' : 'start'" class="normal-case tracking-normal">
+        <DropdownMenuGroup v-if="column.getCanSort()">
+          <DropdownMenuItem @select="column.toggleSorting(false)">
+            <ArrowUp /> {{ t('list.columns.ascending') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem @select="column.toggleSorting(true)">
+            <ArrowDown /> {{ t('list.columns.descending') }}
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator v-if="column.getCanSort()" />
+        <DropdownMenuGroup>
+          <DropdownMenuItem v-if="column.getCanHide()" @select="column.toggleVisibility(false)">
+            <EyeOff /> {{ t('list.columns.hide') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem @select="emit('reset')">
+            <RotateCcw /> {{ t('list.columns.resetWidth') }}
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
     <div
       class="resize-handle" :class="{ resizing: drag !== null }"
       role="separator" tabindex="0" aria-orientation="vertical"
@@ -95,8 +134,7 @@ onBeforeUnmount(cancel)
 </template>
 
 <style scoped>
-.sort-heading:not(:disabled):hover { color: var(--foreground); }
-.sort-heading:disabled { cursor: default; }
+.sort-heading { padding-inline: 0; font: inherit; letter-spacing: inherit; text-transform: inherit; }
 .resize-handle {
   position: absolute;
   inset-block: 0;

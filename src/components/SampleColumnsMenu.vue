@@ -1,58 +1,52 @@
 <script setup lang="ts">
-import type { SampleColumnId, SampleColumnVisibility } from '@/sample-columns'
+import type { SampleTable } from '@/composables/sampleTable'
 import { Columns3, RotateCcw } from '@lucide/vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Hint from '@/components/Hint.vue'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuGroup,
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { defaultSampleColumns, SAMPLE_COLUMNS } from '@/sample-columns'
 
-const visibility = defineModel<SampleColumnVisibility>({ required: true })
+const props = defineProps<{ table: SampleTable }>()
 const { t } = useI18n()
-const emit = defineEmits<{ resetWidths: [] }>()
-
-function resetAll() {
-  visibility.value = defaultSampleColumns()
-  emit('resetWidths')
-}
-
-function toggle(id: SampleColumnId, checked: boolean | 'indeterminate') {
-  visibility.value = { ...visibility.value, [id]: checked === true }
-}
+const emit = defineEmits<{ resetWidths: [], resetView: [] }>()
+const columns = computed(() => props.table.getAllLeafColumns())
 </script>
 
 <template>
-  <DropdownMenu>
-    <DropdownMenuTrigger as-child>
-      <Button variant="ghost" size="icon-xs" class="shrink-0 text-muted-foreground" :aria-label="t('list.columns.configure')" :title="t('list.columns.configure')">
-        <Columns3 class="size-4" />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end" class="w-56 normal-case tracking-normal">
-      <DropdownMenuLabel>{{ t('list.columns.configure') }}</DropdownMenuLabel>
-      <DropdownMenuGroup>
-        <DropdownMenuCheckboxItem :model-value="true" disabled>
-          {{ t('list.columns.name') }}
-          <span class="ml-auto text-xs text-muted-foreground">{{ t('list.columns.required') }}</span>
-        </DropdownMenuCheckboxItem>
-        <DropdownMenuCheckboxItem
-          v-for="column in SAMPLE_COLUMNS" :key="column.id" :model-value="visibility[column.id]"
-          @update:model-value="toggle(column.id, $event)" @select.prevent
-        >
-          {{ column.id === 'bpm' ? 'BPM' : t(`list.columns.${column.id}`) }}
-        </DropdownMenuCheckboxItem>
-      </DropdownMenuGroup>
-      <DropdownMenuSeparator />
-      <DropdownMenuGroup>
-        <DropdownMenuItem @select="emit('resetWidths')">
-          <RotateCcw /> {{ t('list.columns.resetWidths') }}
-        </DropdownMenuItem>
-        <DropdownMenuItem @select="resetAll">
-          <RotateCcw /> {{ t('list.columns.reset') }}
-        </DropdownMenuItem>
-      </DropdownMenuGroup>
-    </DropdownMenuContent>
-  </DropdownMenu>
+  <Hint :text="t('list.columns.configure')">
+    <span class="inline-flex shrink-0">
+      <DropdownMenu>
+        <DropdownMenuTrigger as-child>
+          <Button variant="outline" size="icon-sm" :aria-label="t('list.columns.configure')">
+            <Columns3 />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" class="w-56 normal-case tracking-normal">
+          <DropdownMenuLabel>{{ t('list.columns.configure') }}</DropdownMenuLabel>
+          <DropdownMenuGroup>
+            <DropdownMenuCheckboxItem
+              v-for="column in columns" :key="column.id" :model-value="column.getIsVisible()" :disabled="!column.getCanHide()"
+              @update:model-value="column.toggleVisibility($event === true)" @select.prevent
+            >
+              {{ column.id === 'bpm' ? 'BPM' : t(`list.columns.${column.id}`) }}
+              <span v-if="!column.getCanHide()" class="ml-auto text-xs text-muted-foreground">{{ t('list.columns.required') }}</span>
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            <DropdownMenuItem @select="emit('resetWidths')">
+              <RotateCcw /> {{ t('list.columns.resetWidths') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem @select="emit('resetView')">
+              <RotateCcw /> {{ t('list.columns.reset') }}
+            </DropdownMenuItem>
+          </DropdownMenuGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </span>
+  </Hint>
 </template>

@@ -2,6 +2,7 @@
 import { rowClickSeeks } from '@/row-playback'
 import { useWaveformBackgrounds } from '@/composables/waveformBackgrounds'
 import type { Sample } from '@/api'
+import type { ResizableSampleColumnId } from '@/sample-columns'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { AudioLines, FolderPlus, Layers, SearchX, Sparkles, Star, Tag, X } from '@lucide/vue'
 import { onKeyStroke, useEventListener, usePreferredReducedMotion, useScroll } from '@vueuse/core'
@@ -15,10 +16,9 @@ import SampleRow from '@/components/SampleRow.vue'
 import { usePinnedPlayback } from '@/composables/pinnedPlayback'
 import { Tooltip } from '@/components/ui/tooltip'
 import SampleContextMenu from '@/components/SampleContextMenu.vue'
-import { useSampleColumns } from '@/composables/sampleColumns'
+import { useSampleTable } from '@/composables/sampleTable'
 import SampleColumnHeader from '@/components/SampleColumnHeader.vue'
 import { useSampleColumnWidths } from '@/composables/sampleColumnWidths'
-import { sampleColumnLimits, SAMPLE_COLUMNS } from '@/sample-columns'
 import { Button } from '@/components/ui/button'
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
@@ -37,9 +37,10 @@ const editor = useEditorStore()
 const settings = useSettingsStore()
 const { total, focusIndex, selectedIds, scope } = storeToRefs(library)
 
-// Keep the former full/compact preference when upgrading to individual columns.
-const { visibility: columnVisibility } = useSampleColumns()
-const visibleColumns = computed(() => SAMPLE_COLUMNS.filter(column => columnVisibility.value[column.id]))
+const { table, visibleColumns } = useSampleTable()
+const headerColumns = computed(() => table.getVisibleLeafColumns().map(column => ({
+  column, id: column.id as ResizableSampleColumnId,
+})))
 const tableViewport = ref<HTMLElement | null>(null)
 const { tableStyle, resizingColumn, preview: previewColumnWidth, commit: commitColumnWidth, cancel: cancelColumnResize, reset: resetColumnWidths } = useSampleColumnWidths(visibleColumns, tableViewport)
 
@@ -253,21 +254,11 @@ function onDragStart(e: DragEvent, sample: Sample) {
         <div v-if="total > 0" class="header grid items-center px-3 h-8 border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
           <span />
           <SampleColumnHeader
-            :direction="similarTo ? null : library.sort.by === 'name' ? library.sort.direction : null"
-            :sort-disabled="!!similarTo" @sort="library.setSort('name')"
-            :label="t('list.columns.name')" :min-width="sampleColumnLimits('name').min" :max-width="sampleColumnLimits('name').max"
-            @resize="previewColumnWidth('name', $event)" @commit="commitColumnWidth('name', $event)"
-            @cancel="cancelColumnResize" @reset="resetColumnWidths('name')"
-          />
-          <SampleColumnHeader
-            v-for="column in visibleColumns" :key="column.id"
-            :direction="similarTo ? null : library.sort.by === column.id ? library.sort.direction : null"
-            :sort-disabled="!!similarTo || column.id === 'directory'" @sort="column.id !== 'directory' && library.setSort(column.id)"
-            :label="column.id === 'bpm' ? 'BPM' : t(`list.columns.${column.id}`)"
-            :min-width="sampleColumnLimits(column.id).min" :max-width="sampleColumnLimits(column.id).max"
-            :align-right="column.id === 'bpm' || column.id === 'length'"
-            @resize="previewColumnWidth(column.id, $event)" @commit="commitColumnWidth(column.id, $event)"
-            @cancel="cancelColumnResize" @reset="resetColumnWidths(column.id)"
+            v-for="{ column, id } in headerColumns" :key="id" :column="column"
+            :label="id === 'bpm' ? 'BPM' : t(`list.columns.${id}`)"
+            :align-right="id === 'bpm' || id === 'length'"
+            @resize="previewColumnWidth(id, $event)" @commit="commitColumnWidth(id, $event)"
+            @cancel="cancelColumnResize" @reset="resetColumnWidths(id)"
           />
           <span aria-hidden="true" />
         </div>

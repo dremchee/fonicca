@@ -14,6 +14,11 @@ export default {
     selectSamples: 'Select samples to add to a collection',
   },
   columns: {
+    options: '{name} column options',
+    ascending: 'Ascending',
+    descending: 'Descending',
+    hide: 'Hide column',
+    resetWidth: 'Reset width',
     directory: 'Directory',
     sortAscending: 'Sort {name}: ascending',
     sortDescending: 'Sort {name}: descending',
