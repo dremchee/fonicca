@@ -115,7 +115,7 @@ export const useLibraryStore = defineStore('library', () => {
 
   watch(filter, () => navigationRevision++, { flush: 'sync' })
   watch(filter, (next, previous) => {
-    // Expansion reloads below while preserving selection and keyboard focus.
+    // Expansion inserts/removes children below without reloading the list.
     if (JSON.stringify({ ...next, expandedStems: [] }) === JSON.stringify({ ...previous, expandedStems: [] })) return
     const withoutSort = (f: SampleFilter) => JSON.stringify({ ...f, sortBy: null, sortDirection: null })
     if (!restoringSession && withoutSort(next) === withoutSort(previous)) {
@@ -151,12 +151,26 @@ export const useLibraryStore = defineStore('library', () => {
     if (expanding || !sample.stemCount || scope.value.kind === 'similar') return
     expanding = true
     const collapse = expandedStems.has(sample.id)
-    const previousFocus = focused.value
-    const previousIndex = focusIndex.value
-    if (collapse) expandedStems.delete(sample.id)
-    else expandedStems.add(sample.id)
+    const gen = generation, navigation = navigationRevision
     try {
-      await refresh({ keepSelection: true })
+      let children: Sample[] = []
+      if (collapse) await ensureRange(index + 1, index + sample.stemCount)
+      else {
+        children = await api.listSamples({ ...filter.value, expandedStems: [...expandedStems, sample.id] }, index + 1, sample.stemCount)
+      }
+      // A late expansion must never splice another folder, sort or refreshed page.
+      if (gen !== generation || navigation !== navigationRevision || sampleAt(index)?.id !== sample.id) return
+      const valid = collapse
+        ? Array.from({ length: sample.stemCount }, (_, i) => sampleAt(index + 1 + i)).every(child => child?.stemParentId === sample.id)
+        : children.length === sample.stemCount && children.every(child => child.stemParentId === sample.id)
+      if (!valid) { await refresh({ keepSelection: true }); return }
+      const previousFocus = focused.value
+      const previousIndex = focusIndex.value
+      const nextTotal = total.value + (collapse ? -sample.stemCount : children.length)
+      pageCache.splice(index + 1, collapse ? sample.stemCount : 0, children, nextTotal)
+      if (collapse) expandedStems.delete(sample.id)
+      else expandedStems.add(sample.id)
+      total.value = nextTotal
       let next = previousIndex
       if (collapse && previousFocus?.stemParentId === sample.id) {
         next = index
@@ -167,6 +181,7 @@ export const useLibraryStore = defineStore('library', () => {
       anchorIndex.value = focusIndex.value
       if (focusIndex.value >= 0) await ensureRange(focusIndex.value, focusIndex.value)
     }
+    catch (error) { toast.error(String(error)) }
     finally { expanding = false }
   }
 

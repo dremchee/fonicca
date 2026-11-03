@@ -101,3 +101,43 @@ test('background refresh shares request limits and does not resurrect evicted pa
   await next
   assert.equal(cache.sampleAt(200)?.id, 1600)
 })
+
+test('inserting and removing stem rows preserves cached sample identities across page boundaries', async () => {
+  const original = Array.from({ length: 10 }, (_, id) => ({ id }))
+  let backing = original.slice()
+  const pages = new Map([[0, backing.slice(0, 4)], [1, backing.slice(4, 8)], [2, backing.slice(8)]])
+  const cache = createLibraryPages({ pages, pageSize: 4, fetch: async page => backing.slice(page * 4, page * 4 + 4) })
+  const stems = [{ id: 100 }, { id: 101 }]
+  backing.splice(4, 0, ...stems)
+  cache.splice(4, 0, stems, backing.length)
+  assert.equal(cache.sampleAt(3), original[3])
+  assert.equal(cache.sampleAt(4), stems[0])
+  assert.equal(cache.sampleAt(6), original[4])
+  assert.equal(cache.sampleAt(11), original[9])
+  backing.splice(4, 2)
+  cache.splice(4, 2, [], backing.length)
+  for (let i = 0; i < original.length; i++) assert.equal(cache.sampleAt(i), original[i])
+})
+
+test('splicing sparse retained pages refills only incomplete edges and rejects old in-flight pages', async () => {
+  const original = Array.from({ length: 24 }, (_, id) => ({ id }))
+  const backing = original.slice()
+  const pages = new Map([[0, original.slice(0, 4)], [2, original.slice(8, 12)]])
+  let finish!: (rows: { id: number }[]) => void
+  const cache = createLibraryPages({ pages, pageSize: 4, maxPages: 4,
+    fetch: page => page === 1 ? new Promise(resolve => { finish = resolve }) : Promise.resolve(backing.slice(page * 4, page * 4 + 4)) })
+  const stale = cache.ensureRange(4, 4)
+  await setImmediate()
+  const inserted = [{ id: 100 }, { id: 101 }]
+  backing.splice(2, 0, ...inserted)
+  cache.splice(2, 0, inserted, backing.length)
+  assert.equal(cache.sampleAt(10), original[8])
+  assert.equal(cache.sampleAt(8), undefined)
+  finish(original.slice(4, 8))
+  await stale
+  assert.equal(cache.sampleAt(4), original[2], 'an old page must not overwrite shifted rows')
+  await cache.ensureRange(8, 11)
+  assert.equal(cache.sampleAt(8)?.id, 6)
+  assert.equal(cache.sampleAt(10)?.id, 8)
+  assert.ok(cache.diagnostics().retainedPages <= 4)
+})

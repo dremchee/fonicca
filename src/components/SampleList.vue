@@ -5,7 +5,7 @@ import type { Sample } from '@/api'
 import type { ResizableSampleColumnId } from '@/sample-columns'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { AudioLines, FolderPlus, Layers, SearchX, Sparkles, Star, Tag, X } from '@lucide/vue'
-import { onKeyStroke, useEventListener, usePreferredReducedMotion, useScroll } from '@vueuse/core'
+import { onKeyStroke, useEventListener, usePreferredReducedMotion, useScroll, useTimeoutFn } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'
 import { isTauri } from '@tauri-apps/api/core'
@@ -94,6 +94,20 @@ onKeyStroke(['s', 'ы'], (e) => {
 const scroller = ref<HTMLElement | null>(null)
 const { y: scrollTop } = useScroll(scroller)
 const reducedMotion = usePreferredReducedMotion()
+const animatingStems = ref(false)
+let changingStems = false
+const { start: finishStemAnimation } = useTimeoutFn(() => { animatingStems.value = false }, 240, { immediate: false })
+async function toggleStems(sample: Sample, index: number) {
+  if (changingStems) return
+  changingStems = true
+  animatingStems.value = reducedMotion.value !== 'reduce'
+  try { await library.toggleStems(sample, index) }
+  finally {
+    await nextTick()
+    changingStems = false
+    finishStemAnimation()
+  }
+}
 const { playingIndex, pinnedSample } = usePinnedPlayback({
   pages: () => library.pages,
   playingId: () => player.playingId,
@@ -123,7 +137,7 @@ const rows = computed(() => items.value.map((item) => {
 watch(() => rows.value.map(row => row.sample).filter((sample): sample is Sample => !!sample), samples => backgrounds.restore(samples), { immediate: true })
 
 // A scope change may keep the same row count and virtual range while clearing pages.
-watch([items, () => library.pages.size], ([list]) => {
+watch([items, () => library.pages.size, total], ([list]) => {
   if (list.length)
     void library.ensureVisibleRange(list[0].index, list[list.length - 1].index)
       .catch(error => console.error('Failed to load visible library rows', error))
@@ -293,25 +307,25 @@ function onDragStart(e: DragEvent, sample: Sample) {
                 </EmptyContent>
               </Empty>
 
-              <div v-else class="relative w-full" :style="{ height: `${virtualizer.getTotalSize()}px` }">
-                <template v-for="{ item, sample: s, stemChild, groupStart, groupEnd, grouped } in rows" :key="item.index">
+              <TransitionGroup v-else tag="div" :name="animatingStems ? 'stem-rows' : 'static-rows'" :css="animatingStems" class="relative w-full" :style="{ height: `${virtualizer.getTotalSize()}px` }">
+                <template v-for="{ item, sample: s, stemChild, groupStart, groupEnd, grouped } in rows" :key="s ? `sample:${s.id}` : `placeholder:${item.index}`">
                   <SampleRow
                     v-if="s" v-show="!pinnedSample || item.index !== playingIndex"
                     :sample="s" :item="item" :stem-child="!!stemChild" :group-start="groupStart"
                     :group-end="!!groupEnd" :grouped="!!grouped" :pinned="false" :visible-columns="visibleColumns"
                     @press="onMouseDown" @select="onClick" @edit="onDoubleClick" @drag="onDragStart"
-                    @play="toggleRowPlayback" @stems="library.toggleStems" @favorite="library.toggleFavorite"
+                    @play="toggleRowPlayback" @stems="toggleStems" @favorite="library.toggleFavorite"
                   />
                   <div
                     v-else
                     class="row-placeholder grid items-center px-3 absolute inset-x-0"
-                    :style="{ height: `${item.size - 4}px`, transform: `translateY(${item.start + 2}px)` }"
+                    :style="{ height: `${item.size - 4}px`, top: `${item.start + 2}px` }"
                   >
                     <span />
                     <span class="h-2.5 w-40 rounded bg-muted" />
                   </div>
                 </template>
-              </div>
+              </TransitionGroup>
             </div>
             <Transition name="pinned-track" :duration="reducedMotion === 'reduce' ? 0 : { enter: 140, leave: 100 }">
             <div v-if="pinnedSample" class="pinned-track absolute inset-x-0 top-0 z-10 overflow-hidden bg-primary" :style="{ height: `${ROW_HEIGHT}px` }">
@@ -376,6 +390,14 @@ function onDragStart(e: DragEvent, sample: Sample) {
 .pinned-track {
   transform: translateZ(0);
 }
+.stem-rows-move,
+.stem-rows-enter-active,
+.stem-rows-leave-active {
+  transition: transform 200ms cubic-bezier(0.32, 0.72, 0, 1), opacity 160ms ease-out, translate 200ms cubic-bezier(0.32, 0.72, 0, 1);
+}
+.stem-rows-enter-from,
+.stem-rows-leave-to { opacity: 0; translate: 0 -8px; }
+.stem-rows-leave-active { pointer-events: none; }
 .pinned-track-enter-active .row {
   transition: opacity 140ms cubic-bezier(0.16, 1, 0.3, 1), translate 140ms cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -391,6 +413,9 @@ function onDragStart(e: DragEvent, sample: Sample) {
   translate: 0 -3px;
 }
 @media (prefers-reduced-motion: reduce) {
+  .stem-rows-move,
+  .stem-rows-enter-active,
+  .stem-rows-leave-active { transition: none; }
   .pinned-track-enter-active .row,
   .pinned-track-leave-active .row {
     transition: none;

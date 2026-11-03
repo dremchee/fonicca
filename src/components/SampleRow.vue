@@ -69,7 +69,7 @@ const apolloProgress = computed(() => apollo.progress.sourceId === s.value.id ? 
       'group-start': groupStart,
       'group-end': groupEnd,
     }"
-    :style="{ height: `${pinned ? item.size : item.size - 4}px`, transform: `translateY(${pinned ? 0 : item.start + 2}px)` }"
+    :style="{ height: `${pinned ? item.size : item.size - 4}px`, top: `${pinned ? 0 : item.start + 2}px` }"
     :data-index="item.index"
     :data-pinned="pinned || undefined"
     draggable="true"

@@ -22,6 +22,7 @@ export function createLibraryPages<Row>(options: Options<Row>) {
     promise: Promise<Row[] | undefined>, resolve: (rows: Row[] | undefined) => void, reject: (error: unknown) => void }
   const pending = new Map<number, Job>()
   const ages = new Map<number, number>()
+  const partial = new Set<number>()
   let viewport = new Set<number>(), version = 0, tick = 0, active = 0, disposed = false
   let queue: Job[] = []
 
@@ -33,7 +34,7 @@ export function createLibraryPages<Row>(options: Options<Row>) {
       const removable = [...pages.keys()].filter(page => !pinned.has(page)).sort((a, b) => (ages.get(a) ?? 0) - (ages.get(b) ?? 0))
       const oldest = removable[0]
       if (oldest === undefined) break
-      pages.delete(oldest); ages.delete(oldest)
+      pages.delete(oldest); ages.delete(oldest); partial.delete(oldest)
     }
   }
   function drain() {
@@ -50,7 +51,7 @@ export function createLibraryPages<Row>(options: Options<Row>) {
         if (job.version !== version || disposed) { finish(); job.resolve(undefined); return }
         // A refresh must not bring back a page evicted while it was in flight.
         if (!job.refresh || pages.has(job.page)) {
-          pages.set(job.page, rows); ages.set(job.page, ++tick); trim()
+          pages.set(job.page, rows); partial.delete(job.page); ages.set(job.page, ++tick); trim()
         }
         finish()
         job.resolve(rows)
@@ -64,7 +65,7 @@ export function createLibraryPages<Row>(options: Options<Row>) {
   function load(page: number, required = true, refresh = false): Promise<Row[] | undefined> {
     if (disposed || !Number.isInteger(page) || page < 0) return Promise.resolve(undefined)
     const cached = pages.get(page)
-    if (cached && !refresh) { ages.set(page, ++tick); return Promise.resolve(cached) }
+    if (cached && !refresh && !partial.has(page)) { ages.set(page, ++tick); return Promise.resolve(cached) }
     const existing = pending.get(page)
     if (existing) { existing.required ||= required; return existing.promise }
     let resolve!: Job['resolve'], reject!: Job['reject']
@@ -95,14 +96,49 @@ export function createLibraryPages<Row>(options: Options<Row>) {
   async function refreshCached(page: number) {
     if (pages.has(page)) await load(page, false, true)
   }
-  function clear() {
-    version++; pages.clear(); ages.clear(); viewport.clear()
+  function invalidateRequests() {
+    version++
     for (const job of queue) job.resolve(undefined)
     queue = []; pending.clear()
+  }
+  /** Change a small inline group without dropping neighbouring rows or their identities.
+   * Only retained rows are shifted; holes at sparse page edges refill on demand. */
+  function splice(index: number, remove: number, inserted: Row[], nextTotal: number) {
+    invalidateRequests()
+    const shifted = new Map<number, Row[]>()
+    const put = (at: number, row: Row) => {
+      if (at < 0 || at >= nextTotal) return
+      const page = Math.floor(at / pageSize)
+      let rows = shifted.get(page)
+      if (!rows) { rows = []; shifted.set(page, rows) }
+      rows[at % pageSize] = row
+    }
+    for (const [page, rows] of pages) rows.forEach((row, offset) => {
+      const at = page * pageSize + offset
+      if (at < index) put(at, row)
+      else if (at >= index + remove) put(at + inserted.length - remove, row)
+    })
+    inserted.forEach((row, offset) => put(index + offset, row))
+    partial.clear()
+    for (const page of pages.keys()) if (!shifted.has(page)) { pages.delete(page); ages.delete(page) }
+    for (const [page, rows] of shifted) {
+      const expected = Math.min(pageSize, nextTotal - page * pageSize)
+      for (let i = 0; i < expected; i++) if (!(i in rows)) { partial.add(page); break }
+      const previous = pages.get(page)
+      let unchanged = previous?.length === rows.length
+      for (let i = 0; unchanged && i < rows.length; i++) unchanged = previous![i] === rows[i]
+      if (!unchanged) pages.set(page, rows)
+      ages.set(page, ++tick)
+    }
+    trim()
+  }
+  function clear() {
+    invalidateRequests()
+    pages.clear(); ages.clear(); viewport.clear(); partial.clear()
   }
   function dispose() { disposed = true; clear() }
   const sampleAt = (index: number) => index >= 0 ? pages.get(Math.floor(index / pageSize))?.[index % pageSize] : undefined
   const diagnostics = () => ({ retainedPages: pages.size, retainedRows: [...pages.values()].reduce((sum, rows) => sum + rows.length, 0), active, queued: queue.length, maxPages, concurrency })
   trim()
-  return { sampleAt, ensureRange, ensureVisibleRange, refreshCached, clear, dispose, diagnostics }
+  return { sampleAt, ensureRange, ensureVisibleRange, refreshCached, splice, clear, dispose, diagnostics }
 }
