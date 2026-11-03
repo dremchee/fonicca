@@ -3,21 +3,17 @@ import type { Marker } from '@/editor-regions'
 export { regionsOf } from '@/editor-regions'
 export type { Marker, Region } from '@/editor-regions'
 export type * from './editor/types'
-import type { EditOp, EditorState, AudioProcessing, Span, SaveMode } from './editor/types'
+import type { EditOp, EditorState, AudioProcessing, Span } from './editor/types'
 import { editorApi } from './editor/api'
 import { createEditorState } from './editor/state'
 import { createEditorSession } from './editor/session'
-import { revealItemInDir } from '@tauri-apps/plugin-opener'
-import { save as chooseSavePath } from '@tauri-apps/plugin-dialog'
+import { createEditorSaving } from './editor/saving'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { toast } from 'vue-sonner'
 import { api } from '@/api'
 import { usePlayerStore } from '@/stores/player'
-import { confirm } from '@/composables/confirm'
 import { formatNumber } from '@/format'
 import { t } from '@/i18n'
-import { audioExportFormat, audioExportPath } from '@/audio-export'
-import { chooseAudioExport } from '@/composables/audioExport'
 
 /** Opens a sample in the library's embedded editor. */
 export async function openEditor(sample: Sample) {
@@ -36,6 +32,11 @@ export const useEditorStore = defineStore('editor', () => {
     stopPlayback: () => stopPlayback(),
     save: () => save(),
     refreshClipboard: () => refreshClipboard(),
+  })
+  const { save, saveRegions } = createEditorSaving({
+    context,
+    stopLibraryPlayback: () => usePlayerStore().stop(),
+    stopPlayback: () => stopPlayback(),
   })
   let frame = 0
   let playbackVersion = 0
@@ -220,25 +221,6 @@ export const useEditorStore = defineStore('editor', () => {
     return apply({ op: 'setMarkers', markers }, false)
   }
 
-  /** Saves each region not skipped as a new sample, into a folder next to the file. */
-  async function saveRegions() {
-    if (processing.value || saving.value)
-      return
-    const spans = regions.value.filter(r => !r.skip && r.end > r.start).map(({ start, end }) => ({ start, end }))
-    if (!spans.length)
-      return
-    try {
-      const r = await editorApi.exportSlices(spans)
-      toast.success(t('editor.regions.saved', { n: formatNumber(r.count) }, r.count), {
-        description: r.inLibrary ? undefined : t('editor.regions.notInLibrary'),
-        action: { label: t('editor.regions.reveal'), onClick: () => revealItemInDir(r.dir) },
-      })
-    }
-    catch (e) {
-      toast.error(String(e))
-    }
-  }
-
   /** One undoable loop-bound edit, preserving the current playback stream. */
   async function setLoopPoints(range: Span): Promise<boolean> {
     if (!state.value || loading.value || processing.value || saving.value) return false
@@ -333,60 +315,6 @@ export const useEditorStore = defineStore('editor', () => {
       stopPlayback()
     else
       play()
-  }
-
-  // --- Saving --------------------------------------------------------------
-
-  async function save(mode: SaveMode = 'save') {
-    if (!sample.value || processing.value || saving.value)
-      return false
-    if (mode === 'save' && !state.value?.dirty)
-      return true
-    const selected = selection.value ? { ...selection.value } : undefined
-    if (mode === 'selection' && !selected)
-      return false
-    saving.value = true
-    try {
-      let destination: string | undefined
-      let exportRate: number | null | undefined
-      const actualMode = mode === 'save' && !state.value?.hasSavedTarget ? 'saveAs' : mode
-      if (actualMode === 'saveAs' || actualMode === 'selection') {
-        const options = await chooseAudioExport({ format: audioExportFormat(sample.value.path), sampleRate: state.value?.exportSampleRate ?? null }, state.value?.sampleRate ?? 44100)
-        if (!options) return false
-        const format = options.format
-        exportRate = options.sampleRate
-        const suffix = `${mode === 'selection' ? ' — loop' : ' — edited'}.${format}`
-        const picked = await chooseSavePath({
-          title: t(mode === 'selection' ? 'editor.save.selection' : 'editor.save.as'),
-          defaultPath: sample.value.path.replace(/\.[^/\\.]+$/, '') + suffix,
-          filters: [{ name: format === 'ogg' ? 'OGG Vorbis' : format.toUpperCase(), extensions: [format] }],
-        })
-        if (!picked) return false
-        destination = audioExportPath(picked, format)
-      }
-      if (mode === 'replaceOriginal') {
-        if (!canOverwrite.value || !await confirm({ title: t('editor.save.replace'),
-          description: t('editor.save.replaceConfirm', { path: state.value?.originalPath ?? '' }),
-          action: t('editor.save.replace'), destructive: true })) return false
-      }
-      await usePlayerStore().stop()
-      await stopPlayback()
-      const r = await editorApi.save(actualMode, destination, mode === 'selection' ? selected : undefined, exportRate)
-      if (mode !== 'selection') {
-        state.value = r.state
-        sample.value = { id: r.state.sampleId, name: r.name, ext: r.ext, path: r.path, bpm: r.bpm ?? sample.value.bpm }
-      }
-      toast.success(t(mode === 'selection' ? 'editor.save.selectionSaved' : 'editor.save.saved', { name: r.name }), {
-        description: r.backup ? t('editor.save.backupKept') : undefined,
-      })
-      if (r.warning) toast.warning(t('editor.save.indexWarning'), { description: r.warning })
-      return true
-    }
-    catch (e) {
-      toast.error(String(e))
-      return false
-    }
-    finally { saving.value = false }
   }
 
   return {
