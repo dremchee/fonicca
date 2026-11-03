@@ -1,19 +1,20 @@
 import type { Sample } from '@/api'
 import type { Marker } from '@/editor-regions'
-export { regionsOf } from '@/editor-regions'
-export type { Marker, Region } from '@/editor-regions'
-export type * from './editor/types'
 import type { EditOp, EditorState, AudioProcessing, Span } from './editor/types'
 import { editorApi } from './editor/api'
 import { createEditorState } from './editor/state'
 import { createEditorSession } from './editor/session'
 import { createEditorSaving } from './editor/saving'
+import { createEditorPlayback } from './editor/playback'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { toast } from 'vue-sonner'
-import { api } from '@/api'
 import { usePlayerStore } from '@/stores/player'
 import { formatNumber } from '@/format'
 import { t } from '@/i18n'
+
+export { regionsOf } from '@/editor-regions'
+export type { Marker, Region } from '@/editor-regions'
+export type { SaveMode, Curve, EditOp, EditorState, Wave, Span, SliceBy, ClipInfo, EditedFile, AudioProcessing, LoudnessReport } from './editor/types'
 
 /** Opens a sample in the library's embedded editor. */
 export async function openEditor(sample: Sample) {
@@ -26,21 +27,12 @@ export const useEditorStore = defineStore('editor', () => {
   const { sample, state, open, loading, processing, saving, sessionVersion,
     expanded, windowView, unsavedPrompt, revision, cursor, selection, looping,
     playing, playhead, curve, clipboard, canOverwrite, error, regions } = context
+  const stopLibraryPlayback = () => usePlayerStore().stop()
+  const { play, stopPlayback, togglePlay, updatePlaybackRange } = createEditorPlayback({ context, stopLibraryPlayback })
+  const { save, saveRegions } = createEditorSaving({ context, stopLibraryPlayback, stopPlayback })
   const { resolveUnsaved, openSample, closeEmbedded, reset, detachWindow, adoptWindow, init } = createEditorSession({
-    context,
-    stopLibraryPlayback: () => usePlayerStore().stop(),
-    stopPlayback: () => stopPlayback(),
-    save: () => save(),
-    refreshClipboard: () => refreshClipboard(),
+    context, stopLibraryPlayback, stopPlayback, save, refreshClipboard,
   })
-  const { save, saveRegions } = createEditorSaving({
-    context,
-    stopLibraryPlayback: () => usePlayerStore().stop(),
-    stopPlayback: () => stopPlayback(),
-  })
-  let frame = 0
-  let playbackVersion = 0
-  let startingPlayback = false
 
   function after(next: EditorState, audioChanged = true) {
     state.value = next
@@ -236,85 +228,6 @@ export const useEditorStore = defineStore('editor', () => {
       await setLoopPoints(selection.value)
     else if (state.value?.loop)
       await apply({ op: 'clearLoop' }, false)
-  }
-
-  // --- Playback ------------------------------------------------------------
-
-  function track(version: number) {
-    cancelAnimationFrame(frame)
-    const tick = async () => {
-      const pos = await api.playbackPosition()
-      if (version !== playbackVersion || !playing.value)
-        return
-      if (pos === null) {
-        stopPlayback()
-        return
-      }
-      playhead.value = Math.round(pos * (state.value?.sampleRate ?? 1))
-      frame = requestAnimationFrame(tick)
-    }
-    frame = requestAnimationFrame(tick)
-  }
-
-  /** Plays the selection (looping if enabled), or from the cursor to the end. */
-  async function play() {
-    if (!state.value)
-      return
-    const version = ++playbackVersion
-    startingPlayback = true
-    cancelAnimationFrame(frame)
-    const s = selection.value
-    const [start, end] = s ? [s.start, s.end] : [cursor.value, state.value.frames]
-    try {
-      await usePlayerStore().stop()
-      if (version !== playbackVersion) return
-      await editorApi.play(start, end, looping.value && !!s)
-      if (version !== playbackVersion) return
-      playing.value = true
-      playhead.value = start
-      track(version)
-    }
-    catch (e) {
-      if (version === playbackVersion) {
-        playing.value = false
-        playhead.value = null
-        toast.error(String(e))
-      }
-    }
-    finally { if (version === playbackVersion) startingPlayback = false }
-  }
-
-  async function updatePlaybackRange() {
-    const range = selection.value
-    if (!playing.value || !range) return
-    const version = playbackVersion
-    try {
-      const active = await editorApi.updatePlayback(range.start, range.end, looping.value)
-      if (version !== playbackVersion) return
-      if (!active) {
-        cancelAnimationFrame(frame)
-        playing.value = false
-        playhead.value = null
-      }
-    }
-    catch (e) { if (version === playbackVersion) toast.error(String(e)) }
-  }
-
-  function stopPlayback() {
-    playbackVersion++
-    cancelAnimationFrame(frame)
-    const stopped = playing.value || startingPlayback ? api.stop() : Promise.resolve()
-    startingPlayback = false
-    playing.value = false
-    playhead.value = null
-    return stopped
-  }
-
-  function togglePlay() {
-    if (playing.value)
-      stopPlayback()
-    else
-      play()
   }
 
   return {

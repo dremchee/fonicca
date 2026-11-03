@@ -1,4 +1,4 @@
-import type { Curve, Span } from './stores/editor'
+import type { Curve, Span } from './stores/editor/types'
 
 export interface EditorWindowView {
   cursor: number

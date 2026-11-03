@@ -32,7 +32,8 @@ const ordinaryBefore = existsSync(ordinaryBinary) ? sha(ordinaryBinary) : null
 const releaseBefore = existsSync(ordinaryRelease) ? sha(ordinaryRelease) : null
 const sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim()
 const sourceFiles = ['src/main.ts', 'src/App.vue', 'src/EditorWindow.vue', 'src/waveform-gl.ts', 'src/stores/editor.ts',
-  'src/stores/editor/types.ts', 'src/stores/editor/api.ts', 'src/stores/editor/state.ts', 'src/stores/editor/session.ts', 'src/stores/editor/saving.ts',
+  'src/waveform.ts', 'src/editor-window-state.ts',
+  'src/stores/editor/types.ts', 'src/stores/editor/api.ts', 'src/stores/editor/state.ts', 'src/stores/editor/session.ts', 'src/stores/editor/saving.ts', 'src/stores/editor/playback.ts',
   'src/components/EditorView.vue', 'src/composables/editor/spectrogram.ts', 'src-tauri/tauri.conf.json', 'src-tauri/src/lib.rs',
   'src-tauri/src/editor.rs', 'src-tauri/src/editor/spectrogram.rs', 'src-tauri/src/editor_commands.rs',
   'src-tauri/src/editor_commands/transfer.rs', 'scripts/profile-resources.mjs', 'scripts/resource-profile/probe.ts',

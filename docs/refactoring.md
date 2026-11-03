@@ -637,3 +637,43 @@ completion and its scoped measurements remain historical. The cycle now covers b
 history accounting, row/pinning boundaries and capped waveform requests. The current
 audit links the before/after evidence and final verification. Browser row extraction
 preserves existing playback update isolation; no FPS improvement is claimed.
+
+## Editor store boundaries — 2026-11-03
+
+The public Pinia store remains `src/stores/editor.ts`, with the same returned refs,
+actions and compatibility type exports. Its facade shrank from 861 to 294 lines;
+this is a structural change, not a measured speed or memory improvement.
+
+The work is split into three reviewable stages: session opening/transfer, saving
+and region export, then playback. Shared refs are created once per store instance
+in `editor/state.ts`; internal factories receive typed subsets and existing action
+callbacks. They do not create additional stores or import the facade back.
+`editor/types.ts` holds common contracts and `editor/api.ts` preserves the existing
+typed IPC/timing boundary. The source profiler hashes all six internal modules.
+
+An AST comparison against the pre-refactor store confirms all 39 original function
+bodies match after the sole mechanical substitution of library-stop calls with
+an injected callback. The public returned object also matches. Session intent and
+transfer guards, save ordering and playback generations remain owned by their
+respective per-instance factories.
+
+Validation includes the 177 Node tests and production type/build check. Seventeen
+headless browser scenarios cover the existing editor/library interactions plus
+dirty-session Save/Discard/Cancel, a deferred save blocking replacement, failed
+save preservation and late playback-position/range replies. The new opt-in helpers
+are `tests/browser/editor-session-transitions.mjs` and
+`tests/browser/editor-playback-polling.mjs`; they follow the existing exported
+`check…(page)` protocol on the mock app. Three transient response mutations removing
+generation checks were rejected by the polling helper; production files were not
+changed for that sensitivity check.
+
+The [accepted isolated macOS release smoke](research/editor-store-native-smoke-2026-11-03.json)
+then completed all 10 lifecycle stages and all 13 audit gates using real native
+IPC, a generated 30-second track and 1,000 metadata rows. Both native window
+transfer directions succeeded. Closed stages have zero renderer owners, lanes,
+canvases, pending requests and RAF; callbacks returned to 45. The attributed
+process cohort exited, ordinary application binaries stayed unchanged, and all
+25 captured source hashes match the candidate before its final commit. A first
+observation was rejected because unrelated WebKit processes entered the cohort;
+the accepted repeat used the same unmodified verifier. This smoke validates
+lifecycle behavior, not a new memory or performance improvement.

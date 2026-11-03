@@ -1,0 +1,1713 @@
+{
+  "schema": 1,
+  "status": "measured",
+  "error": null,
+  "platform": "darwin",
+  "bundle": "app",
+  "nativeProfile": "release",
+  "mode": "smoke",
+  "privateBrowsing": true,
+  "identifier": "app.fonicca.resourceprobe",
+  "nativeHostPid": 60703,
+  "sourceRevision": "47cffc125f3cd97b1c28d5be94c1ae96ec22769d",
+  "binarySha256": "9b7ef91b24cab9746aa4abbc858f394ca39693bdba369cc1ebd510dffabb6905",
+  "beforeWebKitPids": [
+    2542,
+    2543,
+    10046,
+    54876,
+    77712,
+    77713,
+    77714
+  ],
+  "cohortPids": [
+    60703,
+    60737,
+    60738,
+    60739,
+    60889
+  ],
+  "cohortRemainingAfterHostExit": [],
+  "checkpoints": [
+    {
+      "stage": "baseline",
+      "window": "main",
+      "visibility": "visible",
+      "focused": false,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": null,
+      "canvases": 0,
+      "rows": 38,
+      "library": {
+        "retainedPages": 1,
+        "retainedRows": 200,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 1000,
+      "editor": {
+        "open": false,
+        "frames": 0
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 131776512,
+        "cpuPercent": null,
+        "availableBytes": 7911342080,
+        "editorBusy": false,
+        "editor": null
+      },
+      "timings": [
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 10,
+          "p50Ms": 10,
+          "p95Ms": 10,
+          "maxMs": 10
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793710207.220502,
+      "processes": [
+        {
+          "pid": 60703,
+          "parent": 60700,
+          "rssBytes": 131809280,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 60737,
+          "parent": 1,
+          "rssBytes": 39010304,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 60738,
+          "parent": 1,
+          "rssBytes": 16515072,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 60739,
+          "parent": 1,
+          "rssBytes": 117522432,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": null
+    },
+    {
+      "stage": "library-scrolled",
+      "window": "main",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": null,
+      "canvases": 0,
+      "rows": 38,
+      "library": {
+        "retainedPages": 5,
+        "retainedRows": 1000,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 1000,
+      "editor": {
+        "open": false,
+        "frames": 0
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 126926848,
+        "cpuPercent": 17.31292,
+        "availableBytes": 8174272512,
+        "editorBusy": false,
+        "editor": null
+      },
+      "timings": [
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 10,
+          "p50Ms": 10,
+          "p95Ms": 10,
+          "maxMs": 10
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793710210.573791,
+      "processes": [
+        {
+          "pid": 60703,
+          "parent": 60700,
+          "rssBytes": 127107072,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 60737,
+          "parent": 1,
+          "rssBytes": 44449792,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 60738,
+          "parent": 1,
+          "rssBytes": 16465920,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 60739,
+          "parent": 1,
+          "rssBytes": 288129024,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": null
+    },
+    {
+      "stage": "cycle-1-opened",
+      "window": "main",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 2,
+        "destroyed": 0,
+        "destroyCalls": 0,
+        "live": 2,
+        "lanes": 3
+      },
+      "canvases": 2,
+      "rows": 29,
+      "library": {
+        "retainedPages": 5,
+        "retainedRows": 1000,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 1000,
+      "editor": {
+        "open": true,
+        "frames": 1323000,
+        "dirty": false
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 144916480,
+        "cpuPercent": 9.479228,
+        "availableBytes": 8226996224,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 2,
+          "logicalBytes": 10584000,
+          "ramBytes": 18874368,
+          "diskBytes": 0,
+          "storageCount": 1,
+          "cacheBytes": 2314788,
+          "undoSteps": 0,
+          "redoSteps": 0,
+          "openedMs": 10.664625000000001,
+          "lastWaveMs": 23.729
+        }
+      },
+      "timings": [
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 78,
+          "p50Ms": 78,
+          "p95Ms": 78,
+          "maxMs": 78
+        },
+        {
+          "name": "editor.draw",
+          "calls": 4,
+          "errors": 0,
+          "lastMs": 3,
+          "p50Ms": 3,
+          "p95Ms": 9.99999999999909,
+          "maxMs": 9.99999999999909
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 18,
+          "p50Ms": 18,
+          "p95Ms": 18,
+          "maxMs": 18
+        },
+        {
+          "name": "editor_wave",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 47,
+          "p50Ms": 27,
+          "p95Ms": 47,
+          "maxMs": 47
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793710212.016543,
+      "processes": [
+        {
+          "pid": 60703,
+          "parent": 60700,
+          "rssBytes": 144916480,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 60737,
+          "parent": 1,
+          "rssBytes": 52461568,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 60738,
+          "parent": 1,
+          "rssBytes": 16760832,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 60739,
+          "parent": 1,
+          "rssBytes": 296124416,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": null
+    },
+    {
+      "stage": "cycle-1-spectrum",
+      "window": "main",
+      "visibility": "visible",
+      "focused": false,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 2,
+        "destroyed": 0,
+        "destroyCalls": 0,
+        "live": 2,
+        "lanes": 3
+      },
+      "canvases": 2,
+      "rows": 29,
+      "library": {
+        "retainedPages": 5,
+        "retainedRows": 1000,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 1000,
+      "editor": {
+        "open": true,
+        "frames": 1323000,
+        "dirty": false
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 151568384,
+        "cpuPercent": 11.679553,
+        "availableBytes": 8339374080,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 2,
+          "logicalBytes": 10584000,
+          "ramBytes": 20971520,
+          "diskBytes": 0,
+          "storageCount": 2,
+          "cacheBytes": 2876372,
+          "undoSteps": 0,
+          "redoSteps": 1,
+          "openedMs": 10.664625000000001,
+          "lastWaveMs": 0.806
+        }
+      },
+      "timings": [
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 78,
+          "p50Ms": 78,
+          "p95Ms": 78,
+          "maxMs": 78
+        },
+        {
+          "name": "editor.draw",
+          "calls": 16,
+          "errors": 0,
+          "lastMs": 0,
+          "p50Ms": 5,
+          "p95Ms": 9.99999999999909,
+          "maxMs": 9.99999999999909
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 18,
+          "p50Ms": 18,
+          "p95Ms": 18,
+          "maxMs": 18
+        },
+        {
+          "name": "editor_wave",
+          "calls": 34,
+          "errors": 0,
+          "lastMs": 4.0000000000009095,
+          "p50Ms": 4.0000000000009095,
+          "p95Ms": 27,
+          "maxMs": 47
+        },
+        {
+          "name": "editor_apply.fadeOut",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 3,
+          "p95Ms": 11,
+          "maxMs": 11
+        },
+        {
+          "name": "editor_undo",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 1,
+          "p50Ms": 1,
+          "p95Ms": 2,
+          "maxMs": 2
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 38,
+          "p50Ms": 38,
+          "p95Ms": 38,
+          "maxMs": 38
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793710213.677233,
+      "processes": [
+        {
+          "pid": 60703,
+          "parent": 60700,
+          "rssBytes": 151584768,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 60737,
+          "parent": 1,
+          "rssBytes": 66109440,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 60738,
+          "parent": 1,
+          "rssBytes": 16760832,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 60739,
+          "parent": 1,
+          "rssBytes": 324714496,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": null
+    },
+    {
+      "stage": "detached-rendered",
+      "window": "editor-detached-1",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1100,
+        "height": 560,
+        "dpr": 2
+      },
+      "callbacks": 7,
+      "pendingRaf": 0,
+      "pendingEditor": {
+        "editor_clipboard": 1
+      },
+      "resources": {
+        "created": 2,
+        "destroyed": 0,
+        "destroyCalls": 0,
+        "live": 2,
+        "lanes": 3
+      },
+      "canvases": 2,
+      "rows": 0,
+      "editor": {
+        "open": true,
+        "frames": 1323000,
+        "dirty": false
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 150044672,
+        "cpuPercent": 7.1138945,
+        "availableBytes": 8257060864,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 2,
+          "logicalBytes": 10584000,
+          "ramBytes": 20971520,
+          "diskBytes": 0,
+          "storageCount": 2,
+          "cacheBytes": 2876372,
+          "undoSteps": 0,
+          "redoSteps": 1,
+          "openedMs": 10.664625000000001,
+          "lastWaveMs": 1.059
+        }
+      },
+      "timings": [
+        {
+          "name": "editor.draw",
+          "calls": 4,
+          "errors": 0,
+          "lastMs": 4,
+          "p50Ms": 4,
+          "p95Ms": 13.000000000000028,
+          "maxMs": 13.000000000000028
+        },
+        {
+          "name": "editor_prepare_transfer",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 9,
+          "p50Ms": 9,
+          "p95Ms": 9,
+          "maxMs": 9
+        },
+        {
+          "name": "editor_accept_transfer",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 4,
+          "p50Ms": 4,
+          "p95Ms": 4,
+          "maxMs": 4
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 4.999999999999972,
+          "p50Ms": 4.999999999999972,
+          "p95Ms": 7,
+          "maxMs": 7
+        },
+        {
+          "name": "editor_wave",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 7,
+          "p50Ms": 6,
+          "p95Ms": 7,
+          "maxMs": 7
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793710216.666255,
+      "processes": [
+        {
+          "pid": 60703,
+          "parent": 60700,
+          "rssBytes": 150061056,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 60737,
+          "parent": 1,
+          "rssBytes": 95322112,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 60738,
+          "parent": 1,
+          "rssBytes": 17104896,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 60739,
+          "parent": 1,
+          "rssBytes": 326041600,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        },
+        {
+          "pid": 60889,
+          "parent": 1,
+          "rssBytes": 114737152,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": null
+    },
+    {
+      "stage": "cycle-1-returned",
+      "window": "main",
+      "visibility": "visible",
+      "focused": false,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 4,
+        "destroyed": 2,
+        "destroyCalls": 2,
+        "live": 2,
+        "lanes": 3
+      },
+      "canvases": 2,
+      "rows": 29,
+      "library": {
+        "retainedPages": 5,
+        "retainedRows": 1000,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 1000,
+      "editor": {
+        "open": true,
+        "frames": 1323000,
+        "dirty": false
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 150323200,
+        "cpuPercent": 5.4986153,
+        "availableBytes": 8253374464,
+        "editorBusy": false,
+        "editor": {
+          "sampleId": 2,
+          "logicalBytes": 10584000,
+          "ramBytes": 20971520,
+          "diskBytes": 0,
+          "storageCount": 2,
+          "cacheBytes": 2876372,
+          "undoSteps": 0,
+          "redoSteps": 1,
+          "openedMs": 10.664625000000001,
+          "lastWaveMs": 3.038
+        }
+      },
+      "timings": [
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 78,
+          "p50Ms": 78,
+          "p95Ms": 78,
+          "maxMs": 78
+        },
+        {
+          "name": "editor.draw",
+          "calls": 20,
+          "errors": 0,
+          "lastMs": 3,
+          "p50Ms": 5,
+          "p95Ms": 9,
+          "maxMs": 9.99999999999909
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 7,
+          "p50Ms": 7,
+          "p95Ms": 18,
+          "maxMs": 18
+        },
+        {
+          "name": "editor_wave",
+          "calls": 37,
+          "errors": 0,
+          "lastMs": 25,
+          "p50Ms": 4.0000000000009095,
+          "p95Ms": 27,
+          "maxMs": 47
+        },
+        {
+          "name": "editor_apply.fadeOut",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 3,
+          "p95Ms": 11,
+          "maxMs": 11
+        },
+        {
+          "name": "editor_undo",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 1,
+          "p50Ms": 1,
+          "p95Ms": 2,
+          "maxMs": 2
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 38,
+          "p50Ms": 38,
+          "p95Ms": 38,
+          "maxMs": 38
+        },
+        {
+          "name": "editor_detach_window",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 347,
+          "p50Ms": 347,
+          "p95Ms": 347,
+          "maxMs": 347
+        },
+        {
+          "name": "editor_prepare_transfer",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 3,
+          "p50Ms": 3,
+          "p95Ms": 3,
+          "maxMs": 3
+        },
+        {
+          "name": "editor_accept_transfer",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 12,
+          "p50Ms": 12,
+          "p95Ms": 12,
+          "maxMs": 12
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793710218.403027,
+      "processes": [
+        {
+          "pid": 60703,
+          "parent": 60700,
+          "rssBytes": 150339584,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 60737,
+          "parent": 1,
+          "rssBytes": 76349440,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 60738,
+          "parent": 1,
+          "rssBytes": 17088512,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 60739,
+          "parent": 1,
+          "rssBytes": 327450624,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": null
+    },
+    {
+      "stage": "cycle-1-closed",
+      "window": "main",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 4,
+        "destroyed": 4,
+        "destroyCalls": 4,
+        "live": 0,
+        "lanes": 0
+      },
+      "canvases": 0,
+      "rows": 38,
+      "library": {
+        "retainedPages": 5,
+        "retainedRows": 1000,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 1000,
+      "editor": {
+        "open": false,
+        "frames": 0
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 150388736,
+        "cpuPercent": 2.5019388,
+        "availableBytes": 8383774720,
+        "editorBusy": false,
+        "editor": null
+      },
+      "timings": [
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 78,
+          "p50Ms": 78,
+          "p95Ms": 78,
+          "maxMs": 78
+        },
+        {
+          "name": "editor.draw",
+          "calls": 20,
+          "errors": 0,
+          "lastMs": 3,
+          "p50Ms": 5,
+          "p95Ms": 9,
+          "maxMs": 9.99999999999909
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 7,
+          "p50Ms": 7,
+          "p95Ms": 18,
+          "maxMs": 18
+        },
+        {
+          "name": "editor_wave",
+          "calls": 37,
+          "errors": 0,
+          "lastMs": 25,
+          "p50Ms": 4.0000000000009095,
+          "p95Ms": 27,
+          "maxMs": 47
+        },
+        {
+          "name": "editor_apply.fadeOut",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 2,
+          "p50Ms": 3,
+          "p95Ms": 11,
+          "maxMs": 11
+        },
+        {
+          "name": "editor_undo",
+          "calls": 8,
+          "errors": 0,
+          "lastMs": 1,
+          "p50Ms": 1,
+          "p95Ms": 2,
+          "maxMs": 2
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 38,
+          "p50Ms": 38,
+          "p95Ms": 38,
+          "maxMs": 38
+        },
+        {
+          "name": "editor_detach_window",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 347,
+          "p50Ms": 347,
+          "p95Ms": 347,
+          "maxMs": 347
+        },
+        {
+          "name": "editor_prepare_transfer",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 3,
+          "p50Ms": 3,
+          "p95Ms": 3,
+          "maxMs": 3
+        },
+        {
+          "name": "editor_accept_transfer",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 12,
+          "p50Ms": 12,
+          "p95Ms": 12,
+          "maxMs": 12
+        },
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 6,
+          "p50Ms": 6,
+          "p95Ms": 6,
+          "maxMs": 6
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793710221.024182,
+      "processes": [
+        {
+          "pid": 60703,
+          "parent": 60700,
+          "rssBytes": 150388736,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 60737,
+          "parent": 1,
+          "rssBytes": 75972608,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 60738,
+          "parent": 1,
+          "rssBytes": 17104896,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 60739,
+          "parent": 1,
+          "rssBytes": 327516160,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": null
+    },
+    {
+      "stage": "closed-with-pending-spectrum",
+      "window": "main",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 6,
+        "destroyed": 6,
+        "destroyCalls": 6,
+        "live": 0,
+        "lanes": 0
+      },
+      "canvases": 0,
+      "rows": 29,
+      "library": {
+        "retainedPages": 5,
+        "retainedRows": 1000,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 1000,
+      "editor": {
+        "open": false,
+        "frames": 0
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 160923648,
+        "cpuPercent": 4.0918016,
+        "availableBytes": 8259747840,
+        "editorBusy": false,
+        "editor": null
+      },
+      "timings": [
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 11.000000000003638,
+          "p50Ms": 11.000000000003638,
+          "p95Ms": 11.000000000003638,
+          "maxMs": 11.000000000003638
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 4.999999999996362,
+          "p50Ms": 4.999999999996362,
+          "p95Ms": 4.999999999996362,
+          "maxMs": 4.999999999996362
+        },
+        {
+          "name": "editor.draw",
+          "calls": 4,
+          "errors": 0,
+          "lastMs": 1.999999999996362,
+          "p50Ms": 1.000000000003638,
+          "p95Ms": 8.000000000003638,
+          "maxMs": 8.000000000003638
+        },
+        {
+          "name": "editor_wave",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 28,
+          "p50Ms": 20.000000000003638,
+          "p95Ms": 28,
+          "maxMs": 28
+        },
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 15.000000000003638,
+          "p50Ms": 15.000000000003638,
+          "p95Ms": 15.000000000003638,
+          "maxMs": 15.000000000003638
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 1,
+          "lastMs": 32,
+          "p50Ms": 32,
+          "p95Ms": 32,
+          "maxMs": 32
+        }
+      ],
+      "sinceCloseMs": 24,
+      "screenLocked": false,
+      "capturedAt": 1793710222.735887,
+      "processes": [
+        {
+          "pid": 60703,
+          "parent": 60700,
+          "rssBytes": 160923648,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 60737,
+          "parent": 1,
+          "rssBytes": 69124096,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 60738,
+          "parent": 1,
+          "rssBytes": 17137664,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 60739,
+          "parent": 1,
+          "rssBytes": 327729152,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": null
+    },
+    {
+      "stage": "pending-work-drained",
+      "window": "main",
+      "visibility": "visible",
+      "focused": true,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 6,
+        "destroyed": 6,
+        "destroyCalls": 6,
+        "live": 0,
+        "lanes": 0
+      },
+      "canvases": 0,
+      "rows": 38,
+      "library": {
+        "retainedPages": 5,
+        "retainedRows": 1000,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 1000,
+      "editor": {
+        "open": false,
+        "frames": 0
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 160923648,
+        "cpuPercent": 0.34102026,
+        "availableBytes": 8203714560,
+        "editorBusy": false,
+        "editor": null
+      },
+      "timings": [
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 11.000000000003638,
+          "p50Ms": 11.000000000003638,
+          "p95Ms": 11.000000000003638,
+          "maxMs": 11.000000000003638
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 4.999999999996362,
+          "p50Ms": 4.999999999996362,
+          "p95Ms": 4.999999999996362,
+          "maxMs": 4.999999999996362
+        },
+        {
+          "name": "editor.draw",
+          "calls": 4,
+          "errors": 0,
+          "lastMs": 1.999999999996362,
+          "p50Ms": 1.000000000003638,
+          "p95Ms": 8.000000000003638,
+          "maxMs": 8.000000000003638
+        },
+        {
+          "name": "editor_wave",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 28,
+          "p50Ms": 20.000000000003638,
+          "p95Ms": 28,
+          "maxMs": 28
+        },
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 15.000000000003638,
+          "p50Ms": 15.000000000003638,
+          "p95Ms": 15.000000000003638,
+          "maxMs": 15.000000000003638
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 1,
+          "lastMs": 32,
+          "p50Ms": 32,
+          "p95Ms": 32,
+          "maxMs": 32
+        }
+      ],
+      "sinceCloseMs": 106.00000000000364,
+      "screenLocked": false,
+      "capturedAt": 1793710222.809435,
+      "processes": [
+        {
+          "pid": 60703,
+          "parent": 60700,
+          "rssBytes": 160923648,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 60737,
+          "parent": 1,
+          "rssBytes": 65224704,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 60738,
+          "parent": 1,
+          "rssBytes": 17137664,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 60739,
+          "parent": 1,
+          "rssBytes": 327745536,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": null
+    },
+    {
+      "stage": "settled-after-close",
+      "window": "main",
+      "visibility": "visible",
+      "focused": false,
+      "viewport": {
+        "width": 1280,
+        "height": 760,
+        "dpr": 2
+      },
+      "callbacks": 45,
+      "pendingRaf": 0,
+      "pendingEditor": {},
+      "resources": {
+        "created": 6,
+        "destroyed": 6,
+        "destroyCalls": 6,
+        "live": 0,
+        "lanes": 0
+      },
+      "canvases": 0,
+      "rows": 38,
+      "library": {
+        "retainedPages": 5,
+        "retainedRows": 1000,
+        "active": 0,
+        "queued": 0,
+        "maxPages": 12,
+        "concurrency": 4
+      },
+      "libraryTotal": 1000,
+      "editor": {
+        "open": false,
+        "frames": 0
+      },
+      "heapBytes": null,
+      "native": {
+        "processBytes": 160858112,
+        "cpuPercent": 1.4351753,
+        "availableBytes": 8502706176,
+        "editorBusy": false,
+        "editor": null
+      },
+      "timings": [
+        {
+          "name": "editor_open",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 11.000000000003638,
+          "p50Ms": 11.000000000003638,
+          "p95Ms": 11.000000000003638,
+          "maxMs": 11.000000000003638
+        },
+        {
+          "name": "editor_clipboard",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 4.999999999996362,
+          "p50Ms": 4.999999999996362,
+          "p95Ms": 4.999999999996362,
+          "maxMs": 4.999999999996362
+        },
+        {
+          "name": "editor.draw",
+          "calls": 4,
+          "errors": 0,
+          "lastMs": 1.999999999996362,
+          "p50Ms": 1.000000000003638,
+          "p95Ms": 8.000000000003638,
+          "maxMs": 8.000000000003638
+        },
+        {
+          "name": "editor_wave",
+          "calls": 2,
+          "errors": 0,
+          "lastMs": 28,
+          "p50Ms": 20.000000000003638,
+          "p95Ms": 28,
+          "maxMs": 28
+        },
+        {
+          "name": "editor_close",
+          "calls": 1,
+          "errors": 0,
+          "lastMs": 15.000000000003638,
+          "p50Ms": 15.000000000003638,
+          "p95Ms": 15.000000000003638,
+          "maxMs": 15.000000000003638
+        },
+        {
+          "name": "editor_spectrogram",
+          "calls": 1,
+          "errors": 1,
+          "lastMs": 32,
+          "p50Ms": 32,
+          "p95Ms": 32,
+          "maxMs": 32
+        }
+      ],
+      "screenLocked": false,
+      "capturedAt": 1793710232.9546518,
+      "processes": [
+        {
+          "pid": 60703,
+          "parent": 60700,
+          "rssBytes": 160874496,
+          "name": "/Users/dremchee/Work/Projects/app/fonicca/src-tauri/target/release/bundle/macos/Fonicca Resource Probe.app/Contents/MacOS/fonicca-resource-probe"
+        },
+        {
+          "pid": 60737,
+          "parent": 1,
+          "rssBytes": 64438272,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU"
+        },
+        {
+          "pid": 60738,
+          "parent": 1,
+          "rssBytes": 17121280,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking"
+        },
+        {
+          "pid": 60739,
+          "parent": 1,
+          "rssBytes": 327368704,
+          "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent"
+        }
+      ],
+      "footprint": null
+    }
+  ],
+  "finished": {
+    "ok": true
+  },
+  "limits": [
+    "Generated private audio/SQLite and production UI/native IPC; probe and renderer counters are injected only in a copied checkout.",
+    "Native RSS and per-process WebKit RSS/footprint are distinct observations, not disjoint physical totals.",
+    "No forced JavaScript GC; residual RSS alone is not proof of a leak.",
+    "Non-macOS smoke mode checks the scene but does not attribute WebView child memory.",
+    "Cohort attribution is accepted only if all candidate processes disappear after this host stops."
+  ],
+  "normalBinary": {
+    "before": "dc985290ebcbc44d388722271c0d075ec8b5711d490cbdf38381dfa98e8cdf49",
+    "after": "dc985290ebcbc44d388722271c0d075ec8b5711d490cbdf38381dfa98e8cdf49",
+    "releaseBefore": null,
+    "releaseAfter": null,
+    "unchanged": true
+  },
+  "sourceSha256": {
+    "src/main.ts": "6959b4c14098197c5116d3e7081ee2c5111c9ab78ae8471f60050524b1466efd",
+    "src/App.vue": "38809b10da8af40eec4acd39e197a3b4778aefb0f2babf004b60c04691f58cf2",
+    "src/EditorWindow.vue": "134c5e38101137704e50b42418788a32818caae6b9e609f0b14bd3fb0312a419",
+    "src/waveform-gl.ts": "57e2207452dfb5a9eed8383acbcaaddc5b64ed078fadce7b730140f1c9dcf2b7",
+    "src/stores/editor.ts": "82d2cd20a8064c44a6d949f21a26a318820aa7e378ba368b15741d93401df1c6",
+    "src/waveform.ts": "2960953dd08f47a16079bd06d3d2abb3efac570e327d8abb392f3765b5f6f618",
+    "src/editor-window-state.ts": "b73502d69951706dc33c3af7408945e760ac268c4bc5471ecbb4588e9068fe2f",
+    "src/stores/editor/types.ts": "f64b1111fcfdeabdf98edbc29bb08e8d92a571677c5a0f3336e7f3f5731295d3",
+    "src/stores/editor/api.ts": "a544e66407f6fa0b349e544e229b15712f08d5373d041e7882c7ee45bd8bb270",
+    "src/stores/editor/state.ts": "bf82002d0b415f98ef6d3e5f501ca86343970694edc417d8bd02cd4df09b01e8",
+    "src/stores/editor/session.ts": "09d95965ac90b2d98d409387c6c8605b5b8bad4a2664512d750d08cecf3ecd23",
+    "src/stores/editor/saving.ts": "811175be64eb3a174c381ac1537a996c8f0bc10bd5259eecebdd6814f316d165",
+    "src/stores/editor/playback.ts": "f879afaf464e496ad89e2d5830490de6dc243285bee3dd8fb7b5b49cf1e0212b",
+    "src/components/EditorView.vue": "d4f7c50c914803fb6035a95b7691b74b09193f4d5c771279ca8e392d579dc256",
+    "src/composables/editor/spectrogram.ts": "c2fc63faa343c4329cde3e04909ee900c73f3c93d801e7bb58d80eba4f4c2c04",
+    "src-tauri/tauri.conf.json": "2285a5b3777d6b6963a813d9e95b2429c2d4436464b51a6ead5a4fc674ee7d47",
+    "src-tauri/src/lib.rs": "f2b658b79931e69f88cbdf9a62b0513ffbecfd0579cf30c297e214f00bfac173",
+    "src-tauri/src/editor.rs": "6d69f828132ed65343df163581ada732bc8c9b2c4a7683ee41a6746a1c468304",
+    "src-tauri/src/editor/spectrogram.rs": "7b5e868b3a6c0bb201ed6dabe1970f7b3088fc5d8355e0830edb096359f89b9f",
+    "src-tauri/src/editor_commands.rs": "722efbea3bb00b6f964b38152ff9165f4bc1a25699624e1c466c89504afbbd5f",
+    "src-tauri/src/editor_commands/transfer.rs": "7f1b1ced340d1f37d10a7c6c4668621d7f3a42e4feca016fcdfe06bad616e723",
+    "scripts/profile-resources.mjs": "03dfd01171e4b6ba5d5fc95b5780c0fc7e95dec70ba2e39b552f4512383bd3af",
+    "scripts/resource-profile/probe.ts": "f3d3ebdcebd9e525a90aa7a5303850d36f58f99ab390e9e503b82dc27dff0c64",
+    "scripts/resource-profile/controller.py": "3d096e2d49585a34c0d27edb81fa0f533d605c2e53ba2a2e6b34d63955f58e98",
+    "scripts/resource-profile/report.mjs": "d7d48e8eae2b5cb5413a5822f0b6bf9db4cf3ac686106e0a399fcf96481783bf"
+  },
+  "sourceSnapshot": "Captured before copying and probe transforms; copied production files verified against these hashes.",
+  "sourceChangedDuringRun": [],
+  "audit": {
+    "passed": true,
+    "checks": [
+      {
+        "name": "scenario completed",
+        "passed": true,
+        "evidence": null
+      },
+      {
+        "name": "all lifecycle stages recorded",
+        "passed": true,
+        "evidence": []
+      },
+      {
+        "name": "visible unlocked observations",
+        "passed": true
+      },
+      {
+        "name": "native host observed",
+        "passed": true
+      },
+      {
+        "name": "ordinary binary unchanged",
+        "passed": true,
+        "evidence": {
+          "before": "dc985290ebcbc44d388722271c0d075ec8b5711d490cbdf38381dfa98e8cdf49",
+          "after": "dc985290ebcbc44d388722271c0d075ec8b5711d490cbdf38381dfa98e8cdf49",
+          "releaseBefore": null,
+          "releaseAfter": null,
+          "unchanged": true
+        }
+      },
+      {
+        "name": "source snapshot unchanged",
+        "passed": true,
+        "evidence": []
+      },
+      {
+        "name": "attributed processes exited",
+        "passed": true,
+        "evidence": []
+      },
+      {
+        "name": "closed editors release native sessions",
+        "passed": true
+      },
+      {
+        "name": "closed editors release renderer ownership",
+        "passed": true
+      },
+      {
+        "name": "closed editors leave no animation frame",
+        "passed": true
+      },
+      {
+        "name": "callbacks return to baseline",
+        "passed": true,
+        "evidence": {
+          "baseline": 45,
+          "closed": [
+            {
+              "stage": "cycle-1-closed",
+              "callbacks": 45
+            },
+            {
+              "stage": "settled-after-close",
+              "callbacks": 45
+            }
+          ]
+        }
+      },
+      {
+        "name": "pending work eventually drains",
+        "passed": true,
+        "evidence": 106.00000000000364
+      },
+      {
+        "name": "library cache stays bounded",
+        "passed": true
+      }
+    ],
+    "memory": [
+      {
+        "stage": "baseline",
+        "window": "main",
+        "nativeRssBytes": 131809280,
+        "webkitRss": [
+          {
+            "pid": 60737,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 39010304
+          },
+          {
+            "pid": 60738,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 16515072
+          },
+          {
+            "pid": 60739,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 117522432
+          }
+        ],
+        "footprint": null,
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "library-scrolled",
+        "window": "main",
+        "nativeRssBytes": 127107072,
+        "webkitRss": [
+          {
+            "pid": 60737,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 44449792
+          },
+          {
+            "pid": 60738,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 16465920
+          },
+          {
+            "pid": 60739,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 288129024
+          }
+        ],
+        "footprint": null,
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "cycle-1-opened",
+        "window": "main",
+        "nativeRssBytes": 144916480,
+        "webkitRss": [
+          {
+            "pid": 60737,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 52461568
+          },
+          {
+            "pid": 60738,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 16760832
+          },
+          {
+            "pid": 60739,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 296124416
+          }
+        ],
+        "footprint": null,
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "cycle-1-spectrum",
+        "window": "main",
+        "nativeRssBytes": 151584768,
+        "webkitRss": [
+          {
+            "pid": 60737,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 66109440
+          },
+          {
+            "pid": 60738,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 16760832
+          },
+          {
+            "pid": 60739,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 324714496
+          }
+        ],
+        "footprint": null,
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "detached-rendered",
+        "window": "editor-detached-1",
+        "nativeRssBytes": 150061056,
+        "webkitRss": [
+          {
+            "pid": 60737,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 95322112
+          },
+          {
+            "pid": 60738,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 17104896
+          },
+          {
+            "pid": 60739,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 326041600
+          },
+          {
+            "pid": 60889,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 114737152
+          }
+        ],
+        "footprint": null,
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "cycle-1-returned",
+        "window": "main",
+        "nativeRssBytes": 150339584,
+        "webkitRss": [
+          {
+            "pid": 60737,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 76349440
+          },
+          {
+            "pid": 60738,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 17088512
+          },
+          {
+            "pid": 60739,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 327450624
+          }
+        ],
+        "footprint": null,
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "cycle-1-closed",
+        "window": "main",
+        "nativeRssBytes": 150388736,
+        "webkitRss": [
+          {
+            "pid": 60737,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 75972608
+          },
+          {
+            "pid": 60738,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 17104896
+          },
+          {
+            "pid": 60739,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 327516160
+          }
+        ],
+        "footprint": null,
+        "sinceCloseMs": null
+      },
+      {
+        "stage": "closed-with-pending-spectrum",
+        "window": "main",
+        "nativeRssBytes": 160923648,
+        "webkitRss": [
+          {
+            "pid": 60737,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 69124096
+          },
+          {
+            "pid": 60738,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 17137664
+          },
+          {
+            "pid": 60739,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 327729152
+          }
+        ],
+        "footprint": null,
+        "sinceCloseMs": 24
+      },
+      {
+        "stage": "pending-work-drained",
+        "window": "main",
+        "nativeRssBytes": 160923648,
+        "webkitRss": [
+          {
+            "pid": 60737,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 65224704
+          },
+          {
+            "pid": 60738,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 17137664
+          },
+          {
+            "pid": 60739,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 327745536
+          }
+        ],
+        "footprint": null,
+        "sinceCloseMs": 106.00000000000364
+      },
+      {
+        "stage": "settled-after-close",
+        "window": "main",
+        "nativeRssBytes": 160874496,
+        "webkitRss": [
+          {
+            "pid": 60737,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.GPU.xpc/Contents/MacOS/com.apple.WebKit.GPU",
+            "rssBytes": 64438272
+          },
+          {
+            "pid": 60738,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.Networking.xpc/Contents/MacOS/com.apple.WebKit.Networking",
+            "rssBytes": 17121280
+          },
+          {
+            "pid": 60739,
+            "name": "/System/Library/Frameworks/WebKit.framework/Versions/A/XPCServices/com.apple.WebKit.WebContent.xpc/Contents/MacOS/com.apple.WebKit.WebContent",
+            "rssBytes": 327368704
+          }
+        ],
+        "footprint": null,
+        "sinceCloseMs": null
+      }
+    ],
+    "limits": [
+      "Ownership counters do not measure JavaScript garbage collection or GPU driver memory.",
+      "Per-process RSS/footprint are not disjoint physical totals and must not be summed with PCM counters.",
+      "No RSS limit or memory-leak conclusion is inferred from one process snapshot."
+    ]
+  }
+}

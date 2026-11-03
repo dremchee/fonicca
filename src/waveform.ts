@@ -1,5 +1,5 @@
 import type { WaveStyle } from '@/api'
-import type { Wave } from '@/stores/editor'
+import type { Wave } from '@/stores/editor/types'
 import { barCornerRadius, waveBars } from './waveform-bars.ts'
 
 /** Range shown by the dB scale, from silence to full scale. */
