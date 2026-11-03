@@ -3,6 +3,7 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 use std::sync::{mpsc, Arc, Mutex};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use rodio::{Decoder, DeviceSinkBuilder, Player as RodioPlayer};
@@ -92,7 +93,7 @@ fn open_output(id: Option<&str>) -> Result<(rodio::MixerDeviceSink, Option<Strin
     Ok((sink, device_id))
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 struct Timing {
     /// Seconds of the source per second of playback (≠ 1 when stretched).
     scale: f64,
@@ -102,35 +103,107 @@ struct Timing {
     loop_len: Option<f64>,
     /// Initial position within the region, retained when its bounds change.
     phase: f64,
+    /// Editor sources publish their actual cursor as their range changes live.
+    buffer: Option<Arc<BufferPlayback>>,
 }
 
 impl Timing {
-    const PLAIN: Timing = Timing { scale: 1.0, offset: 0.0, loop_len: None, phase: 0.0 };
+    const PLAIN: Timing = Timing { scale: 1.0, offset: 0.0, loop_len: None, phase: 0.0, buffer: None };
 
     fn source_time(&self, played: f64) -> f64 {
+        if let Some(buffer) = &self.buffer {
+            return buffer.position.load(Ordering::Relaxed) as f64 / buffer.channels as f64 / buffer.sample_rate as f64;
+        }
         let t = played * self.scale + self.phase;
         self.offset + self.loop_len.filter(|l| *l > 0.0).map_or(t, |l| t % l)
     }
 }
 
+#[derive(Clone, Copy)]
+struct BufferRange { start: usize, end: usize, looping: bool }
+
+/// The audio thread never waits for a control-thread write. It only tries to
+/// acquire a pending range at a channel-frame boundary, and otherwise keeps
+/// playing the previous range until the next frame.
+struct BufferPlayback {
+    range: Mutex<BufferRange>,
+    revision: AtomicUsize,
+    position: AtomicUsize,
+    channels: usize,
+    sample_rate: u32,
+}
+
+impl BufferPlayback {
+    fn update(&self, start: usize, end: usize, looping: bool) {
+        *self.range.lock().unwrap() = BufferRange {
+            start: start * self.channels, end: end * self.channels, looping,
+        };
+        self.revision.fetch_add(1, Ordering::Release);
+    }
+}
+
 /// Immutable source snapshot: no range copy when starting, looping or seeking.
 #[derive(Clone)]
-struct SharedSource<A> { audio:A,start:usize,end:usize,position:usize,begin:usize,looping:bool,cursor:usize }
+struct SharedSource<A> {
+    audio: A,
+    range: BufferRange,
+    position: usize,
+    begin: usize,
+    cursor: usize,
+    control: Arc<BufferPlayback>,
+    revision: usize,
+}
+impl<A: AudioRead> SharedSource<A> {
+    fn new(audio: A, start: usize, end: usize, position: usize, looping: bool) -> Self {
+        let channels = audio.channels().max(1);
+        let range = BufferRange { start: start * channels, end: end * channels, looping };
+        let control = Arc::new(BufferPlayback {
+            range: Mutex::new(range), revision: AtomicUsize::new(0),
+            position: AtomicUsize::new(position * channels), channels, sample_rate: audio.sample_rate(),
+        });
+        Self { audio, range, position: position * channels, begin: position * channels, cursor: 0, control, revision: 0 }
+    }
+
+    fn update_range(&mut self) {
+        if self.control.revision.load(Ordering::Acquire) != self.revision {
+            if let Ok(range) = self.control.range.try_lock() {
+                self.range = *range;
+                self.revision = self.control.revision.load(Ordering::Acquire);
+                self.position = self.position.max(range.start);
+            }
+        }
+    }
+}
 impl<A:AudioRead> Iterator for SharedSource<A> {
     type Item=f32;
-    fn next(&mut self)->Option<f32> {if self.position>=self.end {if self.looping && self.start<self.end {self.position=self.start}else{return None}}let sample=self.audio.sample_with_cursor(self.position,&mut self.cursor);self.position+=1;Some(sample)}
-    fn size_hint(&self)->(usize,Option<usize>) {if self.looping {(0,None)}else{let n=self.end-self.position;(n,Some(n))}}
+    fn next(&mut self) -> Option<f32> {
+        // Never change bounds between the left and right samples of a frame.
+        if self.position % self.control.channels == 0 { self.update_range(); }
+        if self.position >= self.range.end {
+            if self.range.looping && self.range.start < self.range.end { self.position = self.range.start; }
+            else { return None; }
+        }
+        let sample = self.audio.sample_with_cursor(self.position, &mut self.cursor);
+        self.position += 1;
+        self.control.position.store(self.position, Ordering::Relaxed);
+        Some(sample)
+    }
+    // A live range may shrink or grow before the next sample.
+    fn size_hint(&self)->(usize,Option<usize>) {(0,None)}
 }
 impl<A:AudioRead+Clone> rodio::Source for SharedSource<A> {
-    fn current_span_len(&self)->Option<usize> {Some(if self.looping && self.position==self.end {self.end-self.start}else{self.end-self.position})}
+    fn current_span_len(&self)->Option<usize> {None}
     fn channels(&self)->std::num::NonZero<u16> {std::num::NonZero::new(self.audio.channels() as u16).unwrap()}
     fn sample_rate(&self)->std::num::NonZero<u32> {std::num::NonZero::new(self.audio.sample_rate()).unwrap()}
-    fn total_duration(&self)->Option<Duration> {if self.looping {None}else{Some(Duration::from_secs_f64((self.end-self.begin) as f64/self.audio.channels().max(1) as f64/self.audio.sample_rate() as f64))}}
+    fn total_duration(&self)->Option<Duration> {None}
     fn try_seek(&mut self,pos:Duration)->std::result::Result<(),rodio::source::SeekError> {
         let ch=self.audio.channels().max(1);
         let offset=(pos.as_secs_f64()*self.audio.sample_rate() as f64) as usize;
         let target=self.begin.saturating_add(offset.saturating_mul(ch));
-        self.position=if self.looping {self.start+(target-self.start)%(self.end-self.start)}else{target.min(self.end)};
+        self.update_range();
+        let target = target.max(self.range.start);
+        self.position=if self.range.looping {self.range.start+(target-self.range.start)%(self.range.end-self.range.start)}else{target.min(self.range.end)};
+        self.control.position.store(self.position, Ordering::Relaxed);
         Ok(())
     }
 }
@@ -302,19 +375,18 @@ impl Player {
     }
 
     pub(crate) fn update_buffer_request<A:AudioRead+Clone+Send+Sync+'static>(&self, request: u64, pcm: &A, start: usize, end: usize, looping: bool) -> Result<bool> {
-        let seconds = {
-            let _request = self.request_guard(request)?;
-            self.position_unlocked()
-        };
-        let Some(seconds) = seconds else { return Ok(false) };
-        let position = (seconds * pcm.sample_rate() as f64).round() as usize;
+        let _request = self.request_guard(request)?;
+        let mut current = self.current.lock().unwrap();
+        if !current.as_ref().is_some_and(|player| !player.empty()) { return Ok(false); }
+        let timing = self.timing.lock().unwrap();
+        let Some(buffer) = &timing.buffer else { return Ok(false); };
+        let position = buffer.position.load(Ordering::Relaxed) / buffer.channels;
         let end = end.min(pcm.frames());
         if end <= start || (position >= end && !looping) {
-            self.fail_request(request);
+            current.take();
             return Ok(false);
         }
-        let position = if position >= end { start } else { position.max(start) };
-        self.play_buffer_from(request, pcm, start, end, looping, position)?;
+        buffer.update(start, end, looping);
         Ok(true)
     }
 
@@ -326,7 +398,7 @@ impl Player {
         }
         let _channels = std::num::NonZero::new(ch as u16).ok_or_else(|| Error::Audio("no channels".into()))?;
         let _rate = std::num::NonZero::new(pcm.sample_rate()).ok_or_else(|| Error::Audio("no sample rate".into()))?;
-        let buffer = SharedSource {audio:pcm.clone(),start:start*ch,end:end*ch,position:position*ch,begin:position*ch,looping,cursor:0};
+        let buffer = SharedSource::new(pcm.clone(), start, end, position, looping);
         let sr = pcm.sample_rate() as f64;
         let phase = position.saturating_sub(start) as f64 / sr;
         let timing = Timing {
@@ -334,6 +406,7 @@ impl Player {
             offset: start as f64 / sr,
             loop_len: looping.then(|| (end - start) as f64 / sr),
             phase,
+            buffer: Some(Arc::clone(&buffer.control)),
         };
         self.install(request, buffer, timing, 0.0, Adjust::NONE)?;
         Ok(())
@@ -358,7 +431,7 @@ impl Player {
     pub fn pause(&self) -> Option<f64> {
         let mut generation = self.requests.lock().unwrap();
         *generation = generation.wrapping_add(1);
-        let timing = *self.timing.lock().unwrap();
+        let timing = self.timing.lock().unwrap().clone();
         let guard = self.current.lock().unwrap();
         let player = guard.as_ref().filter(|p| !p.empty())?;
         player.pause();
@@ -378,7 +451,7 @@ impl Player {
         let mut generation = self.requests.lock().unwrap();
         *generation = generation.wrapping_add(1);
         if let Some(p) = self.current.lock().unwrap().as_ref() {
-            let t = *self.timing.lock().unwrap();
+            let t = self.timing.lock().unwrap().clone();
             let played = ((pos - t.offset - t.phase) / t.scale).max(0.0);
             p.try_seek(Duration::from_secs_f64(played)).map_err(|e| Error::Audio(e.to_string()))?;
         }
@@ -400,7 +473,7 @@ impl Player {
     }
 
     fn position_unlocked(&self) -> Option<f64> {
-        let timing = *self.timing.lock().unwrap();
+        let timing = self.timing.lock().unwrap().clone();
         let mut guard = self.current.lock().unwrap();
         match guard.as_ref() {
             Some(p) if !p.empty() => Some(timing.source_time(p.get_pos().as_secs_f64())),
@@ -577,16 +650,53 @@ mod tests {
     fn shared_source_keeps_old_audio_and_seeks_and_loops_without_range_copies() {
         use rodio::Source;
         let mut audio=crate::editor::blocks::BlockAudio::from(crate::audio::Pcm {samples:vec![0.1,0.2,0.3,0.4,0.5,0.6],channels:2,sample_rate:2});
-        let mut source=SharedSource {audio:audio.clone(),start:0,end:6,position:2,begin:2,looping:true,cursor:0};
+        let mut source=SharedSource::new(audio.clone(), 0, 3, 1, true);
         assert!(source.audio.samples.shares_storage(&audio.samples));
         audio.apply(&crate::editor::Op::Silence{start:0,end:3});
         assert_eq!(source.next(),Some(0.3));
         assert_eq!(source.by_ref().take(5).collect::<Vec<_>>(),vec![0.4,0.5,0.6,0.1,0.2]);
         source.try_seek(Duration::from_secs_f64(0.5)).unwrap();
         assert_eq!(source.next(),Some(0.5));
-        let mut finite=SharedSource {audio:source.audio.clone(),start:2,end:6,position:2,begin:2,looping:false,cursor:0};
+        let mut finite=SharedSource::new(source.audio.clone(), 1, 3, 1, false);
         finite.try_seek(Duration::from_secs(99)).unwrap();
         assert_eq!(finite.next(),None);
+    }
+
+    #[test]
+    fn live_loop_bounds_change_between_stereo_frames_and_seek_uses_the_new_range() {
+        use rodio::Source;
+        let audio = crate::audio::Pcm {
+            samples: vec![0.1, -0.1, 0.2, -0.2, 0.3, -0.3, 0.4, -0.4],
+            channels: 2, sample_rate: 48000,
+        };
+        let mut source = SharedSource::new(audio, 0, 4, 0, true);
+        assert_eq!(source.next(), Some(0.1));
+        source.control.update(2, 4, true);
+        assert_eq!(source.next(), Some(-0.1), "finish the current stereo frame before moving");
+        assert_eq!(source.by_ref().take(6).collect::<Vec<_>>(), vec![0.3, -0.3, 0.4, -0.4, 0.3, -0.3]);
+        source.control.update(2, 3, true);
+        assert_eq!(source.next(), Some(0.3), "a shortened loop wraps at its new end");
+        source.try_seek(Duration::ZERO).unwrap();
+        assert_eq!(source.next(), Some(0.3));
+    }
+
+    #[test]
+    fn pending_loop_update_cannot_block_audio_when_the_control_lock_is_busy() {
+        let audio = crate::audio::Pcm { samples: vec![0.1, 0.2, 0.3], channels: 1, sample_rate: 48000 };
+        let mut source = SharedSource::new(audio, 0, 3, 0, true);
+        let control = Arc::clone(&source.control);
+        control.update(2, 3, true);
+        let writing = control.range.lock().unwrap();
+        let (tx, rx) = mpsc::channel();
+        let worker = std::thread::spawn(move || {
+            tx.send(source.next()).unwrap();
+            source
+        });
+        let sample = rx.recv_timeout(Duration::from_secs(2));
+        drop(writing);
+        let mut source = worker.join().unwrap();
+        assert_eq!(sample.unwrap(), Some(0.1), "a busy writer must leave the current range audible");
+        assert_eq!(source.next(), Some(0.3), "apply the pending range as soon as it is available");
     }
 
     #[test]
@@ -675,6 +785,23 @@ mod tests {
     }
 
     #[test]
+    fn dragging_loop_bounds_keeps_the_audio_sample_stream_continuous() {
+        let (player, mut output) = fixture();
+        let pcm = crate::audio::Pcm {
+            samples: (0..48000 * 4).map(|i| (i % 997) as f32 / 997.0).collect(),
+            channels: 1, sample_rate: 48000,
+        };
+        player.play_buffer(&pcm, 0, pcm.frames(), true).unwrap();
+        // 120 pointer moves per second. Neither boundary crosses the playhead.
+        for frame in 0..48000 {
+            if frame % 400 == 0 {
+                assert!(player.update_buffer_range(&pcm, 0, pcm.frames() - frame / 400, true).unwrap());
+            }
+            assert_eq!(output.next(), Some(pcm.samples[frame]), "audio discontinuity at frame {frame}");
+        }
+    }
+
+    #[test]
     fn resizing_editor_range_preserves_position_and_uses_new_loop_bounds() {
         let (mixer, mut output) = rodio::mixer::mixer(
             std::num::NonZero::new(1).unwrap(), std::num::NonZero::new(48000).unwrap(),
@@ -735,7 +862,7 @@ mod tests {
         let player = Player {
             requests: Mutex::new(0), preparing: Mutex::new(()),
             mixer: Mutex::new(Some(mixer)), output: None, device_id: Mutex::new(None), current: Mutex::new(Some(sink)), volume: Mutex::new(1.0),
-            timing: Mutex::new(Timing { scale: 0.5, offset: 2.0, loop_len: None, phase: 0.0 }), meter: Arc::default(),
+            timing: Mutex::new(Timing { scale: 0.5, offset: 2.0, loop_len: None, phase: 0.0, buffer: None }), meter: Arc::default(),
         };
         for _ in 0..4800 { output.next(); }
         let paused_at = player.pause().unwrap();

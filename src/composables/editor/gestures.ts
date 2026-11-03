@@ -254,6 +254,11 @@ export function useEditorGestures(options: Options) {
     cancelGesture()
     const gesture = mouseGesture
     const markers = editor.state?.markers ?? []
+    const previousSelection = editor.selection
+    const previousCursor = editor.cursor
+    const selectedRegion = previousSelection && editor.regions.find(r => r.start === previousSelection.start && r.end === previousSelection.end)
+    const edge = selectedRegion?.start === markers[i].frame ? 'start'
+      : selectedRegion?.end === markers[i].frame ? 'end' : null
     const lo = i > 0 ? markers[i - 1].frame + 1 : 0
     const hi = (markers[i + 1]?.frame ?? frames.value) - 1
     const startX = e.clientX
@@ -261,12 +266,22 @@ export function useEditorGestures(options: Options) {
     let moved = false
     let at = markers[i].frame
     const place = (f: number) => markers.map((m, j) => (j === i ? { ...m, frame: f } : m))
+    const preview = (f: number) => {
+      at = Math.min(hi, Math.max(lo, f))
+      draggedMarkers.value = place(at)
+      if (edge && previousSelection) {
+        const range = { ...previousSelection, [edge]: at }
+        if (editor.selection?.start !== range.start || editor.selection.end !== range.end) {
+          editor.selection = range
+          if (editor.playing) void editor.updatePlaybackRange()
+        }
+      }
+    }
     const move = (ev: MouseEvent) => {
       if (!moved && Math.abs(ev.clientX - startX) < 3)
         return
       moved = true
-      at = Math.min(hi, Math.max(lo, snapped(frameAt(ev.clientX - pointerOffset), ev)))
-      draggedMarkers.value = place(at)
+      preview(snapped(frameAt(ev.clientX - pointerOffset), ev))
     }
     const up = async (ev: MouseEvent) => {
       releaseListeners()
@@ -274,7 +289,16 @@ export function useEditorGestures(options: Options) {
         move(ev)
         const [f] = await zeroSnapped([at], ev)
         if (gesture !== mouseGesture) return
-        await editor.setMarkers(place(Math.min(hi, Math.max(lo, f))))
+        if (editor.state?.markers !== markers) { draggedMarkers.value = null; return }
+        preview(f)
+        if (edge && editor.selection) editor.cursor = editor.selection.start
+        await editor.setMarkers(place(at))
+        if (gesture !== mouseGesture) return
+        if (edge && editor.state?.markers[i]?.frame !== at) {
+          editor.selection = previousSelection
+          editor.cursor = previousCursor
+          if (editor.playing) void editor.updatePlaybackRange()
+        }
       }
       if (gesture === mouseGesture) draggedMarkers.value = null
     }

@@ -3,6 +3,7 @@ import { setImmediate } from 'node:timers/promises'
 import { test } from 'node:test'
 import { effectScope, shallowRef } from 'vue'
 import { useEditorGestures, type GestureEditor } from '../src/composables/editor/gestures.ts'
+import { regionsOf } from '../src/editor-regions.ts'
 
 function mouse(type: string, x: number, overrides = {}) {
   return Object.assign(new Event(type), { clientX: x, clientY: 30, button: 0,
@@ -98,6 +99,84 @@ test('marker dragging stays between neighbours and a cancelled drag never commit
   await setImmediate()
   assert.equal(v.calls.markers, 1)
   assert.equal(v.gestures.draggedMarkers.value, null)
+})
+
+for (const edge of ['start', 'end'] as const) {
+  test(`dragging a playing region's ${edge} marker updates its range live without restarting`, async t => {
+    const v = setup(t)
+    v.editor.state!.markers = [{ frame: 200, skip: false }, { frame: 600, skip: false }, { frame: 900, skip: false }]
+    v.editor.regions = regionsOf(v.editor.state!.markers, 1000)
+    v.editor.selection = { start: 200, end: 600 }
+    v.editor.cursor = 200
+    v.editor.playing = true
+    v.editor.looping = true
+    v.editor.setMarkers = markers => { v.editor.state!.markers = markers; v.calls.markers++ }
+    const from = edge === 'start' ? 20 : 60
+    const to = edge === 'start' ? 30 : 80
+    v.gestures.onMouseDown(mouse('mousedown', from, { clientY: 5 }))
+    v.target.dispatchEvent(mouse('mousemove', to, { clientY: 5 }))
+    assert.deepEqual(v.editor.selection, { start: 200, end: 600, [edge]: to * 10 })
+    assert.equal(v.calls.update, 1)
+    assert.equal(v.calls.markers, 0, 'preview must not create undo history')
+    v.target.dispatchEvent(mouse('mouseup', to + 2, { clientY: 5 }))
+    await setImmediate()
+    assert.deepEqual(v.editor.selection, { start: 200, end: 600, [edge]: (to + 2) * 10 })
+    assert.equal(v.calls.markers, 1)
+    assert.equal(v.calls.stop, 0)
+    assert.equal(v.calls.play, 0)
+    assert.equal(v.editor.playing, true)
+  })
+}
+
+test('a marker outside the playing region leaves its playback range alone', async t => {
+  const v = setup(t)
+  v.editor.state!.markers = [{ frame: 200, skip: false }, { frame: 600, skip: false }, { frame: 900, skip: false }]
+  v.editor.regions = regionsOf(v.editor.state!.markers, 1000)
+  v.editor.selection = { start: 200, end: 600 }
+  v.editor.playing = true
+  v.gestures.onMouseDown(mouse('mousedown', 90, { clientY: 5 }))
+  v.target.dispatchEvent(mouse('mousemove', 80, { clientY: 5 }))
+  v.target.dispatchEvent(mouse('mouseup', 80, { clientY: 5 }))
+  await setImmediate()
+  assert.deepEqual(v.editor.selection, { start: 200, end: 600 })
+  assert.equal(v.calls.update, 0)
+})
+
+test('marker zero snapping updates the playing boundary and commits only the final position', async t => {
+  const v = setup(t)
+  v.editor.state!.markers = [{ frame: 200, skip: false }, { frame: 600, skip: false }]
+  v.editor.regions = regionsOf(v.editor.state!.markers, 1000)
+  v.editor.selection = { start: 200, end: 600 }
+  v.editor.playing = true
+  v.zeroSnap.value = true
+  v.editor.zeroSnap = async () => [802]
+  v.editor.setMarkers = markers => { v.editor.state!.markers = markers; v.calls.markers++ }
+  v.gestures.onMouseDown(mouse('mousedown', 60, { clientY: 5 }))
+  v.target.dispatchEvent(mouse('mousemove', 80, { clientY: 5 }))
+  v.target.dispatchEvent(mouse('mouseup', 80, { clientY: 5 }))
+  await setImmediate()
+  assert.deepEqual(v.editor.selection, { start: 200, end: 802 })
+  assert.equal(v.editor.state!.markers[1].frame, 802)
+  assert.equal(v.calls.update, 2)
+  assert.equal(v.calls.markers, 1)
+})
+
+test('a failed marker edit restores the selected playback region', async t => {
+  const v = setup(t)
+  v.editor.state!.markers = [{ frame: 200, skip: false }, { frame: 600, skip: false }]
+  v.editor.regions = regionsOf(v.editor.state!.markers, 1000)
+  v.editor.selection = { start: 200, end: 600 }
+  v.editor.cursor = 200
+  v.editor.playing = true
+  v.gestures.onMouseDown(mouse('mousedown', 20, { clientY: 5 }))
+  v.target.dispatchEvent(mouse('mousemove', 30, { clientY: 5 }))
+  v.target.dispatchEvent(mouse('mouseup', 30, { clientY: 5 }))
+  await setImmediate()
+  assert.deepEqual(v.editor.selection, { start: 200, end: 600 })
+  assert.equal(v.editor.cursor, 200)
+  assert.equal(v.calls.update, 2)
+  assert.equal(v.calls.play, 0)
+  assert.equal(v.calls.stop, 0)
 })
 
 test('saved loop boundaries preview live and commit once with the opposite edge fixed', async t => {
