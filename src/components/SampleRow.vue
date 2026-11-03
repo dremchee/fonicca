@@ -7,7 +7,7 @@ import { useI18n } from 'vue-i18n'
 import Hint from '@/components/Hint.vue'
 import CategoryIcon from '@/components/icons/CategoryIcon.vue'
 import SampleStemProgress from '@/components/SampleStemProgress.vue'
-import { useTagColors } from '@/composables/tagColors'
+import SampleTagsCell from '@/components/SampleTagsCell.vue'
 import { useWaveformBackgrounds } from '@/composables/waveformBackgrounds'
 import { categoryHint, categoryLabel, formatBpm, formatDuration, kindLabel, sourceHint } from '@/format'
 import { relativeSampleDirectory, sampleDirectory } from '@/sample-columns'
@@ -44,7 +44,6 @@ const player = usePlayerStore()
 const stems = useStemsStore()
 const apollo = useApolloStore()
 const backgrounds = useWaveformBackgrounds()
-const { tagStyle } = useTagColors()
 const { t } = useI18n()
 const s = computed(() => props.sample)
 const playing = computed(() => player.isPlaying(s.value.id))
@@ -119,9 +118,7 @@ const apolloProgress = computed(() => apollo.progress.sourceId === s.value.id ? 
     </span>
     <template v-for="column in visibleColumns" :key="column.id">
       <span v-if="column.id === 'directory'" class="min-w-0 truncate text-muted-foreground text-xs" :title="sampleDirectory(s.path)">{{ relativeSampleDirectory(s.path, library.sources.find(source => source.id === s.sourceId)?.path) }}</span>
-      <span v-else-if="column.id === 'tags'" class="flex gap-1 overflow-hidden">
-        <span v-for="tag in s.tags" :key="tag.id" class="chip tag-color" :style="tagStyle(tag)">{{ tag.name }}</span>
-      </span>
+      <SampleTagsCell v-else-if="column.id === 'tags'" :sample="s" />
       <span v-else-if="column.id === 'category'" :data-sample-hint="categoryHint(s.categorySource, s.categoryConfidence)" data-grace-area-trigger class="truncate text-xs" :class="s.categorySource === 'audio' ? 'text-muted-foreground' : ''">{{ s.category ? categoryLabel(s.category) : '' }}</span>
       <span v-else-if="column.id === 'kind'" class="text-muted-foreground text-xs">
         <template v-if="s.kind">{{ kindLabel(s.kind) }}</template>
@@ -162,11 +159,17 @@ const apolloProgress = computed(() => apollo.progress.sourceId === s.value.id ? 
 .track-play { width: 24px; height: 24px; opacity: 0; }
 .row:hover .track-play, .track-play:focus-visible { opacity: 1; }
 .row:hover .track-icon-display, .track-icon:focus-within .track-icon-display { opacity: 0; }
+.row :deep(.tag-add) { opacity: 0; pointer-events: none; }
+.row:hover :deep(.tag-add),
+.row :deep(.tag-add:focus-visible),
+.row :deep(.tag-add[data-state="open"]) { opacity: 1; pointer-events: auto; }
 @media (hover: none) {
   .track-play { opacity: 1; }
   .track-icon-display { opacity: 0; }
+  .row :deep(.tag-add) { opacity: 1; pointer-events: auto; }
 }
 .row {
+  --sample-row-surface: var(--background);
   grid-template-columns: var(--sample-columns);
   column-gap: 12px;
 }
@@ -204,16 +207,20 @@ const apolloProgress = computed(() => apollo.progress.sourceId === s.value.id ? 
 }
 .row.stem-parent,
 .row.stem-child {
-  background: color-mix(in srgb, var(--primary) 5%, var(--background));
+  --sample-row-surface: color-mix(in srgb, var(--primary) 5%, var(--background));
+  background: var(--sample-row-surface);
 }
 .row:hover {
-  background: var(--accent);
+  --sample-row-surface: var(--accent);
+  background: var(--sample-row-surface);
 }
 .row.selected {
-  background: color-mix(in srgb, var(--foreground) 8%, var(--background));
+  --sample-row-surface: color-mix(in srgb, var(--foreground) 8%, var(--background));
+  background: var(--sample-row-surface);
 }
 .row.focused:not(.selected):not(.playing):not(.paused) {
-  background: var(--accent);
+  --sample-row-surface: var(--accent);
+  background: var(--sample-row-surface);
 }
 .star {
   justify-self: end;
@@ -226,13 +233,6 @@ const apolloProgress = computed(() => apollo.progress.sourceId === s.value.id ? 
 .row.selected .star,
 .star:focus-visible {
   opacity: 1;
-}
-.chip {
-  flex-shrink: 0;
-  padding: 0 6px;
-  border-radius: 4px;
-  font-size: 11px;
-  line-height: 18px;
 }
 .stem-toggle {
   background: var(--primary);
@@ -252,8 +252,9 @@ button.stem-toggle:hover {
 .row.paused .track-icon-display { opacity: 0; }
 .row:is(.playing, .paused) {
   --sample-progress-color: var(--primary-foreground);
+  --sample-row-surface: var(--primary);
   z-index: 1;
-  background: var(--primary);
+  background: var(--sample-row-surface);
   color: var(--primary-foreground);
 }
 .row:is(.playing, .paused) :deep(.text-muted-foreground) {

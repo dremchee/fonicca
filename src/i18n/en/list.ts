@@ -38,6 +38,9 @@ export default {
     length: 'Length',
     type: 'Type',
   },
+  tags: {
+    add: 'Add tag to “{name}”',
+  },
   similar: {
     soundsLike: 'Sounds like',
     mostSimilarFirst: '· most similar first',

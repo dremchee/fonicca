@@ -40,6 +40,9 @@ export default {
     length: 'Длина',
     type: 'Тип',
   },
+  tags: {
+    add: 'Добавить тег к «{name}»',
+  },
   similar: {
     soundsLike: 'Похоже на',
     mostSimilarFirst: '· сначала самые похожие',

@@ -322,8 +322,8 @@ export const useLibraryStore = defineStore('library', () => {
     await loadTags()
   }
 
-  async function addTag(name: string) {
-    const ids = targetIds()
+  async function addTag(name: string, sampleId?: number) {
+    const ids = sampleId == null ? targetIds() : [sampleId]
     if (!ids.length || !name.trim())
       return
     const tag = await api.tagSamples(ids, name)

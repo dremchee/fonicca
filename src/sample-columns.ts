@@ -1,6 +1,6 @@
 export const SAMPLE_COLUMNS = [
   { id: 'directory', width: 180, defaultVisible: false },
-  { id: 'tags', width: 120, defaultVisible: false },
+  { id: 'tags', width: 120, defaultVisible: true },
   { id: 'category', width: 96, defaultVisible: true },
   { id: 'kind', width: 64, defaultVisible: false },
   { id: 'bpm', width: 56, defaultVisible: true },

@@ -16,8 +16,8 @@ test('resizing the name keeps its exact width while the trailing area fills free
   const automatic = sampleTableLayout(columns, {})
   const manual = sampleTableLayout(columns, { name: 360, category: 140 })
   assert.match(automatic['--sample-columns'], /minmax\(220px, 1fr\)/)
-  assert.equal(manual['--sample-columns'], '16px 360px 140px 56px 64px minmax(28px, 1fr)')
-  assert.equal(manual.minWidth, '748px')
+  assert.equal(manual['--sample-columns'], '16px 360px 120px 140px 56px 64px minmax(28px, 1fr)')
+  assert.equal(manual.minWidth, '880px')
 })
 
 test('hidden columns reserve no space and recover their stored width when shown again', () => {
@@ -34,7 +34,7 @@ test('saved wide columns fit a narrower viewport without changing preferred widt
   const widths = { name: 620 }
   const fitted = sampleTableLayout(columns, widths, 875)
   assert.equal(fitted.minWidth, '875px')
-  assert.equal(fitted['--sample-columns'], '16px 531px 96px 56px 64px minmax(28px, 1fr)')
+  assert.equal(fitted['--sample-columns'], '16px 399px 120px 96px 56px 64px minmax(28px, 1fr)')
   assert.equal(widths.name, 620)
   assert.match(sampleTableLayout(columns, widths, 1200)['--sample-columns'], /620px/)
 })
@@ -46,8 +46,8 @@ test('oversized metadata columns shrink to their limits before horizontal scroll
   assert.equal(fitted.minWidth, '600px')
   assert.match(fitted['--sample-columns'], /^16px 160px /)
   const tiny = sampleTableLayout(columns, widths, 200)
-  assert.equal(tiny.minWidth, '440px')
-  assert.equal(tiny['--sample-columns'], '16px 160px 64px 44px 44px minmax(28px, 1fr)')
+  assert.equal(tiny.minWidth, '516px')
+  assert.equal(tiny['--sample-columns'], '16px 160px 64px 64px 44px 44px minmax(28px, 1fr)')
 })
 
 test('saved sort preferences accept known columns and fall back safely', async () => {
