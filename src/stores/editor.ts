@@ -1,135 +1,23 @@
 import type { Sample } from '@/api'
-import { regionsOf, type Marker } from '@/editor-regions'
+import type { Marker } from '@/editor-regions'
 export { regionsOf } from '@/editor-regions'
 export type { Marker, Region } from '@/editor-regions'
-import { invoke } from '@tauri-apps/api/core'
-import { getCurrentWindow } from '@tauri-apps/api/window'
+export type * from './editor/types'
+import type { EditOp, EditorState, AudioProcessing, Span, SaveMode } from './editor/types'
+import { editorApi } from './editor/api'
+import { createEditorState } from './editor/state'
+import { createEditorSession } from './editor/session'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { save as chooseSavePath } from '@tauri-apps/plugin-dialog'
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { computed, nextTick, ref, watch } from 'vue'
 import { toast } from 'vue-sonner'
 import { api } from '@/api'
 import { usePlayerStore } from '@/stores/player'
 import { confirm } from '@/composables/confirm'
 import { formatNumber } from '@/format'
 import { t } from '@/i18n'
-import { parseWave } from '@/waveform'
 import { audioExportFormat, audioExportPath } from '@/audio-export'
-import { chooseAudioExport, settleAudioExport } from '@/composables/audioExport'
-import { editorTimings } from '@/editor-performance'
-import { parseSpectrogram } from '@/spectrogram'
-import { acceptEditorTransfer } from '@/editor-window-transfer'
-import { readEditorWindowView, readEditorTransferToken, type EditorWindowView } from '@/editor-window-state'
-
-export type SaveMode = 'save' | 'saveAs' | 'replaceOriginal' | 'selection'
-
-export type Curve = 'linear' | 'smooth' | 'exponential'
-
-/** One edit; ranges are frames of the current buffer, `end` exclusive. */
-export type EditOp
-  = | { op: 'crop' | 'delete' | 'silence' | 'reverse' | 'dcOffset', start: number, end: number }
-    | { op: 'fadeIn' | 'fadeOut', start: number, end: number, curve: Curve }
-    | { op: 'gain', start: number, end: number, db: number }
-    | { op: 'normalize', start: number, end: number, peakDb: number }
-    | { op: 'setLoop', start: number, end: number }
-    | { op: 'clearLoop' }
-    | { op: 'setMarkers', markers: Marker[] }
-
-export interface EditorState {
-  sampleId: number
-  frames: number
-  sampleRate: number
-  channels: number
-  canUndo: boolean
-  canRedo: boolean
-  dirty: boolean
-  hasSavedTarget: boolean
-  /** Output rate of the saved target; live editing stays at sampleRate. */
-  exportSampleRate?: number | null
-  canReplaceOriginal: boolean
-  originalPath: string
-  /** Loop points for samplers, saved in the WAV's `smpl` chunk. */
-  loop: { start: number, end: number } | null
-  /** Slice markers, sorted; each starts a region, saved as cue points in the WAV. */
-  markers: Marker[]
-}
-
-/**
- * Waveform of the visible range. With `samples` each lane has one value per
- * frame; otherwise per column `min, max, rms, low, mid, high` (stride 6).
- */
-export interface Wave {
-  samples: boolean
-  lanes: number
-  count: number
-  stride: number
-  values: Float32Array
-}
-
-/** A slice, `[start, end)` frames. */
-export interface Span { start: number, end: number }
-
-/** How to cut into slices: on the bar grid, at attacks, or around silence. */
-export type SliceBy
-  = | { mode: 'grid', origin: number, step: number }
-    | { mode: 'transients', sensitivity: number, minMs: number }
-    | { mode: 'silence', thresholdDb: number, minSilenceMs: number }
-
-/** What the clipboard shared by the editor windows holds. */
-export interface ClipInfo { frames: number, channels: number, sampleRate: number }
-
-/** What an editor window shows about its file. */
-export interface EditedFile {
-  id: number
-  name: string
-  ext: string
-  path: string
-  bpm: number | null
-}
-
-export type AudioProcessing
-  = | { mode: 'stretch', semitones: number, ratio: number }
-    | { mode: 'lufs', target: number, ceiling: number }
-
-export interface LoudnessReport { before: number, after: number, gainDb: number, limited: boolean }
-interface ProcessedAudio { state: EditorState, start: number, end: number, loudness: LoudnessReport | null }
-
-function invokeEditor<T>(command: string, args?: Record<string, unknown>): Promise<T> {
-  const op = args?.op
-  const name = command === 'editor_apply' && op && typeof op === 'object' && 'op' in op
-    ? `${command}.${String(op.op)}` : command
-  return editorTimings.measure(name, () => invoke<T>(command, args))
-}
-
-const editorApi = {
-  openWindow: (id: number) => invokeEditor<void>('open_editor_window', { id }),
-  open: (id: number, discardExisting = false, reuse = false) => invokeEditor<{ state: EditorState, name: string, ext: string, path: string, bpm: number | null }>('editor_open', { id, discardExisting, reuse }),
-  prepareTransfer: (token: number) => invokeEditor<{ state: EditorState, name: string, ext: string, path: string, bpm: number | null }>('editor_prepare_transfer', { token }),
-  acceptTransfer: (token: number) => invokeEditor<void>('editor_accept_transfer', { token }),
-  rejectTransfer: (token: number) => invokeEditor<void>('editor_reject_transfer', { token }),
-  attach: (view: EditorWindowView) => invokeEditor<void>('editor_attach_window', { view }),
-  detach: (view: EditorWindowView) => invokeEditor<void>('editor_detach_window', { view }),
-  close: (discard: boolean) => invokeEditor<void>('editor_close', { discard }),
-  apply: (op: EditOp) => invokeEditor<EditorState>('editor_apply', { op }),
-  process: (start: number, end: number, processing: AudioProcessing) => invokeEditor<ProcessedAudio>('editor_process', { start, end, processing }),
-  undo: () => invokeEditor<EditorState>('editor_undo'),
-  redo: () => invokeEditor<EditorState>('editor_redo'),
-  wave: async (start: number, end: number, columns: number, split: boolean, bands: boolean): Promise<Wave> => {
-    return parseWave(await invokeEditor<ArrayBuffer>('editor_wave', { start, end, columns, split, bands }))
-  },
-  spectrogram: async (start: number, end: number, columns: number) => parseSpectrogram(await invokeEditor<ArrayBuffer>('editor_spectrogram', { start, end, columns })),
-  slices: (start: number, end: number, by: SliceBy, zero: boolean) => invokeEditor<Span[]>('editor_slices', { start, end, by, zero }),
-  exportSlices: (spans: Span[]) => invokeEditor<{ dir: string, count: number, inLibrary: boolean }>('editor_export_slices', { spans }),
-  copy: (start: number, end: number) => invokeEditor<ClipInfo | null>('editor_copy', { start, end }),
-  clipboard: () => invokeEditor<ClipInfo | null>('editor_clipboard'),
-  paste: (start: number, end: number) => invokeEditor<{ state: EditorState, start: number, end: number }>('editor_paste', { start, end }),
-  zeroSnap: (frames: number[], radius: number) => invokeEditor<number[]>('editor_zero_snap', { frames, radius }),
-  play: (start: number, end: number, looping: boolean) => invokeEditor<void>('editor_play', { start, end, looping }),
-  updatePlayback: (start: number, end: number, looping: boolean) => invokeEditor<boolean>('editor_update_playback', { start, end, looping }),
-  save: (mode: SaveMode, destination?: string, range?: Span, sampleRate?: number | null) =>
-    invokeEditor<{ path: string, backup: string | null, state: EditorState, name: string, ext: string, bpm: number | null, inLibrary: boolean, warning: string | null }>('editor_save', { mode, destination, range, sampleRate }),
-}
+import { chooseAudioExport } from '@/composables/audioExport'
 
 /** Opens a sample in the library's embedded editor. */
 export async function openEditor(sample: Sample) {
@@ -138,314 +26,20 @@ export async function openEditor(sample: Sample) {
 
 /** State of the editor window this page runs in. */
 export const useEditorStore = defineStore('editor', () => {
-  const sample = ref<EditedFile | null>(null)
-  const state = ref<EditorState | null>(null)
-  const open = computed(() => sample.value !== null)
-  const loading = ref(false)
-  const processing = ref(false)
-  const saving = ref(false)
-  const sessionVersion = ref(0)
-  const expanded = ref(false)
-  const windowView = ref<EditorWindowView | null>(null)
-  const unsavedPrompt = ref(false)
-  let openingIntent = 0
-  let transitioning = false
-  let pendingWindowToken: number | null = null
-  let decide: ((choice: 'save' | 'discard' | 'cancel') => void) | null = null
-
-  function resolveUnsaved(choice: 'save' | 'discard' | 'cancel') {
-    unsavedPrompt.value = false
-    const resolve = decide
-    decide = null
-    resolve?.(choice)
-  }
-
-  async function allowTransition(): Promise<boolean> {
-    if (loading.value || processing.value || saving.value || decide)
-      return false
-    if (!state.value?.dirty)
-      return true
-    unsavedPrompt.value = true
-    const choice = await new Promise<'save' | 'discard' | 'cancel'>(resolve => { decide = resolve })
-    if (choice === 'cancel') return false
-    if (choice === 'discard') return true
-    loading.value = true
-    try { return await save() }
-    finally { loading.value = false }
-  }
-
-  async function openSample(next: Sample) {
-    if ((sample.value?.id === next.id && sample.value.path === next.path) || transitioning) return
-    transitioning = true
-    const intent = ++openingIntent
-    let previous: { sample: EditedFile | null, state: EditorState | null } | null = null
-    let opened = false
-    try {
-      if (!await allowTransition() || intent !== openingIntent) return
-      previous = { sample: sample.value, state: state.value }
-      loading.value = true
-      // Mount the editor before decoding audio, using the known file metadata.
-      sample.value = { id: next.id, name: next.name, ext: next.ext, path: next.path, bpm: next.bpm }
-      state.value = null
-      await usePlayerStore().stop()
-      if (intent !== openingIntent) return
-      await stopPlayback()
-      if (intent !== openingIntent) return
-      const result = await editorApi.open(next.id, !!previous.state?.dirty)
-      if (intent !== openingIntent) return
-      opened = true
-      state.value = result.state
-      sample.value = { id: next.id, name: result.name, ext: result.ext, path: result.path, bpm: result.bpm }
-      sessionVersion.value++
-      cursor.value = 0
-      selection.value = null
-      looping.value = false
-      revision.value++
-      await refreshClipboard()
-    }
-    catch (error) {
-      if (intent !== openingIntent) return
-      if (previous && !opened) {
-        sample.value = previous.sample
-        state.value = previous.state
-        revision.value++
-      }
-      toast.error(String(error))
-    }
-    finally {
-      if (intent === openingIntent) { loading.value = false; transitioning = false }
-    }
-  }
-
-  async function closeEmbedded(): Promise<boolean> {
-    if (!sample.value) return true
-    if (transitioning) return false
-    transitioning = true
-    try {
-      if (!await allowTransition()) return false
-      loading.value = true
-      await stopPlayback()
-      await editorApi.close(!!state.value?.dirty)
-      sample.value = null
-      state.value = null
-      selection.value = null
-      cursor.value = 0
-      expanded.value = false
-      return true
-    }
-    catch (error) { toast.error(String(error)); return false }
-    finally { loading.value = false; transitioning = false }
-  }
-
-  /** A UI reload deliberately starts clean, including the surviving native session. */
-  async function reset(): Promise<boolean> {
-    // Late success and failure callbacks belong to the renderer state before
-    // this explicit reset; neither may restore its track or clear a newer load.
-    openingIntent++
-    resolveUnsaved('cancel')
-    settleAudioExport(null)
-    loading.value = true
-    try {
-      await stopPlayback()
-      await usePlayerStore().stop()
-      await editorApi.close(true)
-      sample.value = null
-      state.value = null
-      selection.value = null
-      cursor.value = 0
-      looping.value = false
-      expanded.value = false
-      windowView.value = null
-      error.value = null
-      sessionVersion.value++
-      revision.value++
-      return true
-    } catch (e) {
-      toast.error(String(e))
-      return false
-    } finally {
-      loading.value = false
-      processing.value = false
-      saving.value = false
-      transitioning = false
-    }
-  }
-
-  async function detachWindow(viewport?: EditorWindowView['viewport'], attach = false): Promise<boolean> {
-    if (!sample.value || !state.value || transitioning || loading.value || processing.value || saving.value || decide) return false
-    transitioning = true
-    loading.value = true
-    try {
-      const view: EditorWindowView = { cursor: playhead.value ?? cursor.value,
-        selection: selection.value && { ...selection.value }, looping: looping.value, curve: curve.value, viewport }
-      await stopPlayback()
-      if (attach) await editorApi.attach(view)
-      else await editorApi.detach(view)
-      // The native session now belongs to the new window. Do not close it or
-      // prompt to save: those actions belong to that window from this point on.
-      sample.value = null
-      state.value = null
-      selection.value = null
-      cursor.value = 0
-      expanded.value = false
-      windowView.value = null
-      sessionVersion.value++
-      if (attach) await getCurrentWindow().destroy()
-      return true
-    } catch (error) {
-      toast.error(String(error))
-      return false
-    } finally { loading.value = false; transitioning = false }
-  }
-  /** Stage the destination UI before accepting native ownership. */
-  async function adoptWindow(token: number, view: EditorWindowView, reportError = true): Promise<boolean> {
-    // A duplicate delivery is not a competing offer and must not cancel it.
-    if (pendingWindowToken === token) return false
-    if (transitioning || loading.value || processing.value || saving.value || sample.value || state.value || decide) {
-      await editorApi.rejectTransfer(token).catch(error => { if (reportError) toast.error(String(error)) })
-      return false
-    }
-    transitioning = true
-    loading.value = true
-    pendingWindowToken = token
-    try {
-      await acceptEditorTransfer(token, editorApi, {
-        stage: async (r) => {
-          const restored = readEditorWindowView(`?detached=1&view=${encodeURIComponent(JSON.stringify(view))}`, r.state.frames)
-          state.value = r.state
-          sample.value = { id: r.state.sampleId, name: r.name, ext: r.ext, path: r.path, bpm: r.bpm }
-          cursor.value = restored?.cursor ?? 0
-          selection.value = restored?.selection ?? null
-          looping.value = restored?.looping ?? false
-          curve.value = restored?.curve ?? 'linear'
-          windowView.value = restored
-          expanded.value = false
-          await nextTick()
-        },
-        rollback: () => {
-          sample.value = null
-          state.value = null
-          cursor.value = 0
-          selection.value = null
-          looping.value = false
-          windowView.value = null
-        },
-      })
-      sessionVersion.value++
-      revision.value++
-      void refreshClipboard()
-      return true
-    } catch (error) {
-      if (reportError) toast.error(String(error))
-      return false
-    } finally { loading.value = false; transitioning = false; pendingWindowToken = null }
-  }
-
-  /** Bumped after every change of the audio, so the view re-reads peaks. */
-  const revision = ref(0)
-
-  // Selection and cursor, in frames.
-  const cursor = ref(0)
-  const selection = ref<{ start: number, end: number } | null>(null)
-  const looping = ref(false)
-  const playing = ref(false)
-  const playhead = ref<number | null>(null)
-  const curve = ref<Curve>('smooth')
-  /** The clipboard shared by all editor windows; re-read when this one gets focus. */
-  const clipboard = ref<ClipInfo | null>(null)
+  const context = createEditorState()
+  const { sample, state, open, loading, processing, saving, sessionVersion,
+    expanded, windowView, unsavedPrompt, revision, cursor, selection, looping,
+    playing, playhead, curve, clipboard, canOverwrite, error, regions } = context
+  const { resolveUnsaved, openSample, closeEmbedded, reset, detachWindow, adoptWindow, init } = createEditorSession({
+    context,
+    stopLibraryPlayback: () => usePlayerStore().stop(),
+    stopPlayback: () => stopPlayback(),
+    save: () => save(),
+    refreshClipboard: () => refreshClipboard(),
+  })
   let frame = 0
   let playbackVersion = 0
   let startingPlayback = false
-
-  const canOverwrite = computed(() => !!state.value?.canReplaceOriginal)
-
-  const error = ref<string | null>(null)
-
-  /** Loads the window's file and wires up the title and close confirmation. */
-  async function init(id: number) {
-    const win = getCurrentWindow()
-    await win.onCloseRequested((event) => {
-      if (!sample.value) return
-      event.preventDefault()
-      void closeEmbedded().then(closed => { if (closed) void win.close() })
-    })
-    error.value = null
-    const token = readEditorTransferToken(location.search)
-    if (new URLSearchParams(location.search).has('transfer') && token === null) {
-      error.value = 'Invalid editor window transfer token'
-      return
-    }
-    // A pending offer survives a reload of its target. Accept first; only a
-    // committed window uses the ordinary reload/discard behavior afterward.
-    const reloading = open.value || (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type === 'reload'
-    if (!token && reloading && !await reset()) return
-    let intent: number | undefined
-    try {
-      let transferred = false
-      if (token) {
-        const view = readEditorWindowView(location.search, Number.MAX_SAFE_INTEGER)
-        if (!view) {
-          await editorApi.rejectTransfer(token).catch(() => {})
-          throw new Error('Invalid editor window transfer view')
-        }
-        transferred = await adoptWindow(token, view, false)
-        if (!transferred) {
-          if (!reloading) throw new Error('Editor window transfer was not accepted')
-          // A reload can interrupt the IPC reply after native acceptance but
-          // before URL cleanup. Probe ownership without decoding: only a session
-          // already owned by THIS window may be reset. A pending/expired offer
-          // still owned by its source fails this probe and remains untouched.
-          await editorApi.open(id, false, true)
-          if (!await reset()) return
-        }
-        // A later reload must not replay an already-consumed offer token.
-        const url = new URL(location.href)
-        for (const key of ['transfer', 'detached', 'view']) url.searchParams.delete(key)
-        history.replaceState(history.state, '', url)
-      }
-      if (!transferred) {
-        intent = ++openingIntent
-        loading.value = true
-        await api.stop()
-        if (intent !== openingIntent) return
-        const r = await editorApi.open(id, false, !reloading && new URLSearchParams(location.search).get('detached') === '1')
-        if (intent !== openingIntent) return
-        state.value = r.state
-        sample.value = { id, name: r.name, ext: r.ext, path: r.path, bpm: r.bpm }
-        sessionVersion.value++
-        revision.value++
-        const view = reloading ? null : readEditorWindowView(location.search, r.state.frames)
-        if (view) {
-          cursor.value = view.cursor
-          selection.value = view.selection
-          looping.value = view.looping
-          curve.value = view.curve
-          windowView.value = view
-        }
-      }
-    }
-    catch (e) {
-      if (intent === undefined || intent === openingIntent) error.value = String(e)
-    }
-    finally {
-      if (intent === undefined || intent === openingIntent) loading.value = false
-    }
-
-    // "Kick • — Edit" while there are unsaved edits; re-titled on a language switch too.
-    watch(() => {
-      const name = sample.value?.name
-      return name ? t(state.value?.dirty ? 'editor.window.titleDirty' : 'editor.window.title', { name }) : null
-    }, (title) => {
-      if (title)
-        win.setTitle(title)
-    }, { immediate: true })
-
-    refreshClipboard()
-    await win.onFocusChanged(({ payload: focused }) => {
-      if (focused)
-        refreshClipboard()
-    })
-  }
 
   function after(next: EditorState, audioChanged = true) {
     state.value = next
@@ -620,8 +214,6 @@ export const useEditorStore = defineStore('editor', () => {
   function reverse() {
     apply({ op: 'reverse', ...target() })
   }
-
-  const regions = computed(() => regionsOf(state.value?.markers ?? [], state.value?.frames ?? 0))
 
   /** Replaces the markers (one undoable edit); the backend sorts and cleans them up. */
   function setMarkers(markers: Marker[]) {
