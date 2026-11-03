@@ -31,27 +31,26 @@ const canvas = ref<HTMLCanvasElement | null>(null)
 useWaveRenderer(canvas)
 const wave = shallowRef<Wave | null>(null)
 const { geometry, style: canvasStyle, snapX, pixelRatio } = usePixelCanvas(box)
-const line = computed(() => Math.round(2 * geometry.value.ratio) / geometry.value.ratio)
-const dotPixels = computed(() => {
-  const pixels = Math.round(7 * geometry.value.ratio)
-  const borderPixels = Math.round(line.value * geometry.value.ratio)
-  // Matching parity centres the dot on the border without half-device-pixel edges.
-  return pixels + ((pixels - borderPixels) % 2 === 0 ? 0 : 1)
-})
+const line = computed(() => Math.round(geometry.value.ratio) / geometry.value.ratio)
+const dotPixels = computed(() => Math.round(5 * geometry.value.ratio))
 const dotSize = computed(() => dotPixels.value / geometry.value.ratio)
+const dotGap = computed(() => Math.round(2 * geometry.value.ratio) / geometry.value.ratio)
 
 const frames = () => editor.state?.frames ?? 0
 const minimumSpan = computed(() => Math.min(64, frames()))
 const startX = computed(() => snapX(geometry.value.left + props.viewStart / Math.max(1, frames()) * geometry.value.width))
 const endX = computed(() => snapX(geometry.value.left + props.viewEnd / Math.max(1, frames()) * geometry.value.width))
 const hitSize = computed(() => Math.round(12 * geometry.value.ratio) / geometry.value.ratio)
+const edgeInset = computed(() => line.value / 2)
 const windowStyle = computed(() => {
   const ratio = geometry.value.ratio
   // Matching parity keeps the vertical centre on the same physical-pixel grid.
   let heightPixels = Math.max(dotPixels.value, Math.round(geometry.value.height * ratio) - 2)
   if ((heightPixels - dotPixels.value) % 2) heightPixels--
-  const width = Math.min(geometry.value.width, Math.max(2 * line.value, endX.value - startX.value))
-  const left = Math.max(geometry.value.left, Math.min(startX.value, geometry.value.left + geometry.value.width - width))
+  // Leave room for the half of each dot outside the frame at the file edges.
+  const dotOverhang = dotSize.value / 2 - edgeInset.value
+  const width = Math.min(geometry.value.width - 2 * dotOverhang, Math.max(2 * line.value, endX.value - startX.value))
+  const left = Math.max(geometry.value.left + dotOverhang, Math.min(startX.value, geometry.value.left + geometry.value.width - dotOverhang - width))
   return {
     transform: `translate(${left}px, ${geometry.value.top + 1 / ratio}px)`,
     width: `${width}px`,
@@ -59,7 +58,8 @@ const windowStyle = computed(() => {
     '--window-line': `${line.value}px`,
     '--dot-size': `${dotSize.value}px`,
     '--hit-size': `${hitSize.value}px`,
-    '--edge-inset': `${line.value / 2}px`,
+    '--edge-inset': `${edgeInset.value}px`,
+    '--dot-gap': `${dotGap.value}px`,
   }
 })
 const timeAt = (frame: number) => {
@@ -227,7 +227,7 @@ function onWheel(e: WheelEvent) {
     <div
       v-if="frames() && geometry.width"
       class="view-window"
-      :class="{ narrow: endX-startX < hitSize*2, 'at-start': startX-geometry.left < hitSize*1.5, 'at-end': geometry.left+geometry.width-endX < hitSize*1.5 }"
+      :class="{ narrow: endX-startX < edgeInset*2+hitSize, 'at-start': startX-geometry.left < hitSize*1.5, 'at-end': geometry.left+geometry.width-endX < hitSize*1.5 }"
       :style="windowStyle"
       role="group" :aria-label="t('editor.minimap.label')"
     >
@@ -262,21 +262,21 @@ function onWheel(e: WheelEvent) {
 <style scoped>
 .minimap { touch-action: none; user-select: none; cursor: grab; }
 .minimap.is-dragging { cursor: grabbing; }
-.view-window { position: absolute; left: 0; top: 0; background: color-mix(in srgb, var(--primary) 2%, transparent); }
-.view-window::before { content: ''; position: absolute; inset: 0; border: var(--window-line) solid var(--primary); border-radius: 2px; pointer-events: none; }
+.view-window { position: absolute; left: 0; top: 0; color: #fff; background: color-mix(in srgb, currentColor 2%, transparent); }
+.view-window::before { content: ''; position: absolute; inset: 0; border: var(--window-line) solid currentColor; border-radius: 2px; opacity: 0.5; pointer-events: none; }
 .view-pan { position: absolute; inset: 0; }
-.view-pan:focus-visible { outline: 2px solid var(--ring); outline-offset: -3px; }
-.resize-handle { position: absolute; z-index: 2; top: 0; bottom: 0; width: var(--hit-size); display: grid; place-items: center; border: 0; padding: 0; background: transparent; color: var(--primary); cursor: ew-resize; outline: none; }
+.view-pan:focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
+.resize-handle { position: absolute; z-index: 2; top: 0; bottom: 0; width: var(--hit-size); display: grid; place-items: center; border: 0; padding: 0; background: transparent; color: inherit; cursor: ew-resize; outline: none; }
 .resize-handle[data-edge="start"] { left: calc(var(--edge-inset) - var(--hit-size) / 2); }
 .resize-handle[data-edge="end"] { right: calc(var(--edge-inset) - var(--hit-size) / 2); }
-.resize-handle > span { width: var(--dot-size); height: var(--dot-size); border-radius: 50%; background: currentColor; opacity: 0.8; pointer-events: none; }
-.resize-handle:hover > span, .resize-handle.active > span, .resize-handle:focus-visible > span { opacity: 1; }
-.resize-handle:focus-visible > span { outline: 2px solid var(--ring); outline-offset: 2px; }
-/* Tiny zoom windows keep separate grab areas; file edges keep dots inside the map. */
-.view-window.narrow .resize-handle[data-edge="start"] { left: calc(var(--edge-inset) - var(--hit-size) * 1.5); }
-.view-window.narrow .resize-handle[data-edge="end"] { right: calc(var(--edge-inset) - var(--hit-size) * 1.5); }
-.view-window.at-start .resize-handle[data-edge="start"] { left: 0; justify-items: start; }
-.view-window.at-end .resize-handle[data-edge="end"] { right: 0; justify-items: end; }
-.view-window.narrow.at-start .resize-handle[data-edge="end"] { left: var(--hit-size); right: auto; justify-items: start; }
-.view-window.narrow.at-end .resize-handle[data-edge="start"] { right: var(--hit-size); left: auto; justify-items: end; }
+.resize-handle > span { width: var(--dot-size); height: var(--dot-size); border-radius: 50%; background: currentColor; pointer-events: none; }
+.resize-handle:focus-visible > span { outline: 1px solid currentColor; outline-offset: 1px; }
+/* Tiny windows put the dots outside the frame, preserving the gap and separate hit areas. */
+.view-window.narrow .resize-handle[data-edge="start"] { left: calc(0px - var(--dot-gap) - (var(--dot-size) + var(--hit-size)) / 2); }
+.view-window.narrow .resize-handle[data-edge="end"] { right: calc(0px - var(--dot-gap) - (var(--dot-size) + var(--hit-size)) / 2); }
+/* At file edges both dots use the available side of the frame. */
+.view-window.narrow.at-start .resize-handle[data-edge="start"] { left: calc(100% + var(--dot-gap) + (var(--dot-size) - var(--hit-size)) / 2); }
+.view-window.narrow.at-start .resize-handle[data-edge="end"] { left: calc(100% + var(--dot-gap) + (var(--dot-size) + var(--hit-size)) / 2); right: auto; }
+.view-window.narrow.at-end .resize-handle[data-edge="end"] { right: calc(100% + var(--dot-gap) + (var(--dot-size) - var(--hit-size)) / 2); }
+.view-window.narrow.at-end .resize-handle[data-edge="start"] { right: calc(100% + var(--dot-gap) + (var(--dot-size) + var(--hit-size)) / 2); left: auto; }
 </style>
