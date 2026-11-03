@@ -6,6 +6,7 @@ import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Hint from '@/components/Hint.vue'
+import KeyFilter from '@/components/KeyFilter.vue'
 import SampleColumnsMenu from '@/components/SampleColumnsMenu.vue'
 import { useSampleColumns } from '@/composables/sampleColumns'
 import { Button } from '@/components/ui/button'
@@ -14,9 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectSeparator,
   SelectTrigger,
   SelectValue,
@@ -33,7 +32,6 @@ const { visibility: columnVisibility, resetWidths } = useSampleColumns()
 const { kindFilter, bpmMin, bpmMax, keyFilter, categoryFilter, hasAnalysisFilters, analysis } = storeToRefs(library)
 
 const kinds: SampleKind[] = ['oneshot', 'loop', 'long']
-const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 // Reka controls cannot hold null, so "no filter" is a sentinel value.
 const ANY = 'any'
@@ -48,11 +46,6 @@ function onKindChange(v: AcceptableValue | AcceptableValue[]) {
   if (typeof v === 'string' && v)
     kind.value = v
 }
-
-const key = computed<string>({
-  get: () => keyFilter.value ?? ANY,
-  set: v => (keyFilter.value = v === ANY ? null : v),
-})
 
 const category = computed<string>({
   get: () => categoryFilter.value ?? ANY,
@@ -154,34 +147,7 @@ function parseBpm(e: Event): number | null {
       </Popover>
     </div>
 
-    <div class="flex items-center gap-2 text-muted-foreground">
-      {{ t('filters.key') }}
-      <!-- SelectValue keeps the text it was mounted with: spell labels out so they follow a language switch. -->
-      <Select v-model="key">
-        <SelectTrigger size="sm" class="w-24 text-foreground" :aria-label="t('filters.key')">
-          <SelectValue>{{ key === ANY ? t('filters.anyKey') : key }}</SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem :value="ANY">
-            {{ t('filters.anyKey') }}
-          </SelectItem>
-          <SelectSeparator />
-          <SelectGroup>
-            <SelectLabel>{{ t('filters.major') }}</SelectLabel>
-            <SelectItem v-for="n in notes" :key="n" :value="n">
-              {{ n }}
-            </SelectItem>
-          </SelectGroup>
-          <SelectSeparator />
-          <SelectGroup>
-            <SelectLabel>{{ t('filters.minor') }}</SelectLabel>
-            <SelectItem v-for="n in notes" :key="`${n}m`" :value="`${n}m`">
-              {{ n }}m
-            </SelectItem>
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-    </div>
+    <KeyFilter v-model="keyFilter" />
 
     <div class="flex items-center gap-2 text-muted-foreground">
       {{ t('filters.category') }}

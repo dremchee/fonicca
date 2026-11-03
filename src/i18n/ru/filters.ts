@@ -11,6 +11,8 @@ export default {
   minBpm: 'Минимальный BPM',
   maxBpm: 'Максимальный BPM',
   key: 'Тональность',
+  note: 'Нота',
+  keyMode: 'Лад',
   major: 'Мажор',
   minor: 'Минор',
   category: 'Категория',

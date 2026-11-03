@@ -9,6 +9,8 @@ export default {
   minBpm: 'Minimum BPM',
   maxBpm: 'Maximum BPM',
   key: 'Key',
+  note: 'Note',
+  keyMode: 'Mode',
   major: 'Major',
   minor: 'Minor',
   category: 'Category',
