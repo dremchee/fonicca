@@ -351,8 +351,8 @@ async function confirmDeleteTag(id: number) {
 
 <template>
   <aside class="h-full min-h-0 flex flex-col overflow-hidden bg-card">
-    <!-- Left part of this bar sits under the macOS traffic lights (overlay title bar). -->
-    <div class="h-11 shrink-0" data-tauri-drag-region />
+    <!-- Space for native window controls and the persistent sidebar toggle. -->
+    <div class="h-16 shrink-0" data-tauri-drag-region />
 
     <SettingsNavigation v-if="settings.dialogOpen" show-back class="flex-1" />
     <div v-show="!settings.dialogOpen" class="min-h-0 flex-1 flex flex-col">

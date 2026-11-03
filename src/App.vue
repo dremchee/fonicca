@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { sidebarHidden } from '@/composables/sidebarVisibility'
 import { debugMonitorOpen } from '@/composables/debugMonitor'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import type { EditorWindowView } from '@/editor-window-state'
@@ -20,13 +19,13 @@ import CommandPalette from '@/components/CommandPalette.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import FilterBar from '@/components/FilterBar.vue'
 import LibraryToolbar from '@/components/LibraryToolbar.vue'
+import LibraryLayout from '@/components/LibraryLayout.vue'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import SampleList from '@/components/SampleList.vue'
 import SettingsHost from '@/components/SettingsHost.vue'
 import TrackInfoDialog from '@/components/TrackInfoDialog.vue'
-import SourceSidebar from '@/components/SourceSidebar.vue'
 import EditorUnsavedDialog from '@/components/EditorUnsavedDialog.vue'
 import { installAppMenu } from '@/menu'
 import { useDuplicatesStore } from '@/stores/duplicates'
@@ -184,34 +183,27 @@ onKeyStroke(',', (e) => {
 <template>
   <TooltipProvider :delay-duration="500" :skip-delay-duration="300">
     <!-- Sidebar and player sizes are in px and saved by the splitters (localStorage). -->
-    <ResizablePanelGroup direction="horizontal" auto-save-id="fonicca-layout-columns" class="h-full">
-      <ResizablePanel v-if="!sidebarHidden" id="sidebar" :order="1" size-unit="px" :default-size="210" :min-size="170" :max-size="320">
-        <SourceSidebar />
-      </ResizablePanel>
-      <ResizableHandle v-if="!sidebarHidden" />
-      <!-- The list needs ~520px for its columns; the sidebar gives way before it does. -->
-      <ResizablePanel id="main" :order="2" as="main" size-unit="px" :min-size="520" class="min-w-0 flex flex-col">
-        <SettingsHost embedded />
-        <div v-show="!settings.dialogOpen" class="min-h-0 flex-1 flex flex-col">
-          <template v-if="!inDuplicates && !editor.expanded">
-            <LibraryToolbar ref="toolbar" @open-search="paletteOpen = true" />
-            <FilterBar />
-          </template>
-          <ResizablePanelGroup direction="vertical" auto-save-id="fonicca-layout-rows" class="min-h-0 flex-1">
-            <ResizablePanel v-if="!editor.expanded" id="list" :order="1" :min-size="20" class="flex flex-col">
-              <DuplicatesView v-if="inDuplicates" />
-              <SampleList v-else />
+    <LibraryLayout :can-toggle="!settings.dialogOpen && !inDuplicates && !editor.expanded">
+      <SettingsHost embedded />
+      <div v-show="!settings.dialogOpen" class="min-h-0 flex-1 flex flex-col">
+        <template v-if="!inDuplicates && !editor.expanded">
+          <LibraryToolbar ref="toolbar" @open-search="paletteOpen = true" />
+          <FilterBar />
+        </template>
+        <ResizablePanelGroup direction="vertical" auto-save-id="fonicca-layout-rows" class="min-h-0 flex-1">
+          <ResizablePanel v-if="!editor.expanded" id="list" :order="1" :min-size="20" class="flex flex-col">
+            <DuplicatesView v-if="inDuplicates" />
+            <SampleList v-else />
+          </ResizablePanel>
+          <template v-if="editor.open">
+            <ResizableHandle v-if="!editor.expanded" />
+            <ResizablePanel id="editor" :order="2" size-unit="px" :default-size="320" :min-size="200">
+              <EditorView embedded :expanded="editor.expanded" @close="editor.closeEmbedded()" @toggle-expand="editor.expanded = !editor.expanded" />
             </ResizablePanel>
-            <template v-if="editor.open">
-              <ResizableHandle v-if="!editor.expanded" />
-              <ResizablePanel id="editor" :order="2" size-unit="px" :default-size="320" :min-size="200">
-                <EditorView embedded :expanded="editor.expanded" @close="editor.closeEmbedded()" @toggle-expand="editor.expanded = !editor.expanded" />
-              </ResizablePanel>
-            </template>
-          </ResizablePanelGroup>
-        </div>
-      </ResizablePanel>
-    </ResizablePanelGroup>
+          </template>
+        </ResizablePanelGroup>
+      </div>
+    </LibraryLayout>
     <TrackInfoDialog />
     <BatchDialog />
     <StemDialog />

@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { isTauri } from '@tauri-apps/api/core'
 import { sidebarHidden } from '@/composables/sidebarVisibility'
 import type { ComponentPublicInstance } from 'vue'
-import { Globe, PanelLeftClose, PanelLeftOpen, Search, SlidersHorizontal } from '@lucide/vue'
+import { Globe, Search, SlidersHorizontal } from '@lucide/vue'
 import { useEventListener } from '@vueuse/core'
 import { computed, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -15,9 +14,6 @@ import { useLibraryStore } from '@/stores/library'
 const emit = defineEmits<{ openSearch: [] }>()
 const { t } = useI18n()
 const library = useLibraryStore()
-// Only macOS overlays native window controls on the web content. Windows/Linux
-// retain their system title bar, including any right-hand window controls.
-const hasOverlayWindowControls = isTauri() && /Macintosh|Mac OS X/.test(navigator.userAgent)
 const searchInput = useTemplateRef<ComponentPublicInstance>('searchInput')
 const searchGroup = useTemplateRef<ComponentPublicInstance>('searchGroup')
 const searchElement = computed(() => searchInput.value?.$el as HTMLInputElement | undefined)
@@ -65,14 +61,8 @@ defineExpose({ searchElement })
 
 <template>
   <header class="library-toolbar h-16 shrink-0 px-3 flex items-center gap-3 border-b border-border"
-    :class="{ 'window-controls-inset': sidebarHidden && hasOverlayWindowControls }"
+    :style="sidebarHidden ? { paddingLeft: 'calc(var(--sidebar-width) + 0.75rem)' } : undefined"
     data-tauri-drag-region>
-    <Hint :text="t(sidebarHidden ? 'sidebar.showSidebar' : 'sidebar.hideSidebar')">
-      <Button variant="ghost" size="icon-sm" :aria-label="t(sidebarHidden ? 'sidebar.showSidebar' : 'sidebar.hideSidebar')" :aria-pressed="!sidebarHidden" @click="sidebarHidden = !sidebarHidden">
-        <PanelLeftOpen v-if="sidebarHidden" />
-        <PanelLeftClose v-else />
-      </Button>
-    </Hint>
     <div class="min-w-0 flex-1" data-tauri-drag-region>
       <h1 class="text-sm font-medium truncate" :title="path ?? title" data-tauri-drag-region>{{ title }}</h1>
       <div class="text-xs text-muted-foreground tabular truncate" aria-live="polite" data-tauri-drag-region>
@@ -104,8 +94,5 @@ defineExpose({ searchElement })
 <style scoped>
 .library-toolbar {
   container-type: inline-size;
-}
-.window-controls-inset {
-  padding-left: 100px;
 }
 </style>
