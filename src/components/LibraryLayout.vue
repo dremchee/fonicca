@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { PanelLeftClose, PanelLeftOpen } from '@lucide/vue'
+import { PanelLeft } from '@lucide/vue'
 import type { SplitterPanel } from 'reka-ui'
 import { useResizeObserver, useStorage, useTimeoutFn } from '@vueuse/core'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
@@ -44,7 +44,11 @@ function onDragging(dragging: boolean) {
 </script>
 
 <template>
-  <div class="library-layout relative h-full" :style="{ '--sidebar-width': `${expandedWidth}px` }">
+  <div
+    class="library-layout relative h-full"
+    :class="{ 'sidebar-hidden': sidebarHidden, 'sidebar-animating': animating }"
+    :style="{ '--sidebar-width': `${expandedWidth}px` }"
+  >
     <ResizablePanelGroup direction="horizontal" auto-save-id="fonicca-layout-columns" class="h-full" :class="{ 'sidebar-animating': animating }">
       <ResizablePanel
         id="sidebar" ref="panel" :order="1" size-unit="px" :default-size="expandedWidth" :min-size="170" :max-size="320"
@@ -58,23 +62,34 @@ function onDragging(dragging: boolean) {
         <slot />
       </ResizablePanel>
     </ResizablePanelGroup>
-    <!-- The toggle lives outside the shrinking panel and never changes position. -->
+    <!-- Keep the toggle accessible while the panel shrinks. -->
     <div v-if="canToggle" class="sidebar-toggle absolute top-0 h-16 flex items-center border-b border-transparent">
       <Hint :text="t(sidebarHidden ? 'sidebar.showSidebar' : 'sidebar.hideSidebar')">
         <Button
           variant="ghost" size="icon-sm" :aria-label="t(sidebarHidden ? 'sidebar.showSidebar' : 'sidebar.hideSidebar')"
           :aria-expanded="!sidebarHidden" aria-controls="sidebar" @click="sidebarHidden = !sidebarHidden"
-        ><component :is="sidebarHidden ? PanelLeftOpen : PanelLeftClose" /></Button>
+        ><PanelLeft /></Button>
       </Hint>
     </div>
   </div>
 </template>
 
 <style scoped>
-.sidebar-toggle { left: calc(var(--sidebar-width) - 2rem - 0.5rem); }
+.library-layout {
+  --sidebar-toggle-left: calc(var(--sidebar-width) - 2rem - 0.5rem);
+  --library-toolbar-inset: 0.75rem;
+}
+.sidebar-hidden {
+  /* Leave room for the native macOS window controls. */
+  --sidebar-toggle-left: 6rem;
+  --library-toolbar-inset: calc(var(--sidebar-toggle-left) + 2rem + 0.75rem);
+}
+.sidebar-toggle { left: var(--sidebar-toggle-left); }
+.sidebar-animating .sidebar-toggle { transition: left 220ms cubic-bezier(0.32, 0.72, 0, 1); }
 .sidebar-animating > :deep([data-panel]) { transition: flex-grow 220ms cubic-bezier(0.32, 0.72, 0, 1); }
 .sidebar-animating :deep(.library-toolbar) { transition: padding-left 220ms cubic-bezier(0.32, 0.72, 0, 1); }
 @media (prefers-reduced-motion: reduce) {
+  .sidebar-animating .sidebar-toggle,
   .sidebar-animating > :deep([data-panel]),
   .sidebar-animating :deep(.library-toolbar) { transition: none; }
 }

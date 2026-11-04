@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { sidebarHidden } from '@/composables/sidebarVisibility'
 import type { ComponentPublicInstance } from 'vue'
 import { Globe, Search, SlidersHorizontal } from '@lucide/vue'
 import { useEventListener } from '@vueuse/core'
@@ -61,7 +60,6 @@ defineExpose({ searchElement })
 
 <template>
   <header class="library-toolbar h-16 shrink-0 px-3 flex items-center gap-3 border-b border-border"
-    :style="sidebarHidden ? { paddingLeft: 'calc(var(--sidebar-width) + 0.75rem)' } : undefined"
     data-tauri-drag-region>
     <div class="min-w-0 flex-1" data-tauri-drag-region>
       <h1 class="text-sm font-medium truncate" :title="path ?? title" data-tauri-drag-region>{{ title }}</h1>
@@ -94,5 +92,6 @@ defineExpose({ searchElement })
 <style scoped>
 .library-toolbar {
   container-type: inline-size;
+  padding-left: var(--library-toolbar-inset, 0.75rem);
 }
 </style>
