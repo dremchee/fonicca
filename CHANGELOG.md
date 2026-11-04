@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.1.5] - 2026-11-04
+
+- Add collapsible sidebar and animated pinned playback row (e3af920)
+- Optimize grouped library pagination with deferred metadata loading (1dce8fc)
+- Harden editor session transfers and cache history diagnostics (202d66a)
+- Extract sample rows and loaded-track pinning from the virtual list (b65b358)
+- Reuse waveform cache at the capped viewport resolution (0b2c4e9)
+- Align minimap handles and refine meter and column controls (f57b0fd)
+- Document optimization measurements and final regression checks (ed8b862)
+- Bound row waveform invalidation state and reject stale cache responses (12af99b)
+- Keep the latest playback request authoritative through source preparation (c81195e)
+- Record row cache and playback transition audits (b6692e2)
+- Cancel obsolete spectrogram analysis when editor ownership changes (23872b8)
+- Add isolated packaged resource profiling and platform smoke workflow (ae3f62f)
+- Record verified native lifecycle measurements and harden evidence audit (7f321f4)
+- Expose smoke build progress and cache trusted PR dependencies (970c63e)
+- Capture AppImage media diagnostics and retain failed smoke caches (6094be9)
+- Bundle AppImage media dependencies and isolate plugin diagnostics (82d3ba0)
+- Install GStreamer packaging tools for Linux releases (7dca58a)
+- Include packaging configuration in resource audit provenance (6bdcc9d)
+- Use the production WebKit context in Linux lifecycle smoke (ff140a2)
+- Extract editor session lifecycle behind the existing store API (1800b56)
+- Separate editor saving and region export commands (47cffc1)
+- Extract editor playback generations and polling with lifecycle verification (d6b0f44)
+- Replace key dropdown with piano-style note picker (7becd89)
+- Manage sample columns with TanStack Table (209847a)
+- Add inline tag assignment and overflow fading (1caa604)
+- Update editor playback bounds without restarting audio (318997e)
+- Refine minimap range frame and resize handles (42b663f)
+- Animate sidebar while keeping its toggle in place (6a206ae)
+- Animate inline stem groups without reloading the list (7cce2cc)
+- Fix collapsed sidebar toggle and header positioning (d041b38)
+- Add centered audition player with track details and reactive lighting (4b4b55c)
+- Expand header search from a compact search button (7e62806)
+
 ## [0.1.4] - 2026-10-30
 
 - Measure editor operation latency and add reproducible audio benchmarks (2034b0e)
