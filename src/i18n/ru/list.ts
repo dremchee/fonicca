@@ -2,6 +2,8 @@ import type en from '../en/list'
 
 export default {
   search: {
+    open: 'Поиск',
+    close: 'Закрыть поиск',
     entireLibrary: 'Поиск по всей библиотеке',
     inScope: 'Поиск в «{name}»',
     placeholder: 'Поиск семплов',

@@ -152,6 +152,11 @@ onKeyStroke('Escape', (e) => {
   if (settings.dialogOpen) return
   if (e.target instanceof Element && e.target.closest('[data-editor-panel], [role="menu"], [role="dialog"], [role="alertdialog"]'))
     return
+  if (toolbar.value?.searchExpanded) {
+    e.preventDefault()
+    void toolbar.value.closeSearch()
+    return
+  }
   if (player.playingId !== null)
     player.stop()
   else
@@ -161,8 +166,7 @@ onKeyStroke(['f', 'а'], (e) => {
   if (e.metaKey || e.ctrlKey) {
     e.preventDefault()
     settings.dialogOpen = false
-    search.value?.focus()
-    search.value?.select()
+    void toolbar.value?.focusSearch()
   }
 })
 // Works from anywhere, the search field included.

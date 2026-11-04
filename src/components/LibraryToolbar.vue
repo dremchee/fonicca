@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { ComponentPublicInstance } from 'vue'
-import { Globe, Search, SlidersHorizontal } from '@lucide/vue'
+import { Globe, Search, SlidersHorizontal, X } from '@lucide/vue'
 import { useEventListener } from '@vueuse/core'
-import { computed, useTemplateRef } from 'vue'
+import { computed, nextTick, ref, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Hint from '@/components/Hint.vue'
 import LibraryNowPlaying from '@/components/LibraryNowPlaying.vue'
@@ -16,6 +16,8 @@ const emit = defineEmits<{ openSearch: [] }>()
 const { t } = useI18n()
 const library = useLibraryStore()
 const player = usePlayerStore()
+const searchExpanded = ref(false)
+const searchToggle = useTemplateRef<ComponentPublicInstance>('searchToggle')
 const searchInput = useTemplateRef<ComponentPublicInstance>('searchInput')
 const searchGroup = useTemplateRef<ComponentPublicInstance>('searchGroup')
 const searchElement = computed(() => searchInput.value?.$el as HTMLInputElement | undefined)
@@ -47,6 +49,20 @@ const path = computed(() => {
   return scope.kind === 'source' ? scope.path ?? library.sources.find(s => s.id === scope.id)?.path : undefined
 })
 
+async function focusSearch() {
+  searchExpanded.value = true
+  await nextTick()
+  searchElement.value?.focus()
+  searchElement.value?.select()
+}
+
+async function closeSearch() {
+  searchExpanded.value = false
+  await nextTick()
+  const button = searchToggle.value?.$el as HTMLButtonElement | undefined
+  button?.focus()
+}
+
 function searchEverywhere() {
   library.scope = { kind: 'all' }
   searchElement.value?.focus()
@@ -58,13 +74,13 @@ function openAdvancedSearch() {
   emit('openSearch')
 }
 
-defineExpose({ searchElement })
+defineExpose({ searchElement, searchExpanded, focusSearch, closeSearch })
 </script>
 
 <template>
   <header class="library-toolbar h-16 shrink-0 px-3 flex items-center gap-3 border-b border-border" :class="{ 'has-player': player.playingSample }"
     data-tauri-drag-region>
-    <div class="library-context min-w-0 flex-1" data-tauri-drag-region>
+    <div class="library-context min-w-0 flex-1" :class="{ invisible: searchExpanded }" data-tauri-drag-region>
       <h1 class="text-sm font-medium truncate" :title="path ?? title" data-tauri-drag-region>{{ title }}</h1>
       <div class="text-xs text-muted-foreground tabular truncate" aria-live="polite" data-tauri-drag-region>
         {{ t('common.count.samples', { n: formatNumber(library.total) }, library.total) }}
@@ -72,8 +88,11 @@ defineExpose({ searchElement })
         <template v-if="library.isScanning"> · {{ t('list.search.scanning') }}</template>
       </div>
     </div>
-    <LibraryNowPlaying v-if="player.playingSample" />
-    <InputGroup ref="searchGroup" class="search-group flex-1 max-w-sm min-w-0">
+    <LibraryNowPlaying v-if="player.playingSample" :class="{ invisible: searchExpanded }" />
+    <Hint v-if="!searchExpanded" :text="library.query ? `${searchLabel}\n${library.query}` : searchLabel" shortcut="⌘F">
+      <Button ref="searchToggle" type="button" variant="ghost" size="icon-sm" class="search-toggle" :class="{ 'text-primary bg-accent': library.query.trim() }" :aria-label="t('list.search.open')" :aria-expanded="searchExpanded" aria-controls="library-search" @click="focusSearch"><Search /></Button>
+    </Hint>
+    <InputGroup v-show="searchExpanded" id="library-search" ref="searchGroup" class="search-group min-w-0" @keydown.esc.stop.prevent="closeSearch">
       <InputGroupAddon class="py-0">
         <Hint :text="t('list.search.entireLibrary')">
           <Button
@@ -88,6 +107,9 @@ defineExpose({ searchElement })
         <Hint :text="t('palette.title')" shortcut="⌘K">
           <Button variant="ghost" size="icon-sm" :aria-label="t('palette.title')" aria-haspopup="dialog" @mousedown.prevent @click="openAdvancedSearch"><SlidersHorizontal class="size-[14px]" /></Button>
         </Hint>
+        <Hint :text="t('list.search.close')" shortcut="Esc">
+          <Button type="button" variant="ghost" size="icon-sm" :aria-label="t('list.search.close')" @mousedown.prevent @click="closeSearch"><X class="size-[14px]" /></Button>
+        </Hint>
       </InputGroupAddon>
     </InputGroup>
   </header>
@@ -95,6 +117,7 @@ defineExpose({ searchElement })
 
 <style scoped>
 .library-toolbar {
+  position: relative;
   container-type: inline-size;
   padding-left: var(--library-toolbar-inset, 0.75rem);
 }
@@ -106,5 +129,15 @@ defineExpose({ searchElement })
 .has-player .library-context {
   padding-left: calc(var(--library-toolbar-inset, 0.75rem) - 0.75rem);
 }
-.has-player .search-group { width: 100%; justify-self: end; }
+.search-toggle { margin-left: auto; justify-self: end; }
+.library-toolbar .search-group {
+  position: absolute;
+  left: var(--library-toolbar-inset, 0.75rem);
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: auto;
+  background: var(--background);
+  z-index: 20;
+}
 </style>

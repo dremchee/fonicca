@@ -1,5 +1,7 @@
 export default {
   search: {
+    open: 'Search',
+    close: 'Close search',
     entireLibrary: 'Search entire library',
     inScope: 'Search in “{name}”',
     placeholder: 'Search samples',
