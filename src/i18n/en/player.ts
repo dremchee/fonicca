@@ -1,4 +1,5 @@
 export default {
+  nowPlaying: 'Now playing',
   volume: 'Volume',
   hiddenTags: 'Hidden tags: {n}',
   seek: 'Playback position',

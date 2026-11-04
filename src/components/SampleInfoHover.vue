@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useTagColors } from '@/composables/tagColors'
 import type { Sample, TrackTags } from '@/api'
-import { Info, Pencil } from '@lucide/vue'
+import { Info, Music2, Pencil } from '@lucide/vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -10,15 +10,19 @@ import { Button } from '@/components/ui/button'
 import { openTrackInfo, trackInfoFor } from '@/composables/trackInfo'
 import { categoryLabel, formatBpm, formatChannels, formatDb, formatDuration, formatRate, formatSize, kindLabel } from '@/format'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   sample: Sample
   tags: TrackTags | null
   coverUrl: string | null
-}>()
+  side?: 'top' | 'bottom'
+  sideOffset?: number
+}>(), { side: 'top', sideOffset: 8 })
 
 const { t } = useI18n()
 const { tagStyle } = useTagColors()
 const visible = ref(false)
+const coverFailed = ref(false)
+watch(() => props.coverUrl, () => coverFailed.value = false)
 const open = computed({
   get: () => visible.value && !trackInfoFor.value,
   set: value => visible.value = value,
@@ -67,17 +71,24 @@ const details = computed(() => {
 <template>
   <Popover v-model:open="open">
     <PopoverTrigger as-child>
-      <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('trackInfo.title')">
-        <Info />
-      </Button>
+      <slot name="trigger">
+        <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('trackInfo.title')">
+          <Info />
+        </Button>
+      </slot>
     </PopoverTrigger>
     <PopoverContent
-      side="top" align="end" :side-offset="8" :collision-padding="12" @close-auto-focus="onCloseAutoFocus"
-      :class="coverUrl ? 'w-[560px]' : 'w-80'"
-      class="z-50 max-w-[calc(100vw-24px)] max-h-[var(--reka-popover-content-available-height)] overflow-y-auto rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+      :side="side" align="end" :side-offset="sideOffset" :collision-padding="12" @close-auto-focus="onCloseAutoFocus"
+      class="z-50 w-[560px] max-w-[calc(100vw-24px)] max-h-[var(--reka-popover-content-available-height)] overflow-y-auto rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
     >
-      <div class="sample-info-layout" :class="{ 'has-cover': coverUrl }">
-        <img v-if="coverUrl" :src="coverUrl" :alt="t('trackInfo.cover')" width="192" height="192" class="cover max-w-full rounded-sm object-contain">
+      <div class="sample-info-layout">
+        <div class="cover max-w-full rounded-sm overflow-hidden bg-muted flex items-center justify-center">
+          <img v-if="coverUrl && !coverFailed" :src="coverUrl" :alt="t('trackInfo.cover')" width="192" height="192" class="size-full object-contain" @error="coverFailed = true">
+          <div v-else class="flex flex-col items-center gap-3 text-muted-foreground">
+            <Music2 class="size-10" aria-hidden="true" />
+            <span class="text-xs">{{ t('trackInfo.noCover') }}</span>
+          </div>
+        </div>
         <div class="min-w-0">
           <div class="text-sm font-semibold [overflow-wrap:anywhere]">
             {{ tags?.title || sample.name }}
@@ -115,19 +126,16 @@ const details = computed(() => {
 <style scoped>
 .sample-info-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: 192px minmax(0, 1fr);
   align-items: start;
   gap: 16px;
-}
-.sample-info-layout.has-cover {
-  grid-template-columns: 192px minmax(0, 1fr);
 }
 .cover {
   width: 192px;
   height: 192px;
 }
 @media (max-width: 560px) {
-  .sample-info-layout.has-cover {
+  .sample-info-layout {
     grid-template-columns: minmax(0, 1fr);
   }
   .cover {

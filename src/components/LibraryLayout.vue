@@ -88,9 +88,11 @@ function onDragging(dragging: boolean) {
 .sidebar-animating .sidebar-toggle { transition: left 220ms cubic-bezier(0.32, 0.72, 0, 1); }
 .sidebar-animating > :deep([data-panel]) { transition: flex-grow 220ms cubic-bezier(0.32, 0.72, 0, 1); }
 .sidebar-animating :deep(.library-toolbar) { transition: padding-left 220ms cubic-bezier(0.32, 0.72, 0, 1); }
+.sidebar-animating :deep(.library-context) { transition: padding-left 220ms cubic-bezier(0.32, 0.72, 0, 1); }
 @media (prefers-reduced-motion: reduce) {
   .sidebar-animating .sidebar-toggle,
   .sidebar-animating > :deep([data-panel]),
-  .sidebar-animating :deep(.library-toolbar) { transition: none; }
+  .sidebar-animating :deep(.library-toolbar),
+  .sidebar-animating :deep(.library-context) { transition: none; }
 }
 </style>

@@ -5,14 +5,17 @@ import { useEventListener } from '@vueuse/core'
 import { computed, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Hint from '@/components/Hint.vue'
+import LibraryNowPlaying from '@/components/LibraryNowPlaying.vue'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Button } from '@/components/ui/button'
 import { folderName, formatNumber } from '@/format'
 import { useLibraryStore } from '@/stores/library'
+import { usePlayerStore } from '@/stores/player'
 
 const emit = defineEmits<{ openSearch: [] }>()
 const { t } = useI18n()
 const library = useLibraryStore()
+const player = usePlayerStore()
 const searchInput = useTemplateRef<ComponentPublicInstance>('searchInput')
 const searchGroup = useTemplateRef<ComponentPublicInstance>('searchGroup')
 const searchElement = computed(() => searchInput.value?.$el as HTMLInputElement | undefined)
@@ -59,9 +62,9 @@ defineExpose({ searchElement })
 </script>
 
 <template>
-  <header class="library-toolbar h-16 shrink-0 px-3 flex items-center gap-3 border-b border-border"
+  <header class="library-toolbar h-16 shrink-0 px-3 flex items-center gap-3 border-b border-border" :class="{ 'has-player': player.playingSample }"
     data-tauri-drag-region>
-    <div class="min-w-0 flex-1" data-tauri-drag-region>
+    <div class="library-context min-w-0 flex-1" data-tauri-drag-region>
       <h1 class="text-sm font-medium truncate" :title="path ?? title" data-tauri-drag-region>{{ title }}</h1>
       <div class="text-xs text-muted-foreground tabular truncate" aria-live="polite" data-tauri-drag-region>
         {{ t('common.count.samples', { n: formatNumber(library.total) }, library.total) }}
@@ -69,6 +72,7 @@ defineExpose({ searchElement })
         <template v-if="library.isScanning"> · {{ t('list.search.scanning') }}</template>
       </div>
     </div>
+    <LibraryNowPlaying v-if="player.playingSample" />
     <InputGroup ref="searchGroup" class="search-group flex-1 max-w-sm min-w-0">
       <InputGroupAddon class="py-0">
         <Hint :text="t('list.search.entireLibrary')">
@@ -94,4 +98,13 @@ defineExpose({ searchElement })
   container-type: inline-size;
   padding-left: var(--library-toolbar-inset, 0.75rem);
 }
+.library-toolbar.has-player {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, min(42%, 504px)) minmax(0, 1fr);
+  padding-left: 0.75rem;
+}
+.has-player .library-context {
+  padding-left: calc(var(--library-toolbar-inset, 0.75rem) - 0.75rem);
+}
+.has-player .search-group { width: 100%; justify-self: end; }
 </style>

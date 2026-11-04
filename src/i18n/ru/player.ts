@@ -1,6 +1,7 @@
 import type en from '../en/player'
 
 export default {
+  nowPlaying: 'Сейчас играет',
   volume: 'Громкость',
   hiddenTags: 'Скрытые теги: {n}',
   seek: 'Позиция воспроизведения',

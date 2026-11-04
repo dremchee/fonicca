@@ -2,6 +2,7 @@ import { modelCatalog } from '@/model-catalog.generated'
 // The real App on a fake backend (mockIPC), to click through the UI in a browser.
 import { stemModels } from '@/stem-models'
 import { largeLibraryCommand } from './library-large'
+import { headerPlayerCommand, headerPlayerDuration } from './header-player'
 import type { DuplicateGroup, HiddenFile, StemModel } from '@/api'
 import { emit } from '@tauri-apps/api/event'
 import { updateCommand } from './updates'
@@ -33,6 +34,7 @@ let hidden: HiddenFile[] = []
 let playStart: number | null = null
 let playFrom = 0
 let playLoaded = false
+let playDuration: number | null = null
 let preferred: string[] = []
 let clapInstalled = location.hash === '#models' || location.hash === '#model-downloads' || location.hash === '#stem-processing'
 let clapBytes = clapInstalled ? modelCatalog.clap.bytes : 0
@@ -49,6 +51,8 @@ export function install() {
     if (cmd === 'plugin:menu|items') return []
     const large = largeLibraryCommand(cmd, args)
     if (large !== undefined) return large
+    const headerPlayer = headerPlayerCommand(cmd, args)
+    if (headerPlayer !== undefined) return headerPlayer
     const update = updateCommand(cmd, args)
     if (update !== undefined) return update
     const midi = basicPitchCommand(cmd, args)
@@ -153,8 +157,8 @@ export function install() {
         return null
       // Playback: time runs from the play call; levels mimic a kick on every beat at 120 BPM.
       case 'editor_update_playback': return playStart !== null
-      case 'editor_play': playLoaded = true; playStart = performance.now(); playFrom = args.start / 48000; return null
-      case 'play': playLoaded = true; playStart = performance.now(); playFrom = args.start ?? 0; return { stretch: 1, semitones: 0 }
+      case 'editor_play': playDuration = null; playLoaded = true; playStart = performance.now(); playFrom = args.start / 48000; return null
+      case 'play': playDuration = headerPlayerDuration(args.id); playLoaded = true; playStart = performance.now(); playFrom = args.start ?? 0; return { stretch: 1, semitones: 0 }
       case 'stop': playLoaded = false; playStart = null; return null
       case 'pause':
         if (!playLoaded) return null
@@ -169,7 +173,16 @@ export function install() {
         playFrom = args.position
         if (playStart !== null) playStart = performance.now()
         return null
-      case 'playback_position': return playStart === null ? null : playFrom + (performance.now() - playStart) / 1000
+      case 'playback_position': {
+        if (playStart === null) return null
+        const position = playFrom + (performance.now() - playStart) / 1000
+        if (playDuration !== null && position >= playDuration) {
+          playStart = null
+          playLoaded = false
+          return null
+        }
+        return position
+      }
       case 'playback_levels': {
         if (playStart === null)
           return null
