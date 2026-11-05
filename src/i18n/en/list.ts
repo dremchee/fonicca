@@ -1,4 +1,8 @@
 export default {
+  navigation: {
+    breadcrumbs: 'Library path',
+    parents: 'Parent folders',
+  },
   search: {
     open: 'Search',
     close: 'Close search',

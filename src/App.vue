@@ -6,7 +6,7 @@ import { onKeyStroke } from '@vueuse/core'
 import { isTauri } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { storeToRefs } from 'pinia'
-import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, defineAsyncComponent, onMounted, onUnmounted, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BatchDialog from '@/components/BatchDialog.vue'
 import StemDialog from '@/components/StemDialog.vue'
@@ -15,7 +15,6 @@ import BasicPitchDialog from '@/components/BasicPitchDialog.vue'
 import { useBasicPitchStore } from '@/stores/basicPitch'
 import { useApolloStore } from '@/stores/apollo'
 import { useStemsStore } from '@/stores/stems'
-import CommandPalette from '@/components/CommandPalette.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import FilterBar from '@/components/FilterBar.vue'
 import LibraryToolbar from '@/components/LibraryToolbar.vue'
@@ -48,10 +47,9 @@ const editor = useEditorStore()
 const backgrounds = useWaveformBackgrounds()
 const settings = useSettingsStore()
 const duplicates = useDuplicatesStore()
-const paletteOpen = ref(false)
 const { focused } = storeToRefs(library)
-const toolbar = useTemplateRef<InstanceType<typeof LibraryToolbar>>('toolbar')
-const search = computed(() => toolbar.value?.searchElement)
+const filters = useTemplateRef<InstanceType<typeof FilterBar>>('filters')
+const search = computed(() => filters.value?.searchElement)
 
 let unlistenEditorAttach: UnlistenFn | undefined
 onUnmounted(() => unlistenEditorAttach?.())
@@ -152,11 +150,6 @@ onKeyStroke('Escape', (e) => {
   if (settings.dialogOpen) return
   if (e.target instanceof Element && e.target.closest('[data-editor-panel], [role="menu"], [role="dialog"], [role="alertdialog"]'))
     return
-  if (toolbar.value?.searchExpanded) {
-    e.preventDefault()
-    void toolbar.value.closeSearch()
-    return
-  }
   if (player.playingId !== null)
     player.stop()
   else
@@ -166,14 +159,7 @@ onKeyStroke(['f', 'а'], (e) => {
   if (e.metaKey || e.ctrlKey) {
     e.preventDefault()
     settings.dialogOpen = false
-    void toolbar.value?.focusSearch()
-  }
-})
-// Works from anywhere, the search field included.
-onKeyStroke(['k', 'л'], (e) => {
-  if (e.metaKey || e.ctrlKey) {
-    e.preventDefault()
-    paletteOpen.value = !paletteOpen.value
+    void filters.value?.focusSearch()
   }
 })
 onKeyStroke(',', (e) => {
@@ -191,8 +177,8 @@ onKeyStroke(',', (e) => {
       <SettingsHost embedded />
       <div v-show="!settings.dialogOpen" class="min-h-0 flex-1 flex flex-col">
         <template v-if="!inDuplicates && !editor.expanded">
-          <LibraryToolbar ref="toolbar" @open-search="paletteOpen = true" />
-          <FilterBar />
+          <LibraryToolbar />
+          <FilterBar ref="filters" />
         </template>
         <ResizablePanelGroup direction="vertical" auto-save-id="fonicca-layout-rows" class="min-h-0 flex-1">
           <ResizablePanel v-if="!editor.expanded" id="list" :order="1" :min-size="20" class="flex flex-col">
@@ -213,7 +199,6 @@ onKeyStroke(',', (e) => {
     <StemDialog />
     <ApolloDialog />
     <BasicPitchDialog />
-    <CommandPalette v-model:open="paletteOpen" />
     <DebugMonitor v-if="debugMonitorOpen" :library-diagnostics="library.pageDiagnostics" />
     <ConfirmDialog />
     <EditorUnsavedDialog />

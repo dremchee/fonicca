@@ -1,6 +1,10 @@
 import type en from '../en/list'
 
 export default {
+  navigation: {
+    breadcrumbs: 'Путь в библиотеке',
+    parents: 'Родительские папки',
+  },
   search: {
     open: 'Поиск',
     close: 'Закрыть поиск',

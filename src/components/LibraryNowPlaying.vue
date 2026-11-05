@@ -103,7 +103,7 @@ async function toggle() {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  justify-self: center;
+  justify-self: end;
   width: 100%;
   min-width: min(360px, 100%);
   max-width: min(504px, 100%);

@@ -3,10 +3,11 @@ import type { AcceptableValue } from 'reka-ui'
 import type { SampleKind } from '@/api'
 import { ChevronDown, Pause, Play } from '@lucide/vue'
 import { storeToRefs } from 'pinia'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Hint from '@/components/Hint.vue'
 import KeyFilter from '@/components/KeyFilter.vue'
+import LibrarySearch from '@/components/LibrarySearch.vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -25,6 +26,10 @@ import { CATEGORIES, categoryLabel, formatNumber, kindLabel } from '@/format'
 import { useLibraryStore } from '@/stores/library'
 
 const { t } = useI18n()
+const searchControl = useTemplateRef<InstanceType<typeof LibrarySearch>>('searchControl')
+const searchElement = computed(() => searchControl.value?.searchElement)
+function focusSearch() { return searchControl.value?.focusSearch() }
+defineExpose({ searchElement, focusSearch })
 const library = useLibraryStore()
 const { kindFilter, bpmMin, bpmMax, keyFilter, categoryFilter, hasAnalysisFilters, analysis } = storeToRefs(library)
 
@@ -91,7 +96,7 @@ function parseBpm(e: Event): number | null {
 
 <template>
   <!-- Wraps onto a second line in narrow windows instead of overflowing. -->
-  <div class="min-h-11 shrink-0 px-3 py-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border text-sm">
+  <div class="filter-bar min-h-11 shrink-0 px-3 py-1.5 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-b border-border text-sm">
     <ToggleGroup type="single" variant="outline" size="sm" :model-value="kind" @update:model-value="onKindChange">
       <ToggleGroupItem :value="ANY">
         {{ t('filters.all') }}
@@ -185,6 +190,7 @@ function parseBpm(e: Event): number | null {
           </Button>
         </Hint>
       </template>
+      <LibrarySearch ref="searchControl" />
     </div>
   </div>
 </template>
