@@ -120,7 +120,8 @@ function focusNote(event: Event) {
   corner-shape: round;
   font-weight: 600;
 }
-.key-options :deep(.note-choice[data-state='on']) {
+.key-options :deep(.note-choice[data-state='on']),
+.key-options :deep(.mode-choice[data-state='on']) {
   background: var(--primary);
   color: var(--primary-foreground);
   border-color: var(--primary);

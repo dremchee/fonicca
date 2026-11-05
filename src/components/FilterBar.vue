@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { AcceptableValue } from 'reka-ui'
 import type { SampleKind } from '@/api'
-import { ChevronDown, Pause, Play } from '@lucide/vue'
+import { ChevronDown, Pause, Play, RotateCcw } from '@lucide/vue'
 import { storeToRefs } from 'pinia'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -169,10 +169,11 @@ function parseBpm(e: Event): number | null {
       </Select>
     </div>
 
-    <Button v-if="hasAnalysisFilters" variant="ghost" size="sm" class="text-muted-foreground" @click="library.clearAnalysisFilters()">
-      {{ t('filters.clear') }}
-    </Button>
-
+    <Hint v-if="hasAnalysisFilters" :text="t('list.empty.clearFilters')">
+      <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('list.empty.clearFilters')" @click="library.clearAnalysisFilters()">
+        <RotateCcw aria-hidden="true" />
+      </Button>
+    </Hint>
     <div class="ml-auto min-w-0 flex items-center gap-2 text-muted-foreground tabular whitespace-nowrap">
       <template v-if="pending > 0">
         <Spinner v-if="!analysis.paused" class="text-primary" />
