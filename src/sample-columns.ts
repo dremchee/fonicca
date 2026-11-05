@@ -29,19 +29,37 @@ export function boundedSampleColumnWidth(id: ResizableSampleColumnId, width: num
   return Math.round(Math.min(limits.max, Math.max(limits.min, Number.isFinite(width) ? width : fallback)))
 }
 
-export function sampleTableLayout(columns: readonly typeof SAMPLE_COLUMNS[number][], widths: SampleColumnWidths, viewportWidth?: number) {
-  const fixedName = widths.name != null && Number.isFinite(widths.name)
+function sampleTableOverhead(columnCount: number) {
+  // Playback, favorites, padding and the gaps between grid tracks.
+  return 16 + 28 + 24 + (columnCount + 2) * 12
+}
+
+/** Reserve room for every other column, including the automatic final one. */
+export function sampleColumnResizeMax(id: ResizableSampleColumnId, columns: readonly typeof SAMPLE_COLUMNS[number][], viewportWidth: number) {
+  const limits = sampleColumnLimits(id)
+  if (!Number.isFinite(viewportWidth) || viewportWidth <= 0) return limits.max
+  const last = columns.at(-1)
+  const reserved = sampleTableOverhead(columns.length)
+    + (id === 'name' ? 0 : sampleColumnLimits('name').min)
+    + columns.reduce((sum, column) => sum + (column.id === id ? 0
+      : column.id === last?.id ? column.width : sampleColumnLimits(column.id).min), 0)
+  return Math.max(limits.min, Math.min(limits.max, Math.floor(viewportWidth) - reserved))
+}
+
+export function sampleTableLayout(columns: readonly typeof SAMPLE_COLUMNS[number][], widths: SampleColumnWidths, viewportWidth?: number, resizing?: ResizableSampleColumnId) {
+  const fixedName = columns.length > 0 && widths.name != null && Number.isFinite(widths.name)
   let nameWidth = fixedName ? boundedSampleColumnWidth('name', widths.name!) : 220
-  const sizes = columns.map(c => boundedSampleColumnWidth(c.id, widths[c.id] ?? c.width))
-  // Playback keeps one compact slot; disclosure is absolute in the left padding.
-  const overhead = 16 + 28 + 24 + (columns.length + 2) * 12
+  const lastIndex = columns.length - 1
+  const sizes = columns.map((c, i) => i === lastIndex ? c.width : boundedSampleColumnWidth(c.id, widths[c.id] ?? c.width))
+  const overhead = sampleTableOverhead(columns.length)
   if (viewportWidth != null && Number.isFinite(viewportWidth) && viewportWidth > 0) {
     let overflow = Math.max(0, overhead + nameWidth + sizes.reduce((sum, size) => sum + size, 0) - Math.floor(viewportWidth))
-    // Prefer keeping metadata readable by using excess name space first.
-    const fromName = Math.min(overflow, nameWidth - sampleColumnLimits('name').min)
+    const fromName = resizing === 'name' || (fixedName && !resizing)
+      ? 0 : Math.min(overflow, nameWidth - sampleColumnLimits('name').min)
     nameWidth -= fromName
     overflow -= fromName
-    const capacity = sizes.map((size, i) => size - sampleColumnLimits(columns[i].id).min)
+    const capacity = sizes.map((size, i) => i === lastIndex || columns[i].id === resizing
+      ? 0 : size - sampleColumnLimits(columns[i].id).min)
     let remaining = capacity.reduce((sum, size) => sum + size, 0)
     for (let i = 0; i < sizes.length && overflow > 0 && remaining > 0; i++) {
       const reduction = Math.min(capacity[i], Math.ceil(overflow * capacity[i] / remaining))
@@ -49,9 +67,33 @@ export function sampleTableLayout(columns: readonly typeof SAMPLE_COLUMNS[number
       overflow -= reduction
       remaining -= capacity[i]
     }
+    const remainingName = Math.min(overflow, nameWidth - sampleColumnLimits('name').min)
+    nameWidth -= remainingName
+    overflow -= remainingName
+    const activeIndex = columns.findIndex(column => column.id === resizing)
+    if (activeIndex >= 0 && activeIndex !== lastIndex) {
+      const reduction = Math.min(overflow, sizes[activeIndex] - sampleColumnLimits(columns[activeIndex].id).min)
+      sizes[activeIndex] -= reduction
+      overflow -= reduction
+    }
+    // A narrow window or many enabled columns can exceed even the nominal
+    // minimums. Clip earlier cells rather than pushing the final column out.
+    const narrowNameMinimum = Math.min(80, Math.max(0, Math.floor(viewportWidth) - overhead - (sizes[lastIndex] ?? 0)))
+    const fromNarrowName = Math.min(overflow, Math.max(0, nameWidth - narrowNameMinimum))
+    nameWidth -= fromNarrowName
+    overflow -= fromNarrowName
+    remaining = sizes.reduce((sum, size, i) => sum + (i === lastIndex ? 0 : size), 0)
+    for (let i = 0; i < lastIndex && overflow > 0 && remaining > 0; i++) {
+      const size = sizes[i]
+      const reduction = Math.min(size, Math.ceil(overflow * size / remaining))
+      sizes[i] -= reduction
+      overflow -= reduction
+      remaining -= size
+    }
   }
   return {
-    '--sample-columns': `16px ${fixedName ? `${nameWidth}px` : `minmax(${nameWidth}px, 1fr)`} ${sizes.map(w => `${w}px`).join(' ')} ${fixedName ? 'minmax(28px, 1fr)' : '28px'}`,
+    widths: { name: nameWidth, ...Object.fromEntries(columns.map((column, i) => [column.id, sizes[i]])) } as SampleColumnWidths,
+    '--sample-columns': `16px ${fixedName ? `${nameWidth}px` : `minmax(${nameWidth}px, 1fr)`} ${sizes.map((w, i) => fixedName && i === lastIndex ? `minmax(${w}px, 1fr)` : `${w}px`).join(' ')} 28px`,
     minWidth: `${overhead + nameWidth + sizes.reduce((sum, width) => sum + width, 0)}px`,
   }
 }

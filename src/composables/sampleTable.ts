@@ -1,20 +1,22 @@
-import type { Column, ColumnDef, SortingState, Table } from '@tanstack/vue-table'
+import type { Column, ColumnDef, Header, SortingState, Table } from '@tanstack/vue-table'
 import type { Sample } from '@/api'
 import {
-  columnSizingFeature, columnVisibilityFeature, rowSortingFeature, tableFeatures, useTable,
+  columnResizingFeature, columnSizingFeature, columnVisibilityFeature, makeStateUpdater, rowSortingFeature, tableFeatures, useTable,
 } from '@tanstack/vue-table'
 import { createGlobalState } from '@vueuse/core'
-import { computed } from 'vue'
+import { computed, shallowRef, watch } from 'vue'
 import { useSampleColumns } from '@/composables/sampleColumns'
 import {
-  boundedSampleColumnWidth, defaultSampleColumns, normalizeSampleSort, sampleColumnLimits,
-  sampleDirectory, SAMPLE_COLUMNS,
+  boundedSampleColumnWidth, defaultSampleColumns, normalizeSampleSort, sampleColumnLimits, sampleColumnResizeMax,
+  sampleDirectory, sampleTableLayout, SAMPLE_COLUMNS,
 } from '@/sample-columns'
+import type { ResizableSampleColumnId, SampleColumnWidths } from '@/sample-columns'
 import { useLibraryStore } from '@/stores/library'
 
-const features = tableFeatures({ columnVisibilityFeature, columnSizingFeature, rowSortingFeature })
+const features = tableFeatures({ columnVisibilityFeature, columnSizingFeature, columnResizingFeature, rowSortingFeature })
 export type SampleTable = Table<typeof features, Sample>
 export type SampleTableColumn = Column<typeof features, Sample>
+export type SampleTableHeader = Header<typeof features, Sample>
 
 const columns: ColumnDef<typeof features, Sample>[] = [
   {
@@ -42,23 +44,37 @@ const columns: ColumnDef<typeof features, Sample>[] = [
 export const useSampleTable = createGlobalState(() => {
   const library = useLibraryStore()
   const { visibility, widths } = useSampleColumns()
+  let resizeStart: SampleColumnWidths | null = null
+  let resizingColumn: ResizableSampleColumnId | undefined
+  const viewportWidth = shallowRef(0)
+  const layoutColumns = computed(() => SAMPLE_COLUMNS.filter(column => visibility.value[column.id] !== false))
+  const tableColumns = computed(() => {
+    const last = layoutColumns.value.at(-1)?.id ?? 'name'
+    return columns.map(column => ({
+      ...column,
+      enableResizing: column.id !== last,
+      maxSize: column.id === last && last !== 'name'
+        ? SAMPLE_COLUMNS.find(item => item.id === last)!.width
+        : sampleColumnResizeMax(column.id as ResizableSampleColumnId, layoutColumns.value, viewportWidth.value),
+    }))
+  })
   const sorting = computed<SortingState>(() => library.scope.kind === 'similar'
     ? []
     : [{ id: library.sort.by, desc: library.sort.direction === 'desc' }])
 
   const table = useTable({
     features,
-    columns,
+    get columns() { return tableColumns.value },
     // Do not materialize the library's unloaded rows just to manage its columns.
     data: [],
     manualSorting: true,
     enableMultiSort: false,
     enableSortingRemoval: false,
+    columnResizeMode: 'onChange',
     get enableSorting() { return library.scope.kind !== 'similar' },
     initialState: { columnVisibility: defaultSampleColumns() },
     state: {
       get columnVisibility() { return visibility.value },
-      get columnSizing() { return widths.value },
       get sorting() { return sorting.value },
     },
     onColumnVisibilityChange: (updater) => {
@@ -66,11 +82,23 @@ export const useSampleTable = createGlobalState(() => {
       visibility.value = Object.fromEntries(SAMPLE_COLUMNS.map(column => [column.id, next[column.id] !== false])) as typeof visibility.value
     },
     onColumnSizingChange: (updater) => {
-      const next = typeof updater === 'function' ? updater(widths.value) : updater
-      widths.value = Object.fromEntries(columns.flatMap((column) => {
+      const previous = table.atoms.columnSizing.get()
+      const next = typeof updater === 'function' ? updater(previous) : updater
+      let bounded: SampleColumnWidths = Object.fromEntries(columns.flatMap((column) => {
         const id = column.id as 'name' | typeof SAMPLE_COLUMNS[number]['id']
-        return next[id] == null ? [] : [[id, boundedSampleColumnWidth(id, next[id])]]
+        if (next[id] == null) return []
+        const maximum = next[id] === previous[id] ? sampleColumnLimits(id).max
+          : sampleColumnResizeMax(id, layoutColumns.value, viewportWidth.value)
+        return [[id, Math.min(maximum, boundedSampleColumnWidth(id, next[id]))]]
       }))
+      if (resizingColumn) {
+        const fitted = sampleTableLayout(layoutColumns.value, bounded, viewportWidth.value, resizingColumn).widths
+        const last = layoutColumns.value.at(-1)?.id
+        bounded = { ...bounded, ...Object.fromEntries(Object.entries(fitted).filter(([id]) => id !== last)) }
+      }
+      makeStateUpdater('columnSizing', table)(bounded)
+      // Drag frames stay in the table atom; persist just the final width.
+      if (!resizeStart) widths.value = bounded
     },
     onSortingChange: (updater) => {
       const next = typeof updater === 'function' ? updater(sorting.value) : updater
@@ -79,6 +107,31 @@ export const useSampleTable = createGlobalState(() => {
       library.setSort(sort.by, sort.direction)
     },
   })
+
+  watch(widths, (value) => {
+    if (resizeStart) return
+    const current = table.atoms.columnSizing.get()
+    if (Object.keys(current).length !== Object.keys(value).length
+      || Object.entries(value).some(([id, width]) => current[id] !== width))
+      makeStateUpdater('columnSizing', table)({ ...value })
+  }, { immediate: true, deep: true, flush: 'sync' })
+
+  function beginResize(id: ResizableSampleColumnId, renderedWidths: SampleColumnWidths) {
+    resizeStart = { ...widths.value }
+    resizingColumn = id
+    // Start from the displayed widths so flexible tracks never jump on press.
+    const last = layoutColumns.value.at(-1)?.id
+    const editable = Object.fromEntries(Object.entries(renderedWidths).filter(([column]) => column !== last))
+    table.setColumnSizing(previous => ({ ...previous, ...editable }))
+  }
+
+  function finishResize(cancelled = false) {
+    if (!resizeStart) return
+    const next = cancelled ? resizeStart : table.atoms.columnSizing.get()
+    resizeStart = null
+    resizingColumn = undefined
+    table.setColumnSizing(next)
+  }
 
   const visibleColumns = computed(() => {
     const visible = new Set(table.getVisibleLeafColumns().map(column => column.id))
@@ -94,5 +147,9 @@ export const useSampleTable = createGlobalState(() => {
     resetWidths()
   }
 
-  return { table, visibleColumns, resetWidths, resetView }
+  function setViewportWidth(width: number) {
+    viewportWidth.value = width
+  }
+
+  return { table, visibleColumns, beginResize, finishResize, resetWidths, resetView, setViewportWidth }
 })

@@ -39,11 +39,12 @@ const settings = useSettingsStore()
 const { total, focusIndex, selectedIds, scope } = storeToRefs(library)
 
 const { table, visibleColumns, resetWidths, resetView } = useSampleTable()
-const headerColumns = computed(() => table.getVisibleLeafColumns().map(column => ({
-  column, id: column.id as ResizableSampleColumnId,
+const headerColumns = computed(() => table.getFlatHeaders().map(header => ({
+  header, id: header.column.id as ResizableSampleColumnId,
 })))
 const tableViewport = ref<HTMLElement | null>(null)
-const { tableStyle, resizingColumn, preview: previewColumnWidth, commit: commitColumnWidth, cancel: cancelColumnResize, reset: resetColumnWidths } = useSampleColumnWidths(visibleColumns, tableViewport)
+const tableContent = ref<HTMLElement | null>(null)
+useSampleColumnWidths({ columns: visibleColumns, viewport: tableViewport, content: tableContent, enabled: () => true })
 
 const similarTo = computed(() => (scope.value.kind === 'similar' ? scope.value : null))
 
@@ -265,15 +266,13 @@ function onDragStart(e: DragEvent, sample: Sample) {
       </Hint>
     </div>
     <div ref="tableViewport" class="table-viewport flex-1 min-w-0 min-h-0 overflow-x-auto">
-      <div class="table-content relative flex flex-col h-full" :style="tableStyle">
+      <div ref="tableContent" class="table-content relative flex flex-col h-full">
         <div class="header grid items-center px-3 h-8 border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
           <span />
           <SampleColumnHeader
-            v-for="{ column, id } in headerColumns" :key="id" :column="column"
+            v-for="{ header, id } in headerColumns" :key="id" :header="header"
             :label="id === 'bpm' ? 'BPM' : t(`list.columns.${id}`)"
             :align-right="id === 'bpm' || id === 'length'"
-            @resize="previewColumnWidth(id, $event)" @commit="commitColumnWidth(id, $event)"
-            @cancel="cancelColumnResize" @reset="resetColumnWidths(id)"
           />
           <SampleColumnsMenu :table="table" @reset-widths="resetWidths" @reset-view="resetView" />
         </div>
@@ -344,8 +343,8 @@ function onDragStart(e: DragEvent, sample: Sample) {
         </Tooltip>
         <div v-if="total > 0" class="column-guides pointer-events-none absolute inset-0 grid px-3" aria-hidden="true">
           <span />
-          <span class="column-guide" :class="{ active: resizingColumn === 'name' }" />
-          <span v-for="column in visibleColumns" :key="column.id" class="column-guide" :class="{ active: resizingColumn === column.id }" />
+          <span class="column-guide" data-column="name" />
+          <span v-for="column in visibleColumns" :key="column.id" class="column-guide" :data-column="column.id" />
           <span />
         </div>
       </div>

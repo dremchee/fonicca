@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { boundedSampleColumnWidth, sampleTableLayout, SAMPLE_COLUMNS } from '../src/sample-columns.ts'
+import { boundedSampleColumnWidth, sampleColumnResizeMax, sampleTableLayout, SAMPLE_COLUMNS } from '../src/sample-columns.ts'
 
 test('column resizing stays readable and rejects invalid stored sizes', () => {
   assert.equal(boundedSampleColumnWidth('name', 1), 160)
@@ -11,12 +11,12 @@ test('column resizing stays readable and rejects invalid stored sizes', () => {
   assert.equal(boundedSampleColumnWidth('length', 88.4), 88)
 })
 
-test('resizing the name keeps its exact width while the trailing area fills free space', () => {
+test('the final column fills free space after the name is resized', () => {
   const columns = SAMPLE_COLUMNS.filter(c => c.defaultVisible)
   const automatic = sampleTableLayout(columns, {})
   const manual = sampleTableLayout(columns, { name: 360, category: 140 })
   assert.match(automatic['--sample-columns'], /minmax\(220px, 1fr\)/)
-  assert.equal(manual['--sample-columns'], '16px 360px 120px 140px 56px 64px minmax(28px, 1fr)')
+  assert.equal(manual['--sample-columns'], '16px 360px 120px 140px 56px minmax(64px, 1fr) 28px')
   assert.equal(manual.minWidth, '880px')
 })
 
@@ -29,25 +29,52 @@ test('hidden columns reserve no space and recover their stored width when shown 
   assert.match(sampleTableLayout([], { name: NaN })['--sample-columns'], /minmax\(220px, 1fr\)/)
 })
 
-test('saved wide columns fit a narrower viewport without changing preferred widths', () => {
+test('saved wide columns fit the window while reserving the final column', () => {
   const columns = SAMPLE_COLUMNS.filter(c => c.defaultVisible)
   const widths = { name: 620 }
   const fitted = sampleTableLayout(columns, widths, 875)
   assert.equal(fitted.minWidth, '875px')
-  assert.equal(fitted['--sample-columns'], '16px 399px 120px 96px 56px 64px minmax(28px, 1fr)')
+  assert.equal(fitted['--sample-columns'], '16px 499px 64px 64px 44px minmax(64px, 1fr) 28px')
   assert.equal(widths.name, 620)
   assert.match(sampleTableLayout(columns, widths, 1200)['--sample-columns'], /620px/)
 })
 
-test('oversized metadata columns shrink to their limits before horizontal scrolling', () => {
+test('narrow windows keep the final column visible even with oversized preferences', () => {
   const widths = { name: 800, category: 600, bpm: 400, length: 300 }
   const columns = SAMPLE_COLUMNS.filter(c => c.defaultVisible)
   const fitted = sampleTableLayout(columns, widths, 600)
   assert.equal(fitted.minWidth, '600px')
-  assert.match(fitted['--sample-columns'], /^16px 160px /)
-  const tiny = sampleTableLayout(columns, widths, 200)
-  assert.equal(tiny.minWidth, '516px')
-  assert.equal(tiny['--sample-columns'], '16px 160px 64px 64px 44px 44px minmax(28px, 1fr)')
+  assert.equal(fitted.widths.length, 64)
+  const tiny = sampleTableLayout(columns, {}, 420)
+  assert.equal(tiny.minWidth, '420px')
+  assert.equal(tiny['--sample-columns'], '16px minmax(80px, 1fr) 50px 50px 36px 64px 28px')
+})
+
+test('dragging reserves room for the final column and stops at the available width', () => {
+  const columns = SAMPLE_COLUMNS.filter(c => c.defaultVisible)
+  assert.equal(sampleColumnResizeMax('name', columns, 700), 324)
+  const dragged = sampleTableLayout(columns, { name: 1000 }, 700, 'name')
+  assert.equal(dragged.widths.name, 324)
+  assert.equal(dragged.widths.length, 64)
+  assert.equal(dragged.minWidth, '700px')
+  assert.equal(sampleTableLayout(columns, dragged.widths, 700)['--sample-columns'], dragged['--sample-columns'])
+})
+
+test('the last visible column uses its automatic width after visibility changes', () => {
+  const columns = SAMPLE_COLUMNS.filter(c => c.defaultVisible && c.id !== 'length')
+  const layout = sampleTableLayout(columns, { name: 240, bpm: 400 }, 700)
+  assert.equal(layout.widths.bpm, 56)
+  assert.match(layout['--sample-columns'], /minmax\(56px, 1fr\) 28px$/)
+})
+
+test('many visible columns stay within the window and keep the last track intact', () => {
+  const widths = Object.fromEntries(['name', ...SAMPLE_COLUMNS.map(c => c.id)].map(id => [id, 800]))
+  for (const width of [320, 420, 520, 700, 1200]) {
+    const layout = sampleTableLayout(SAMPLE_COLUMNS, widths, width)
+    assert.ok(parseInt(layout.minWidth) <= width)
+    assert.ok(layout.widths.name! >= 80)
+    assert.equal(layout.widths.type, 44)
+  }
 })
 
 test('saved sort preferences accept known columns and fall back safely', async () => {

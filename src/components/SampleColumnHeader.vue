@@ -1,64 +1,83 @@
 <script setup lang="ts">
-import type { SampleTableColumn } from '@/composables/sampleTable'
+import type { SampleTableHeader } from '@/composables/sampleTable'
+import type { ResizableSampleColumnId, SampleColumnWidths } from '@/sample-columns'
 import { ArrowDown, ArrowUp, ArrowUpDown, EyeOff, RotateCcw } from '@lucide/vue'
 import { useEventListener, useResizeObserver } from '@vueuse/core'
 import { computed, onBeforeUnmount, shallowRef, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
+import { useSampleTable } from '@/composables/sampleTable'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 
-const props = defineProps<{ column: SampleTableColumn, label: string, alignRight?: boolean }>()
-const emit = defineEmits<{ resize: [width: number], commit: [width: number], cancel: [], reset: [] }>()
+const props = defineProps<{ header: SampleTableHeader, label: string, alignRight?: boolean }>()
+const column = computed(() => props.header.column)
+const { table, beginResize, finishResize } = useSampleTable()
 const { t } = useI18n()
-const direction = computed(() => props.column.getIsSorted())
+const direction = computed(() => column.value.getIsSorted())
 const menuLabel = computed(() => [
   t('list.columns.options', { name: props.label }),
   direction.value ? t(direction.value === 'asc' ? 'list.columns.sortedAscending' : 'list.columns.sortedDescending') : '',
 ].filter(Boolean).join(', '))
-const minWidth = computed(() => props.column.columnDef.minSize ?? 44)
-const maxWidth = computed(() => props.column.columnDef.maxSize ?? 800)
+const minWidth = computed(() => column.value.columnDef.minSize ?? 44)
+const maxWidth = computed(() => column.value.columnDef.maxSize ?? 800)
 const cell = useTemplateRef<HTMLElement>('cell')
 const width = shallowRef(0)
-const drag = shallowRef<{ pointerId: number, x: number, width: number } | null>(null)
+let cancelDrag: (() => void) | undefined
 useResizeObserver(cell, entries => width.value = Math.round(entries[0].contentRect.width))
 
 function bound(value: number) {
   return Math.min(maxWidth.value, Math.max(minWidth.value, value))
 }
-function start(e: PointerEvent) {
-  if (e.button !== 0 || !e.isPrimary || !cell.value)
-    return
+function renderedWidths(): SampleColumnWidths {
+  return Object.fromEntries(Array.from(cell.value?.closest('.table-content')?.querySelectorAll<HTMLElement>('.column-heading') ?? [])
+    .map(heading => [heading.dataset.column, Math.round(heading.getBoundingClientRect().width)]))
+}
+function start(e: MouseEvent | TouchEvent) {
+  if (!cell.value || cancelDrag || !column.value.getCanResize()) return
+  if ('touches' in e ? e.touches.length !== 1 : e.button !== 0) return
   e.preventDefault()
-  drag.value = { pointerId: e.pointerId, x: e.clientX, width: cell.value.getBoundingClientRect().width }
-  const handle = e.currentTarget as HTMLElement
-  handle.focus({ preventScroll: true })
-  handle.setPointerCapture(e.pointerId)
-}
-function move(e: PointerEvent) {
-  const start = drag.value
-  if (start?.pointerId === e.pointerId)
-    emit('resize', bound(start.width + e.clientX - start.x))
-}
-function finish(e: PointerEvent) {
-  const start = drag.value
-  if (start?.pointerId !== e.pointerId)
-    return
-  drag.value = null
-  emit('commit', bound(start.width + e.clientX - start.x))
+  ;(e.currentTarget as HTMLElement).focus({ preventScroll: true })
+  const initialWidth = Math.round(cell.value.getBoundingClientRect().width)
+  beginResize(column.value.id as ResizableSampleColumnId, renderedWidths())
+
+  const doc = cell.value.ownerDocument
+  const listeners = new AbortController()
+  let endNative: (() => void) | undefined
+  // TanStack accepts a document context. Retain its end handler so Esc, blur,
+  // and unmount can also release its document listeners and pending RAF.
+  const context = {
+    addEventListener(type: string, listener: EventListener, options?: AddEventListenerOptions) {
+      if (type === 'mouseup' || type === 'touchend') endNative = () => listener(e)
+      doc.addEventListener(type, listener, options)
+    },
+    removeEventListener: doc.removeEventListener.bind(doc),
+  } as Document
+  props.header.getResizeHandler(context)(e)
+
+  function finish(cancelled = false) {
+    listeners.abort()
+    cancelDrag = undefined
+    finishResize(cancelled || Math.round(cell.value?.getBoundingClientRect().width ?? 0) === initialWidth)
+  }
+  // Registered after TanStack, so its final sizing update runs before saving.
+  doc.addEventListener('mouseup', () => finish(), { signal: listeners.signal })
+  doc.addEventListener('touchend', () => finish(), { signal: listeners.signal })
+  doc.addEventListener('touchcancel', () => finish(true), { signal: listeners.signal })
+  cancelDrag = () => {
+    endNative?.()
+    finish(true)
+  }
 }
 function cancel() {
-  if (!drag.value)
-    return
-  drag.value = null
-  emit('cancel')
+  cancelDrag?.()
 }
 function onKeydown(e: KeyboardEvent) {
   if (e.metaKey || e.ctrlKey || e.altKey)
     return
-  if (e.key === 'Escape' && drag.value) {
+  if (e.key === 'Escape' && cancelDrag) {
     e.preventDefault()
     e.stopPropagation()
     cancel()
@@ -75,7 +94,10 @@ function onKeydown(e: KeyboardEvent) {
   }
   e.preventDefault()
   e.stopPropagation()
-  emit('commit', bound(next))
+  if (cancelDrag) return
+  beginResize(column.value.id as ResizableSampleColumnId, renderedWidths())
+  table.setColumnSizing(previous => ({ ...previous, [column.value.id]: bound(next) }))
+  finishResize()
 }
 useEventListener(window, 'blur', cancel)
 onBeforeUnmount(cancel)
@@ -114,22 +136,22 @@ onBeforeUnmount(cancel)
           <DropdownMenuItem v-if="column.getCanHide()" @select="column.toggleVisibility(false)">
             <EyeOff /> {{ t('list.columns.hide') }}
           </DropdownMenuItem>
-          <DropdownMenuItem @select="emit('reset')">
+          <DropdownMenuItem v-if="column.getCanResize()" @select="column.resetSize()">
             <RotateCcw /> {{ t('list.columns.resetWidth') }}
           </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
     <div
-      class="resize-handle" :class="{ resizing: drag !== null }"
+      v-if="column.getCanResize()" class="resize-handle" :class="{ resizing: column.getIsResizing() }"
       role="separator" tabindex="0" aria-orientation="vertical"
       :aria-label="t('list.columns.resize', { name: label })"
       :aria-valuemin="minWidth" :aria-valuemax="maxWidth" :aria-valuenow="width"
       :title="t('list.columns.resizeHint')"
-      @pointerdown.stop="start" @pointermove="move" @pointerup="finish"
-      @pointercancel="cancel" @lostpointercapture="cancel" @keydown="onKeydown"
-      @dblclick.stop.prevent="emit('reset')"
+      @mousedown.stop="start" @touchstart.stop="start" @keydown="onKeydown"
+      @dblclick.stop.prevent="column.resetSize()"
     />
+    <span v-else class="column-divider" aria-hidden="true" />
   </div>
 </template>
 
@@ -147,17 +169,22 @@ onBeforeUnmount(cancel)
   letter-spacing: inherit;
   text-transform: inherit;
 }
-.resize-handle {
+.resize-handle,
+.column-divider {
   position: absolute;
-  z-index: 1;
   inset-block: 0;
   right: -12px;
   width: 12px;
+}
+.column-divider { pointer-events: none; }
+.resize-handle {
+  z-index: 1;
   cursor: col-resize;
   touch-action: none;
   outline: none;
 }
-.resize-handle::after {
+.resize-handle::after,
+.column-divider::after {
   content: '';
   position: absolute;
   inset-block: 0;
