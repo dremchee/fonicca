@@ -42,6 +42,7 @@ export default {
   },
   tags: {
     add: 'Add tag to “{name}”',
+    filter: 'Show tracks tagged “{name}”',
   },
   similar: {
     soundsLike: 'Sounds like',

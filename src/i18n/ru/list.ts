@@ -44,6 +44,7 @@ export default {
   },
   tags: {
     add: 'Добавить тег к «{name}»',
+    filter: 'Показать треки с тегом «{name}»',
   },
   similar: {
     soundsLike: 'Похоже на',

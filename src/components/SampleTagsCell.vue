@@ -8,10 +8,12 @@ import TagPicker from '@/components/TagPicker.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useTagColors } from '@/composables/tagColors'
+import { useLibraryStore } from '@/stores/library'
 
 defineProps<{ sample: Sample }>()
 const { t } = useI18n()
 const { tagStyle } = useTagColors()
+const library = useLibraryStore()
 const tagsViewport = useTemplateRef<HTMLElement>('tagsViewport')
 const tagsContent = useTemplateRef<HTMLElement>('tagsContent')
 const overflowing = shallowRef(false)
@@ -22,6 +24,11 @@ function measureOverflow() {
 }
 useResizeObserver(tagsViewport, measureOverflow)
 useResizeObserver(tagsContent, measureOverflow)
+
+function filterByTag(id: number) {
+  library.query = ''
+  library.scope = { kind: 'tag', id }
+}
 </script>
 
 <template>
@@ -29,8 +36,9 @@ useResizeObserver(tagsContent, measureOverflow)
     <span ref="tagsViewport" class="tags-viewport min-w-0 w-full overflow-hidden" :class="{ 'tags-overflow': overflowing }">
       <span ref="tagsContent" class="w-max flex items-center gap-1">
         <Badge
-          v-for="tag in sample.tags" :key="tag.id" variant="secondary" class="tag-color h-5 shrink-0 text-[11px]"
-          :style="tagStyle(tag)" :data-sample-hint="tag.name" data-grace-area-trigger
+          v-for="tag in sample.tags" :key="tag.id" as="button" type="button" variant="secondary" class="tag-color tag-filter h-5 shrink-0 cursor-pointer text-[11px] focus-visible:ring-inset"
+          :style="tagStyle(tag)" :aria-label="t('list.tags.filter', { name: tag.name })" :data-sample-hint="t('list.tags.filter', { name: tag.name })" data-grace-area-trigger
+          @click="filterByTag(tag.id)"
         >{{ tag.name }}</Badge>
       </span>
     </span>
@@ -47,6 +55,16 @@ useResizeObserver(tagsContent, measureOverflow)
 </template>
 
 <style scoped>
+.tag-filter {
+  --tag-hover-base: var(--tag-light-bg);
+  text-decoration: none;
+  transition: background-color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+.dark .tag-filter { --tag-hover-base: var(--tag-dark-bg); }
+.tag-filter:hover {
+  background: color-mix(in srgb, var(--tag-hover-base) 82%, currentColor 18%);
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+}
 .tags-overflow {
   -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
   mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);

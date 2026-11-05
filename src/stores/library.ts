@@ -348,8 +348,8 @@ export const useLibraryStore = defineStore('library', () => {
     await Promise.all([loadTags(), viewDependsOnTags() && refresh({ keepSelection: true })])
   }
 
-  async function removeTag(tagId: number) {
-    const ids = targetIds()
+  async function removeTag(tagId: number, sampleId?: number) {
+    const ids = sampleId == null ? targetIds() : [sampleId]
     if (!ids.length)
       return
     await api.untagSamples(ids, tagId)

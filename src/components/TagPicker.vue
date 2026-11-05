@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useTagColors } from '@/composables/tagColors'
 import type { TagRef } from '@/api'
-import { Check, Plus } from '@lucide/vue'
+import { Check, Plus, X } from '@lucide/vue'
 import { ListboxItem } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -63,6 +63,21 @@ async function add(name: string) {
     saving.value = false
   }
 }
+
+async function remove(tagId: number) {
+  if (saving.value) return
+  saving.value = true
+  try {
+    await library.removeTag(tagId, props.sampleId)
+    open.value = false
+  }
+  catch (error) {
+    toast.error(String(error))
+  }
+  finally {
+    saving.value = false
+  }
+}
 </script>
 
 <template>
@@ -106,8 +121,9 @@ async function add(name: string) {
                 <Plus /> {{ t('sidebar.tagPicker.create', { name: query.trim() }) }}
               </ListboxItem>
               <CommandGroup v-if="assigned.length" :heading="t('sidebar.tagPicker.assigned')">
-                <CommandItem v-for="tag in assigned" :key="tag.id" :value="`on:${tag.name}`" disabled>
+                <CommandItem v-for="tag in assigned" :key="tag.id" :value="`on:${tag.name}`" :disabled="saving" :aria-label="t('player.removeTag', { name: tag.name })" :title="t('player.removeTag', { name: tag.name })" @select="remove(tag.id)">
                   <Check /> <span class="tag-color rounded px-1" :style="tagStyle(tag)">{{ tag.name }}</span>
+                  <X class="ml-auto size-3 opacity-60" />
                 </CommandItem>
               </CommandGroup>
             </CommandList>
