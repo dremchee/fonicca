@@ -60,7 +60,7 @@ onScopeDispose(() => { disposed = true })
 
 <template>
   <div class="playback-spectrum" aria-hidden="true">
-    <svg class="spectrum-bars" :style="{ color: spectrumColor }" :viewBox="`0 0 ${DISPLAY_BANDS * 4 - 2} 18`" preserveAspectRatio="none" fill="currentColor">
+    <svg class="spectrum-bars" :class="{ 'spectrum-paused': !active }" :style="{ color: spectrumColor }" :viewBox="`0 0 ${DISPLAY_BANDS * 4 - 2} 18`" preserveAspectRatio="none" fill="currentColor">
       <rect v-for="(level, index) in displayLevels" :key="index" :x="index * 4" :y="18 - Math.max(1, level * 18)" width="2" :height="Math.max(1, level * 18)" rx="0.6" />
     </svg>
   </div>
@@ -68,5 +68,9 @@ onScopeDispose(() => { disposed = true })
 
 <style scoped>
 .playback-spectrum { position: relative; isolation: isolate; display: block; width: 100%; height: 14px; color: var(--primary); pointer-events: none; }
-.spectrum-bars { position: relative; display: block; width: 100%; height: 100%; }
+.spectrum-bars { position: relative; display: block; width: 100%; height: 100%; opacity: 1; transition: opacity 220ms ease-out; }
+.spectrum-paused { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .spectrum-bars { transition: none; }
+}
 </style>

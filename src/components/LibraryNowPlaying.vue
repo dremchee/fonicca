@@ -6,6 +6,7 @@ import { computed, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { api } from '@/api'
 import Hint from '@/components/Hint.vue'
+import PlaybackProgress from '@/components/PlaybackProgress.vue'
 import PlaybackSpectrum from '@/components/PlaybackSpectrum.vue'
 import SampleInfoHover from '@/components/SampleInfoHover.vue'
 import { Button } from '@/components/ui/button'
@@ -93,6 +94,7 @@ async function toggle() {
       </div>
       <PlaybackSpectrum :key="sample.id" :active="!player.paused" class="mt-1" @glow="lamp = $event" />
     </div>
+    <PlaybackProgress :key="sample.id" :position="player.position" :duration="sample.duration" @seek="player.seek(sample, $event)" @toggle="toggle" />
   </div>
 </template>
 
@@ -112,11 +114,17 @@ async function toggle() {
 }
 .player-lamp {
   position: absolute;
-  inset: -12px -20px;
+  inset: 0;
+  overflow: clip;
   z-index: -1;
+  pointer-events: none;
+}
+.player-lamp::before {
+  content: '';
+  position: absolute;
+  inset: -12px -20px;
   background: radial-gradient(ellipse 48% 46% at 50% 70%, currentColor 0%, transparent 100%);
   filter: blur(12px);
-  pointer-events: none;
 }
 .playback-toggle, .playback-toggle:hover { color: var(--primary); }
 .now-playing-time { color: color-mix(in srgb, var(--foreground) 80%, var(--background)); }
