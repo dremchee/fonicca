@@ -89,8 +89,8 @@ onBeforeUnmount(cancel)
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
         <Button
-          variant="ghost" size="xs" class="sort-heading min-w-0 max-w-full data-[state=open]:bg-accent"
-          :class="{ 'text-foreground': direction, 'ml-auto': alignRight }"
+          variant="ghost" size="xs" class="sort-heading min-w-0 data-[state=open]:bg-accent"
+          :class="{ 'text-foreground': direction, 'justify-end': alignRight, 'justify-start': !alignRight }"
           :aria-label="menuLabel"
         >
           <span class="truncate">{{ label }}</span>
@@ -134,9 +134,22 @@ onBeforeUnmount(cancel)
 </template>
 
 <style scoped>
-.sort-heading { padding-inline: 0; font: inherit; letter-spacing: inherit; text-transform: inherit; }
+.sort-heading {
+  position: absolute;
+  inset-block: 0;
+  inset-inline: -6px;
+  width: calc(100% + 12px);
+  height: 100%;
+  max-width: none;
+  padding-inline: 6px;
+  border-radius: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
 .resize-handle {
   position: absolute;
+  z-index: 1;
   inset-block: 0;
   right: -12px;
   width: 12px;

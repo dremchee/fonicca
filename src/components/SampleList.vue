@@ -18,6 +18,7 @@ import { Tooltip } from '@/components/ui/tooltip'
 import SampleContextMenu from '@/components/SampleContextMenu.vue'
 import { useSampleTable } from '@/composables/sampleTable'
 import SampleColumnHeader from '@/components/SampleColumnHeader.vue'
+import SampleColumnsMenu from '@/components/SampleColumnsMenu.vue'
 import { useSampleColumnWidths } from '@/composables/sampleColumnWidths'
 import { Button } from '@/components/ui/button'
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu'
@@ -37,7 +38,7 @@ const editor = useEditorStore()
 const settings = useSettingsStore()
 const { total, focusIndex, selectedIds, scope } = storeToRefs(library)
 
-const { table, visibleColumns } = useSampleTable()
+const { table, visibleColumns, resetWidths, resetView } = useSampleTable()
 const headerColumns = computed(() => table.getVisibleLeafColumns().map(column => ({
   column, id: column.id as ResizableSampleColumnId,
 })))
@@ -264,8 +265,8 @@ function onDragStart(e: DragEvent, sample: Sample) {
       </Hint>
     </div>
     <div ref="tableViewport" class="table-viewport flex-1 min-w-0 min-h-0 overflow-x-auto">
-      <div class="table-content relative flex flex-col h-full" :style="total > 0 ? tableStyle : undefined">
-        <div v-if="total > 0" class="header grid items-center px-3 h-8 border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
+      <div class="table-content relative flex flex-col h-full" :style="tableStyle">
+        <div class="header grid items-center px-3 h-8 border-b border-border text-[11px] uppercase tracking-wide text-muted-foreground">
           <span />
           <SampleColumnHeader
             v-for="{ column, id } in headerColumns" :key="id" :column="column"
@@ -274,7 +275,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
             @resize="previewColumnWidth(id, $event)" @commit="commitColumnWidth(id, $event)"
             @cancel="cancelColumnResize" @reset="resetColumnWidths(id)"
           />
-          <span aria-hidden="true" />
+          <SampleColumnsMenu :table="table" @reset-widths="resetWidths" @reset-view="resetView" />
         </div>
 
         <Tooltip>

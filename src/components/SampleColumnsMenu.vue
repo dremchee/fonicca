@@ -18,10 +18,10 @@ const columns = computed(() => props.table.getAllLeafColumns())
 
 <template>
   <Hint :text="t('list.columns.configure')">
-    <span class="inline-flex shrink-0">
+    <span class="inline-flex w-full shrink-0 justify-center">
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
-          <Button variant="outline" size="icon-sm" :aria-label="t('list.columns.configure')">
+          <Button variant="ghost" size="icon-sm" class="data-[state=open]:bg-accent" :aria-label="t('list.columns.configure')">
             <Columns3 />
           </Button>
         </DropdownMenuTrigger>
