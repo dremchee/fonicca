@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.6] - 2026-11-06
+
+- Filter by tag and remove tags from individual samples (6a2c394)
+- Add audition progress and fade the spectrum on pause (f2e0c48)
+- Move column controls into full-width table headers (95f014d)
+- Add library breadcrumbs and compact filter-row search (29689ca)
+- Refine filter reset, key mode selection and field focus (b97b544)
+- Refine column resizing and fit widths to the viewport (090f5a8)
+
 ## [0.1.5] - 2026-11-04
 
 - Add collapsible sidebar and animated pinned playback row (e3af920)
