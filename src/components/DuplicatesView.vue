@@ -34,6 +34,7 @@ import { useLibraryStore } from '@/stores/library'
 import { usePlayerStore } from '@/stores/player'
 import { useEditorStore } from '@/stores/editor'
 
+const props = defineProps<{ bottomInset: number }>()
 const { t } = useI18n()
 const dup = useDuplicatesStore()
 const { loading, falseMatches, rule, preferred, selected, focusedId, verifying, extras, trashable } = storeToRefs(dup)
@@ -69,6 +70,8 @@ const virtualizer = useVirtualizer(computed(() => ({
   count: rows.value.length,
   getScrollElement: () => scroller.value,
   estimateSize: (i: number) => rows.value[i]?.kind === 'group' ? GROUP_HEIGHT : COPY_HEIGHT,
+  paddingEnd: props.bottomInset,
+  scrollPaddingEnd: props.bottomInset,
   overscan: 20,
 })))
 // Row heights depend on the kind, so remeasure when the rows change.
@@ -266,7 +269,7 @@ function move(delta: number) {
 
 function isTyping(e: KeyboardEvent) {
   if (useSettingsStore().dialogOpen) return true
-  return e.target instanceof Element && (e.target.closest('[data-editor-panel], [role="menu"], [role="dialog"], [role="alertdialog"], [role="listbox"]') !== null
+  return e.defaultPrevented || e.target instanceof Element && (e.target.closest('[data-editor-panel], [data-mini-player], [role="menu"], [role="dialog"], [role="alertdialog"], [role="listbox"]') !== null
     || (e.target instanceof HTMLInputElement && e.target.type !== 'checkbox'))
 }
 onKeyStroke('ArrowDown', (e) => {

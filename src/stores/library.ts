@@ -71,20 +71,38 @@ export const useLibraryStore = defineStore('library', () => {
     fetch: page => api.listSamples(filter.value, page * PAGE_SIZE, PAGE_SIZE),
     protectedPages: () => {
       const protectedPages = focusIndex.value < 0 ? [] : [Math.floor(focusIndex.value / PAGE_SIZE)]
-      const playingId = usePlayerStore().playingId
-      if (playingId !== null) {
-        for (const [page, samples] of pages) {
-          if (samples.some(sample => sample.id === playingId)) {
-            protectedPages.push(page)
-            break
-          }
-        }
-      }
+      const playingId = usePlayerStore().miniPlayerSample?.id
+      const playingIndex = playingId == null ? -1 : cachedIndexOf(playingId)
+      if (playingIndex >= 0) protectedPages.push(Math.floor(playingIndex / PAGE_SIZE))
       return protectedPages
     },
   })
   const { sampleAt, ensureRange, ensureVisibleRange } = pageCache
   onScopeDispose(pageCache.dispose)
+
+  function cachedIndexOf(id: number) {
+    for (const [page, samples] of pages) {
+      const offset = samples.findIndex(sample => sample?.id === id)
+      if (offset >= 0) return page * PAGE_SIZE + offset
+    }
+    return -1
+  }
+
+  async function adjacentSample(id: number, direction: -1 | 1) {
+    if (!total.value) return
+    const revision = navigationRevision
+    const gen = generation
+    let index = cachedIndexOf(id)
+    if (index < 0) {
+      const ids = await api.sampleIds(filter.value)
+      if (revision !== navigationRevision || gen !== generation) return
+      index = ids.indexOf(id)
+    }
+    const target = index < 0 ? (direction === 1 ? 0 : total.value - 1) : index + direction
+    if (target < 0 || target >= total.value) return
+    await ensureRange(target, target)
+    if (revision === navigationRevision && gen === generation) return sampleAt(target)
+  }
 
   /** Reloads rows and count. Selection is kept unless the filter itself changed. */
   async function refresh({ keepSelection = false } = {}) {
@@ -625,6 +643,8 @@ export const useLibraryStore = defineStore('library', () => {
     sort,
     setSort,
     sampleAt,
+    cachedIndexOf,
+    adjacentSample,
     ensureRange,
     ensureVisibleRange,
     pageDiagnostics: pageCache.diagnostics,

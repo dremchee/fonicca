@@ -4,10 +4,10 @@ import { usePreferredReducedMotion, useRafFn } from '@vueuse/core'
 import { computed, onScopeDispose, shallowRef, watch } from 'vue'
 import { api } from '@/api'
 
-const props = defineProps<{ active: boolean }>()
+const props = defineProps<{ state: 'playing' | 'paused' | 'stopped' }>()
 const emit = defineEmits<{ glow: [value: { color: string, intensity: number }] }>()
 const levels = shallowRef<number[]>(Array.from({ length: 16 }, () => 0))
-const intensity = shallowRef(0)
+const muted = shallowRef(false)
 const reducedMotion = usePreferredReducedMotion()
 const spectrumColor = 'var(--primary)'
 // A denser drawing of the same logarithmic spectrum, without extra audio reads.
@@ -21,46 +21,58 @@ const displayLevels = computed(() => Array.from({ length: DISPLAY_BANDS }, (_, i
 }))
 let pending = false
 let generation = 0
-let disposed = false
+let intensity = 0
+let fresh = true
 
-// Poll only while auditioning; keep a short release tail after a pause.
+// Pausing stops the meter and preserves the last rendered spectrum.
 const { pause, resume } = useRafFn(async ({ delta }) => {
   if (pending) return
   pending = true
   const version = generation
   let meter: PlaybackLevels | null = null
   try {
-    if (props.active) meter = await api.playbackLevels(true)
+    meter = await api.playbackLevels(true)
   }
   catch { /* A missing meter must not interrupt playback. */ }
   finally { pending = false }
-  if (disposed || version !== generation) return
+  // The backend can stop returning levels before the transport state arrives.
+  if (!meter || version !== generation || props.state !== 'playing') return
   const release = Math.min(delta, 100) / 350
   levels.value = levels.value.map((level, i) => {
-    const amplitude = meter?.spectrum?.[i] ?? 0
+    const amplitude = meter.spectrum?.[i] ?? 0
     const next = amplitude > 0 ? Math.max(0, Math.min(1, (20 * Math.log10(amplitude) + 60) / 60)) : 0
-    return Math.max(next, level - release)
+    return fresh ? next : Math.max(next, level - release)
   })
+  fresh = false
   // Use actual output RMS, including the player's volume, for the glow envelope.
-  const rms = meter?.rms.length ? Math.sqrt(meter.rms.reduce((sum, value) => sum + value ** 2, 0) / meter.rms.length) : 0
+  const rms = meter.rms.length ? Math.sqrt(meter.rms.reduce((sum, value) => sum + value ** 2, 0) / meter.rms.length) : 0
   const target = rms > 0 ? Math.max(0, Math.min(1, (20 * Math.log10(rms) + 48) / 42)) : 0
-  const smoothing = 1 - Math.exp(-Math.min(delta, 100) / (target > intensity.value ? 90 : 380))
-  intensity.value = reducedMotion.value === 'reduce' ? 0 : intensity.value + (target - intensity.value) * smoothing
-  if (target === 0 && intensity.value < 0.002) intensity.value = 0
-  emit('glow', { color: spectrumColor, intensity: intensity.value })
-  if (!props.active && levels.value.every(level => level === 0) && intensity.value === 0) pause()
+  const smoothing = 1 - Math.exp(-Math.min(delta, 100) / (target > intensity ? 90 : 380))
+  intensity = reducedMotion.value === 'reduce' ? 0 : intensity + (target - intensity) * smoothing
+  if (target === 0 && intensity < 0.002) intensity = 0
+  emit('glow', { color: spectrumColor, intensity })
 }, { immediate: false, fpsLimit: 30 })
 
-watch(() => props.active, () => {
+watch(() => props.state, (state) => {
   generation++
-  resume()
+  if (state === 'playing') {
+    muted.value = false
+    resume()
+    return
+  }
+  pause()
+  // Fade out the last frame at its current height and color on Stop.
+  if (state === 'paused') muted.value = true
+  else fresh = true
+  intensity = 0
+  emit('glow', { color: spectrumColor, intensity })
 }, { immediate: true })
-onScopeDispose(() => { disposed = true })
+onScopeDispose(() => { generation++ })
 </script>
 
 <template>
   <div class="playback-spectrum" aria-hidden="true">
-    <svg class="spectrum-bars" :class="{ 'spectrum-paused': !active }" :style="{ color: spectrumColor }" :viewBox="`0 0 ${DISPLAY_BANDS * 4 - 2} 18`" preserveAspectRatio="none" fill="currentColor">
+    <svg class="spectrum-bars" :class="{ 'spectrum-muted': muted }" :data-state="state" :viewBox="`0 0 ${DISPLAY_BANDS * 4 - 2} 18`" preserveAspectRatio="none" fill="currentColor">
       <rect v-for="(level, index) in displayLevels" :key="index" :x="index * 4" :y="18 - Math.max(1, level * 18)" width="2" :height="Math.max(1, level * 18)" rx="0.6" />
     </svg>
   </div>
@@ -68,8 +80,9 @@ onScopeDispose(() => { disposed = true })
 
 <style scoped>
 .playback-spectrum { position: relative; isolation: isolate; display: block; width: 100%; height: 14px; color: var(--primary); pointer-events: none; }
-.spectrum-bars { position: relative; display: block; width: 100%; height: 100%; opacity: 1; transition: opacity 220ms ease-out; }
-.spectrum-paused { opacity: 0; }
+.spectrum-bars { position: relative; display: block; width: 100%; height: 100%; transition: color 150ms ease-out, opacity 220ms ease-out; }
+.spectrum-muted { color: #858585; }
+.spectrum-bars[data-state='stopped'] { opacity: 0; }
 @media (prefers-reduced-motion: reduce) {
   .spectrum-bars { transition: none; }
 }

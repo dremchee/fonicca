@@ -19,6 +19,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import FilterBar from '@/components/FilterBar.vue'
 import LibraryToolbar from '@/components/LibraryToolbar.vue'
 import LibraryLayout from '@/components/LibraryLayout.vue'
+import LibraryMiniPlayer from '@/components/LibraryMiniPlayer.vue'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -78,6 +79,7 @@ watch(() => player.playingSample, sample => { if (sample) void backgrounds.prepa
 
 // DuplicatesView replaces the list and handles its own arrows and Space.
 const inDuplicates = computed(() => library.scope.kind === 'duplicates')
+const miniPlayerInset = computed(() => player.miniPlayerSample ? 76 : 0)
 
 // Typing in a field or working in an open menu, popover or dialog: global shortcuts stay out of the way.
 function isTyping(e: KeyboardEvent) {
@@ -181,9 +183,10 @@ onKeyStroke(',', (e) => {
           <FilterBar ref="filters" />
         </template>
         <ResizablePanelGroup direction="vertical" auto-save-id="fonicca-layout-rows" class="min-h-0 flex-1">
-          <ResizablePanel v-if="!editor.expanded" id="list" :order="1" :min-size="20" class="flex flex-col">
-            <DuplicatesView v-if="inDuplicates" />
-            <SampleList v-else />
+          <ResizablePanel v-if="!editor.expanded" id="list" :order="1" :min-size="20" class="relative flex flex-col">
+            <DuplicatesView v-if="inDuplicates" :bottom-inset="miniPlayerInset" />
+            <SampleList v-else :bottom-inset="miniPlayerInset" />
+            <LibraryMiniPlayer v-if="player.miniPlayerSample && !settings.dialogOpen" />
           </ResizablePanel>
           <template v-if="editor.open">
             <ResizableHandle v-if="!editor.expanded" />

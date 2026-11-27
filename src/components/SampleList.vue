@@ -29,6 +29,7 @@ import { usePlayerStore } from '@/stores/player'
 import { useSettingsStore } from '@/stores/settings'
 
 const ROW_HEIGHT = 36
+const props = defineProps<{ bottomInset: number }>()
 
 const { t } = useI18n()
 const backgrounds = useWaveformBackgrounds()
@@ -122,6 +123,8 @@ const virtualizer = useVirtualizer(computed(() => ({
   count: total.value,
   getScrollElement: () => scroller.value,
   estimateSize: () => ROW_HEIGHT,
+  paddingEnd: props.bottomInset,
+  scrollPaddingEnd: props.bottomInset,
   overscan: 20,
 })))
 

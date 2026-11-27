@@ -23,6 +23,7 @@ export const usePlayerStore = defineStore('player', () => {
     watch(playing, s => (import.meta.hot!.data.playing = s), { immediate: true })
   /** The sample playing now, so the player can keep showing it once it is no longer selected. */
   const playingSample = computed(() => (playingId.value !== null && playing.value?.id === playingId.value ? playing.value : null))
+  const miniPlayerSample = computed(() => playing.value)
   let frame = 0
   let tracking = 0
   let needsResync = false
@@ -90,14 +91,20 @@ export const usePlayerStore = defineStore('player', () => {
       playing.value = patch(playing.value)
   }
 
-  async function stop() {
+  async function stop({ keepTrack = false } = {}) {
     cancelAnimationFrame(frame)
     tracking++
     pending = null
     playingId.value = null
     paused.value = false
     position.value = 0
+    if (!keepTrack) playing.value = null
     await api.stop()
+  }
+
+  /** A late transport action must not interrupt a newer audition. */
+  function canControl(id: number) {
+    return !pending && playing.value?.id === id
   }
 
   async function pause() {
@@ -188,7 +195,7 @@ export const usePlayerStore = defineStore('player', () => {
     }
   })
 
-  return { playingId, paused, isPlaying, playingSample, position, autoplay, error, adjust, syncTarget, play, stop, pause, toggle, seek, patchPlaying }
+  return { playingId, paused, isPlaying, playingSample, miniPlayerSample, position, autoplay, error, adjust, syncTarget, play, stop, pause, toggle, seek, patchPlaying, canControl }
 })
 
 if (import.meta.hot)

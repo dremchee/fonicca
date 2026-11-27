@@ -3,7 +3,7 @@ import { computed, useId } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatDuration } from '@/format'
 
-const props = defineProps<{ position: number, duration: number | null }>()
+const props = defineProps<{ position: number, duration: number | null, stopped: boolean }>()
 const emit = defineEmits<{ seek: [seconds: number], toggle: [] }>()
 const { t } = useI18n()
 const hintId = useId()
@@ -37,7 +37,7 @@ function onKeydown(event: KeyboardEvent) {
 </script>
 
 <template>
-  <div v-if="duration" class="playback-progress">
+  <div v-if="duration" class="playback-progress" :class="{ 'is-stopped': stopped }">
     <span class="progress-fill" :style="{ transform: `scaleX(${progress})` }" />
     <input
       type="range" class="progress-input" min="0" :max="duration" step="0.01" :value="position"
@@ -67,6 +67,9 @@ function onKeydown(event: KeyboardEvent) {
   background: var(--primary);
   transform-origin: left;
   pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .playback-progress.is-stopped .progress-fill { transition: transform 180ms ease-out; }
 }
 .progress-input {
   position: absolute;

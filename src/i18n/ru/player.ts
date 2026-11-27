@@ -1,7 +1,11 @@
 import type en from '../en/player'
 
 export default {
-  nowPlaying: 'Сейчас играет',
+  miniPlayer: 'Мини-плеер',
+  moveHint: 'Перетащите панель или переместите её стрелками. Home вернёт её вниз.',
+  previousTrack: 'Предыдущий трек',
+  nextTrack: 'Следующий трек',
+  stop: 'Остановить воспроизведение',
   volume: 'Громкость',
   hiddenTags: 'Скрытые теги: {n}',
   seek: 'Позиция воспроизведения',

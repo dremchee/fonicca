@@ -1,5 +1,9 @@
 export default {
-  nowPlaying: 'Now playing',
+  miniPlayer: 'Mini player',
+  moveHint: 'Drag the panel or use arrow keys to move it. Home returns it to the bottom.',
+  previousTrack: 'Previous track',
+  nextTrack: 'Next track',
+  stop: 'Stop playback',
   volume: 'Volume',
   hiddenTags: 'Hidden tags: {n}',
   seek: 'Playback position',
