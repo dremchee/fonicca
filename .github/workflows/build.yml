@@ -48,6 +48,7 @@ jobs:
     timeout-minutes: 45
     env:
       CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: '0'
     steps:
       - uses: actions/checkout@v6
         with:
@@ -64,7 +65,8 @@ jobs:
           node-version: '26'
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Install project Rust toolchain
+        run: rustup toolchain install --no-self-update
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri -> target
@@ -111,6 +113,7 @@ jobs:
         shell: bash
     env:
       CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: '0'
       UPDATE_REPOSITORY: ${{ vars.UPDATE_REPOSITORY || github.repository }}
       # AppImage tools must also work on runners without a mounted FUSE device.
       APPIMAGE_EXTRACT_AND_RUN: '1'
@@ -152,9 +155,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
+      - name: Install project Rust toolchain
+        run: rustup toolchain install --no-self-update --target ${{ matrix.target }}
 
       - uses: Swatinem/rust-cache@v2
         with:

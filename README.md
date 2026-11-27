@@ -75,7 +75,7 @@ Fonicca uses **Tauri 2**, **Rust**, **Vue 3**, **TypeScript**, **Pinia** and **V
 ### Prerequisites
 
 - Node.js 26 and pnpm 9.10.0, matching CI and `package.json`.
-- Rust stable and Cargo.
+- [Rustup](https://rustup.rs/) to install the Rust toolchain pinned in `rust-toolchain.toml`.
 - The [Tauri platform prerequisites](https://v2.tauri.app/start/prerequisites/) for your operating system.
 
 On Ubuntu 24.04, the native build also needs:
