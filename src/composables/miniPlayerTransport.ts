@@ -1,5 +1,6 @@
 import { computed, shallowRef } from 'vue'
 import { toast } from 'vue-sonner'
+import { adjacentPlaybackIndex } from '@/playback-navigation'
 import { useDuplicatesStore } from '@/stores/duplicates'
 import { useEditorStore } from '@/stores/editor'
 import { useLibraryStore } from '@/stores/library'
@@ -11,7 +12,7 @@ export function useMiniPlayerTransport() {
   const library = useLibraryStore()
   const duplicates = useDuplicatesStore()
   const sample = computed(() => player.miniPlayerSample)
-  const active = computed(() => player.playingId !== null && !player.paused)
+  const state = computed(() => player.playingId === null ? 'stopped' : player.paused ? 'paused' : 'playing')
   const busy = shallowRef(false)
 
   const copies = computed(() => library.scope.kind === 'duplicates'
@@ -23,8 +24,8 @@ export function useMiniPlayerTransport() {
     return copies.value?.findIndex(copy => copy.id === id) ?? library.cachedIndexOf(id)
   })
   const count = computed(() => copies.value?.length ?? library.total)
-  const canPrevious = computed(() => count.value > 0 && index.value !== 0)
-  const canNext = computed(() => count.value > 0 && (index.value < 0 || index.value + 1 < count.value))
+  const canPrevious = computed(() => adjacentPlaybackIndex(index.value, count.value, -1) !== null)
+  const canNext = computed(() => adjacentPlaybackIndex(index.value, count.value, 1) !== null)
 
   async function run(action: () => Promise<void>) {
     if (busy.value) return
@@ -38,7 +39,7 @@ export function useMiniPlayerTransport() {
     const current = sample.value
     if (!current) return
     return run(async () => {
-      if (!active.value) await editor.stopPlayback()
+      if (state.value !== 'playing') await editor.stopPlayback()
       if (player.canControl(current.id)) await player.toggle(current)
     })
   }
@@ -52,7 +53,8 @@ export function useMiniPlayerTransport() {
     if (!current) return
     return run(async () => {
       const list = copies.value
-      const target = index.value < 0 ? (direction === 1 ? 0 : count.value - 1) : index.value + direction
+      const target = adjacentPlaybackIndex(index.value, count.value, direction)
+      if (target === null) return
       const next = list ? list[target] : await library.adjacentSample(current.id, direction)
       if (!next || !player.canControl(current.id)) return
       await editor.stopPlayback()
@@ -60,5 +62,5 @@ export function useMiniPlayerTransport() {
     })
   }
 
-  return { sample, active, busy, canPrevious, canNext, toggle, stop, move }
+  return { sample, state, busy, canPrevious, canNext, toggle, stop, move }
 }

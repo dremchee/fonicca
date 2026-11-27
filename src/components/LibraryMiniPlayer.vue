@@ -18,15 +18,15 @@ import { usePlayerStore } from '@/stores/player'
 
 const { t } = useI18n()
 const player = usePlayerStore()
-const { sample, active, busy, canPrevious, canNext, toggle, stop, move } = useMiniPlayerTransport()
+const { sample, state, busy, canPrevious, canNext, toggle, stop, move } = useMiniPlayerTransport()
 const panel = useTemplateRef<HTMLElement>('panel')
 const { isDragging, style: positionStyle, moveWithKeys } = useMiniPlayerPosition(panel)
 const cover = shallowRef<Blob>()
 const tags = shallowRef<TrackTags | null>(null)
 const coverUrl = useObjectUrl(cover)
 const lamp = shallowRef({ color: 'var(--primary)', intensity: 0 })
+const active = computed(() => state.value === 'playing')
 const action = computed(() => t(active.value ? 'palette.pause' : 'palette.play', { name: sample.value?.name ?? '' }))
-const spectrumState = computed(() => active.value ? 'playing' : player.paused ? 'paused' : 'stopped')
 watch(() => sample.value?.id, () => { lamp.value = { color: 'var(--primary)', intensity: 0 } })
 
 // Invalidate late reads when tracks change; useObjectUrl releases old images.
@@ -83,7 +83,7 @@ function clock(seconds: number | null) {
           {{ clock(player.position) }} / {{ clock(sample.duration) }}
         </span>
       </div>
-      <PlaybackSpectrum :key="sample.id" :state="spectrumState" class="mt-1" @glow="lamp = $event" />
+      <PlaybackSpectrum :key="sample.id" :state="state" class="mt-1" @glow="lamp = $event" />
     </div>
     <div data-player-control class="flex shrink-0 items-center gap-0.5">
       <Hint :text="t('player.previousTrack')" side="top">
@@ -97,7 +97,7 @@ function clock(seconds: number | null) {
         </Button>
       </Hint>
       <Hint :text="t('player.stop')" side="top">
-        <Button variant="ghost" size="icon-sm" :aria-label="t('player.stop')" :aria-disabled="busy || undefined" :disabled="player.playingId === null" @click="stop">
+        <Button variant="ghost" size="icon-sm" :aria-label="t('player.stop')" :aria-disabled="busy || undefined" :disabled="state === 'stopped'" @click="stop">
           <Square class="size-3 fill-current" />
         </Button>
       </Hint>
@@ -109,7 +109,7 @@ function clock(seconds: number | null) {
     </div>
     <LibraryPlayerVolume data-player-control />
     <PlaybackProgress :key="sample.id" data-player-control :position="player.position" :duration="sample.duration"
-      :stopped="spectrumState === 'stopped'" @seek="player.seek(sample, $event)" @toggle="toggle" />
+      :stopped="state === 'stopped'" @seek="player.seek(sample, $event)" @toggle="toggle" />
   </div>
 </template>
 

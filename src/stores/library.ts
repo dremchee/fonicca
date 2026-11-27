@@ -9,8 +9,9 @@ import { StorageSerializers, useStorage } from '@vueuse/core'
 import type { LibrarySession } from '@/library-session'
 import { findSessionSampleIndex, parseLibrarySession, resolveSessionScope, sessionScope } from '@/library-session'
 import { computed, nextTick, onScopeDispose, reactive, ref, shallowReactive, watch } from 'vue'
-import { createLibraryPages } from '@/library-pages'
+import { createLibraryPages, findCachedRow } from '@/library-pages'
 import { createLibrarySelection } from '@/library-selection'
+import { adjacentPlaybackIndex } from '@/playback-navigation'
 import { toast } from 'vue-sonner'
 import { ANALYSIS_PROGRESS_EVENT, api, MODEL_DOWNLOAD_EVENT, SCAN_PROGRESS_EVENT, startFileDrag } from '@/api'
 import { formatNumber } from '@/format'
@@ -81,11 +82,7 @@ export const useLibraryStore = defineStore('library', () => {
   onScopeDispose(pageCache.dispose)
 
   function cachedIndexOf(id: number) {
-    for (const [page, samples] of pages) {
-      const offset = samples.findIndex(sample => sample?.id === id)
-      if (offset >= 0) return page * PAGE_SIZE + offset
-    }
-    return -1
+    return findCachedRow(pages, PAGE_SIZE, id)?.index ?? -1
   }
 
   async function adjacentSample(id: number, direction: -1 | 1) {
@@ -98,8 +95,8 @@ export const useLibraryStore = defineStore('library', () => {
       if (revision !== navigationRevision || gen !== generation) return
       index = ids.indexOf(id)
     }
-    const target = index < 0 ? (direction === 1 ? 0 : total.value - 1) : index + direction
-    if (target < 0 || target >= total.value) return
+    const target = adjacentPlaybackIndex(index, total.value, direction)
+    if (target === null) return
     await ensureRange(target, target)
     if (revision === navigationRevision && gen === generation) return sampleAt(target)
   }

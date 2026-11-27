@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { playbackSeekTarget } from '../src/playback-navigation.ts'
+import { adjacentPlaybackIndex, playbackSeekTarget } from '../src/playback-navigation.ts'
+
+test('track navigation follows the displayed list without wrapping at the ends', () => {
+  assert.equal(adjacentPlaybackIndex(1, 3, -1), 0)
+  assert.equal(adjacentPlaybackIndex(1, 3, 1), 2)
+  assert.equal(adjacentPlaybackIndex(0, 3, -1), null)
+  assert.equal(adjacentPlaybackIndex(2, 3, 1), null)
+  assert.equal(adjacentPlaybackIndex(-1, 3, -1), 2)
+  assert.equal(adjacentPlaybackIndex(-1, 3, 1), 0)
+  assert.equal(adjacentPlaybackIndex(-1, 0, -1), null)
+  assert.equal(adjacentPlaybackIndex(-1, 0, 1), null)
+})
 
 test('keyboard seeking is precise for one-shots and faster for long tracks', () => {
   assert.equal(playbackSeekTarget('ArrowRight', 0.25, 0.8), 0.26)

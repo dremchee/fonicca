@@ -1,4 +1,5 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
+import { findCachedRow } from '../library-pages.ts'
 
 /** Pin only a loaded current row after its whole virtual slot leaves the top.
  * Does not fetch pages or change the virtualizer's range (including for stems).
@@ -12,12 +13,7 @@ export function usePinnedPlayback<T extends { id: number }>(options: {
 }) {
   const playing = computed(() => {
     const id = toValue(options.playingId)
-    if (id === null) return null
-    for (const [page, samples] of toValue(options.pages)) {
-      const offset = samples.findIndex(sample => sample.id === id)
-      if (offset >= 0) return { index: page * options.pageSize + offset, sample: samples[offset]! }
-    }
-    return null
+    return id === null ? null : findCachedRow(toValue(options.pages), options.pageSize, id)
   })
   return {
     playingIndex: computed(() => playing.value?.index ?? -1),

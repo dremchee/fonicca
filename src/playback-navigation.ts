@@ -16,3 +16,9 @@ export function playbackSeekTarget(key: string, position: number, duration: numb
   // Round only arithmetic noise; don't move the end of a fractional-length sample.
   return Math.min(duration, Math.max(0, Math.round(target * 1000000) / 1000000))
 }
+
+/** Follow the visible order. A track outside the list enters from the nearest end. */
+export function adjacentPlaybackIndex(index: number, count: number, direction: -1 | 1): number | null {
+  const target = index < 0 ? (direction === 1 ? 0 : count - 1) : index + direction
+  return target >= 0 && target < count ? target : null
+}

@@ -1,3 +1,11 @@
+export function findCachedRow<Row extends { id: number }>(pages: ReadonlyMap<number, readonly Row[]>, pageSize: number, id: number) {
+  for (const [page, rows] of pages) {
+    const offset = rows.findIndex(row => row?.id === id)
+    if (offset >= 0) return { index: page * pageSize + offset, sample: rows[offset]! }
+  }
+  return null
+}
+
 /** Bounded page retention and request scheduling, independent of Vue and Tauri. */
 interface Options<Row> {
   pages: Map<number, Row[]>
