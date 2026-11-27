@@ -1,17 +1,20 @@
 <script setup lang="ts">
-import type { AcceptableValue } from 'reka-ui'
 import { ChevronDown, Music2 } from '@lucide/vue'
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { Popover, PopoverContent, PopoverTitle, PopoverTrigger } from '@ui-sdk/vue/popover'
+import { Toggle, ToggleGroup } from '@ui-sdk/vue/toggle'
+import { computed, shallowRef, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { toggleVariants } from '@/components/ui/toggle'
 
 const key = defineModel<string | null>({ required: true })
 const { t } = useI18n()
 const notesEl = useTemplateRef<HTMLDivElement>('notesEl')
-const mode = ref<'major' | 'minor'>('major')
+const mode = shallowRef<'major' | 'minor'>('major')
 const note = computed(() => key.value?.replace(/m$/, '') ?? '')
+const selectedNote = computed(() => note.value ? [note.value] : [])
+const selectedMode = computed(() => [mode.value])
+const choiceStyle = toggleVariants({ variant: 'outline', size: 'sm' })
 const notes = [
   { value: 'C', column: 1, row: 2 },
   { value: 'C#', column: 2, row: 1 },
@@ -33,64 +36,60 @@ watch(key, (value) => {
     mode.value = value.endsWith('m') ? 'minor' : 'major'
 }, { immediate: true, flush: 'sync' })
 
-function selectNote(value: AcceptableValue | AcceptableValue[]) {
-  if (!value) key.value = null
-  else if (typeof value === 'string') key.value = value + (mode.value === 'minor' ? 'm' : '')
+function selectNote([value]: string[]) {
+  key.value = value ? value + (mode.value === 'minor' ? 'm' : '') : null
 }
 
-function selectMode(value: AcceptableValue | AcceptableValue[]) {
-  // Keep one mode selected when its active segment is clicked again.
+function selectMode([value]: string[]) {
   if (value !== 'major' && value !== 'minor') return
   mode.value = value
   if (note.value) key.value = note.value + (value === 'minor' ? 'm' : '')
 }
 
-function focusNote(event: Event) {
-  event.preventDefault()
-  void nextTick(() => {
-    const notes = notesEl.value
-    const selected = notes?.querySelector<HTMLButtonElement>('[data-state="on"]')
-    ;(selected ?? notes?.querySelector<HTMLButtonElement>('button'))?.focus()
-  })
+function initialFocus() {
+  const notes = notesEl.value
+  return notes?.querySelector<HTMLButtonElement>('[data-pressed]') ?? notes?.querySelector('button')
 }
 </script>
 
 <template>
   <Popover>
-    <PopoverTrigger as-child>
-      <Button variant="outline" size="sm" class="key-trigger min-w-24 justify-between font-normal" :aria-label="t('filters.key')">
-        <Music2 data-icon="inline-start" class="text-muted-foreground" />
-        <span>{{ key ?? t('filters.key') }}</span>
-        <ChevronDown data-icon="inline-end" class="key-chevron" />
-      </Button>
+    <PopoverTrigger :aria-label="t('filters.key')">
+      <template #render="{ props }">
+        <Button v-bind="props" variant="outline" size="sm" class="key-trigger min-w-24 justify-between font-normal">
+          <Music2 data-icon="inline-start" class="text-muted-foreground" />
+          <span>{{ key ?? t('filters.key') }}</span>
+          <ChevronDown data-icon="inline-end" class="key-chevron" />
+        </Button>
+      </template>
     </PopoverTrigger>
-    <PopoverContent align="start" class="w-80 rounded-2xl p-4" :aria-label="t('filters.key')" @open-auto-focus="focusNote">
+    <PopoverContent
+      align="start" :side-offset="4" :initial-focus="initialFocus"
+      class="key-popover bg-popover text-popover-foreground w-80 rounded-2xl border p-4 shadow-md outline-hidden"
+    >
       <div class="key-options">
         <div class="mb-3 flex items-center justify-between gap-2">
-          <span class="text-sm font-medium">{{ t('filters.key') }}</span>
+          <PopoverTitle class="text-sm font-medium">{{ t('filters.key') }}</PopoverTitle>
           <Button variant="ghost" size="xs" class="text-muted-foreground" :disabled="key === null" @click="key = null">
             {{ t('filters.anyKey') }}
           </Button>
         </div>
         <div ref="notesEl">
-          <ToggleGroup
-            type="single" variant="outline" size="sm" :spacing="1" class="key-notes" loop
-            :aria-label="t('filters.note')" :model-value="note" @update:model-value="selectNote"
-          >
-            <ToggleGroupItem
-              v-for="n in notes" :key="n.value" :value="n.value" class="note-choice"
+          <ToggleGroup class="key-notes" loop :aria-label="t('filters.note')" :value="selectedNote" @update:value="selectNote">
+            <Toggle
+              v-for="n in notes" :key="n.value" :value="n.value" :class="[choiceStyle, 'note-choice']"
               :style="{ gridColumn: `${n.column} / span 2`, gridRow: n.row }"
             >
               {{ n.value }}
-            </ToggleGroupItem>
+            </Toggle>
           </ToggleGroup>
         </div>
         <ToggleGroup
-          type="single" variant="outline" size="sm" :spacing="2" class="key-modes mt-4"
-          :aria-label="t('filters.keyMode')" :model-value="mode" @update:model-value="selectMode"
+          class="key-modes mt-4" :deselectable="false"
+          :aria-label="t('filters.keyMode')" :value="selectedMode" @update:value="selectMode"
         >
-          <ToggleGroupItem value="major" class="mode-choice">{{ t('filters.major') }}</ToggleGroupItem>
-          <ToggleGroupItem value="minor" class="mode-choice">{{ t('filters.minor') }}</ToggleGroupItem>
+          <Toggle value="major" :class="[choiceStyle, 'mode-choice']">{{ t('filters.major') }}</Toggle>
+          <Toggle value="minor" :class="[choiceStyle, 'mode-choice']">{{ t('filters.minor') }}</Toggle>
         </ToggleGroup>
       </div>
     </PopoverContent>
@@ -102,8 +101,18 @@ function focusNote(event: Event) {
   opacity: 0.5;
   transition: transform 120ms ease;
 }
-.key-trigger[data-state='open'] .key-chevron {
+.key-trigger[data-open] .key-chevron {
   transform: rotate(180deg);
+}
+.key-popover {
+  margin: 0;
+  max-width: min(var(--available-width, 100vw), calc(100vw - 1.5rem));
+  transform-origin: var(--transform-origin);
+  transition: opacity 120ms ease, scale 120ms ease;
+}
+.key-popover:is([data-starting-style], [data-ending-style]) {
+  opacity: 0;
+  scale: 0.97;
 }
 .key-options :deep(.key-notes) {
   display: grid;
@@ -120,8 +129,8 @@ function focusNote(event: Event) {
   corner-shape: round;
   font-weight: 600;
 }
-.key-options :deep(.note-choice[data-state='on']),
-.key-options :deep(.mode-choice[data-state='on']) {
+.key-options :deep(.note-choice[data-pressed]),
+.key-options :deep(.mode-choice[data-pressed]) {
   background: var(--primary);
   color: var(--primary-foreground);
   border-color: var(--primary);
@@ -137,6 +146,6 @@ function focusNote(event: Event) {
   corner-shape: round;
 }
 @media (prefers-reduced-motion: reduce) {
-  .key-chevron { transition: none; }
+  .key-chevron, .key-popover { transition: none; }
 }
 </style>
