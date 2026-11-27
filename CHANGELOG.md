@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.8] - 2026-11-27
+
+- Pilot UI SDK in the musical key filter (9cd58d0)
+- Migrate core controls to UI SDK and add category icons (211fae9)
+- Complete the UI SDK migration and polish the mini player (60605bb)
+
 ## [0.1.7] - 2026-11-27
 
 - Pin the Rust toolchain for desktop builds (fa8aec7)
