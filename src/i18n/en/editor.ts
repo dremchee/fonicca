@@ -15,7 +15,7 @@ export default {
     sampleRate: 'Sample rate',
     sourceRate: 'Same as source · {rate} kHz',
     rateKhz: '{rate} kHz',
-    formats: { wav: 'Uncompressed audio. Preserves source bit depth, loop points and markers.', mp3: 'MP3 · {bitrate} kb/s. Compressed audio for listening and sharing.', ogg: 'Ogg Vorbis · quality 6. Compressed audio with a variable bitrate.' },
+    formats: { wav: 'Uncompressed audio. Preserves source bit depth, loop points and markers.', mp3: 'MP3 · {bitrate} kb/s. Compressed audio for listening and sharing.', ogg: 'Ogg Vorbis · quality 6. Compressed audio with a variable bitrate.', flac: 'Lossless compression, 24-bit PCM.', aiff: 'Uncompressed 24-bit PCM.', m4a: 'Apple Lossless, 16-bit PCM.', caf: 'Uncompressed 32-bit float PCM.' },
     wavMetadata: 'Loop points and slice markers are saved only in WAV.',
     as: 'Save as…',
     selection: 'Save selection…',

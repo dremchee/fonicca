@@ -3,12 +3,13 @@ import { useLocalStorage } from '@vueuse/core'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { acceptHMRUpdate, defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import { isStemModel, modelsForMode } from '@/stem-models'
 import { useBackgroundJob, type ModelJobStatus } from '@/composables/backgroundJob'
+import { audioExportFormat, isAudioExportFormat, type AudioExportFormat } from '@/audio-export'
 import { modelCatalog } from '@/model-catalog.generated'
-export interface StemProgress { mode: StemMode, model: StemModel, sourceId: number | null, running: boolean, stage: string, progress: number, error: string | null, cancelled: boolean, paths: string[], ids: number[], name: string }
-const initial = (): StemProgress => ({ mode: 'four', model: 'scnetXlIhf', sourceId: null, running: false, stage: '', progress: 0, error: null, cancelled: false, paths: [], ids: [], name: '' })
+export interface StemProgress { mode: StemMode, model: StemModel, format: AudioExportFormat, sourceId: number | null, running: boolean, stage: string, progress: number, error: string | null, cancelled: boolean, paths: string[], ids: number[], name: string }
+const initial = (): StemProgress => ({ mode: 'four', model: 'scnetXlIhf', format: 'wav', sourceId: null, running: false, stage: '', progress: 0, error: null, cancelled: false, paths: [], ids: [], name: '' })
 export const useStemsStore = defineStore('stems', () => {
   const open = ref(false)
   const model = useLocalStorage<StemModel>('stems.model', 'scnetXlIhf')
@@ -16,6 +17,7 @@ export const useStemsStore = defineStore('stems', () => {
   if (mode.value !== 'two' && mode.value !== 'four') mode.value = 'four'
   if (!isStemModel(model.value) || !modelsForMode(mode.value).includes(model.value)) model.value = modelsForMode(mode.value)[0]!
   const availableModels = computed(() => modelsForMode(mode.value))
+  const outputFormat = shallowRef<AudioExportFormat>('wav')
   const sample = ref<Sample | null>(null)
   const job = useBackgroundJob({ initial: initial(), bytes: modelCatalog.scnetXlIhf.bytes,
     read: () => invoke<ModelJobStatus<StemProgress>>('stem_status', { model: model.value }),
@@ -36,15 +38,28 @@ export const useStemsStore = defineStore('stems', () => {
     if (!availableModels.value.includes(model.value)) model.value = availableModels.value[0]!
     void load()
   }
-  function show(selected?: Sample) { if (selected) sample.value = selected; job.clearError(); open.value = true; void load() }
+  const format = computed(() => progress.value.running ? progress.value.format : outputFormat.value)
+  function setFormat(value: unknown) {
+    if (!starting.value && !progress.value.running && isAudioExportFormat(value))
+      outputFormat.value = value
+  }
+  function show(selected?: Sample) {
+    if (selected) {
+      sample.value = selected
+      outputFormat.value = audioExportFormat(selected.path)
+    }
+    job.clearError()
+    open.value = true
+    void load()
+  }
   function start() {
     return job.start(async () => {
       if (!sample.value) return false
-      await invoke('stem_start', { id: sample.value.id, model: model.value, mode: mode.value })
+      await invoke('stem_start', { id: sample.value.id, model: model.value, mode: mode.value, format: outputFormat.value })
     })
   }
   function cancel() { return job.cancel(() => invoke('stem_cancel')) }
-  return { open, mode, setMode, availableModels, model, setModel, sample, progress, ready, bytes, error, starting, cancelling, init, show, start, cancel }
+  return { open, mode, setMode, availableModels, model, setModel, format, setFormat, sample, progress, ready, bytes, error, starting, cancelling, init, show, start, cancel }
 })
 
 if (import.meta.hot)

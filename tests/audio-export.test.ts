@@ -9,7 +9,14 @@ test('export uses the selected codec extension, never WAV data disguised as MP3'
   assert.equal(audioExportPath('/tmp/Track.v2', 'mp3'), '/tmp/Track.v2.mp3')
   assert.equal(audioExportPath('/tmp/ogg.folder/Track.ogg', 'wav'), '/tmp/ogg.folder/Track.wav')
   assert.equal(audioExportFormat('/tmp/Track.MP3'), 'mp3')
-  assert.equal(audioExportFormat('/tmp/Track.flac'), 'wav')
+  assert.equal(audioExportFormat('/tmp/Track.FLAC'), 'flac')
+  assert.equal(audioExportFormat('/tmp/Track.aifc'), 'aiff')
+  assert.equal(audioExportFormat('/tmp/Track.mp4'), 'm4a')
+  assert.equal(audioExportFormat('/tmp/Track.oga'), 'ogg')
+  assert.equal(audioExportFormat('/tmp/Track.caf'), 'caf')
+  assert.equal(audioExportFormat('/tmp/Track'), 'wav')
+  assert.equal(audioExportPath('/tmp/Track.FLAC', 'aiff'), '/tmp/Track.aiff')
+  assert.equal(audioExportPath('/tmp/Track.aifc', 'm4a'), '/tmp/Track.m4a')
 })
 
 test('MP3 rate selection cannot promise unsupported high sample rates', () => {

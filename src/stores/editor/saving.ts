@@ -4,7 +4,7 @@ import { toast } from 'vue-sonner'
 import { confirm } from '@/composables/confirm'
 import { formatNumber } from '@/format'
 import { t } from '@/i18n'
-import { audioExportFormat, audioExportPath } from '@/audio-export'
+import { AUDIO_EXPORT_LABELS, audioExportFormat, audioExportPath } from '@/audio-export'
 import { chooseAudioExport } from '@/composables/audioExport'
 import { editorApi } from './api'
 import type { EditorStoreState } from './state'
@@ -42,7 +42,7 @@ export function createEditorSaving({ context, stopLibraryPlayback, stopPlayback 
         const picked = await chooseSavePath({
           title: t(mode === 'selection' ? 'editor.save.selection' : 'editor.save.as'),
           defaultPath: sample.value.path.replace(/\.[^/\\.]+$/, '') + suffix,
-          filters: [{ name: format === 'ogg' ? 'OGG Vorbis' : format.toUpperCase(), extensions: [format] }],
+          filters: [{ name: AUDIO_EXPORT_LABELS[format], extensions: [format] }],
         })
         if (!picked) return false
         destination = audioExportPath(picked, format)

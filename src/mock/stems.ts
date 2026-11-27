@@ -1,7 +1,8 @@
 import type { Sample, StemModel, StemMode } from '@/api'
 import { stemModelBytes, stemModels, stemNames } from '@/stem-models'
+import { audioExportFormat, isAudioExportFormat, type AudioExportFormat } from '@/audio-export'
 import { emit } from '@tauri-apps/api/event'
-const initial = () => ({ mode: 'four' as StemMode, model: 'spleeter' as StemModel, sourceId: null as number | null, running: false, stage: '', progress: 0, error: null, cancelled: false, paths: [] as string[], ids: [] as number[], name: '' })
+const initial = () => ({ mode: 'four' as StemMode, model: 'spleeter' as StemModel, format: 'wav' as AudioExportFormat, sourceId: null as number | null, running: false, stage: '', progress: 0, error: null, cancelled: false, paths: [] as string[], ids: [] as number[], name: '' })
 let progress = initial()
 const ready = Object.fromEntries(stemModels.map(model => [model, location.hash === '#models' || location.hash === '#stem-processing'])) as Record<StemModel, boolean>
 const bytes = stemModelBytes
@@ -38,13 +39,34 @@ export function stemsCommand(cmd: string, args: any, folder?: string | null): un
       const model: StemModel = args.model ?? 'spleeter'
       const mode: StemMode = args.mode ?? 'four'
       const names = stemNames(mode)
-      progress = { ...initial(), model, mode, sourceId: args.id, running: true, stage: ready[model] ? 'separating' : 'downloading', name: 'Drum loop.wav', progress: location.hash === '#stem-processing' ? 0.3 : 0 }
+      const requestedFormat: unknown = args.format
+      const format = isAudioExportFormat(requestedFormat) ? requestedFormat : audioExportFormat(stemSample.path)
+      progress = { ...initial(), model, mode, format, sourceId: args.id, running: true, stage: ready[model] ? 'separating' : 'downloading', name: 'Drum loop.wav', progress: location.hash === '#stem-processing' ? 0.3 : 0 }
       const tick = () => {
         if (version !== generation) return
         progress.progress = Math.min(1, progress.progress + (location.hash === '#stem-processing' ? 0.001 : 0.2))
         if (progress.progress < 1) setTimeout(tick, 250)
         else if (!ready[model]) { ready[model] = true; progress.stage = 'separating'; progress.progress = 0; setTimeout(tick, 250) }
-        else { progress.running = false; progress.stage = 'done'; progress.ids = names.map((_, i) => 101 + i); progress.paths = names.map(n => `${folder || '/mock'}/Drum loop - ${n}.wav`); children = progress.paths.map((path, index) => ({ ...stemSample, id: progress.ids[index], path, name: path.split('/').pop()!.replace(/\.wav$/, ''), stemParentId: 1, stemKind: names[index] as Sample['stemKind'], stemCount: 0 })); localStorage.setItem('mock.stem.results', JSON.stringify(progress.paths.map((path, i) => ({ id: progress.ids[i], path, name: names[i], duration: 8 })))); void emit('stems:changed', progress) }
+        else {
+          progress.running = false
+          progress.stage = 'done'
+          progress.ids = names.map((_, i) => 101 + i)
+          progress.paths = names.map(name => `${folder || '/mock'}/Drum loop - ${name}.${format}`)
+          const bitDepth = { wav: 32, mp3: null, ogg: null, flac: 24, aiff: 24, m4a: 16, caf: 32 }[format]
+          children = progress.paths.map((path, index) => ({
+            ...stemSample,
+            id: progress.ids[index],
+            path,
+            name: `Drum loop - ${names[index]}`,
+            ext: format,
+            bitDepth,
+            stemParentId: 1,
+            stemKind: names[index] as Sample['stemKind'],
+            stemCount: 0,
+          }))
+          localStorage.setItem('mock.stem.results', JSON.stringify(progress.paths.map((path, i) => ({ id: progress.ids[i], path, name: names[i], duration: 8 }))))
+          void emit('stems:changed', progress)
+        }
       }
       setTimeout(tick, 250); return null
     }

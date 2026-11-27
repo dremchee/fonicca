@@ -7,6 +7,7 @@ import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { AUDIO_EXPORT_FORMATS, AUDIO_EXPORT_LABELS } from '@/audio-export'
 import { useSettingsStore } from '@/stores/settings'
 import { formatSize, shortPath } from '@/format'
 import { useStemsStore } from '@/stores/stems'
@@ -50,6 +51,17 @@ async function edit(index: number) {
         <p class="text-xs text-muted-foreground">{{ t(`stems.modelDescriptions.${stems.model}`) }}</p>
         <p class="text-xs text-muted-foreground">{{ stems.ready ? t('stems.ready') : t('stems.download', { size: formatSize(stems.bytes) }) }}</p>
       </div>
+      <div class="flex flex-col gap-2">
+        <label for="stem-format" class="text-xs font-medium">{{ t('stems.format') }}</label>
+        <Select :model-value="stems.format" :disabled="stems.progress.running || stems.starting" @update:model-value="stems.setFormat">
+          <SelectTrigger id="stem-format"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="format in AUDIO_EXPORT_FORMATS" :key="format" :value="format">
+              {{ AUDIO_EXPORT_LABELS[format] }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       <div class="rounded-md border border-border p-3 flex flex-col gap-2">
         <span class="text-xs font-medium">{{ t('stems.folder') }}</span>
         <div class="flex items-center gap-2"><span class="min-w-0 flex-1 truncate text-xs text-muted-foreground" :title="folder">{{ folder ? shortPath(folder) : t('stems.noFolder') }}</span><Button size="sm" variant="outline" :disabled="stems.progress.running || stems.starting" @click="choose"><Settings2 />{{ t('stems.folderSettings') }}</Button></div>
@@ -62,7 +74,7 @@ async function edit(index: number) {
       </div>
       <p v-if="stems.error || stems.progress.error" role="alert" class="text-xs text-destructive break-words">{{ stems.error || stems.progress.error }}</p>
       <template v-if="stems.progress.paths.length && !stems.progress.running">
-        <div class="divide-y divide-border text-xs"><div v-for="(path, i) in stems.progress.paths" :key="path" class="flex items-center gap-2 py-1.5"><span class="flex-1" :title="path">{{ t(`stems.instruments.${names[i]}`) }}</span><Button variant="ghost" size="icon-xs" :disabled="!stems.progress.ids[i]" :aria-label="`${t('stems.edit')} · ${t(`stems.instruments.${names[i]}`)}`" @click="edit(i)"><Pencil /></Button></div></div>
+        <div class="divide-y divide-border text-xs"><div v-for="(path, i) in stems.progress.paths" :key="path" class="flex items-center gap-2 py-1.5"><span class="flex-1" :title="path">{{ t(`stems.instruments.${names[i]}`) }} <span class="text-muted-foreground">· {{ AUDIO_EXPORT_LABELS[stems.progress.format] }}</span></span><Button variant="ghost" size="icon-xs" :disabled="!stems.progress.ids[i]" :aria-label="`${t('stems.edit')} · ${t(`stems.instruments.${names[i]}`)}`" @click="edit(i)"><Pencil /></Button></div></div>
         <div class="flex flex-wrap gap-2"><Button variant="outline" size="sm" @click="revealItemInDir(stems.progress.paths[0])">{{ t('stems.reveal') }}</Button></div>
       </template>
       <DialogFooter>

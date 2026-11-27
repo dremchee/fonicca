@@ -8,6 +8,7 @@ mod vocal;
 use crate::{
     AppState,
     audio::{self, Pcm},
+    editor::encoding::{self, Format},
     error::{Error, Result},
 };
 use serde::{Deserialize, Serialize};
@@ -61,6 +62,7 @@ impl Mode {
 pub struct Progress {
     pub model: Model,
     pub mode: Mode,
+    pub format: Format,
     /// Stable source identity, independent of the current library selection.
     pub source_id: Option<i64>,
     pub running: bool,
@@ -124,6 +126,7 @@ pub fn stem_start(
     id: i64,
     model: Option<Model>,
     mode: Option<Mode>,
+    format: Option<Format>,
 ) -> Result<()> {
     let model = model.unwrap_or_default();
     let mode = mode.unwrap_or_default();
@@ -137,6 +140,7 @@ pub fn stem_start(
             .lock()
             .unwrap()
             .query_row("SELECT path FROM samples WHERE id=?1", [id], |r| r.get(0))?;
+    let format = format.unwrap_or_else(|| Format::for_source(Path::new(&path)));
     let folder = state.settings.get().stems_folder.map(PathBuf::from)
         .unwrap_or_else(|| Path::new(&path).parent().unwrap_or(Path::new(".")).to_owned());
     if !folder.is_dir() {
@@ -156,6 +160,7 @@ pub fn stem_start(
     *state.stems.status.lock().unwrap() = Progress {
         model,
         mode,
+        format,
         source_id: Some(id),
         running: true,
         stage: "preparing".into(),
@@ -170,7 +175,7 @@ pub fn stem_start(
         let (_model_lease, _processing_lease) = (model_lease, processing_lease);
         let state = app.state::<AppState>();
         let jobs = &state.stems;
-        let result = run(&state, Path::new(&path), &folder, model, mode);
+        let result = run(&state, Path::new(&path), &folder, model, mode, format);
         let mut status = jobs.status.lock().unwrap();
         status.running = false;
         match result {
@@ -228,12 +233,13 @@ fn separate_to_folder_with_model(
     cancel: &AtomicBool,
     progress: impl Fn(f64),
 ) -> Result<Vec<PathBuf>> {
-    separate_to_folder_mode(model, Mode::Four, model_dir, source, parent, cancel, progress)
+    separate_to_folder_mode(model, Mode::Four, model_dir, source, parent, cancel, Format::Wav, |_, value| progress(value))
 }
 fn separate_to_folder_mode(
     model: Model, mode: Mode, model_dir: &Path, source: &Path, parent: &Path,
-    cancel: &AtomicBool, progress: impl Fn(f64),
+    cancel: &AtomicBool, format: Format, update: impl Fn(&str, f64),
 ) -> Result<Vec<PathBuf>> {
+    let progress = |value| update("separating", value);
     mode.validate(model)?;
     let info = audio::probe(source)?;
     if info.duration.is_some_and(|d| d > 600.0) || info.channels.is_some_and(|c| c > 2) {
@@ -329,7 +335,28 @@ fn separate_to_folder_mode(
         writer.finalize().map_err(failure)?;
     }
     check(cancel)?;
-    publish_stems_named(&working.path, parent, &stem, mode.names())
+    drop(pcm);
+    encode_stems(&working.path, mode.names(), format, cancel, |value| update("encoding", value))?;
+    check(cancel)?;
+    publish_stems_named(&working.path, parent, &stem, mode.names(), format)
+}
+
+fn encode_stems(
+    working: &Path, names: &[&str], format: Format, cancel: &AtomicBool, progress: impl Fn(f64),
+) -> Result<()> {
+    if format == Format::Wav {
+        return Ok(());
+    }
+    progress(0.0);
+    for (index, name) in names.iter().enumerate() {
+        check(cancel)?;
+        let source = working.join(format!("{name}.wav"));
+        let target = working.join(format!("{name}.{}", format.extension()));
+        encoding::transcode(&source, &target, format, &|| cancel.load(Ordering::Relaxed))?;
+        std::fs::remove_file(source)?;
+        progress((index + 1) as f64 / names.len() as f64);
+    }
+    Ok(())
 }
 
 // All backends emit interleaved stereo, vocals first. Derive the two-stem
@@ -364,9 +391,10 @@ fn write_block<W: std::io::Write + std::io::Seek>(
 /// Repeated separations choose a new numbered directory for the complete set.
 #[cfg(test)]
 fn publish_stems(working: &Path, parent: &Path, name: &str) -> Result<Vec<PathBuf>> {
-    publish_stems_named(working, parent, name, &dsp::NAMES)
+    publish_stems_named(working, parent, name, &dsp::NAMES, Format::Wav)
 }
-fn publish_stems_named(working: &Path, parent: &Path, name: &str, names: &[&str]) -> Result<Vec<PathBuf>> {
+fn publish_stems_named(working: &Path, parent: &Path, name: &str, names: &[&str], format: Format) -> Result<Vec<PathBuf>> {
+    let extension = format.extension();
     for version in 1.. {
         let suffix = if version == 1 { String::new() } else { format!(" {version}") };
         let folder = parent.join(format!("{name}{suffix}"));
@@ -376,7 +404,7 @@ fn publish_stems_named(working: &Path, parent: &Path, name: &str, names: &[&str]
             Err(e) => return Err(e.into()),
         }
         let paths: Vec<_> = names.iter()
-            .map(|kind| folder.join(format!("{name} - {kind}.wav"))).collect();
+            .map(|kind| folder.join(format!("{name} - {kind}.{extension}"))).collect();
         let mut published = Vec::new();
         let result: std::io::Result<()> = (|| {
             for (kind, target) in names.iter().zip(&paths) {
@@ -384,7 +412,7 @@ fn publish_stems_named(working: &Path, parent: &Path, name: &str, names: &[&str]
                 // or clean up a destination that belonged to another process.
                 let mut output = std::fs::OpenOptions::new().write(true).create_new(true).open(target)?;
                 published.push(target.clone());
-                let mut input = std::fs::File::open(working.join(format!("{kind}.wav")))?;
+                let mut input = std::fs::File::open(working.join(format!("{kind}.{extension}")))?;
                 std::io::copy(&mut input, &mut output)?;
                 output.sync_all()?;
             }
@@ -408,6 +436,7 @@ fn run(
     parent: &Path,
     model: Model,
     mode: Mode,
+    format: Format,
 ) -> Result<(Vec<String>, Vec<i64>)> {
     let jobs = &state.stems;
     jobs.update("downloading", 0.0);
@@ -416,8 +445,8 @@ fn run(
     })?;
     jobs.update("separating", 0.0);
     let paths =
-        separate_to_folder_mode(model, mode, &model_dir, source, parent, &jobs.cancel, |p| {
-            jobs.update("separating", p)
+        separate_to_folder_mode(model, mode, &model_dir, source, parent, &jobs.cancel, format, |stage, p| {
+            jobs.update(stage, p)
         })?;
     jobs.update("importing", 1.0);
     state.stems.status.lock().unwrap().paths = paths
@@ -514,7 +543,7 @@ mod tests {
         for model in [Model::MelRoformer,Model::Mdx23c] {
             let dir = tempfile::tempdir().unwrap();
             let model_dir = &models;
-            let paths = separate_to_folder_mode(model,Mode::Two,&model_dir,&source,dir.path(),&AtomicBool::new(false),|_| {}).unwrap();
+            let paths = separate_to_folder_mode(model,Mode::Two,&model_dir,&source,dir.path(),&AtomicBool::new(false),Format::Wav,|_, _| {}).unwrap();
             assert_eq!(paths.len(),2);
             assert_eq!(std::fs::read_dir(paths[0].parent().unwrap()).unwrap().count(),2);
             let vocals = audio::decode(&paths[0],600.0).unwrap();
@@ -525,7 +554,7 @@ mod tests {
                 assert!((vocals.samples[i]+instrumental.samples[i]-original).abs()<2e-6);
             }
             let cancel = AtomicBool::new(true);
-            assert!(separate_to_folder_mode(model,Mode::Two,&model_dir,&source,dir.path(),&cancel,|_| cancel.store(true,Ordering::Relaxed)).is_err());
+            assert!(separate_to_folder_mode(model,Mode::Two,&model_dir,&source,dir.path(),&cancel,Format::Wav,|_, _| cancel.store(true,Ordering::Relaxed)).is_err());
             assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(),1);
             assert_eq!(std::fs::read(&source).unwrap(),original);
             eprintln!("{model:?}: two WAVs, exact residual, original preserved, cancelled files removed");
@@ -557,7 +586,7 @@ mod tests {
             // Published two-track files have their own kinds and never overwrite a previous set.
             let work = tempfile::tempdir().unwrap(); let parent = tempfile::tempdir().unwrap();
             for name in Mode::Two.names() { std::fs::write(work.path().join(format!("{name}.wav")),name).unwrap(); }
-            let paths = publish_stems_named(work.path(),parent.path(),"Song",Mode::Two.names()).unwrap();
+            let paths = publish_stems_named(work.path(),parent.path(),"Song",Mode::Two.names(),Format::Wav).unwrap();
             assert_eq!(paths.len(),2);
             assert!(paths[1].ends_with("Song - instrumental.wav"));
         }
@@ -579,13 +608,55 @@ mod tests {
     #[test]
     fn progress_keeps_source_identity_across_stages() {
         let jobs = Jobs::default();
-        *jobs.status.lock().unwrap() = Progress { source_id: Some(42), running: true, ..Default::default() };
-        for stage in ["downloading", "separating", "importing"] {
+        *jobs.status.lock().unwrap() = Progress { source_id: Some(42), format: Format::Flac, running: true, ..Default::default() };
+        for stage in ["downloading", "separating", "encoding", "importing"] {
             jobs.update(stage, 0.45);
             let status = jobs.status.lock().unwrap();
             assert_eq!(status.source_id, Some(42));
             let json = serde_json::to_value(&*status).unwrap();
             assert_eq!(json["sourceId"], 42);
+            assert_eq!(json["format"], "flac");
+        }
+    }
+
+    #[test]
+    fn converted_stems_publish_and_import_as_the_requested_format() {
+        let dir = tempfile::tempdir().unwrap();
+        let db_path = dir.path().join("stems.sqlite");
+        crate::db::migrate(&mut crate::db::open(&db_path).unwrap()).unwrap();
+        let names = Mode::Two.names();
+        let cancel = AtomicBool::new(false);
+        let spec = hound::WavSpec {
+            channels: 2, sample_rate: dsp::RATE, bits_per_sample: 32,
+            sample_format: hound::SampleFormat::Float,
+        };
+        for format in [Format::Mp3, Format::Ogg, Format::Flac, Format::Aiff, Format::M4a, Format::Caf] {
+            let work = tempfile::tempdir().unwrap();
+            for name in names {
+                let mut writer = hound::WavWriter::create(work.path().join(format!("{name}.wav")), spec).unwrap();
+                for i in 0..4097 {
+                    let value = (i as f32 * 0.05).sin() * 0.4;
+                    writer.write_sample(value).unwrap();
+                    writer.write_sample(-value).unwrap();
+                }
+                writer.finalize().unwrap();
+            }
+            encode_stems(work.path(), names, format, &cancel, |_| {}).unwrap();
+            let paths = publish_stems_named(work.path(), dir.path(), "Song", names, format).unwrap();
+            for (path, name) in paths.iter().zip(names) {
+                assert!(path.ends_with(format!("Song - {name}.{}", format.extension())));
+                let decoded = audio::decode(path, f64::INFINITY).unwrap();
+                assert_eq!(decoded.channels, 2);
+                assert_eq!(decoded.sample_rate, dsp::RATE);
+                if matches!(format, Format::Mp3 | Format::Ogg) {
+                    // The library reader includes codec delay and packet padding.
+                    assert!((decoded.frames() as isize - 4097).unsigned_abs() < 2304, "{format:?}");
+                } else {
+                    assert_eq!(decoded.frames(), 4097, "{format:?}");
+                }
+            }
+            let (_, ids) = import_files(&db_path, &paths).unwrap();
+            assert_eq!(ids.len(), names.len());
         }
     }
     #[test]
@@ -652,20 +723,29 @@ mod tests {
         let models = PathBuf::from(std::env::var(model_env).unwrap());
         let original = std::fs::read(&source).unwrap();
         let pcm = audio::decode(&source, 600.0).unwrap();
+        let format = Format::for_source(&source);
         let start = std::time::Instant::now();
-        let paths = separate_to_folder_with_model(
+        let paths = separate_to_folder_mode(
             model,
+            Mode::Four,
             &models,
             &source,
             dir.path(),
             &AtomicBool::new(false),
-            |_| {},
+            format,
+            |_, _| {},
         )
         .unwrap();
         assert_eq!(paths.len(), 4);
         for path in &paths {
+            assert_eq!(path.extension().unwrap(), format.extension());
             let stem = audio::decode(path, 600.0).unwrap();
-            assert_eq!(stem.frames(), pcm.frames());
+            let expected = (pcm.frames() as f64 * dsp::RATE as f64 / pcm.sample_rate as f64).round() as usize;
+            if matches!(format, Format::Mp3 | Format::Ogg) {
+                assert!(stem.frames().abs_diff(expected) < 2304);
+            } else {
+                assert_eq!(stem.frames(), expected);
+            }
             assert_eq!(stem.channels, 2);
             assert_eq!(stem.sample_rate, dsp::RATE);
             assert!(stem.samples.iter().all(|v| v.is_finite()));
@@ -676,10 +756,13 @@ mod tests {
             start.elapsed()
         );
         let cancel = AtomicBool::new(false);
+        let cancel_stage = if format == Format::Wav { "separating" } else { "encoding" };
         assert!(
-            separate_to_folder_with_model(model, &models, &source, dir.path(), &cancel, |_| cancel
-                .store(true, Ordering::Relaxed))
-            .is_err()
+            separate_to_folder_mode(model, Mode::Four, &models, &source, dir.path(), &cancel, format, |stage, _| {
+                if stage == cancel_stage {
+                    cancel.store(true, Ordering::Relaxed);
+                }
+            }).is_err()
         );
         assert_eq!(std::fs::read(source).unwrap(), original);
         assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);

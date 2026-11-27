@@ -1,4 +1,6 @@
 //! Streaming export encoders. Only small PCM/encoded blocks are buffered.
+mod containers;
+
 use super::{Loop, Marker, append_markers, write_wav};
 use crate::{
     audio::AudioRead,
@@ -11,13 +13,38 @@ use std::{
     path::Path,
 };
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Format {
+    #[default]
     Wav,
     Mp3,
     Ogg,
+    Flac,
+    Aiff,
+    M4a,
+    Caf,
 }
 impl Format {
+    pub fn extension(self) -> &'static str {
+        match self {
+            Self::Wav => "wav",
+            Self::Mp3 => "mp3",
+            Self::Ogg => "ogg",
+            Self::Flac => "flac",
+            Self::Aiff => "aiff",
+            Self::M4a => "m4a",
+            Self::Caf => "caf",
+        }
+    }
+
+    pub fn for_source(path: &Path) -> Self {
+        if path.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("aifc")) {
+            return Self::Aiff;
+        }
+        Self::from_path(path).unwrap_or_default()
+    }
+
     pub fn from_path(path: &Path) -> Result<Self> {
         match path
             .extension()
@@ -26,10 +53,14 @@ impl Format {
             .to_ascii_lowercase()
             .as_str()
         {
-            "wav" => Ok(Self::Wav),
+            "wav" | "wave" => Ok(Self::Wav),
             "mp3" => Ok(Self::Mp3),
-            "ogg" => Ok(Self::Ogg),
-            _ => Err(Error::Other("choose a WAV, MP3 or OGG destination".into())),
+            "ogg" | "oga" => Ok(Self::Ogg),
+            "flac" => Ok(Self::Flac),
+            "aif" | "aiff" => Ok(Self::Aiff),
+            "m4a" | "mp4" => Ok(Self::M4a),
+            "caf" => Ok(Self::Caf),
+            _ => Err(codec_error("choose a WAV, MP3, OGG, FLAC, AIFF, M4A or CAF destination")),
         }
     }
 }
@@ -46,6 +77,25 @@ fn codec_error(error: impl std::fmt::Display) -> Error {
     Error::Other(format!("audio export: {error}"))
 }
 
+/// Re-encode a complete temporary stem without holding it all in memory.
+pub(crate) fn transcode(
+    source: &Path,
+    target: &Path,
+    format: Format,
+    cancelled: &impl Fn() -> bool,
+) -> Result<()> {
+    let (pcm, channels, rate) = super::storage::decode_cancellable(
+        source, super::storage::RAM_CEILING, cancelled,
+    )?;
+    let audio = super::blocks::BlockAudio::from_storage(pcm, channels, rate);
+    write_encoded(target, format, &audio, &|| {
+        if cancelled() {
+            return Err(codec_error("cancelled"));
+        }
+        Ok(())
+    })
+}
+
 pub fn write(
     path: &Path,
     format: Format,
@@ -58,14 +108,36 @@ pub fn write(
         write_wav(path, audio, bits, lp)?;
         return append_markers(path, markers);
     }
-    if !(1..=2).contains(&audio.channels()) || audio.sample_rate() == 0 {
-        return Err(Error::Other(
-            "MP3 and OGG require mono or stereo audio; use WAV for multichannel audio".into(),
-        ));
+    write_encoded(path, format, audio, &|| Ok(()))
+}
+
+fn write_encoded(
+    path: &Path,
+    format: Format,
+    audio: &impl AudioRead,
+    check: &dyn Fn() -> Result<()>,
+) -> Result<()> {
+    check()?;
+    if audio.channels() == 0 || audio.sample_rate() == 0 || audio.frames() == 0 {
+        return Err(codec_error("no audio to export"));
+    }
+    let channel_limit = match format {
+        Format::Mp3 | Format::Ogg | Format::M4a => 2,
+        Format::Flac => 8,
+        Format::Aiff => i16::MAX as usize,
+        Format::Caf => u32::MAX as usize / 4,
+        Format::Wav => unreachable!(),
+    };
+    if audio.channels() > channel_limit {
+        return Err(codec_error(format!("{} supports up to {channel_limit} channels", format.extension())));
     }
     match format {
-        Format::Mp3 => mp3(path, audio),
-        Format::Ogg => ogg(path, audio),
+        Format::Mp3 => mp3(path, audio, check),
+        Format::Ogg => ogg(path, audio, check),
+        Format::Flac => containers::flac(path, audio, check),
+        Format::Aiff => containers::aiff(path, audio, check),
+        Format::M4a => containers::m4a(path, audio, check),
+        Format::Caf => containers::caf(path, audio, check),
         Format::Wav => unreachable!(),
     }
 }
@@ -116,7 +188,7 @@ pub fn write_at_rate(
     write(path, format, &converted, bits, lp, &markers)
 }
 
-fn mp3(path: &Path, audio: &impl AudioRead) -> Result<()> {
+fn mp3(path: &Path, audio: &impl AudioRead, check: &dyn Fn() -> Result<()>) -> Result<()> {
     use mp3lame_encoder::{Bitrate, Builder, DualPcm, FlushGap, MonoPcm, Quality};
     let mut encoder = Builder::new()
         .ok_or_else(|| codec_error("cannot allocate MP3 encoder"))?
@@ -144,6 +216,7 @@ fn mp3(path: &Path, audio: &impl AudioRead) -> Result<()> {
     let mut encoded = Vec::with_capacity(mp3lame_encoder::max_required_buffer_size(BLOCK));
     let mut input = audio.iter_samples();
     loop {
+        check()?;
         left.clear();
         right.clear();
         encoded.clear();
@@ -191,7 +264,7 @@ fn mp3(path: &Path, audio: &impl AudioRead) -> Result<()> {
     Ok(())
 }
 
-fn ogg(path: &Path, audio: &impl AudioRead) -> Result<()> {
+fn ogg(path: &Path, audio: &impl AudioRead, check: &dyn Fn() -> Result<()>) -> Result<()> {
     use vorbis_rs::{VorbisBitrateManagementStrategy, VorbisEncoderBuilder};
     let mut file = BufWriter::new(File::create(path)?);
     let mut encoder = VorbisEncoderBuilder::new(
@@ -208,6 +281,7 @@ fn ogg(path: &Path, audio: &impl AudioRead) -> Result<()> {
     let mut channels = vec![Vec::with_capacity(BLOCK); audio.channels()];
     let mut input = audio.iter_samples();
     loop {
+        check()?;
         for channel in &mut channels {
             channel.clear();
         }
@@ -254,6 +328,10 @@ mod tests {
             (Format::Wav, "wav", b"RIFF".as_slice()),
             (Format::Mp3, "mp3", &[]),
             (Format::Ogg, "ogg", b"OggS".as_slice()),
+            (Format::Flac, "flac", b"fLaC".as_slice()),
+            (Format::Aiff, "aiff", b"FORM".as_slice()),
+            (Format::M4a, "m4a", &[]),
+            (Format::Caf, "caf", b"caff".as_slice()),
         ] {
             for channels in [1, 2] {
                 let source = signal(channels);
@@ -270,6 +348,14 @@ mod tests {
                     "{ext}: duration {}",
                     decoded.frames()
                 );
+                if matches!(format, Format::Flac | Format::Aiff | Format::M4a | Format::Caf) {
+                    assert_eq!(decoded.frames(), source.frames(), "{ext}: exact duration");
+                    let tolerance = if format == Format::M4a { 1.0 / 16_384.0 } else { 1e-6 };
+                    assert!(
+                        decoded.samples.iter().zip(&source.samples).all(|(a, b)| (a - b).abs() < tolerance),
+                        "{ext}: samples differ beyond PCM rounding",
+                    );
+                }
                 let rms = (decoded.samples.iter().map(|s| s * s).sum::<f32>()
                     / decoded.samples.len() as f32)
                     .sqrt();
@@ -306,7 +392,7 @@ mod tests {
     #[test]
     fn invalid_formats_and_multichannel_compressed_exports_fail_before_creating_a_file() {
         let dir = tempfile::tempdir().unwrap();
-        assert!(Format::from_path(Path::new("out.flac")).is_err());
+        assert!(Format::from_path(Path::new("out.txt")).is_err());
         assert_eq!(
             Format::from_path(Path::new("out.MP3")).unwrap(),
             Format::Mp3

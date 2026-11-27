@@ -268,7 +268,10 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let source = dir.path().join("source.wav");
         write_wav(&source, &Pcm { channels: 1, sample_rate: 44100, samples: (0..44100).map(|i| (i as f32 * 0.05).sin() * 0.4).collect() }, Some(24), None).unwrap();
-        for (ext, rate) in [("wav", 48000), ("mp3", 22050), ("ogg", 96000)] {
+        for (ext, rate) in [
+            ("wav", 48000), ("mp3", 22050), ("ogg", 96000), ("flac", 48000),
+            ("aiff", 48000), ("m4a", 96000), ("caf", 96000),
+        ] {
             let mut session = Session::open(1, &source, Some(24)).unwrap();
             session.apply(Op::SetLoop { start: 22050, end: 33075 });
             session.apply(Op::SetMarkers { markers: vec![Marker { frame: 4410, skip: false }] });
@@ -294,7 +297,7 @@ mod tests {
         }
     }
     #[test]
-    fn compressed_save_as_repeat_save_and_selection_preserve_source_and_session_history() {
+    fn non_wav_save_as_repeat_save_and_selection_preserve_source_and_session_history() {
         let dir = tempfile::tempdir().unwrap();
         let source = dir.path().join("source.wav");
         let audio = Pcm { channels: 2, sample_rate: 44100, samples: (0..44100).flat_map(|i| {
@@ -303,7 +306,7 @@ mod tests {
         }).collect() };
         write_wav(&source, &audio, Some(24), None).unwrap();
         let original = fs::read(&source).unwrap();
-        for ext in ["mp3", "ogg"] {
+        for ext in ["mp3", "ogg", "flac", "aiff", "m4a", "caf"] {
             let mut session = Session::open(1, &source, Some(24)).unwrap();
             session.apply(Op::Gain { start: 0, end: 44100, db: -3.0 });
             let target = dir.path().join(format!("edited.{ext}"));

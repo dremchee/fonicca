@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { AUDIO_EXPORT_FORMATS, AUDIO_EXPORT_SAMPLE_RATES, MP3_SAMPLE_RATES, supportedExportRate, type AudioExportFormat } from '@/audio-export'
+import { AUDIO_EXPORT_LABELS, AUDIO_EXPORT_FORMATS, AUDIO_EXPORT_SAMPLE_RATES, MP3_SAMPLE_RATES, supportedExportRate, type AudioExportFormat } from '@/audio-export'
 import { formatNumber } from '@/format'
 import { pendingAudioExport, settleAudioExport } from '@/composables/audioExport'
 import { Button } from '@/components/ui/button'
@@ -44,7 +44,7 @@ watch(format, value => {
             <Select v-model="format">
               <SelectTrigger id="audio-export-format" class="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem v-for="value in AUDIO_EXPORT_FORMATS" :key="value" :value="value">{{ value === 'ogg' ? 'OGG Vorbis' : value.toUpperCase() }}</SelectItem>
+                <SelectItem v-for="value in AUDIO_EXPORT_FORMATS" :key="value" :value="value">{{ AUDIO_EXPORT_LABELS[value] }}</SelectItem>
               </SelectContent>
             </Select>
           </Field>

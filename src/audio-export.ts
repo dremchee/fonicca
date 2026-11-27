@@ -1,5 +1,13 @@
-export const AUDIO_EXPORT_FORMATS = ['wav', 'mp3', 'ogg'] as const
+export const AUDIO_EXPORT_FORMATS = ['wav', 'mp3', 'ogg', 'flac', 'aiff', 'm4a', 'caf'] as const
 export type AudioExportFormat = typeof AUDIO_EXPORT_FORMATS[number]
+export const AUDIO_EXPORT_LABELS: Record<AudioExportFormat, string> = {
+  wav: 'WAV', mp3: 'MP3', ogg: 'OGG Vorbis', flac: 'FLAC', aiff: 'AIFF', m4a: 'M4A (ALAC)', caf: 'CAF',
+}
+
+export function isAudioExportFormat(value: unknown): value is AudioExportFormat {
+  return AUDIO_EXPORT_FORMATS.includes(value as AudioExportFormat)
+}
+
 export interface AudioExportOptions { format: AudioExportFormat, sampleRate: number | null }
 export const AUDIO_EXPORT_SAMPLE_RATES = [22050, 44100, 48000, 88200, 96000] as const
 export const MP3_SAMPLE_RATES = [8000, 11025, 12000, 16000, 22050, 24000, 32000, 44100, 48000]
@@ -9,12 +17,17 @@ export function supportedExportRate(format: AudioExportFormat, rate: number | nu
 }
 
 export function audioExportFormat(path: string): AudioExportFormat {
-  const ext = path.split('.').pop()?.toLowerCase()
-  return AUDIO_EXPORT_FORMATS.find(format => format === ext) ?? 'wav'
+  const ext = /\.([^./\\]+)$/.exec(path)?.[1].toLowerCase()
+  if (ext === 'aif' || ext === 'aifc') return 'aiff'
+  if (ext === 'mp4') return 'm4a'
+  if (ext === 'oga') return 'ogg'
+  return isAudioExportFormat(ext) ? ext : 'wav'
 }
 
 /** The selected encoder and the final file extension must always agree. */
 export function audioExportPath(path: string, format: AudioExportFormat): string {
-  if (/\.(wav|mp3|ogg)$/i.test(path)) return path.replace(/\.(wav|mp3|ogg)$/i, `.${format}`)
+  if (/\.(wav|wave|mp3|ogg|oga|flac|aif|aiff|aifc|m4a|mp4|caf)$/i.test(path)) {
+    return path.replace(/\.[^./\\]+$/, `.${format}`)
+  }
   return `${path}.${format}`
 }

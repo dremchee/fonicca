@@ -137,7 +137,7 @@ export function editorCommand(cmd: string, args: any): unknown {
     case 'plugin:dialog|save': return '/mock/Custom edited.wav'
     case 'editor_save': {
       const path = args.mode === 'replaceOriginal' ? originalPath : args.destination ?? (hasSavedTarget ? currentPath : '/mock/Drum loop — edited.wav')
-      const name = path.split('/').pop().replace(/\.(wav|mp3|ogg)$/i, '')
+      const name = path.split('/').pop().replace(/\.[^.]+$/i, '')
       const ext = path.split('.').pop().toLowerCase()
       if (args.mode !== 'selection') {
         if (args.mode !== 'save') exportSampleRate = args.sampleRate ?? null
