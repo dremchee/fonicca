@@ -16,18 +16,27 @@ export function supportedExportRate(format: AudioExportFormat, rate: number | nu
   return format === 'mp3' && !MP3_SAMPLE_RATES.includes(rate ?? sourceRate) ? 48000 : rate
 }
 
+const extensionPattern = /\.([^./\\]+)$/
+const formatAliases = new Map<string, AudioExportFormat>([
+  ['wave', 'wav'],
+  ['aif', 'aiff'],
+  ['aifc', 'aiff'],
+  ['oga', 'ogg'],
+  ['mp4', 'm4a'],
+])
+
+function formatFromExtension(extension = '') {
+  const ext = extension.toLowerCase()
+  return isAudioExportFormat(ext) ? ext : formatAliases.get(ext)
+}
+
 export function audioExportFormat(path: string): AudioExportFormat {
-  const ext = /\.([^./\\]+)$/.exec(path)?.[1].toLowerCase()
-  if (ext === 'aif' || ext === 'aifc') return 'aiff'
-  if (ext === 'mp4') return 'm4a'
-  if (ext === 'oga') return 'ogg'
-  return isAudioExportFormat(ext) ? ext : 'wav'
+  return formatFromExtension(extensionPattern.exec(path)?.[1]) ?? 'wav'
 }
 
 /** The selected encoder and the final file extension must always agree. */
 export function audioExportPath(path: string, format: AudioExportFormat): string {
-  if (/\.(wav|wave|mp3|ogg|oga|flac|aif|aiff|aifc|m4a|mp4|caf)$/i.test(path)) {
-    return path.replace(/\.[^./\\]+$/, `.${format}`)
-  }
-  return `${path}.${format}`
+  const suffix = extensionPattern.exec(path)
+  const base = suffix && formatFromExtension(suffix[1]) ? path.slice(0, suffix.index) : path
+  return `${base}.${format}`
 }

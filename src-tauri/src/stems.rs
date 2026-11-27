@@ -57,6 +57,14 @@ impl Mode {
         Ok(())
     }
 }
+
+#[derive(Clone, Copy, Default)]
+struct SeparationOptions {
+    model: Model,
+    mode: Mode,
+    format: Format,
+}
+
 #[derive(Default, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Progress {
@@ -171,11 +179,12 @@ pub fn stem_start(
             .into_owned(),
         ..Default::default()
     };
+    let options = SeparationOptions { model, mode, format };
     std::thread::spawn(move || {
         let (_model_lease, _processing_lease) = (model_lease, processing_lease);
         let state = app.state::<AppState>();
         let jobs = &state.stems;
-        let result = run(&state, Path::new(&path), &folder, model, mode, format);
+        let result = run(&state, Path::new(&path), &folder, options);
         let mut status = jobs.status.lock().unwrap();
         status.running = false;
         match result {
@@ -203,42 +212,25 @@ pub fn stem_start(
     });
     Ok(())
 }
-struct WorkingDir {
-    path: PathBuf,
-    published: bool,
-}
-impl Drop for WorkingDir {
-    fn drop(&mut self) {
-        if !self.published {
-            let _ = std::fs::remove_dir_all(&self.path);
-        }
-    }
-}
 #[cfg(test)]
+fn separate_test_wav(
+    model_dir: &Path,
+    source: &Path,
+    parent: &Path,
+    cancel: &AtomicBool,
+    progress: impl Fn(f64),
+) -> Result<Vec<PathBuf>> {
+    separate_to_folder(SeparationOptions::default(), model_dir, source, parent, cancel, |_, value| progress(value))
+}
 fn separate_to_folder(
+    options: SeparationOptions,
     model_dir: &Path,
     source: &Path,
     parent: &Path,
     cancel: &AtomicBool,
-    progress: impl Fn(f64),
+    update: impl Fn(&str, f64),
 ) -> Result<Vec<PathBuf>> {
-    separate_to_folder_with_model(Model::Spleeter, model_dir, source, parent, cancel, progress)
-}
-#[cfg(test)]
-fn separate_to_folder_with_model(
-    model: Model,
-    model_dir: &Path,
-    source: &Path,
-    parent: &Path,
-    cancel: &AtomicBool,
-    progress: impl Fn(f64),
-) -> Result<Vec<PathBuf>> {
-    separate_to_folder_mode(model, Mode::Four, model_dir, source, parent, cancel, Format::Wav, |_, value| progress(value))
-}
-fn separate_to_folder_mode(
-    model: Model, mode: Mode, model_dir: &Path, source: &Path, parent: &Path,
-    cancel: &AtomicBool, format: Format, update: impl Fn(&str, f64),
-) -> Result<Vec<PathBuf>> {
+    let SeparationOptions { model, mode, format } = options;
     let progress = |value| update("separating", value);
     mode.validate(model)?;
     let info = audio::probe(source)?;
@@ -262,26 +254,18 @@ fn separate_to_folder_mode(
         .chars()
         .take(80)
         .collect::<String>();
-    let stamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_err(failure)?
-        .as_nanos();
-    let working_path = parent.join(format!(".fonicca-stems-{stamp}"));
-    std::fs::create_dir(&working_path)?;
-    let working = WorkingDir {
-        path: working_path,
-        published: false,
-    };
+    let working = tempfile::Builder::new().prefix(".fonicca-stems-").tempdir_in(parent)?;
     let spec = hound::WavSpec {
         channels: 2,
         sample_rate: dsp::RATE,
         bits_per_sample: 32,
         sample_format: hound::SampleFormat::Float,
     };
-    let mut writers = mode.names()
+    let names = mode.names();
+    let mut writers = names
         .iter()
         .map(|n| {
-            hound::WavWriter::create(working.path.join(format!("{n}.wav")), spec).map_err(failure)
+            hound::WavWriter::create(working.path().join(format!("{n}.wav")), spec).map_err(failure)
         })
         .collect::<Result<Vec<_>>>()?;
     let mut written = 0;
@@ -336,9 +320,9 @@ fn separate_to_folder_mode(
     }
     check(cancel)?;
     drop(pcm);
-    encode_stems(&working.path, mode.names(), format, cancel, |value| update("encoding", value))?;
+    encode_stems(working.path(), names, format, cancel, |value| update("encoding", value))?;
     check(cancel)?;
-    publish_stems_named(&working.path, parent, &stem, mode.names(), format)
+    publish_stems_named(working.path(), parent, &stem, names, format)
 }
 
 fn encode_stems(
@@ -434,36 +418,29 @@ fn run(
     state: &AppState,
     source: &Path,
     parent: &Path,
-    model: Model,
-    mode: Mode,
-    format: Format,
+    options: SeparationOptions,
 ) -> Result<(Vec<String>, Vec<i64>)> {
     let jobs = &state.stems;
     jobs.update("downloading", 0.0);
-    let model_dir = models::ensure_for(&state.models_dir, model, &jobs.cancel, |received| {
-        jobs.update("downloading", received as f64 / models::total(model) as f64)
+    let model_dir = models::ensure_for(&state.models_dir, options.model, &jobs.cancel, |received| {
+        jobs.update("downloading", received as f64 / models::total(options.model) as f64)
     })?;
     jobs.update("separating", 0.0);
     let paths =
-        separate_to_folder_mode(model, mode, &model_dir, source, parent, &jobs.cancel, format, |stage, p| {
+        separate_to_folder(options, &model_dir, source, parent, &jobs.cancel, |stage, p| {
             jobs.update(stage, p)
         })?;
     jobs.update("importing", 1.0);
-    state.stems.status.lock().unwrap().paths = paths
+    let output_paths: Vec<_> = paths
         .iter()
         .map(|p| p.to_string_lossy().into_owned())
         .collect();
+    jobs.status.lock().unwrap().paths = output_paths.clone();
     let ids = import(state, &paths)?;
     let conn = crate::db::open(&state.db_path)?;
     let parent_id: i64 = conn.query_row("SELECT id FROM samples WHERE path=?1", [source.to_string_lossy().as_ref()], |r| r.get(0))?;
-    link_stems_named(&conn, parent_id, &ids, mode.names())?;
-    Ok((
-        paths
-            .iter()
-            .map(|p| p.to_string_lossy().into_owned())
-            .collect(),
-        ids,
-    ))
+    link_stems_named(&conn, parent_id, &ids, options.mode.names())?;
+    Ok((output_paths, ids))
 }
 #[cfg(test)]
 fn link_stems(conn: &rusqlite::Connection, parent_id: i64, ids: &[i64]) -> Result<()> {
@@ -543,7 +520,8 @@ mod tests {
         for model in [Model::MelRoformer,Model::Mdx23c] {
             let dir = tempfile::tempdir().unwrap();
             let model_dir = &models;
-            let paths = separate_to_folder_mode(model,Mode::Two,&model_dir,&source,dir.path(),&AtomicBool::new(false),Format::Wav,|_, _| {}).unwrap();
+            let options = SeparationOptions { model, mode: Mode::Two, ..Default::default() };
+            let paths = separate_to_folder(options, model_dir, &source, dir.path(), &AtomicBool::new(false), |_, _| {}).unwrap();
             assert_eq!(paths.len(),2);
             assert_eq!(std::fs::read_dir(paths[0].parent().unwrap()).unwrap().count(),2);
             let vocals = audio::decode(&paths[0],600.0).unwrap();
@@ -554,7 +532,7 @@ mod tests {
                 assert!((vocals.samples[i]+instrumental.samples[i]-original).abs()<2e-6);
             }
             let cancel = AtomicBool::new(true);
-            assert!(separate_to_folder_mode(model,Mode::Two,&model_dir,&source,dir.path(),&cancel,Format::Wav,|_, _| cancel.store(true,Ordering::Relaxed)).is_err());
+            assert!(separate_to_folder(options, model_dir, &source, dir.path(), &cancel, |_, _| cancel.store(true, Ordering::Relaxed)).is_err());
             assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(),1);
             assert_eq!(std::fs::read(&source).unwrap(),original);
             eprintln!("{model:?}: two WAVs, exact residual, original preserved, cancelled files removed");
@@ -724,15 +702,14 @@ mod tests {
         let original = std::fs::read(&source).unwrap();
         let pcm = audio::decode(&source, 600.0).unwrap();
         let format = Format::for_source(&source);
+        let options = SeparationOptions { model, mode: Mode::Four, format };
         let start = std::time::Instant::now();
-        let paths = separate_to_folder_mode(
-            model,
-            Mode::Four,
+        let paths = separate_to_folder(
+            options,
             &models,
             &source,
             dir.path(),
             &AtomicBool::new(false),
-            format,
             |_, _| {},
         )
         .unwrap();
@@ -758,7 +735,7 @@ mod tests {
         let cancel = AtomicBool::new(false);
         let cancel_stage = if format == Format::Wav { "separating" } else { "encoding" };
         assert!(
-            separate_to_folder_mode(model, Mode::Four, &models, &source, dir.path(), &cancel, format, |stage, _| {
+            separate_to_folder(options, &models, &source, dir.path(), &cancel, |stage, _| {
                 if stage == cancel_stage {
                     cancel.store(true, Ordering::Relaxed);
                 }
@@ -785,7 +762,7 @@ mod tests {
         .unwrap();
         let before = std::fs::read(&source).unwrap();
         assert!(
-            separate_to_folder(
+            separate_test_wav(
                 Path::new("/missing-models"),
                 &source,
                 dir.path(),
@@ -800,16 +777,14 @@ mod tests {
     #[test]
     fn working_directories_are_cleaned_after_errors() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join(".working");
-        std::fs::create_dir(&path).unwrap();
-        {
-            let _guard = WorkingDir {
-                path: path.clone(),
-                published: false,
-            };
-            std::fs::write(path.join("partial.wav"), b"partial").unwrap();
-        }
-        assert!(!path.exists());
+        let source = dir.path().join("source.wav");
+        let pcm = Pcm { samples: vec![0.2; 4410], channels: 1, sample_rate: dsp::RATE };
+        crate::editor::write_wav(&source, &pcm, Some(32), None).unwrap();
+        // Model loading fails after opening the temporary stem writers.
+        let missing_model = dir.path().join("missing-model");
+        assert!(separate_test_wav(&missing_model, &source, dir.path(), &AtomicBool::new(false), |_| {}).is_err());
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
+        assert!(source.is_file());
     }
     #[test]
     #[ignore = "requires STEM_MODELS and STEM_AUDIO; full file integration"]
@@ -821,7 +796,7 @@ mod tests {
         let mut original = audio::decode(&source, 600.0).unwrap();
         crate::batch::resample(&mut original, dsp::RATE).unwrap();
         let start = std::time::Instant::now();
-        let paths = separate_to_folder(
+        let paths = separate_test_wav(
             &models,
             &source,
             dir.path(),
@@ -854,7 +829,7 @@ mod tests {
         assert!(max < 1e-4);
         let cancel = AtomicBool::new(false);
         assert!(
-            separate_to_folder(&models, &source, dir.path(), &cancel, |_| cancel
+            separate_test_wav(&models, &source, dir.path(), &cancel, |_| cancel
                 .store(true, Ordering::Relaxed))
             .is_err()
         );
