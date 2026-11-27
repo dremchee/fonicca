@@ -21,7 +21,7 @@ export interface Theme extends CustomTheme {
   builtIn: boolean
 }
 
-export const DEFAULT_THEME = 'fonicca'
+export const DEFAULT_THEME = 'tape'
 
 const p = (background: string, surface: string, text: string, muted: string, border: string, accent: string, danger: string, wave: string): Palette =>
   ({ background, surface, text, muted, border, accent, danger, wave })
@@ -164,7 +164,7 @@ export function findTheme(id: string, custom: CustomTheme[]): Theme {
   if (builtIn)
     return builtIn
   const mine = custom.find(t => t.id === id)
-  return mine ? { ...mine, builtIn: false } : BUILT_IN[0]!
+  return mine ? { ...mine, builtIn: false } : BUILT_IN.find(t => t.id === DEFAULT_THEME)!
 }
 
 /** Puts a palette on the page: CSS variables, the `dark` class and native controls. */

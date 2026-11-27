@@ -1,25 +1,25 @@
 :root {
-  --background: #f6f6f8;
-  --foreground: #1c1c22;
-  --card: #ffffff;
+  --background: #f5efe4;
+  --foreground: #2b2118;
+  --card: #fbf7ef;
   --card-foreground: var(--foreground);
-  --popover: #ffffff;
+  --popover: #fbf7ef;
   --popover-foreground: var(--foreground);
-  --primary: #6d4aff;
+  --primary: #a8650b;
   --primary-foreground: #ffffff;
-  --primary-soft: rgb(109 74 255 / 0.12);
-  --secondary: #ececf1;
+  --primary-soft: rgb(168 101 11 / 0.12);
+  --secondary: #e9e3d8;
   --secondary-foreground: var(--foreground);
-  --muted: #ececf1;
-  --muted-foreground: #6e6e7a;
-  --accent: #ececf1;
+  --muted: #e9e3d8;
+  --muted-foreground: #74644f;
+  --accent: #e9e3d8;
   --accent-foreground: var(--foreground);
-  --destructive: #d92d4a;
-  --border: #e1e1e8;
-  --input: #e1e1e8;
+  --destructive: #b83a2c;
+  --border: #e3d8c5;
+  --input: #e3d8c5;
   --ring: var(--primary);
   --radius: 0.75rem;
-  --wave: #8b8b99;
+  --wave: #a8977f;
   /* Editor waveform: the brand colour; the selection shows it inverted. */
   --wave-strong: var(--primary);
   --wave-played: var(--primary);
@@ -33,20 +33,21 @@
 
 /* Defaults until the colour theme is applied (src/themes.ts sets these on <html>). */
 :root.dark {
-  --background: #141418;
-  --foreground: #e8e8ee;
-  --card: #1b1b21;
-  --popover: #1b1b21;
-  --primary: #8b6dff;
-  --primary-soft: rgb(139 109 255 / 0.18);
-  --secondary: #26262e;
-  --muted: #26262e;
-  --muted-foreground: #8d8d9a;
-  --accent: #26262e;
-  --destructive: #ff5c77;
-  --border: #2c2c35;
-  --input: #2c2c35;
-  --wave: #5c5c6a;
+  --background: #1a1612;
+  --foreground: #efe5d4;
+  --card: #221d17;
+  --popover: #221d17;
+  --primary: #e6a23c;
+  --primary-foreground: #111114;
+  --primary-soft: rgb(230 162 60 / 0.18);
+  --secondary: #2d2923;
+  --muted: #2d2923;
+  --muted-foreground: #a29179;
+  --accent: #2d2923;
+  --destructive: #f07560;
+  --border: #352d23;
+  --input: #352d23;
+  --wave: #6a5c4a;
 }
 
 html,

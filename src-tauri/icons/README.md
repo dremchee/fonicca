@@ -1,6 +1,6 @@
 # Application icons
 
-`app-icon-dark.svg` and `app-icon-light.svg` embed the selected neon CD artwork.
+`app-icon-dark.svg` and `app-icon-light.svg` embed the CD artwork with the Tape palette's amber glow.
 The rounded clip removes the preview backdrop and keeps a transparent exterior.
 `app-icon.svg` is the dark default used for the installed bundle.
 

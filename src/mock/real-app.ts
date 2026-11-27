@@ -1,4 +1,5 @@
 import { modelCatalog } from '@/model-catalog.generated'
+import { DEFAULT_THEME } from '@/themes'
 // The real App on a fake backend (mockIPC), to click through the UI in a browser.
 import { stemModels } from '@/stem-models'
 import { largeLibraryCommand } from './library-large'
@@ -39,7 +40,7 @@ let preferred: string[] = []
 let clapInstalled = location.hash === '#models' || location.hash === '#model-downloads' || location.hash === '#stem-processing'
 let clapBytes = clapInstalled ? modelCatalog.clap.bytes : 0
 let clapDownloading = false
-let settings: any = { theme: 'system', colorTheme: 'fonicca', customThemes: [], language: 'en', watchFolders: true, autoplay: true, rowPlaybackMode: 'cursor', volume: 1, analysisThreads: null, stemsFolder: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme', editorWaveform: { waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' } }
+let settings: any = { theme: 'system', colorTheme: DEFAULT_THEME, customThemes: [], language: 'en', watchFolders: true, autoplay: true, rowPlaybackMode: 'cursor', volume: 1, analysisThreads: null, stemsFolder: null, syncEnabled: false, projectBpm: null, projectKey: null, waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme', editorWaveform: { waveStyle: 'peaksRms', waveChannels: 'split', waveScale: 'linear', waveColors: 'theme' } }
 
 export function install() {
   Object.assign(window, { isTauri: true })

@@ -64,7 +64,7 @@ pub struct CustomTheme {
 }
 
 pub const BUILT_IN_THEMES: &[&str] = &["fonicca", "graphite", "midnight", "tape", "moss", "neon"];
-const DEFAULT_THEME: &str = "fonicca";
+const DEFAULT_THEME: &str = "tape";
 const MAX_CUSTOM_THEMES: usize = 200;
 const MAX_THEME_NAME: usize = 60;
 
@@ -420,6 +420,14 @@ mod tests {
             danger: c("#ff0000"),
             wave: c("#555555"),
         }
+    }
+
+    #[test]
+    fn tape_is_default_and_explicit_colour_themes_are_preserved() {
+        let defaults: Settings = serde_json::from_str("{}").unwrap();
+        assert_eq!(defaults.color_theme, "tape");
+        let saved: Settings = serde_json::from_str(r#"{"colorTheme":"fonicca"}"#).unwrap();
+        assert_eq!(saved.sanitized().color_theme, "fonicca");
     }
 
     #[test]
