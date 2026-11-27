@@ -1,44 +1,27 @@
 <script setup lang="ts">
-import type { SliderRootEmits, SliderRootProps } from "reka-ui"
-import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
-import { cn } from "cn"
-import { SliderRange, SliderRoot, SliderThumb, SliderTrack, useForwardPropsEmits } from "reka-ui"
+import type { HTMLAttributes } from 'vue'
+import { Slider, SliderControl, SliderIndicator, SliderThumb, SliderTrack } from '@ui-sdk/vue/slider'
+import { cn } from 'cn'
 
-const props = defineProps<SliderRootProps & { class?: HTMLAttributes["class"], ariaLabel?: string }>()
-const emits = defineEmits<SliderRootEmits>()
-
-const delegatedProps = reactiveOmit(props, "class", "ariaLabel")
-
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const props = defineProps<{ class?: HTMLAttributes['class'], ariaLabel?: string }>()
+const model = defineModel<number[]>({ required: true })
+const emit = defineEmits<{ valueCommit: [value: number[]] }>()
 </script>
 
 <template>
-  <SliderRoot
-    v-slot="{ modelValue }"
-    data-slot="slider"
-    :class="cn(
-      'relative flex w-full touch-none items-center select-none data-[disabled]:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col',
-      props.class,
-    )"
-    v-bind="forwarded"
+  <Slider
+    v-model:value="model" :aria-label="ariaLabel"
+    :class="cn('relative flex w-full touch-none items-center select-none data-[disabled]:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col', props.class)"
+    @value-commit="emit('valueCommit', $event)"
   >
-    <SliderTrack
-      data-slot="slider-track"
-      class="bg-muted relative grow overflow-hidden rounded-full data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5"
-    >
-      <SliderRange
-        data-slot="slider-range"
-        class="bg-primary absolute data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full"
-      />
-    </SliderTrack>
-
-    <SliderThumb
-      v-for="(_, key) in modelValue"
-      :key="key"
-      data-slot="slider-thumb"
-      :aria-label="props.ariaLabel"
-      class="bg-white border-primary ring-ring/50 block size-4 shrink-0 rounded-full border shadow-sm transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50"
-    />
-  </SliderRoot>
+    <SliderControl class="flex w-full items-center py-2 data-[orientation=vertical]:h-full data-[orientation=vertical]:w-auto data-[orientation=vertical]:px-2 data-[orientation=vertical]:py-0">
+      <SliderTrack class="relative grow rounded-full bg-muted data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5">
+        <SliderIndicator class="absolute rounded-full bg-primary data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full" />
+        <SliderThumb
+          v-for="(_, index) in model" :key="index" :index="index" :aria-label="ariaLabel"
+          class="block size-4 shrink-0 rounded-full border border-primary bg-white shadow-sm ring-ring/50 transition-[color,box-shadow] hover:ring-4 has-[:focus-visible]:ring-4 data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+        />
+      </SliderTrack>
+    </SliderControl>
+  </Slider>
 </template>

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { AcceptableValue } from 'reka-ui'
 import type { SampleKind } from '@/api'
-import { ChevronDown, Pause, Play, RotateCcw } from '@lucide/vue'
+import { ChevronDown, ListFilter, Pause, Play, RotateCcw } from '@lucide/vue'
 import { storeToRefs } from 'pinia'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import CategoryIcon from '@/components/icons/CategoryIcon.vue'
 import Hint from '@/components/Hint.vue'
 import KeyFilter from '@/components/KeyFilter.vue'
 import LibrarySearch from '@/components/LibrarySearch.vue'
@@ -35,7 +35,7 @@ const { kindFilter, bpmMin, bpmMax, keyFilter, categoryFilter, hasAnalysisFilter
 
 const kinds: SampleKind[] = ['oneshot', 'loop', 'long']
 
-// Reka controls cannot hold null, so "no filter" is a sentinel value.
+// The filter controls use an explicit option for an unrestricted query.
 const ANY = 'any'
 
 const kind = computed<string>({
@@ -43,7 +43,7 @@ const kind = computed<string>({
   set: v => (kindFilter.value = v === ANY ? null : v as SampleKind),
 })
 
-function onKindChange(v: AcceptableValue | AcceptableValue[]) {
+function onKindChange(v: string | string[] | undefined) {
   // A single toggle group deselects on a second click; keep one segment on.
   if (typeof v === 'string' && v)
     kind.value = v
@@ -155,14 +155,19 @@ function parseBpm(e: Event): number | null {
       {{ t('filters.category') }}
       <Select v-model="category">
         <SelectTrigger size="sm" class="w-32 text-foreground" :aria-label="t('filters.category')">
-          <SelectValue>{{ category === ANY ? t('filters.anyCategory') : categoryLabel(category) }}</SelectValue>
+          <SelectValue>
+            <CategoryIcon v-if="category !== ANY" :category="category" class="size-3.5 text-muted-foreground" />
+            <span>{{ category === ANY ? t('filters.anyCategory') : categoryLabel(category) }}</span>
+          </SelectValue>
         </SelectTrigger>
-        <SelectContent>
-          <SelectItem :value="ANY">
+        <SelectContent class="min-w-40">
+          <SelectItem :value="ANY" :label="t('filters.anyCategory')">
+            <ListFilter class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
             {{ t('filters.anyCategory') }}
           </SelectItem>
           <SelectSeparator />
-          <SelectItem v-for="id in CATEGORIES" :key="id" :value="id">
+          <SelectItem v-for="id in CATEGORIES" :key="id" :value="id" :label="categoryLabel(id)">
+            <CategoryIcon :category="id" class="size-3.5 shrink-0 text-muted-foreground" />
             {{ categoryLabel(id) }}
           </SelectItem>
         </SelectContent>

@@ -1,15 +1,10 @@
 <script setup lang="ts">
-import type { SelectValueProps } from "reka-ui"
-import { SelectValue } from "reka-ui"
-
-const props = defineProps<SelectValueProps>()
+import { SelectValue } from '@ui-sdk/vue/select'
 </script>
 
 <template>
-  <SelectValue
-    data-slot="select-value"
-    v-bind="props"
-  >
+  <SelectValue v-if="$slots.default">
     <slot />
   </SelectValue>
+  <SelectValue v-else />
 </template>

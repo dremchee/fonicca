@@ -1,16 +1,15 @@
 <script setup lang="ts">
 import type { VariantProps } from "class-variance-authority"
-import type { ToggleGroupRootEmits, ToggleGroupRootProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import type { toggleVariants } from '@/components/ui/toggle'
-import { reactiveOmit } from "@vueuse/core"
 import { cn } from "cn"
-import { ToggleGroupRoot, useForwardPropsEmits } from "reka-ui"
-import { provide } from "vue"
+import { ToggleGroup } from "@ui-sdk/vue/toggle"
+import { computed, provide } from "vue"
 
 type ToggleGroupVariants = VariantProps<typeof toggleVariants>
 
-const props = withDefaults(defineProps<ToggleGroupRootProps & {
+const props = withDefaults(defineProps<{
+  type?: "single" | "multiple"
   class?: HTMLAttributes["class"]
   variant?: ToggleGroupVariants["variant"]
   size?: ToggleGroupVariants["size"]
@@ -19,7 +18,8 @@ const props = withDefaults(defineProps<ToggleGroupRootProps & {
   spacing: 0,
 })
 
-const emits = defineEmits<ToggleGroupRootEmits>()
+const model = defineModel<string | string[]>()
+const values = computed(() => Array.isArray(model.value) ? model.value : model.value ? [model.value] : [])
 
 provide("toggleGroup", {
   variant: props.variant,
@@ -27,12 +27,13 @@ provide("toggleGroup", {
   spacing: props.spacing,
 })
 
-const delegatedProps = reactiveOmit(props, "class", "size", "variant")
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+function update(value: string[]) {
+  model.value = props.type === "multiple" ? value : value[0]
+}
 </script>
 
 <template>
-  <ToggleGroupRoot
+  <ToggleGroup
     v-slot="slotProps"
     data-slot="toggle-group"
     :data-size="size"
@@ -41,9 +42,9 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
     :style="{
       '--gap': spacing,
     }"
-    v-bind="forwarded"
+    :multiple="type === 'multiple'" :value="values" @update:value="update"
     :class="cn('group/toggle-group flex w-fit items-center gap-[--spacing(var(--gap))] rounded-md data-[spacing=default]:data-[variant=outline]:shadow-xs', props.class)"
   >
     <slot v-bind="slotProps" />
-  </ToggleGroupRoot>
+  </ToggleGroup>
 </template>

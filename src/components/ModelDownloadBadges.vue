@@ -33,13 +33,11 @@ const showSoundModel = computed(() => !downloads.value.some(model => model.id ==
 
 <template>
   <div v-if="downloads.length || showSoundModel" class="flex flex-col gap-1 py-2">
-    <Badge v-for="model in downloads" :key="model.id" as-child variant="secondary" class="download-badge">
-      <button type="button" :aria-label="t('filters.modelDownload', { name: t(`settings.models.${model.id}.name`), percent: model.percent })" @click="settings.openDialog('analysis')">
-        <span class="download-fill" aria-hidden="true" :style="{ transform: `scaleX(${model.percent / 100})` }" />
-        <Download class="relative size-3 shrink-0" aria-hidden="true" />
-        <span class="relative min-w-0 flex-1 truncate text-left">{{ t(`settings.models.${model.id}.name`) }}</span>
-        <span class="relative shrink-0 tabular" role="progressbar" :aria-label="t(`settings.models.${model.id}.name`)" :aria-valuenow="model.percent" aria-valuemin="0" aria-valuemax="100">{{ model.percent }}%</span>
-      </button>
+    <Badge v-for="model in downloads" :key="model.id" as="button" variant="secondary" class="download-badge" type="button" :aria-label="t('filters.modelDownload', { name: t(`settings.models.${model.id}.name`), percent: model.percent })" @click="settings.openDialog('analysis')">
+      <span class="download-fill" aria-hidden="true" :style="{ transform: `scaleX(${model.percent / 100})` }" />
+      <Download class="relative size-3 shrink-0" aria-hidden="true" />
+      <span class="relative min-w-0 flex-1 truncate text-left">{{ t(`settings.models.${model.id}.name`) }}</span>
+      <span class="relative shrink-0 tabular" role="progressbar" :aria-label="t(`settings.models.${model.id}.name`)" :aria-valuenow="model.percent" aria-valuemin="0" aria-valuemax="100">{{ model.percent }}%</span>
     </Badge>
     <SoundModelDownload v-if="showSoundModel" />
   </div>

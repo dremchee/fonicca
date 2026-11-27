@@ -1,26 +1,20 @@
 <script setup lang="ts">
-import type { CheckboxRootEmits, CheckboxRootProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
 import { Check } from "@lucide/vue"
-import { reactiveOmit } from "@vueuse/core"
+import { Checkbox, CheckboxIndicator } from "@ui-sdk/vue/checkbox"
 import { cn } from "cn"
-import { CheckboxIndicator, CheckboxRoot, useForwardPropsEmits } from "reka-ui"
 
-const props = defineProps<CheckboxRootProps & { class?: HTMLAttributes["class"] }>()
-const emits = defineEmits<CheckboxRootEmits>()
-
-const delegatedProps = reactiveOmit(props, "class")
-
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const props = defineProps<{ class?: HTMLAttributes["class"] }>()
+const model = defineModel<boolean | "indeterminate">({ default: false })
 </script>
 
 <template>
-  <CheckboxRoot
+  <Checkbox
     v-slot="slotProps"
     data-slot="checkbox"
-    v-bind="forwarded"
+    v-model="model"
     :class="
-      cn('peer border-input data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50',
+      cn('peer border-input data-[checked]:bg-primary data-[checked]:text-primary-foreground data-[checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50',
          props.class)"
   >
     <CheckboxIndicator
@@ -31,5 +25,5 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
         <Check class="size-3.5" />
       </slot>
     </CheckboxIndicator>
-  </CheckboxRoot>
+  </Checkbox>
 </template>

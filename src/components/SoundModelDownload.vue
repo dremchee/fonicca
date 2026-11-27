@@ -26,14 +26,14 @@ async function download() {
 
 <template>
   <Hint v-if="modelDownload || (soundModel && !soundModel.installed)" :text="modelDownload?.error || t('filters.soundModelHint')">
-    <Badge as-child variant="secondary"><button type="button" class="model-row" :disabled="downloading" @click="download">
+    <Badge as="button" variant="secondary" type="button" class="model-row" :disabled="downloading" @click="download">
       <Spinner v-if="downloading" class="size-3 shrink-0" />
       <RotateCcw v-else-if="modelDownload?.error" class="size-3 shrink-0 text-destructive" />
       <Download v-else class="size-3 shrink-0" />
       <span class="min-w-0 truncate" :class="{ 'text-destructive': modelDownload?.error }">
         {{ modelDownload?.error ? t('filters.downloadFailed') : downloading ? t('filters.downloadingModel', { percent }) : t('filters.soundModel', { size: formatSize(soundModel?.size ?? 0) }) }}
       </span>
-    </button></Badge>
+    </Badge>
   </Hint>
 </template>
 

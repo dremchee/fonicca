@@ -1,32 +1,26 @@
 <script setup lang="ts">
-import type { SwitchRootEmits, SwitchRootProps } from "reka-ui"
 import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
+import { Switch, SwitchThumb } from "@ui-sdk/vue/switch"
 import { cn } from "cn"
-import { SwitchRoot, SwitchThumb, useForwardPropsEmits } from "reka-ui"
 
-const props = defineProps<SwitchRootProps & { class?: HTMLAttributes["class"] }>()
-const emits = defineEmits<SwitchRootEmits>()
-
-const delegatedProps = reactiveOmit(props, "class")
-
-const forwarded = useForwardPropsEmits(delegatedProps, emits)
+const props = defineProps<{ class?: HTMLAttributes["class"] }>()
+const model = defineModel<boolean>()
 </script>
 
 <template>
-  <SwitchRoot
+  <Switch
     data-slot="switch"
-    v-bind="forwarded"
+    v-model="model"
     :class="cn(
-      'peer data-[state=checked]:bg-primary data-[state=unchecked]:bg-input focus-visible:border-ring focus-visible:ring-ring/50 inline-flex h-[1.15rem] w-8 shrink-0 items-center rounded-full border border-transparent shadow-xs transition-all outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
+      'peer data-[checked]:bg-primary data-[unchecked]:bg-input focus-visible:border-ring focus-visible:ring-ring/50 inline-flex h-[1.15rem] w-8 shrink-0 items-center rounded-full border border-transparent shadow-xs transition-all outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50',
       props.class,
     )"
   >
     <SwitchThumb
       data-slot="switch-thumb"
-      class="bg-white pointer-events-none block size-4 rounded-full ring-0 transition-transform data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=unchecked]:translate-x-0"
+      class="bg-white pointer-events-none block size-4 rounded-full ring-0 transition-transform data-[checked]:translate-x-[calc(100%-2px)] data-[unchecked]:translate-x-0"
     >
       <slot name="thumb" />
     </SwitchThumb>
-  </SwitchRoot>
+  </Switch>
 </template>

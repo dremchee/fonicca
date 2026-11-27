@@ -1,19 +1,11 @@
-<script setup lang="ts">
-import type { SelectRootEmits, SelectRootProps } from "reka-ui"
-import { SelectRoot, useForwardPropsEmits } from "reka-ui"
+<script setup lang="ts" generic="T">
+import { Select as UiSelect } from '@ui-sdk/vue/select'
 
-const props = defineProps<SelectRootProps>()
-const emits = defineEmits<SelectRootEmits>()
-
-const forwarded = useForwardPropsEmits(props, emits)
+const model = defineModel<T>()
 </script>
 
 <template>
-  <SelectRoot
-    v-slot="slotProps"
-    data-slot="select"
-    v-bind="forwarded"
-  >
-    <slot v-bind="slotProps" />
-  </SelectRoot>
+  <UiSelect :value="model" @update:value="model = $event ?? undefined">
+    <slot />
+  </UiSelect>
 </template>

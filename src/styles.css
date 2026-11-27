@@ -56,6 +56,18 @@ body,
   height: 100%;
 }
 
+.ui-popup {
+  transform-origin: var(--transform-origin);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ui-popup { transition: opacity 120ms ease, scale 120ms ease; }
+  .ui-popup:is([data-starting-style], [data-ending-style]) {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
 *,
 ::before,
 ::after {
