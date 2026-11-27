@@ -17,7 +17,7 @@
 | Слой | Выбор | Почему |
 |---|---|---|
 | Оболочка | Tauri 2 | Маленький бинарник, Rust для тяжёлого аудио, нативные диалоги и drag-out |
-| UI | Vue 3 + Vite + TypeScript, Pinia, shadcn-vue, UnoCSS | Привычный стек |
+| UI | Vue 3 + Vite + TypeScript, Pinia, UI SDK, UnoCSS | Компоненты и оформление Tape |
 | Данные | SQLite (rusqlite на стороне Rust), FTS5 для поиска | Один файл, быстро, полнотекстовый поиск из коробки |
 | Декодирование | symphonia | WAV/AIFF/FLAC/MP3/OGG на чистом Rust |
 | Запись / ресемплинг | hound, rubato | WAV-запись, качественный SRC |

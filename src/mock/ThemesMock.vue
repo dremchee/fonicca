@@ -11,7 +11,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Input } from '@/components/ui/input'
 import { Toaster } from '@/components/ui/sonner'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import { confirm } from '@/composables/confirm'
 import ThemeThumb from './ThemeThumb.vue'
 import { BUILT_IN, COLOR_INFO, COLOR_KEYS, contrastIssues, cssVars, isHex } from './themes'
@@ -157,217 +156,215 @@ const sections = ['General', 'Library', 'Playback', 'Waveform', 'Themes', 'Analy
 </script>
 
 <template>
-  <TooltipProvider :delay-duration="500">
-    <!-- Stand-in for the main window, wearing the current theme. -->
-    <div class="h-full flex">
-      <aside class="w-56 shrink-0 border-r border-border bg-card p-2 flex flex-col gap-px">
-        <div class="h-9" />
-        <div class="side-row active">
-          <span class="i-lucide-library" /> All samples
+  <!-- Stand-in for the main window, wearing the current theme. -->
+  <div class="h-full flex">
+    <aside class="w-56 shrink-0 border-r border-border bg-card p-2 flex flex-col gap-px">
+      <div class="h-9" />
+      <div class="side-row active">
+        <span class="i-lucide-library" /> All samples
+      </div>
+      <div class="side-row">
+        <span class="i-lucide-star" /> Favorites
+      </div>
+      <div class="side-row">
+        <span class="i-lucide-copy" /> Duplicates
+      </div>
+      <div class="px-2 pt-4 pb-1 text-[11px] font-medium text-muted-foreground">
+        Folders
+      </div>
+      <div class="side-row">
+        <span class="i-lucide-folder" /> Source
+      </div>
+    </aside>
+    <main class="flex-1 flex flex-col">
+      <header class="h-11 px-3 flex items-center gap-3 border-b border-border">
+        <div class="h-8 w-80 rounded-md border border-input px-3 flex items-center text-muted-foreground">
+          Search samples
         </div>
-        <div class="side-row">
-          <span class="i-lucide-star" /> Favorites
+        <ToggleGroup :model-value="mode" type="single" variant="outline" size="sm" class="ml-auto" @update:model-value="$event && (mode = $event as Mode)">
+          <ToggleGroupItem value="light">
+            <Sun /> Light
+          </ToggleGroupItem>
+          <ToggleGroupItem value="dark">
+            <Moon /> Dark
+          </ToggleGroupItem>
+        </ToggleGroup>
+        <Button size="sm" @click="open = true">
+          Themes…
+        </Button>
+      </header>
+      <div class="flex-1">
+        <div v-for="(n, i) in ['Kick Rumble 01', 'Snare Crack', 'Hat Closed 909', 'Loop Dust 90 Am']" :key="n" class="h-8 px-3 flex items-center gap-3 border-b border-border" :class="{ 'bg-primary-soft': i === 1 }">
+          <span class="flex-1">{{ n }}</span>
+          <span class="text-xs text-muted-foreground">0.5s</span>
         </div>
-        <div class="side-row">
-          <span class="i-lucide-copy" /> Duplicates
+      </div>
+      <div class="h-24 px-3 flex items-center gap-[2px] border-t border-border">
+        <b v-for="h in 90" :key="h" class="flex-1 rounded-sm" :style="{ height: `${10 + Math.abs(Math.sin(h / 3)) * 60}%`, background: h < 34 ? 'var(--primary)' : 'var(--wave)' }" />
+      </div>
+    </main>
+  </div>
+
+  <Dialog v-model:open="open">
+    <DialogContent class="p-0 gap-0 sm:max-w-5xl h-[min(720px,calc(100vh-4rem))] grid grid-cols-[200px_1fr] overflow-hidden">
+      <nav class="bg-muted/40 border-r border-border p-2 pt-4 flex flex-col gap-px">
+        <div v-for="s in sections" :key="s" class="nav-row" :class="{ active: s === 'Themes' }">
+          {{ s }}
         </div>
-        <div class="px-2 pt-4 pb-1 text-[11px] font-medium text-muted-foreground">
-          Folders
-        </div>
-        <div class="side-row">
-          <span class="i-lucide-folder" /> Source
-        </div>
-      </aside>
-      <main class="flex-1 flex flex-col">
-        <header class="h-11 px-3 flex items-center gap-3 border-b border-border">
-          <div class="h-8 w-80 rounded-md border border-input px-3 flex items-center text-muted-foreground">
-            Search samples
-          </div>
-          <ToggleGroup :model-value="mode" type="single" variant="outline" size="sm" class="ml-auto" @update:model-value="$event && (mode = $event as Mode)">
-            <ToggleGroupItem value="light">
-              <Sun /> Light
-            </ToggleGroupItem>
-            <ToggleGroupItem value="dark">
-              <Moon /> Dark
-            </ToggleGroupItem>
-          </ToggleGroup>
-          <Button size="sm" @click="open = true">
-            Themes…
+      </nav>
+
+      <div class="min-w-0 flex flex-col">
+        <header class="h-13 shrink-0 px-6 flex items-center gap-2 border-b border-border">
+          <Button v-if="draft" variant="ghost" size="icon-sm" class="-ml-2" aria-label="Back to themes" @click="back">
+            <ArrowLeft />
           </Button>
+          <DialogTitle class="text-base font-semibold">
+            {{ draft ? draft.name || 'Untitled theme' : 'Themes' }}
+          </DialogTitle>
+          <span v-if="dirty" class="text-xs text-muted-foreground">· unsaved</span>
+          <DialogDescription class="sr-only">
+            Colour themes
+          </DialogDescription>
         </header>
-        <div class="flex-1">
-          <div v-for="(n, i) in ['Kick Rumble 01', 'Snare Crack', 'Hat Closed 909', 'Loop Dust 90 Am']" :key="n" class="h-8 px-3 flex items-center gap-3 border-b border-border" :class="{ 'bg-primary-soft': i === 1 }">
-            <span class="flex-1">{{ n }}</span>
-            <span class="text-xs text-muted-foreground">0.5s</span>
-          </div>
-        </div>
-        <div class="h-24 px-3 flex items-center gap-[2px] border-t border-border">
-          <b v-for="h in 90" :key="h" class="flex-1 rounded-sm" :style="{ height: `${10 + Math.abs(Math.sin(h / 3)) * 60}%`, background: h < 34 ? 'var(--primary)' : 'var(--wave)' }" />
-        </div>
-      </main>
-    </div>
 
-    <Dialog v-model:open="open">
-      <DialogContent class="p-0 gap-0 sm:max-w-5xl h-[min(720px,calc(100vh-4rem))] grid grid-cols-[200px_1fr] overflow-hidden">
-        <nav class="bg-muted/40 border-r border-border p-2 pt-4 flex flex-col gap-px">
-          <div v-for="s in sections" :key="s" class="nav-row" :class="{ active: s === 'Themes' }">
-            {{ s }}
-          </div>
-        </nav>
-
-        <div class="min-w-0 flex flex-col">
-          <header class="h-13 shrink-0 px-6 flex items-center gap-2 border-b border-border">
-            <Button v-if="draft" variant="ghost" size="icon-sm" class="-ml-2" aria-label="Back to themes" @click="back">
-              <ArrowLeft />
-            </Button>
-            <DialogTitle class="text-base font-semibold">
-              {{ draft ? draft.name || 'Untitled theme' : 'Themes' }}
-            </DialogTitle>
-            <span v-if="dirty" class="text-xs text-muted-foreground">· unsaved</span>
-            <DialogDescription class="sr-only">
-              Colour themes
-            </DialogDescription>
-          </header>
-
-          <!-- Theme list -->
-          <div v-if="!draft" class="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
-            <div class="flex items-center gap-2">
-              <p class="text-xs text-muted-foreground flex-1">
-                Each theme has a light and a dark variant; Appearance in General picks which one you see.
-              </p>
-              <Button variant="outline" size="sm" @click="fileInput?.click()">
-                <Upload /> Import…
-              </Button>
-              <Button size="sm" @click="createNew">
-                <Plus /> New theme
-              </Button>
-              <input ref="fileInput" type="file" accept=".json,application/json" class="hidden" @change="importTheme">
-            </div>
-            <div class="grid grid-cols-3 gap-3">
-              <div
-                v-for="t in themes"
-                :key="t.id"
-                class="card group"
-                :class="{ selected: t.id === activeId }"
-                role="button"
-                tabindex="0"
-                @click="activeId = t.id"
-                @keydown.enter="activeId = t.id"
-              >
-                <ThemeThumb :pal="t[mode]" />
-                <div class="flex items-center gap-1.5 pt-2">
-                  <Check v-if="t.id === activeId" class="size-3.5 text-primary shrink-0" />
-                  <span class="font-medium truncate">{{ t.name }}</span>
-                  <Badge v-if="t.builtIn" variant="secondary" class="h-4 px-1.5 text-[10px]">
-                    Built-in
-                  </Badge>
-                  <div class="ml-auto flex opacity-0 group-hover:opacity-100 focus-within:opacity-100" @click.stop>
-                    <Button v-if="!t.builtIn" variant="ghost" size="icon-xs" aria-label="Edit" @click="edit(t)">
-                      <Pencil />
-                    </Button>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger as-child>
-                        <Button variant="ghost" size="icon-xs" aria-label="More">
-                          <Ellipsis />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem @select="duplicate(t)">
-                          <Copy /> Duplicate
-                        </DropdownMenuItem>
-                        <DropdownMenuItem @select="exportTheme(t)">
-                          <Download /> Export…
-                        </DropdownMenuItem>
-                        <template v-if="!t.builtIn">
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem class="text-destructive focus:text-destructive" @select="remove(t)">
-                            <Trash2 /> Delete
-                          </DropdownMenuItem>
-                        </template>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <p class="text-xs text-muted-foreground">
-              Built-in themes can't be changed: duplicate one to make it yours.
+        <!-- Theme list -->
+        <div v-if="!draft" class="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
+          <div class="flex items-center gap-2">
+            <p class="text-xs text-muted-foreground flex-1">
+              Each theme has a light and a dark variant; Appearance in General picks which one you see.
             </p>
+            <Button variant="outline" size="sm" @click="fileInput?.click()">
+              <Upload /> Import…
+            </Button>
+            <Button size="sm" @click="createNew">
+              <Plus /> New theme
+            </Button>
+            <input ref="fileInput" type="file" accept=".json,application/json" class="hidden" @change="importTheme">
           </div>
-
-          <!-- Theme editor -->
-          <template v-else>
-            <div class="flex-1 min-h-0 grid grid-cols-[1fr_260px]">
-              <div class="overflow-y-auto px-6 py-5 flex flex-col gap-4">
-                <div class="flex items-center gap-3">
-                  <Input v-model="draft.name" class="h-8 max-w-64" aria-label="Theme name" placeholder="Theme name" />
-                  <ToggleGroup :model-value="mode" type="single" variant="outline" size="sm" @update:model-value="$event && (mode = $event as Mode)">
-                    <ToggleGroupItem value="light">
-                      <Sun /> Light
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="dark">
-                      <Moon /> Dark
-                    </ToggleGroupItem>
-                  </ToggleGroup>
+          <div class="grid grid-cols-3 gap-3">
+            <div
+              v-for="t in themes"
+              :key="t.id"
+              class="card group"
+              :class="{ selected: t.id === activeId }"
+              role="button"
+              tabindex="0"
+              @click="activeId = t.id"
+              @keydown.enter="activeId = t.id"
+            >
+              <ThemeThumb :pal="t[mode]" />
+              <div class="flex items-center gap-1.5 pt-2">
+                <Check v-if="t.id === activeId" class="size-3.5 text-primary shrink-0" />
+                <span class="font-medium truncate">{{ t.name }}</span>
+                <Badge v-if="t.builtIn" variant="secondary" class="h-4 px-1.5 text-[10px]">
+                  Built-in
+                </Badge>
+                <div class="ml-auto flex opacity-0 group-hover:opacity-100 focus-within:opacity-100" @click.stop>
+                  <Button v-if="!t.builtIn" variant="ghost" size="icon-xs" aria-label="Edit" @click="edit(t)">
+                    <Pencil />
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger as-child>
+                      <Button variant="ghost" size="icon-xs" aria-label="More">
+                        <Ellipsis />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem @select="duplicate(t)">
+                        <Copy /> Duplicate
+                      </DropdownMenuItem>
+                      <DropdownMenuItem @select="exportTheme(t)">
+                        <Download /> Export…
+                      </DropdownMenuItem>
+                      <template v-if="!t.builtIn">
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem class="text-destructive focus:text-destructive" @select="remove(t)">
+                          <Trash2 /> Delete
+                        </DropdownMenuItem>
+                      </template>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
-                <section class="group-box">
-                  <div v-for="key in COLOR_KEYS" :key="key" class="row">
-                    <label class="swatch" :style="{ background: draft[mode][key] }">
-                      <input type="color" :value="draft[mode][key]" :aria-label="COLOR_INFO[key].label" @input="setColor(key, ($event.target as HTMLInputElement).value)">
-                    </label>
-                    <div class="flex-1 min-w-0">
-                      <div class="font-medium">
-                        {{ COLOR_INFO[key].label }}
-                      </div>
-                      <div class="text-xs text-muted-foreground">
-                        {{ COLOR_INFO[key].hint }}
-                      </div>
-                      <div v-for="issue in issueFor(key)" :key="issue.text" class="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-0.5">
-                        <AlertTriangle class="size-3 shrink-0" /> {{ issue.text }}
-                      </div>
-                    </div>
-                    <Input
-                      :model-value="draft[mode][key]"
-                      class="h-7 w-24 font-mono text-xs"
-                      :aria-label="`${COLOR_INFO[key].label} hex`"
-                      @change="setColor(key, ($event.target as HTMLInputElement).value)"
-                    />
-                  </div>
-                </section>
               </div>
-              <aside class="border-l border-border p-4 flex flex-col gap-3 bg-muted/30">
-                <div class="text-xs font-medium text-muted-foreground">
-                  Preview
-                </div>
-                <ThemeThumb :pal="draft.light" />
-                <ThemeThumb :pal="draft.dark" />
-                <p class="text-xs text-muted-foreground">
-                  The app behind this dialog shows the {{ mode }} variant as you edit.
-                </p>
-              </aside>
             </div>
-            <footer class="h-14 shrink-0 px-5 flex items-center gap-2 border-t border-border">
-              <Button variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="remove(saved!)">
-                <Trash2 /> Delete
-              </Button>
-              <Button variant="ghost" size="sm" @click="exportTheme(draft)">
-                <Download /> Export…
-              </Button>
-              <Button variant="outline" size="sm" class="ml-auto" :disabled="!dirty" @click="revert">
-                <RotateCcw /> Revert
-              </Button>
-              <Button size="sm" :disabled="!dirty" @click="save">
-                Save
-              </Button>
-            </footer>
-          </template>
+          </div>
+          <p class="text-xs text-muted-foreground">
+            Built-in themes can't be changed: duplicate one to make it yours.
+          </p>
         </div>
-      </DialogContent>
-    </Dialog>
 
-    <ConfirmDialog />
-    <Toaster position="bottom-right" />
-  </TooltipProvider>
+        <!-- Theme editor -->
+        <template v-else>
+          <div class="flex-1 min-h-0 grid grid-cols-[1fr_260px]">
+            <div class="overflow-y-auto px-6 py-5 flex flex-col gap-4">
+              <div class="flex items-center gap-3">
+                <Input v-model="draft.name" class="h-8 max-w-64" aria-label="Theme name" placeholder="Theme name" />
+                <ToggleGroup :model-value="mode" type="single" variant="outline" size="sm" @update:model-value="$event && (mode = $event as Mode)">
+                  <ToggleGroupItem value="light">
+                    <Sun /> Light
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="dark">
+                    <Moon /> Dark
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              </div>
+              <section class="group-box">
+                <div v-for="key in COLOR_KEYS" :key="key" class="row">
+                  <label class="swatch" :style="{ background: draft[mode][key] }">
+                    <input type="color" :value="draft[mode][key]" :aria-label="COLOR_INFO[key].label" @input="setColor(key, ($event.target as HTMLInputElement).value)">
+                  </label>
+                  <div class="flex-1 min-w-0">
+                    <div class="font-medium">
+                      {{ COLOR_INFO[key].label }}
+                    </div>
+                    <div class="text-xs text-muted-foreground">
+                      {{ COLOR_INFO[key].hint }}
+                    </div>
+                    <div v-for="issue in issueFor(key)" :key="issue.text" class="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1 mt-0.5">
+                      <AlertTriangle class="size-3 shrink-0" /> {{ issue.text }}
+                    </div>
+                  </div>
+                  <Input
+                    :model-value="draft[mode][key]"
+                    class="h-7 w-24 font-mono text-xs"
+                    :aria-label="`${COLOR_INFO[key].label} hex`"
+                    @change="setColor(key, ($event.target as HTMLInputElement).value)"
+                  />
+                </div>
+              </section>
+            </div>
+            <aside class="border-l border-border p-4 flex flex-col gap-3 bg-muted/30">
+              <div class="text-xs font-medium text-muted-foreground">
+                Preview
+              </div>
+              <ThemeThumb :pal="draft.light" />
+              <ThemeThumb :pal="draft.dark" />
+              <p class="text-xs text-muted-foreground">
+                The app behind this dialog shows the {{ mode }} variant as you edit.
+              </p>
+            </aside>
+          </div>
+          <footer class="h-14 shrink-0 px-5 flex items-center gap-2 border-t border-border">
+            <Button variant="ghost" size="sm" class="text-destructive hover:text-destructive" @click="remove(saved!)">
+              <Trash2 /> Delete
+            </Button>
+            <Button variant="ghost" size="sm" @click="exportTheme(draft)">
+              <Download /> Export…
+            </Button>
+            <Button variant="outline" size="sm" class="ml-auto" :disabled="!dirty" @click="revert">
+              <RotateCcw /> Revert
+            </Button>
+            <Button size="sm" :disabled="!dirty" @click="save">
+              Save
+            </Button>
+          </footer>
+        </template>
+      </div>
+    </DialogContent>
+  </Dialog>
+
+  <ConfirmDialog />
+  <Toaster position="bottom-right" />
 </template>
 
 <style scoped>

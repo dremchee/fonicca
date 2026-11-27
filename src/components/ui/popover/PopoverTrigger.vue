@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import type { PopoverTriggerProps } from "reka-ui"
-import { PopoverTrigger } from "reka-ui"
+import { PopoverTrigger } from '@ui-sdk/vue/popover'
+import RenderChild from '@/components/ui/RenderChild'
 
-const props = defineProps<PopoverTriggerProps>()
+defineProps<{ asChild?: boolean }>()
 </script>
 
 <template>
-  <PopoverTrigger
-    data-slot="popover-trigger"
-    v-bind="props"
-  >
-    <slot />
+  <PopoverTrigger>
+    <template v-if="asChild" #render="{ props }">
+      <RenderChild :trigger-props="props"><slot /></RenderChild>
+    </template>
+    <slot v-if="!asChild" />
   </PopoverTrigger>
 </template>

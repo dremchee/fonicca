@@ -190,10 +190,9 @@ function formatSpec(p: Profile) {
 </script>
 
 <template>
-  <Dialog v-model:open="open">
+  <Dialog v-model:open="open" :close-on-outside-press="phase !== 'exporting'">
     <DialogContent
       class="p-0 gap-0 sm:max-w-5xl h-[min(620px,calc(100vh-4rem))] grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden"
-      @interact-outside="phase === 'exporting' && $event.preventDefault()"
     >
       <header class="h-13 shrink-0 px-6 flex items-center gap-2 border-b border-border">
         <DialogTitle class="text-base font-semibold">

@@ -56,13 +56,11 @@ function runAfterClose(action: () => unknown) {
   afterClose = action
 }
 
-function onCloseAutoFocus(e: Event) {
-  if (!afterClose)
-    return
-  e.preventDefault()
-  // The focus trap is released in a timeout of its own; run after it.
-  setTimeout(afterClose, 0)
+function onOpenChangeComplete(isOpen: boolean) {
+  if (isOpen) return
+  const action = afterClose
   afterClose = null
+  action?.()
 }
 
 async function submitNew() {
@@ -133,12 +131,12 @@ async function createFromDialog() {
   catch (error) { toast.error(String(error)) }
 }
 
-defineExpose({ openNative })
+defineExpose({ openNative, onOpenChangeComplete })
 
 </script>
 
 <template>
-  <ContextMenuContent v-if="!native" class="w-56" @close-auto-focus="onCloseAutoFocus">
+  <ContextMenuContent v-if="!native" class="w-56">
     <ContextMenuItem @select="player.toggle(sample)">
       <component :is="player.isPlaying(sample.id) ? Pause : Play" />
       {{ player.isPlaying(sample.id) ? t('common.actions.pause') : t('common.actions.play') }}

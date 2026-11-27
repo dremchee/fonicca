@@ -65,7 +65,7 @@ watchEffect(() => { if (!overflow.value) open.value = false })
     </Teleport>
     <Popover v-if="overflow" v-model:open="open">
       <PopoverTrigger as-child>
-        <Button variant="ghost" size="icon-sm" class="shrink-0 data-[state=open]:bg-accent" :aria-label="t('editor.toolbar.moreTools')"><MoreHorizontal /></Button>
+        <Button variant="ghost" size="icon-sm" class="shrink-0 data-[open]:bg-accent" :aria-label="t('editor.toolbar.moreTools')"><MoreHorizontal /></Button>
       </PopoverTrigger>
       <PopoverContent align="end" class="w-auto max-w-80 p-2" :aria-label="t('editor.toolbar.moreTools')">
         <div ref="menu" class="flex flex-wrap items-center gap-1" />

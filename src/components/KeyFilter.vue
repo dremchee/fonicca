@@ -5,6 +5,7 @@ import { Toggle, ToggleGroup } from '@ui-sdk/vue/toggle'
 import { computed, shallowRef, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Button } from '@/components/ui/button'
+import RenderChild from '@/components/ui/RenderChild'
 import { toggleVariants } from '@/components/ui/toggle'
 
 const key = defineModel<string | null>({ required: true })
@@ -56,16 +57,18 @@ function initialFocus() {
   <Popover>
     <PopoverTrigger :aria-label="t('filters.key')">
       <template #render="{ props }">
-        <Button v-bind="props" variant="outline" size="sm" class="key-trigger min-w-24 justify-between font-normal">
-          <Music2 data-icon="inline-start" class="text-muted-foreground" />
-          <span>{{ key ?? t('filters.key') }}</span>
-          <ChevronDown data-icon="inline-end" class="key-chevron" />
-        </Button>
+        <RenderChild :trigger-props="props">
+          <Button variant="outline" size="sm" class="key-trigger min-w-24 justify-between font-normal">
+            <Music2 data-icon="inline-start" class="text-muted-foreground" />
+            <span>{{ key ?? t('filters.key') }}</span>
+            <ChevronDown data-icon="inline-end" class="key-chevron" />
+          </Button>
+        </RenderChild>
       </template>
     </PopoverTrigger>
     <PopoverContent
       align="start" :side-offset="4" :initial-focus="initialFocus"
-      class="key-popover bg-popover text-popover-foreground w-80 rounded-2xl border p-4 shadow-md outline-hidden"
+      class="key-popover ui-popup bg-popover text-popover-foreground w-80 rounded-2xl border p-4 shadow-md outline-hidden"
     >
       <div class="key-options">
         <div class="mb-3 flex items-center justify-between gap-2">
@@ -107,12 +110,6 @@ function initialFocus() {
 .key-popover {
   margin: 0;
   max-width: min(var(--available-width, 100vw), calc(100vw - 1.5rem));
-  transform-origin: var(--transform-origin);
-  transition: opacity 120ms ease, scale 120ms ease;
-}
-.key-popover:is([data-starting-style], [data-ending-style]) {
-  opacity: 0;
-  scale: 0.97;
 }
 .key-options :deep(.key-notes) {
   display: grid;
@@ -146,6 +143,6 @@ function initialFocus() {
   corner-shape: round;
 }
 @media (prefers-reduced-motion: reduce) {
-  .key-chevron, .key-popover { transition: none; }
+  .key-chevron { transition: none; }
 }
 </style>

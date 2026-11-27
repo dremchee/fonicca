@@ -272,13 +272,11 @@ async function openNativeMenu(position: { x: number, y: number }) {
 // Renaming focuses an input, so it waits until the menu has given focus back.
 let afterClose: (() => unknown) | null = null
 
-function onCloseAutoFocus(e: Event) {
-  if (!afterClose)
-    return
-  e.preventDefault()
-  // The focus trap is released in a timeout of its own; run after it.
-  setTimeout(afterClose, 0)
+function onOpenChangeComplete(isOpen: boolean) {
+  if (isOpen) return
+  const action = afterClose
   afterClose = null
+  action?.()
 }
 
 function renameFromMenu() {
@@ -356,7 +354,7 @@ async function confirmDeleteTag(id: number) {
 
     <SettingsNavigation v-if="settings.dialogOpen" show-back class="flex-1" />
     <div v-show="!settings.dialogOpen" class="min-h-0 flex-1 flex flex-col">
-    <ContextMenu>
+    <ContextMenu @open-change-complete="onOpenChangeComplete">
       <ContextMenuTrigger as-child :disabled="nativeMenus">
         <nav class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-2 flex flex-col gap-px [&>*]:shrink-0" @contextmenu="onContextMenu">
           <button class="row" :class="{ active: isActive({ kind: 'all' }) }" @click="settings.dialogOpen = false; scope = { kind: 'all' }">
@@ -569,7 +567,7 @@ async function confirmDeleteTag(id: number) {
           </template>
         </nav>
       </ContextMenuTrigger>
-      <ContextMenuContent v-if="!nativeMenus" class="w-52" @close-auto-focus="onCloseAutoFocus">
+      <ContextMenuContent v-if="!nativeMenus" class="w-52">
         <template v-if="menuSource">
           <ContextMenuItem @select="library.rescanSource(menuSource.id)">
             <RefreshCw />

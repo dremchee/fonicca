@@ -418,7 +418,7 @@ const toolbarActions: Record<EditorToolAction, () => unknown> = {
             <ContextMenuItem @select="editor.play()">
               {{ t('editor.toolbar.playSelection') }}<ContextMenuShortcut>{{ t('editor.toolbar.space') }}</ContextMenuShortcut>
             </ContextMenuItem>
-            <ContextMenuCheckboxItem :model-value="editor.looping" @update:model-value="editor.looping = $event === true">
+            <ContextMenuCheckboxItem value="loop" :model-value="editor.looping" @update:model-value="editor.looping = $event === true">
               {{ t('editor.toolbar.loop') }}<ContextMenuShortcut>L</ContextMenuShortcut>
             </ContextMenuCheckboxItem>
             <ContextMenuSeparator />
@@ -587,7 +587,7 @@ const toolbarActions: Record<EditorToolAction, () => unknown> = {
           <span class="inline-flex">
             <DropdownMenu>
               <DropdownMenuTrigger as-child>
-                <Button variant="ghost" size="icon-sm" class="data-[state=open]:bg-accent" :aria-label="t('editor.toolbar.view')">
+                <Button variant="ghost" size="icon-sm" class="data-[open]:bg-accent" :aria-label="t('editor.toolbar.view')">
                   <SlidersHorizontal />
                 </Button>
               </DropdownMenuTrigger>
@@ -596,20 +596,20 @@ const toolbarActions: Record<EditorToolAction, () => unknown> = {
                   {{ t('editor.view.grid') }}
                 </DropdownMenuLabel>
                 <DropdownMenuRadioGroup v-model="gridMode">
-                  <DropdownMenuRadioItem value="beats" @select.prevent>
+                  <DropdownMenuRadioItem value="beats" :close-on-select="false">
                     {{ t('editor.view.gridBeats') }}
                   </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="time" @select.prevent>
+                  <DropdownMenuRadioItem value="time" :close-on-select="false">
                     {{ t('editor.view.gridTime') }}
                   </DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="off" @select.prevent>
+                  <DropdownMenuRadioItem value="off" :close-on-select="false">
                     {{ t('editor.view.gridOff') }}
                   </DropdownMenuRadioItem>
                 </DropdownMenuRadioGroup>
                 <DropdownMenuItem :disabled="!beatGrid" @select="downbeat = editor.cursor">
                   {{ t('editor.view.downbeat') }}
                 </DropdownMenuItem>
-                <DropdownMenuCheckboxItem v-model="zeroSnap" @select.prevent>
+                <DropdownMenuCheckboxItem v-model="zeroSnap" value="zero-snap" :close-on-select="false">
                   {{ t('editor.view.zeroSnap') }}
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuSeparator />
@@ -619,7 +619,7 @@ const toolbarActions: Record<EditorToolAction, () => unknown> = {
                     {{ t(opt.label) }}
                   </DropdownMenuLabel>
                   <DropdownMenuRadioGroup :model-value="settings.settings.editorWaveform[opt.key]" @update:model-value="setView(opt.key, $event)">
-                    <DropdownMenuRadioItem v-for="c in opt.choices" :key="c.value" :value="c.value" @select.prevent>
+                    <DropdownMenuRadioItem v-for="c in opt.choices" :key="c.value" :value="c.value" :close-on-select="false">
                       {{ t(c.label) }}
                     </DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>

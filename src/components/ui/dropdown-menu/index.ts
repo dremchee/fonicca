@@ -1,16 +1,11 @@
-export { default as DropdownMenu } from "./DropdownMenu.vue"
-
-export { default as DropdownMenuCheckboxItem } from "./DropdownMenuCheckboxItem.vue"
-export { default as DropdownMenuContent } from "./DropdownMenuContent.vue"
-export { default as DropdownMenuGroup } from "./DropdownMenuGroup.vue"
-export { default as DropdownMenuItem } from "./DropdownMenuItem.vue"
-export { default as DropdownMenuLabel } from "./DropdownMenuLabel.vue"
-export { default as DropdownMenuRadioGroup } from "./DropdownMenuRadioGroup.vue"
-export { default as DropdownMenuRadioItem } from "./DropdownMenuRadioItem.vue"
-export { default as DropdownMenuSeparator } from "./DropdownMenuSeparator.vue"
-export { default as DropdownMenuShortcut } from "./DropdownMenuShortcut.vue"
-export { default as DropdownMenuSub } from "./DropdownMenuSub.vue"
-export { default as DropdownMenuSubContent } from "./DropdownMenuSubContent.vue"
-export { default as DropdownMenuSubTrigger } from "./DropdownMenuSubTrigger.vue"
-export { default as DropdownMenuTrigger } from "./DropdownMenuTrigger.vue"
-export { DropdownMenuPortal } from "reka-ui"
+export { Menu as DropdownMenu, MenuGroup as DropdownMenuGroup, MenuSub as DropdownMenuSub, MenuRadioGroup as DropdownMenuRadioGroup } from '@ui-sdk/vue/menu'
+export { default as DropdownMenuTrigger } from '../menu/Trigger.vue'
+export { default as DropdownMenuContent } from '../menu/Content.vue'
+export { default as DropdownMenuItem } from '../menu/Item.vue'
+export { default as DropdownMenuCheckboxItem } from '../menu/CheckboxItem.vue'
+export { default as DropdownMenuRadioItem } from '../menu/RadioItem.vue'
+export { default as DropdownMenuSubTrigger } from '../menu/SubTrigger.vue'
+export { default as DropdownMenuSubContent } from '../menu/SubContent.vue'
+export { default as DropdownMenuSeparator } from '../menu/Separator.vue'
+export { default as DropdownMenuLabel } from './DropdownMenuLabel.vue'
+export { MenuShortcut as DropdownMenuShortcut } from '@ui-sdk/vue/menu'

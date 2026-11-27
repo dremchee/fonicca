@@ -3,6 +3,7 @@ import type en from '../en/sidebar'
 export default {
   hideSidebar: 'Скрыть боковую панель',
   showSidebar: 'Показать боковую панель',
+  resizeSidebar: 'Изменить ширину боковой панели',
   addFolders: 'Добавить папки',
   backToLibrary: 'К библиотеке',
   settings: 'Настройки',

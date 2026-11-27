@@ -72,7 +72,7 @@ Model downloads require an internet connection; audio processing stays local. Mo
 
 ## Development
 
-Fonicca uses **Tauri 2**, **Rust**, **Vue 3**, **TypeScript**, **Pinia** and **Vite**. The library is stored locally in SQLite, and ONNX Runtime runs the audio models.
+Fonicca uses **Tauri 2**, **Rust**, **Vue 3**, **UI SDK**, **TypeScript**, **Pinia** and **Vite**. The library is stored locally in SQLite, and ONNX Runtime runs the audio models.
 
 ### Prerequisites
 

@@ -1,21 +1,12 @@
 <script setup lang="ts">
-import type { AlertDialogTitleProps } from "reka-ui"
-import type { HTMLAttributes } from "vue"
-import { reactiveOmit } from "@vueuse/core"
-import { cn } from "cn"
-import { AlertDialogTitle } from "reka-ui"
-
-const props = defineProps<AlertDialogTitleProps & { class?: HTMLAttributes["class"] }>()
-
-const delegatedProps = reactiveOmit(props, "class")
+import type { HTMLAttributes } from 'vue'
+import { AlertDialogTitle } from '@ui-sdk/vue/alert-dialog'
+import { cn } from 'cn'
+const props = defineProps<{ class?: HTMLAttributes['class'] }>()
 </script>
 
 <template>
-  <AlertDialogTitle
-    data-slot="alert-dialog-title"
-    v-bind="delegatedProps"
-    :class="cn('text-lg font-semibold', props.class)"
-  >
+  <AlertDialogTitle :class="cn('text-lg font-semibold', props.class)">
     <slot />
   </AlertDialogTitle>
 </template>

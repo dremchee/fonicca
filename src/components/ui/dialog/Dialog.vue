@@ -1,19 +1,11 @@
 <script setup lang="ts">
-import type { DialogRootEmits, DialogRootProps } from "reka-ui"
-import { DialogRoot, useForwardPropsEmits } from "reka-ui"
+import { Dialog } from '@ui-sdk/vue/dialog'
 
-const props = defineProps<DialogRootProps>()
-const emits = defineEmits<DialogRootEmits>()
-
-const forwarded = useForwardPropsEmits(props, emits)
+// Keep the modal and its backdrop in the same top-level container so the
+// surrounding editor or library can be made inert independently.
+const container = document.body
 </script>
 
 <template>
-  <DialogRoot
-    v-slot="slotProps"
-    data-slot="dialog"
-    v-bind="forwarded"
-  >
-    <slot v-bind="slotProps" />
-  </DialogRoot>
+  <Dialog :container="container"><slot /></Dialog>
 </template>

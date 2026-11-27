@@ -5,6 +5,8 @@ export default {
   nextTrack: 'Next track',
   stop: 'Stop playback',
   volume: 'Volume',
+  mute: 'Mute',
+  unmute: 'Unmute',
   hiddenTags: 'Hidden tags: {n}',
   seek: 'Playback position',
   seekHint: 'Arrow keys seek; hold Shift for larger steps. Home and End jump to the start and end. Space plays or pauses.',

@@ -14,7 +14,6 @@ import Hint from '@/components/Hint.vue'
 import SampleListHints from '@/components/SampleListHints.vue'
 import SampleRow from '@/components/SampleRow.vue'
 import { usePinnedPlayback } from '@/composables/pinnedPlayback'
-import { Tooltip } from '@/components/ui/tooltip'
 import SampleContextMenu from '@/components/SampleContextMenu.vue'
 import { useSampleTable } from '@/composables/sampleTable'
 import SampleColumnHeader from '@/components/SampleColumnHeader.vue'
@@ -280,8 +279,7 @@ function onDragStart(e: DragEvent, sample: Sample) {
           <SampleColumnsMenu :table="table" @reset-widths="resetWidths" @reset-view="resetView" />
         </div>
 
-        <Tooltip>
-        <ContextMenu v-model:open="menuOpen">
+        <ContextMenu v-model:open="menuOpen" @open-change-complete="sampleMenu?.onOpenChangeComplete($event)">
           <ContextMenuTrigger as-child :disabled="nativeMenus">
             <div ref="listSurface" class="relative isolate flex-1 min-h-0 overflow-hidden" @contextmenu="onContextMenu">
             <div ref="scroller" class="h-full min-h-0 overflow-y-auto outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring" tabindex="0" :aria-label="t('sidebar.allSamples')">
@@ -343,7 +341,6 @@ function onDragStart(e: DragEvent, sample: Sample) {
           <SampleContextMenu v-if="menuSample" ref="sampleMenu" :native="nativeMenus" :sample="menuSample" @close="menuOpen = false" />
         </ContextMenu>
         <SampleListHints :viewport="listSurface" />
-        </Tooltip>
         <div v-if="total > 0" class="column-guides pointer-events-none absolute inset-0 grid px-3" aria-hidden="true">
           <span />
           <span class="column-guide" data-column="name" />

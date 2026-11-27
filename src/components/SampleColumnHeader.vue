@@ -111,7 +111,7 @@ onBeforeUnmount(cancel)
     <DropdownMenu>
       <DropdownMenuTrigger as-child>
         <Button
-          variant="ghost" size="xs" class="sort-heading min-w-0 data-[state=open]:bg-accent"
+          variant="ghost" size="xs" class="sort-heading min-w-0 data-[open]:bg-accent"
           :class="{ 'text-foreground': direction, 'justify-end': alignRight, 'justify-start': !alignRight }"
           :aria-label="menuLabel"
         >

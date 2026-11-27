@@ -21,7 +21,7 @@ const columns = computed(() => props.table.getAllLeafColumns())
     <span class="inline-flex w-full shrink-0 justify-center">
       <DropdownMenu>
         <DropdownMenuTrigger as-child>
-          <Button variant="ghost" size="icon-sm" class="data-[state=open]:bg-accent" :aria-label="t('list.columns.configure')">
+          <Button variant="ghost" size="icon-sm" class="data-[open]:bg-accent" :aria-label="t('list.columns.configure')">
             <Columns3 />
           </Button>
         </DropdownMenuTrigger>
@@ -29,8 +29,8 @@ const columns = computed(() => props.table.getAllLeafColumns())
           <DropdownMenuLabel>{{ t('list.columns.configure') }}</DropdownMenuLabel>
           <DropdownMenuGroup>
             <DropdownMenuCheckboxItem
-              v-for="column in columns" :key="column.id" :model-value="column.getIsVisible()" :disabled="!column.getCanHide()"
-              @update:model-value="column.toggleVisibility($event === true)" @select.prevent
+              v-for="column in columns" :key="column.id" :value="column.id" :model-value="column.getIsVisible()" :disabled="!column.getCanHide()"
+              @update:model-value="column.toggleVisibility($event === true)" :close-on-select="false"
             >
               {{ column.id === 'bpm' ? 'BPM' : t(`list.columns.${column.id}`) }}
               <span v-if="!column.getCanHide()" class="ml-auto text-xs text-muted-foreground">{{ t('list.columns.required') }}</span>

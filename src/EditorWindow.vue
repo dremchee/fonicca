@@ -8,7 +8,6 @@ import BasicPitchDialog from '@/components/BasicPitchDialog.vue'
 import { useBasicPitchStore } from '@/stores/basicPitch'
 import SettingsHost from '@/components/SettingsHost.vue'
 import { Toaster } from '@/components/ui/sonner'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import { useEditorStore } from '@/stores/editor'
 import { useSettingsStore } from '@/stores/settings'
 
@@ -24,13 +23,11 @@ onMounted(() => Promise.all([settings.init(), editor.init(props.sampleId), useBa
 </script>
 
 <template>
-  <TooltipProvider :delay-duration="500" :skip-delay-duration="300">
-    <EditorView />
-    <BasicPitchDialog />
-    <SettingsHost wave-target="editor" />
-    <DebugMonitor v-if="debugMonitorOpen" />
-    <ConfirmDialog />
-    <EditorUnsavedDialog />
-    <Toaster theme="system" position="bottom-right" />
-  </TooltipProvider>
+  <EditorView />
+  <BasicPitchDialog />
+  <SettingsHost wave-target="editor" />
+  <DebugMonitor v-if="debugMonitorOpen" />
+  <ConfirmDialog />
+  <EditorUnsavedDialog />
+  <Toaster theme="system" position="bottom-right" />
 </template>

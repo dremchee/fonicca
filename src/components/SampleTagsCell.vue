@@ -45,7 +45,7 @@ function filterByTag(id: number) {
     <TagPicker :sample-id="sample.id" :assigned="sample.tags" :count="1">
       <template #trigger="{ saving }">
         <Button
-          variant="ghost" size="icon-xs" class="tag-add text-muted-foreground data-[state=open]:bg-accent"
+          variant="ghost" size="icon-xs" class="tag-add text-muted-foreground data-[open]:bg-accent"
           :disabled="saving" :aria-label="t('list.tags.add', { name: sample.name })"
           :data-sample-hint="t('list.menu.addTag')" data-grace-area-trigger data-hint-side="bottom"
         ><Plus /></Button>

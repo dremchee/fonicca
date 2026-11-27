@@ -2,7 +2,6 @@
 import { useTagColors } from '@/composables/tagColors'
 import type { TagRef } from '@/api'
 import { Check, Plus, X } from '@lucide/vue'
-import { ListboxItem } from 'reka-ui'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { toast } from 'vue-sonner'
@@ -87,7 +86,7 @@ async function remove(tagId: number) {
       <Popover v-model:open="open">
         <PopoverTrigger as-child>
           <slot name="trigger" :saving="saving">
-            <Button variant="ghost" size="xs" :disabled="saving" class="text-muted-foreground data-[state=open]:bg-accent">
+            <Button variant="ghost" size="xs" :disabled="saving" class="text-muted-foreground data-[open]:bg-accent">
               <Plus /> {{ t('sidebar.tagPicker.button') }}
             </Button>
           </slot>
@@ -109,17 +108,12 @@ async function remove(tagId: number) {
                   <span class="ml-auto text-xs text-muted-foreground tabular">{{ formatNumber(tag.sampleCount) }}</span>
                 </CommandItem>
               </CommandGroup>
-              <!-- A plain Listbox item: it must show for any query, and CommandItem filters itself
-                   against the text it had when first mounted. -->
-              <ListboxItem
-                v-if="canCreate"
-                :value="`create:${query}`"
-                :disabled="saving"
-                class="m-1 relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground [&_svg]:size-4 [&_svg]:text-muted-foreground"
-                @select="add(query.trim())"
+              <CommandItem
+                v-if="canCreate" :value="`create:${query}`" :keywords="[query]"
+                :disabled="saving" @select="add(query.trim())"
               >
                 <Plus /> {{ t('sidebar.tagPicker.create', { name: query.trim() }) }}
-              </ListboxItem>
+              </CommandItem>
               <CommandGroup v-if="assigned.length" :heading="t('sidebar.tagPicker.assigned')">
                 <CommandItem v-for="tag in assigned" :key="tag.id" :value="`on:${tag.name}`" :disabled="saving" :aria-label="t('player.removeTag', { name: tag.name })" :title="t('player.removeTag', { name: tag.name })" @select="remove(tag.id)">
                   <Check /> <span class="tag-color rounded px-1" :style="tagStyle(tag)">{{ tag.name }}</span>

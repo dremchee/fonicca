@@ -150,7 +150,7 @@ watchDebounced(
     <span class="inline-flex">
       <Popover v-model:open="open">
         <PopoverTrigger as-child>
-          <Button variant="ghost" size="icon-sm" class="data-[state=open]:bg-accent" :aria-label="t('editor.slice.title')">
+          <Button variant="ghost" size="icon-sm" class="data-[open]:bg-accent" :aria-label="t('editor.slice.title')">
             <Slice />
           </Button>
         </PopoverTrigger>

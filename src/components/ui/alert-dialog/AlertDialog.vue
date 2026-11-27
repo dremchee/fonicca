@@ -1,15 +1,11 @@
 <script setup lang="ts">
-import type { AlertDialogEmits, AlertDialogProps } from "reka-ui"
-import { AlertDialogRoot, useForwardPropsEmits } from "reka-ui"
+import { AlertDialog } from '@ui-sdk/vue/alert-dialog'
 
-const props = defineProps<AlertDialogProps>()
-const emits = defineEmits<AlertDialogEmits>()
-
-const forwarded = useForwardPropsEmits(props, emits)
+// Keep the modal and its backdrop in the same top-level container so the
+// surrounding editor or library can be made inert independently.
+const container = document.body
 </script>
 
 <template>
-  <AlertDialogRoot v-slot="slotProps" data-slot="alert-dialog" v-bind="forwarded">
-    <slot v-bind="slotProps" />
-  </AlertDialogRoot>
+  <AlertDialog :container="container"><slot /></AlertDialog>
 </template>

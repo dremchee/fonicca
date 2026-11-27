@@ -12,6 +12,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const emit = defineEmits<{ click: [event: MouseEvent] }>()
 </script>
 
 <template>
@@ -20,6 +21,7 @@ const props = defineProps<Props>()
     :data-variant="variant"
     :data-size="size"
     :class="cn(buttonVariants({ variant, size }), props.class)"
+    @click="emit('click', $event)"
   >
     <slot />
   </Button>

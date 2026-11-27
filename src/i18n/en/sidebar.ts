@@ -1,6 +1,7 @@
 export default {
   hideSidebar: 'Hide sidebar',
   showSidebar: 'Show sidebar',
+  resizeSidebar: 'Resize sidebar',
   addFolders: 'Add folders',
   backToLibrary: 'Back to library',
   settings: 'Settings',

@@ -16,7 +16,7 @@ const regionCount = computed(() => editor.regions.filter(region => !region.skip 
   <DropdownMenu>
     <DropdownMenuTrigger as-child>
       <Button
-        variant="ghost" size="sm" class="gap-1 px-2 data-[state=open]:bg-accent"
+        variant="ghost" size="sm" class="gap-1 px-2 data-[open]:bg-accent"
         :disabled="editor.saving || editor.processing" :aria-busy="editor.saving"
         :aria-label="t(editor.saving ? 'editor.save.saving' : 'common.actions.save')"
         :title="t(editor.saving ? 'editor.save.saving' : 'common.actions.save')"

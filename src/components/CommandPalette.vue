@@ -100,13 +100,11 @@ function run(action: () => unknown, takesFocus = false) {
   open.value = false
 }
 
-function onCloseAutoFocus(e: Event) {
-  if (!afterClose)
-    return
-  e.preventDefault()
-  // The focus trap is released in a timeout of its own; run after it.
-  setTimeout(afterClose, 0)
+function onOpenChangeComplete(isOpen: boolean) {
+  if (isOpen) return
+  const action = afterClose
   afterClose = null
+  action?.()
 }
 
 function go(scope: Scope) {
@@ -115,11 +113,10 @@ function go(scope: Scope) {
 </script>
 
 <template>
-  <Dialog v-model:open="open">
+  <Dialog v-model:open="open" @open-change-complete="onOpenChangeComplete">
     <DialogContent
       :show-close-button="false"
       class="top-[18%] translate-y-0 overflow-hidden p-0 sm:max-w-xl"
-      @close-auto-focus="onCloseAutoFocus"
     >
       <DialogTitle class="sr-only">
         {{ t('palette.title') }}

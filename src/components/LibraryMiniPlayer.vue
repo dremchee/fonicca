@@ -73,7 +73,7 @@ function clock(seconds: number | null) {
           <div class="min-w-0 text-sm font-medium truncate" :title="sample.name">{{ sample.name }}</div>
           <SampleInfoHover :sample="sample" :tags="tags" :cover-url="coverUrl ?? null">
             <template #trigger>
-              <Button type="button" variant="ghost" size="icon-xs" class="size-4 shrink-0 text-muted-foreground" :aria-label="t('trackInfo.title')" :title="t('trackInfo.title')">
+              <Button type="button" variant="ghost" size="icon-xs" class="size-4 shrink-0 text-muted-foreground" :aria-label="t('trackInfo.title')">
                 <Info class="size-3.5" />
               </Button>
             </template>
@@ -93,7 +93,7 @@ function clock(seconds: number | null) {
       </Hint>
       <Hint :text="action" side="top">
         <Button variant="ghost" size="icon-sm" class="playback-toggle" :aria-label="action" :aria-disabled="busy || undefined" @click="toggle">
-          <component :is="active ? Pause : Play" class="fill-current" />
+          <component :is="active ? Pause : Play" class="size-4 fill-current" />
         </Button>
       </Hint>
       <Hint :text="t('player.stop')" side="top">
@@ -128,28 +128,39 @@ function clock(seconds: number | null) {
   isolation: isolate;
   overflow: hidden;
   border-radius: 12px;
-  background: color-mix(in srgb, var(--background) 94%, var(--foreground));
   box-shadow: 0 8px 28px rgb(0 0 0 / 30%), 0 0 0 1px color-mix(in srgb, var(--foreground) 9%, transparent);
   cursor: grab;
   touch-action: none;
   user-select: none;
 }
+.mini-player::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--background) 94%, var(--foreground));
+  pointer-events: none;
+}
 .mini-player.is-dragging { cursor: grabbing; }
 .mini-player :is(button, [data-player-control]) { cursor: default; }
 .mini-player:focus-visible { outline: 1px solid var(--primary); }
 @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
-  .mini-player {
+  .mini-player::before {
     background: color-mix(in srgb, var(--background) 46%, transparent);
     -webkit-backdrop-filter: blur(5px) saturate(120%);
     backdrop-filter: blur(5px) saturate(120%);
   }
 }
 @media (prefers-reduced-transparency: reduce) {
-  .mini-player {
+  .mini-player::before {
     background: color-mix(in srgb, var(--background) 94%, var(--foreground));
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
+}
+.mini-player :deep(button) {
+  transition-property: color, background-color, box-shadow, opacity;
 }
 .player-lamp {
   position: absolute;

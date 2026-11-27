@@ -5,6 +5,7 @@ import { Info, Music2, Pencil } from '@lucide/vue'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import Hint from '@/components/Hint.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { openTrackInfo, trackInfoFor } from '@/composables/trackInfo'
@@ -34,12 +35,10 @@ function editMetadata() {
   editAfterClose = true
   open.value = false
 }
-function onCloseAutoFocus(event: Event) {
-  if (!editAfterClose)
-    return
-  event.preventDefault()
+function onOpenChangeComplete(isOpen: boolean) {
+  if (isOpen || !editAfterClose) return
   editAfterClose = false
-  setTimeout(() => openTrackInfo(props.sample), 0)
+  openTrackInfo(props.sample)
 }
 
 const metadata = computed(() => [
@@ -69,17 +68,19 @@ const details = computed(() => {
 </script>
 
 <template>
-  <Popover v-model:open="open">
-    <PopoverTrigger as-child>
-      <slot name="trigger">
-        <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('trackInfo.title')">
-          <Info />
-        </Button>
-      </slot>
-    </PopoverTrigger>
+  <Popover v-model:open="open" @open-change-complete="onOpenChangeComplete">
+    <Hint :text="t('trackInfo.title')" :side="side" :disabled="open">
+      <PopoverTrigger as-child>
+        <slot name="trigger">
+          <Button variant="ghost" size="icon-sm" class="text-muted-foreground" :aria-label="t('trackInfo.title')">
+            <Info />
+          </Button>
+        </slot>
+      </PopoverTrigger>
+    </Hint>
     <PopoverContent
-      :side="side" align="end" :side-offset="sideOffset" :collision-padding="12" @close-auto-focus="onCloseAutoFocus"
-      class="z-50 w-[560px] max-w-[calc(100vw-24px)] max-h-[var(--reka-popover-content-available-height)] overflow-y-auto rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95"
+      :side="side" align="end" :side-offset="sideOffset" :collision-padding="12"
+      class="z-50 w-[560px] max-w-[calc(100vw-24px)] max-h-(--available-height) overflow-y-auto rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-none"
     >
       <div class="sample-info-layout">
         <div class="cover max-w-full rounded-sm overflow-hidden bg-muted flex items-center justify-center">

@@ -162,7 +162,7 @@ const apolloProgress = computed(() => apollo.progress.sourceId === s.value.id ? 
 .row :deep(.tag-add) { opacity: 0; pointer-events: none; }
 .row:hover :deep(.tag-add),
 .row :deep(.tag-add:focus-visible),
-.row :deep(.tag-add[data-state="open"]) { opacity: 1; pointer-events: auto; }
+.row :deep(.tag-add[data-open]) { opacity: 1; pointer-events: auto; }
 @media (hover: none) {
   .track-play { opacity: 1; }
   .track-icon-display { opacity: 0; }

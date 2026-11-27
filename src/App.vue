@@ -21,8 +21,8 @@ import LibraryToolbar from '@/components/LibraryToolbar.vue'
 import LibraryLayout from '@/components/LibraryLayout.vue'
 import LibraryMiniPlayer from '@/components/LibraryMiniPlayer.vue'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
+import { migrateLayout } from '@/components/ui/resizable/migrateLayout'
 import { Toaster } from '@/components/ui/sonner'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import SampleList from '@/components/SampleList.vue'
 import SettingsHost from '@/components/SettingsHost.vue'
 import TrackInfoDialog from '@/components/TrackInfoDialog.vue'
@@ -41,7 +41,7 @@ const EditorView = defineAsyncComponent(() => import('@/components/EditorView.vu
 const DuplicatesView = defineAsyncComponent(() => import('@/components/DuplicatesView.vue'))
 const DebugMonitor = defineAsyncComponent(() => import('@/components/DebugMonitor.vue'))
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const library = useLibraryStore()
 const player = usePlayerStore()
 const editor = useEditorStore()
@@ -149,7 +149,7 @@ onKeyStroke(['e', 'у'], (e) => {
   openEditor(library.focused)
 })
 onKeyStroke('Escape', (e) => {
-  if (settings.dialogOpen) return
+  if (e.defaultPrevented || settings.dialogOpen) return
   if (e.target instanceof Element && e.target.closest('[data-editor-panel], [role="menu"], [role="dialog"], [role="alertdialog"]'))
     return
   if (player.playingId !== null)
@@ -170,41 +170,40 @@ onKeyStroke(',', (e) => {
     settings.openDialog()
   }
 })
+migrateLayout('fonicca-layout-rows', [['list'], ['editor'], ['list', 'editor']])
 </script>
 
 <template>
-  <TooltipProvider :delay-duration="500" :skip-delay-duration="300">
-    <!-- Sidebar and player sizes are in px and saved by the splitters (localStorage). -->
-    <LibraryLayout :can-toggle="!settings.dialogOpen && !inDuplicates && !editor.expanded">
-      <SettingsHost embedded />
-      <div v-show="!settings.dialogOpen" class="min-h-0 flex-1 flex flex-col">
-        <template v-if="!inDuplicates && !editor.expanded">
-          <LibraryToolbar />
-          <FilterBar ref="filters" />
-        </template>
-        <ResizablePanelGroup direction="vertical" auto-save-id="fonicca-layout-rows" class="min-h-0 flex-1">
-          <ResizablePanel v-if="!editor.expanded" id="list" :order="1" :min-size="20" class="relative flex flex-col">
-            <DuplicatesView v-if="inDuplicates" :bottom-inset="miniPlayerInset" />
-            <SampleList v-else :bottom-inset="miniPlayerInset" />
-            <LibraryMiniPlayer v-if="player.miniPlayerSample && !settings.dialogOpen" />
+  <!-- Sidebar and player sizes are in px and saved by the splitters (localStorage). -->
+  <LibraryLayout :can-toggle="!settings.dialogOpen && !inDuplicates && !editor.expanded">
+    <SettingsHost embedded />
+    <div v-show="!settings.dialogOpen" class="min-h-0 flex-1 flex flex-col">
+      <template v-if="!inDuplicates && !editor.expanded">
+        <LibraryToolbar />
+        <FilterBar ref="filters" />
+      </template>
+      <ResizablePanelGroup orientation="vertical" auto-save-id="fonicca-layout-rows" class="min-h-0 flex-1">
+        <ResizablePanel v-if="!editor.expanded" id="list" :min-size="20" class="relative flex flex-col">
+          <DuplicatesView v-if="inDuplicates" :bottom-inset="miniPlayerInset" />
+          <SampleList v-else :bottom-inset="miniPlayerInset" />
+          <LibraryMiniPlayer v-if="player.miniPlayerSample && !settings.dialogOpen" />
+        </ResizablePanel>
+        <template v-if="editor.open">
+          <ResizableHandle v-if="!editor.expanded" :aria-label="t('editor.panel.resize')" />
+          <ResizablePanel id="editor" default-size="320px" min-size="200px">
+            <EditorView embedded :expanded="editor.expanded" @close="editor.closeEmbedded()" @toggle-expand="editor.expanded = !editor.expanded" />
           </ResizablePanel>
-          <template v-if="editor.open">
-            <ResizableHandle v-if="!editor.expanded" />
-            <ResizablePanel id="editor" :order="2" size-unit="px" :default-size="320" :min-size="200">
-              <EditorView embedded :expanded="editor.expanded" @close="editor.closeEmbedded()" @toggle-expand="editor.expanded = !editor.expanded" />
-            </ResizablePanel>
-          </template>
-        </ResizablePanelGroup>
-      </div>
-    </LibraryLayout>
-    <TrackInfoDialog />
-    <BatchDialog />
-    <StemDialog />
-    <ApolloDialog />
-    <BasicPitchDialog />
-    <DebugMonitor v-if="debugMonitorOpen" :library-diagnostics="library.pageDiagnostics" />
-    <ConfirmDialog />
-    <EditorUnsavedDialog />
-    <Toaster theme="system" position="bottom-right" />
-  </TooltipProvider>
+        </template>
+      </ResizablePanelGroup>
+    </div>
+  </LibraryLayout>
+  <TrackInfoDialog />
+  <BatchDialog />
+  <StemDialog />
+  <ApolloDialog />
+  <BasicPitchDialog />
+  <DebugMonitor v-if="debugMonitorOpen" :library-diagnostics="library.pageDiagnostics" />
+  <ConfirmDialog />
+  <EditorUnsavedDialog />
+  <Toaster theme="system" position="bottom-right" />
 </template>

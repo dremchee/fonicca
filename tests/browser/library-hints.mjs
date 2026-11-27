@@ -8,8 +8,8 @@ export async function checkLibraryHints(page) {
   await row.waitFor()
   const category = row.locator('span.truncate.text-xs')
   const bpm = row.locator('span.text-right').filter({ hasText: /^120$/ })
-  const tooltip = page.getByRole('tooltip')
-  const content = page.locator('[data-slot="tooltip-content"]')
+  const content = page.locator('[data-library-hint]:visible')
+  const tooltip = page.getByRole('tooltip').and(content)
   const hidden = () => tooltip.waitFor({ state: 'hidden' })
   const shown = () => tooltip.waitFor({ state: 'visible' })
   await page.mouse.move(0, 0)
@@ -19,7 +19,11 @@ export async function checkLibraryHints(page) {
   const lines = await content.locator('span.block').allTextContents()
   check(lines.length === 2 && lines[1].startsWith('('), 'the hint scope no longer has its own centered line')
   const id = await tooltip.getAttribute('id')
-  check(id && (await category.getAttribute('aria-describedby'))?.split(/\s+/).includes(id), 'hint is not an accessible description of its cell')
+  check(id, 'visible hint has no ID')
+  await page.waitForFunction(hintId => {
+    const cell = document.querySelector('.sample-list .row[data-index="0"] span.truncate.text-xs')
+    return cell?.getAttribute('aria-describedby')?.split(/\s+/).includes(hintId)
+  }, id)
 
   // The pointer can cross onto the tooltip without it disappearing.
   const box = await content.boundingBox()
@@ -48,7 +52,15 @@ export async function checkLibraryHints(page) {
   // Keyboard focus, rather than pointer-driven popup autofocus, opens the hint.
   await row.locator('.track-play').focus()
   await page.keyboard.press('Tab')
-  await shown()
+  // With default macOS WebKit preferences, Option-Tab includes buttons.
+  const tab = await page.evaluate(() => document.activeElement === document.body) ? 'Alt+Tab' : 'Tab'
+  if (tab === 'Alt+Tab') {
+    await row.locator('.track-play').focus()
+    await page.keyboard.press(tab)
+  }
+  check(await row.locator('.tag-add').evaluate(element => element === document.activeElement), 'tag picker is no longer keyboard reachable')
+  await page.keyboard.press(tab)
+  await tooltip.getByText(/favorites/).waitFor()
   check(await row.locator('.star').evaluate(element => element === document.activeElement), 'favorite is no longer keyboard reachable')
   check((await tooltip.textContent()).includes('favorites'), 'keyboard hint is wrong')
   await page.keyboard.press('Escape')

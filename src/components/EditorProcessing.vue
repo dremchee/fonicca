@@ -38,9 +38,8 @@ function close(open: boolean) {
   if (!open && !editor.processing)
     mode.value = null
 }
-function restoreFocus(event: Event) {
-  event.preventDefault()
-  trigger?.focus()
+function finalFocus() {
+  return trigger
 }
 async function run() {
   if (!valid.value || editor.processing)
@@ -69,12 +68,10 @@ async function run() {
       <MoveVertical />
     </Button>
   </Hint>
-  <Dialog :open="mode !== null" @update:open="close">
+  <Dialog :open="mode !== null" :dismissible="!editor.processing" @update:open="close">
     <DialogContent
       class="sm:max-w-sm" :show-close-button="!editor.processing"
-      @escape-key-down="editor.processing && $event.preventDefault()"
-      @interact-outside="editor.processing && $event.preventDefault()"
-      @close-auto-focus="restoreFocus"
+      :final-focus="finalFocus"
     >
       <DialogHeader>
         <DialogTitle>{{ title }}</DialogTitle>

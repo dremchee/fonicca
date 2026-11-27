@@ -2,17 +2,16 @@
 import { computed } from 'vue'
 import { hintLines } from '@/hint-text'
 import { Kbd } from '@/components/ui/kbd'
+import RenderChild from '@/components/ui/RenderChild'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 // Tooltip around a single control: <Hint text="Rescan"><Button … /></Hint>
 // An empty text renders the control alone.
-// Around a menu, select or popover, wrap the whole root in <span> inside the Hint, not
-// just its trigger: the tooltip's popper context would otherwise capture the trigger
-// as its anchor and the popup would open off screen.
 const props = withDefaults(defineProps<{
   text: string
   shortcut?: string
   side?: 'top' | 'right' | 'bottom' | 'left'
+  disabled?: boolean
 }>(), { side: 'bottom' })
 
 // Keep the action and its scope on separate lines. Each line contributes its
@@ -22,9 +21,11 @@ const lines = computed(() => hintLines(props.text))
 
 <template>
   <slot v-if="!text" />
-  <Tooltip v-else>
-    <TooltipTrigger as-child>
-      <slot />
+  <Tooltip v-else :delay="500" :disabled="disabled" type="description">
+    <TooltipTrigger>
+      <template #render="{ props }">
+        <RenderChild :trigger-props="props"><slot /></RenderChild>
+      </template>
     </TooltipTrigger>
     <TooltipContent :side="side" class="flex max-w-64 items-center justify-center gap-2">
       <!-- min-w-0 lets the text shrink inside the flex row; long paths break anywhere. -->
