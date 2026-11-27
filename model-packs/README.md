@@ -76,9 +76,9 @@ is rejected by the current application's hash check.
 
 Reproduction and attribution:
 
-- `docs/research/prepare-bs-roformer-onnx.py`
-- `docs/research/export-mdx23c-onnx.py`
-- `docs/research/mdx23c-onnx-manifest.json`
+- [BS-RoFormer graph preparation](../experiments/models/prepare-bs-roformer-onnx.py)
+- [MDX23C graph export](../experiments/models/export-mdx23c-onnx.py)
+- [MDX23C tensor manifest](../experiments/models/mdx23c-onnx-manifest.json)
 - `docs/licenses/vocal-models-NOTICE.txt`
 - `docs/licenses/vocal-models-MIT.txt`
 

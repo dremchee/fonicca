@@ -15,7 +15,7 @@ Graph SHA-256 357837834747cbf3cd680bfab33f9bfd08b99d493d8dfabc84b92e59e4fcfe73
 Fonicca embeds the 496-byte INT64 split constant to make native ORT shape
 inference work; the learned FP32 weights stay in the separate download.
 Patched graph SHA-256 320e61bbb30a3bb0cba7b88c013b02b0acef444c3341667158b1bc1611664af9
-See docs/research/prepare-bs-roformer-onnx.py.
+See experiments/models/prepare-bs-roformer-onnx.py.
 External weights SHA-256 3f3677f7ed3801f7415db4b4c900e6e81f4f41d5b4bc83c0bf899c353b2f9995
 The export repository labels its code/tools MIT. That does not establish the
 original trainer's weight redistribution or commercial-use terms. These remain
@@ -28,7 +28,8 @@ TFC-TDF code: KUIELAB and Roman Solovyev; ONNX spectral source (MIT):
 https://github.com/ZFTurbo/MSS_ONNX_TensorRT/tree/43d939e7671d8ff6cf1922f98c2f2e4b56908e47
 Fonicca's separately downloaded spectral graph references the original checkpoint's tensor
 byte ranges. Users need no Python/PyTorch. Checkpoint is never unpickled by the
-app. See docs/research/export-mdx23c-onnx.py and mdx23c-onnx-manifest.json.
+app. See experiments/models/export-mdx23c-onnx.py and
+experiments/models/mdx23c-onnx-manifest.json.
 The repository's MIT code license alone is not a separate grant for training
 data or every pretrained checkpoint; no commercial clearance is asserted here.
 

@@ -1,12 +1,54 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
 // @ts-expect-error Opt-in Node script has no separate type declarations.
 import { auditResourceReport } from '../scripts/resource-profile/report.mjs'
 
-const fixture = () => JSON.parse(readFileSync(new URL('../docs/research/resource-lifecycle-baseline-2026-11-02.json', import.meta.url), 'utf8'))
+function fixture() {
+  const nativeHostPid = 100
+  const checkpoint = (stage: string, open = false, window = 'main') => ({
+    stage,
+    window,
+    visibility: 'visible',
+    screenLocked: false,
+    processes: [{ pid: nativeHostPid, rssBytes: 1024 }],
+    callbacks: 4,
+    native: { editor: open ? {} : null },
+    editor: { open },
+    canvases: open ? 1 : 0,
+    resources: { live: open ? 1 : 0, lanes: open ? 1 : 0 },
+    pendingRaf: 0,
+    library: { retainedPages: 2, maxPages: 4 },
+  })
+  return {
+    mode: 'memory',
+    status: 'measured',
+    finished: { ok: true },
+    nativeHostPid,
+    normalBinary: { unchanged: true },
+    sourceChangedDuringRun: [],
+    cohortRemainingAfterHostExit: [],
+    checkpoints: [
+      checkpoint('baseline'),
+      checkpoint('library-scrolled'),
+      checkpoint('cycle-1-opened', true),
+      checkpoint('cycle-1-spectrum', true),
+      checkpoint('cycle-1-closed'),
+      checkpoint('cycle-2-opened', true),
+      checkpoint('cycle-2-spectrum', true),
+      checkpoint('cycle-2-closed'),
+      checkpoint('cycle-3-opened', true),
+      checkpoint('cycle-3-spectrum', true),
+      checkpoint('detached-rendered', true, 'editor-detached-1'),
+      checkpoint('cycle-3-returned', true),
+      checkpoint('cycle-3-closed'),
+      checkpoint('closed-with-pending-spectrum'),
+      checkpoint('pending-work-drained'),
+      checkpoint('settled-after-close'),
+    ],
+  }
+}
 
-test('resource audit accepts a completed native lifecycle observation', () => {
+test('resource audit accepts a completed synthetic lifecycle observation', () => {
   assert.equal(auditResourceReport(fixture()).passed, true)
 })
 

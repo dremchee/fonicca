@@ -1,5 +1,5 @@
 // Run against a private production build using the real main.ts with browser-only
-// mockIPC installed before mount (see docs/refactoring.md). No native user data.
+// mockIPC installed before mount with synthetic data.
 export async function checkStartupLoading(page, baseUrl) {
   const url = new URL(baseUrl)
   if (!['127.0.0.1', 'localhost'].includes(url.hostname) || url.pathname !== '/mock.html')

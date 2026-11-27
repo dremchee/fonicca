@@ -1,6 +1,6 @@
 # Waveform comparison
 
-A development-only comparison of Fonicca's existing `drawWave` Canvas renderer and `gl-waveform@5.3.0` (MIT). The bench remains independent; the application's subsequent integration is documented in `docs/research/waveform-integration.md`.
+A standalone development benchmark for Fonicca's `drawWave` Canvas renderer and `gl-waveform@5.3.0` (MIT).
 
 From the repository root:
 
@@ -20,4 +20,4 @@ npm --prefix experiments/waveform run check
 npm --prefix experiments/waveform run build
 ```
 
-The standalone build goes to `experiments/waveform/dist/`, including its fixture asset. It is excluded from the normal app build. Research results and limitations are in `docs/research/waveform-renderers.md`.
+The standalone build goes to `experiments/waveform/dist/`, including its fixture asset.

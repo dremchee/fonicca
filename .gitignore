@@ -25,6 +25,8 @@ dist-ssr
 
 .claude/
 
+/local/
+
 .playwright-cli/
 .playwright-mcp/
 /output/playwright/

@@ -1,5 +1,5 @@
 //! SCNet-large and XL IHF STFT contracts and bounded-memory overlapping segments.
-//! See docs/research/stem-separation.md for the pinned export and attribution.
+//! The model catalog pins the export. Attribution is in docs/licenses/scnet-NOTICE.txt.
 use super::{Model, check, dsp::RATE, failure};
 use crate::{audio::Pcm, error::Result};
 use ort::{
