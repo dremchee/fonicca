@@ -109,7 +109,7 @@ function clock(seconds: number | null) {
     </div>
     <LibraryPlayerVolume data-player-control />
     <PlaybackProgress :key="sample.id" data-player-control :position="player.position" :duration="sample.duration"
-      :stopped="state === 'stopped'" @seek="player.seek(sample, $event)" @toggle="toggle" />
+      :state="state" @seek="player.seek(sample, $event)" @toggle="toggle" />
   </div>
 </template>
 

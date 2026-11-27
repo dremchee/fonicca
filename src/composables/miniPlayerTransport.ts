@@ -12,7 +12,10 @@ export function useMiniPlayerTransport() {
   const library = useLibraryStore()
   const duplicates = useDuplicatesStore()
   const sample = computed(() => player.miniPlayerSample)
-  const state = computed(() => player.playingId === null ? 'stopped' : player.paused ? 'paused' : 'playing')
+  const state = computed(() => {
+    if (player.playingId === null) return 'stopped'
+    return player.paused || player.pausing ? 'paused' : 'playing'
+  })
   const busy = shallowRef(false)
 
   const copies = computed(() => library.scope.kind === 'duplicates'

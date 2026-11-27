@@ -161,11 +161,17 @@ export function install() {
       case 'editor_play': playDuration = null; playLoaded = true; playStart = performance.now(); playFrom = args.start / 48000; return null
       case 'play': playDuration = headerPlayerDuration(args.id); playLoaded = true; playStart = performance.now(); playFrom = args.start ?? 0; return { stretch: 1, semitones: 0 }
       case 'stop': playLoaded = false; playStart = null; return null
-      case 'pause':
-        if (!playLoaded) return null
-        if (playStart !== null) playFrom += (performance.now() - playStart) / 1000
-        playStart = null
-        return playFrom
+      case 'pause': {
+        const pause = () => {
+          if (!playLoaded) return null
+          if (playStart !== null) playFrom += (performance.now() - playStart) / 1000
+          playStart = null
+          return playFrom
+        }
+        if (location.hash === '#header-player' && new URLSearchParams(location.search).has('slow-pause'))
+          return new Promise(resolve => setTimeout(() => resolve(pause()), 750))
+        return pause()
+      }
       case 'resume':
         if (!playLoaded) return false
         playStart = performance.now()

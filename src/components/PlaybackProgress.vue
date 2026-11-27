@@ -1,18 +1,21 @@
 <script setup lang="ts">
-import { computed, useId } from 'vue'
+import { computed, shallowRef, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { formatDuration } from '@/format'
 
-const props = defineProps<{ position: number, duration: number | null, stopped: boolean }>()
+const props = defineProps<{ position: number, duration: number | null, state: 'playing' | 'paused' | 'stopped' }>()
 const emit = defineEmits<{ seek: [seconds: number], toggle: [] }>()
 const { t } = useI18n()
 const hintId = useId()
 const duration = computed(() => props.duration != null && Number.isFinite(props.duration) && props.duration > 0 ? props.duration : 0)
 const position = computed(() => Number.isFinite(props.position) ? Math.max(0, Math.min(duration.value, props.position)) : 0)
 const progress = computed(() => duration.value ? position.value / duration.value : 0)
+const smooth = shallowRef(false)
+watch(() => props.state, state => { smooth.value = state !== 'playing' }, { immediate: true })
 
-function seek(event: Event) {
-  emit('seek', Number((event.target as HTMLInputElement).value))
+function seek(target: number) {
+  smooth.value = false
+  emit('seek', target)
 }
 
 function onKeydown(event: KeyboardEvent) {
@@ -32,18 +35,19 @@ function onKeydown(event: KeyboardEvent) {
   }
   event.preventDefault()
   event.stopPropagation()
-  emit('seek', Math.max(0, Math.min(duration.value, target)))
+  seek(Math.max(0, Math.min(duration.value, target)))
 }
 </script>
 
 <template>
-  <div v-if="duration" class="playback-progress" :class="{ 'is-stopped': stopped }">
+  <div v-if="duration" class="playback-progress" :class="{ 'settles-smoothly': smooth }">
     <span class="progress-fill" :style="{ transform: `scaleX(${progress})` }" />
     <input
       type="range" class="progress-input" min="0" :max="duration" step="0.01" :value="position"
       :aria-label="t('player.seek')" :aria-describedby="hintId"
       :aria-valuetext="t('player.position', { elapsed: formatDuration(position), duration: formatDuration(duration) })"
-      @input="seek" @keydown="onKeydown" @pointerdown.stop @mousedown.stop @click.stop @dblclick.stop
+      @input="seek(Number(($event.target as HTMLInputElement).value))"
+      @keydown="onKeydown" @pointerdown.stop @mousedown.stop @click.stop @dblclick.stop
     >
     <span :id="hintId" class="sr-only">{{ t('player.seekHint') }}</span>
   </div>
@@ -58,8 +62,9 @@ function onKeydown(event: KeyboardEvent) {
   height: 2px;
   background: color-mix(in srgb, var(--primary) 15%, transparent);
 }
-.playback-progress:hover { height: 3px; }
-.playback-progress:focus-within { height: 4px; }
+.playback-progress:is(:hover, :focus-within) {
+  background: color-mix(in srgb, var(--primary) 35%, transparent);
+}
 .progress-fill {
   display: block;
   width: 100%;
@@ -69,7 +74,7 @@ function onKeydown(event: KeyboardEvent) {
   pointer-events: none;
 }
 @media (prefers-reduced-motion: no-preference) {
-  .playback-progress.is-stopped .progress-fill { transition: transform 180ms ease-out; }
+  .playback-progress.settles-smoothly .progress-fill { transition: transform 180ms ease-out; }
 }
 .progress-input {
   position: absolute;

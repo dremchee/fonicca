@@ -67,10 +67,12 @@ export async function checkPlayerTransitions(page) {
       const audible = player.play(first); pending[0].resolve(none); await audible
       const resync = player.play(first, .2)
       held.add('pause')
-      const pause = player.pause(); controls[0].resolve(.25); await pause
+      const pause = player.pause()
+      checks.push({ name: 'pause intent is available while the native reply is pending', passed: player.pausing && !player.paused })
+      controls[0].resolve(.25); await pause
       held.delete('pause')
       pending[1].resolve(adjusted); await resync
-      checks.push({ name: 'pause cancels pending resync and keeps its exact source position', passed: player.playingId === first.id && player.paused && player.position === .25 })
+      checks.push({ name: 'pause cancels pending resync and keeps its exact source position', passed: player.playingId === first.id && player.paused && !player.pausing && player.position === .25 })
       const resume = player.toggle(first)
       checks.push({ name: 'resume re-renders canceled sync at the paused position', passed: pending[2]?.args.id === first.id && pending[2]?.args.start === .25 && pending[2]?.args.sync?.bpm === 123 })
       pending[2].resolve(adjusted); await resume

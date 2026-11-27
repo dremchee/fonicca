@@ -7,6 +7,7 @@ import { useSettingsStore } from '@/stores/settings'
 export const usePlayerStore = defineStore('player', () => {
   const playingId = ref<number | null>(null)
   const paused = ref(false)
+  const pausing = shallowRef(false)
   const position = ref(0)
   const settings = useSettingsStore()
   // Stored with the other settings so it survives a restart.
@@ -38,10 +39,15 @@ export const usePlayerStore = defineStore('player', () => {
     return s.syncEnabled && (s.projectBpm || s.projectKey) ? { bpm: s.projectBpm, key: s.projectKey } : null
   })
 
+  function cancelTracking() {
+    cancelAnimationFrame(frame)
+    pausing.value = false
+    return ++tracking
+  }
+
   // Poll the backend for the playhead while something plays.
   function track() {
-    cancelAnimationFrame(frame)
-    const version = ++tracking
+    const version = cancelTracking()
     const tick = async () => {
       const id = playingId.value
       const pos = await api.playbackPosition()
@@ -61,9 +67,8 @@ export const usePlayerStore = defineStore('player', () => {
 
   async function play(sample: Sample, start = 0) {
     error.value = null
-    const version = ++tracking
+    const version = cancelTracking()
     pending = { sample, start }
-    cancelAnimationFrame(frame)
     try {
       const applied = await api.play(sample.id, start, syncTarget.value)
       if (version !== tracking) return
@@ -92,8 +97,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   async function stop({ keepTrack = false } = {}) {
-    cancelAnimationFrame(frame)
-    tracking++
+    cancelTracking()
     pending = null
     playingId.value = null
     paused.value = false
@@ -104,15 +108,15 @@ export const usePlayerStore = defineStore('player', () => {
 
   /** A late transport action must not interrupt a newer audition. */
   function canControl(id: number) {
-    return !pending && playing.value?.id === id
+    return !pending && !pausing.value && playing.value?.id === id
   }
 
   async function pause() {
     const id = playingId.value
-    if (id === null || paused.value)
+    if (id === null || paused.value || pausing.value)
       return
-    cancelAnimationFrame(frame)
-    const version = ++tracking
+    const version = cancelTracking()
+    pausing.value = true
     if (pending) needsResync = true
     pending = null
     try {
@@ -132,6 +136,9 @@ export const usePlayerStore = defineStore('player', () => {
       error.value = String(e)
       track()
     }
+    finally {
+      if (version === tracking) pausing.value = false
+    }
   }
 
   async function resume(sample: Sample) {
@@ -141,7 +148,7 @@ export const usePlayerStore = defineStore('player', () => {
       return
     }
     const id = playingId.value
-    const version = ++tracking
+    const version = cancelTracking()
     pending = null
     try {
       const resumed = await api.resume()
@@ -170,9 +177,8 @@ export const usePlayerStore = defineStore('player', () => {
 
   async function seek(sample: Sample, pos: number) {
     if (playingId.value === sample.id && !pending) {
-      const version = ++tracking
+      const version = cancelTracking()
       pending = null
-      cancelAnimationFrame(frame)
       position.value = pos
       try { await api.seek(pos) }
       catch (e) { if (version === tracking) error.value = String(e) }
@@ -195,7 +201,7 @@ export const usePlayerStore = defineStore('player', () => {
     }
   })
 
-  return { playingId, paused, isPlaying, playingSample, miniPlayerSample, position, autoplay, error, adjust, syncTarget, play, stop, pause, toggle, seek, patchPlaying, canControl }
+  return { playingId, paused, pausing, isPlaying, playingSample, miniPlayerSample, position, autoplay, error, adjust, syncTarget, play, stop, pause, toggle, seek, patchPlaying, canControl }
 })
 
 if (import.meta.hot)
