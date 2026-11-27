@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.7] - 2026-11-27
+
+- Pin the Rust toolchain for desktop builds (fa8aec7)
+- Add audio export formats and stem format selection (f25b305)
+- Enable dragging across the library title bar (ad1eb7a)
+- Move library playback into a floating mini player (204d08c)
+- Consolidate mini-player state and track navigation (a545713)
+- Simplify stem staging and audio format resolution (54d94f8)
+- Refresh Fonicca screenshots in the Tape theme (f0e1a8b)
+- Make Tape the default theme and update app icons (34678d5)
+- Smooth mini-player transitions on pause and stop (0ffb048)
+- Add a Fonicca user guide (2e09d48)
+
 ## [0.1.6] - 2026-11-06
 
 - Filter by tag and remove tags from individual samples (6a2c394)
