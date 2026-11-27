@@ -4,7 +4,7 @@ A desktop app for browsing, organizing and shaping your local audio library.
 
 Find a sound, audition it, edit a fragment or separate a track into stems — in one workspace. Fonicca works with your own audio files and runs audio analysis and processing on your computer.
 
-[Download releases](https://github.com/dremchee/fonicca/releases) · [Release notes](docs/releases/v0.1.0.md) · [Build and release guide](docs/builds.md)
+[Download releases](https://github.com/dremchee/fonicca/releases) · [User guide](docs/user-guide.md) · [Release notes](CHANGELOG.md) · [Build and release guide](docs/builds.md)
 
 ![Fonicca library in the dark Tape theme, with waveform previews, color-coded tags and the floating mini-player](docs/screenshots/library.jpg)
 
@@ -12,7 +12,7 @@ Find a sound, audition it, edit a fragment or separate a track into stems — in
 
 - **Organize your library.** Browse folders, create collections, add colored tags and favorites, and choose which table columns to show.
 - **Find the right sound.** Search your library, filter by sound type, tempo, key and category, analyze audio, and find similar sounds.
-- **Audition quickly.** Preview audio with customizable waveforms, zoom, level meters and project tempo/key sync. Cached waveforms also appear behind track names.
+- **Audition quickly.** Preview tracks in the floating mini-player with seeking, previous and next track controls, and volume. Cached waveforms also appear behind track names.
 - **Clean up duplicates.** Compare copies in grouped or flat views, choose which to keep, and hide or move extra copies to the Trash.
 - **Edit audio.** Select, trim, cut, fade, adjust gain, normalize, change pitch and timing, slice audio, and export regions.
 - **Process multiple files.** Apply batch processing, convert formats and use filename templates.
@@ -64,7 +64,9 @@ Install the first version manually. Published stable updates can then be checked
 1. Use **+** beside **Folders** to add an audio folder to your library.
 2. Select a track to preview it. Use search and filters to narrow down the list.
 3. Add tags, favorites or collections to organize sounds for a project.
-4. Open a track's context menu for editing, analysis and processing tools.
+4. Double-click a track to open the audio editor below the library. Use the context menu for stem separation and other processing tools.
+
+Follow the [user guide](docs/user-guide.md) for playback, editing, stems, file management and shortcuts.
 
 Model downloads require an internet connection; audio processing stays local. Model quality, resource requirements and usage terms vary — review the information shown in the app before downloading or processing. Stem separation and audio-to-MIDI currently support mono/stereo files up to 10 minutes.
 
