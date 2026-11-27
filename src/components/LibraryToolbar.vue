@@ -13,10 +13,10 @@ const player = usePlayerStore()
 
 <template>
   <header class="library-toolbar h-16 shrink-0 px-3 flex items-center gap-3 border-b border-border" :class="{ 'has-player': player.playingSample }"
-    data-tauri-drag-region>
-    <div class="library-context min-w-0 flex-1" data-tauri-drag-region>
+    data-tauri-drag-region="deep">
+    <div class="library-context min-w-0 flex-1">
       <LibraryBreadcrumbs />
-      <div class="text-xs text-muted-foreground tabular truncate" aria-live="polite" data-tauri-drag-region>
+      <div class="text-xs text-muted-foreground tabular truncate" aria-live="polite">
         {{ t('common.count.samples', { n: formatNumber(library.total) }, library.total) }}
         <template v-if="library.selectedIds.size"> · {{ t('list.search.selected', { n: formatNumber(library.selectedIds.size) }) }}</template>
         <template v-if="library.isScanning"> · {{ t('list.search.scanning') }}</template>

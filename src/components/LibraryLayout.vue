@@ -63,7 +63,7 @@ function onDragging(dragging: boolean) {
       </ResizablePanel>
     </ResizablePanelGroup>
     <!-- Keep the toggle accessible while the panel shrinks. -->
-    <div v-if="canToggle" class="sidebar-toggle absolute top-0 h-16 flex items-center border-b border-transparent">
+    <div v-if="canToggle" class="sidebar-toggle absolute top-0 h-16 flex items-center border-b border-transparent" data-tauri-drag-region="deep">
       <Hint :text="t(sidebarHidden ? 'sidebar.showSidebar' : 'sidebar.hideSidebar')">
         <Button
           variant="ghost" size="icon-sm" :aria-label="t(sidebarHidden ? 'sidebar.showSidebar' : 'sidebar.hideSidebar')"
