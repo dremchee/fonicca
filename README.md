@@ -6,7 +6,7 @@ Find a sound, audition it, edit a fragment or separate a track into stems — in
 
 [Download releases](https://github.com/dremchee/fonicca/releases) · [Release notes](docs/releases/v0.1.0.md) · [Build and release guide](docs/builds.md)
 
-![Fonicca library with waveform previews and audio playback](docs/screenshots/library.jpg)
+![Fonicca library in the dark Tape theme, with waveform previews, color-coded tags and the floating mini-player](docs/screenshots/library.jpg)
 
 ## What you can do
 
@@ -28,20 +28,20 @@ The editor saves whole tracks or selections as WAV, MP3, Ogg Vorbis, FLAC, AIFF,
 
 Keep the original track and its separated parts together in an expandable group. The separation dialog defaults to the source format and lets you choose any of the editor's export formats.
 
-![Expanded stem groups in the library](docs/screenshots/stems.jpg)
+![Expanded stem group with vocals, drums, bass and other parts](docs/screenshots/stems.jpg)
 
 ### Audio editor
 
 Work directly on the waveform with an overview, selection tools, processing actions and level meters.
 
-![Fonicca audio editor](docs/screenshots/editor.jpg)
+![Fonicca's embedded audio editor with a selection across a stereo waveform](docs/screenshots/editor.jpg)
 
 <details>
 <summary>Track information</summary>
 
 View cover art, metadata, audio properties and analysis results in the track information popover.
 
-![Track information and cover art](docs/screenshots/track-info.jpg)
+![Track information popover showing cover art, metadata, audio properties and tags](docs/screenshots/track-info.jpg)
 
 </details>
 
