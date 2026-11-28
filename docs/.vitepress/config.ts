@@ -7,6 +7,10 @@ export default defineConfig({
   title: 'Fonicca',
   description: 'Documentation for the Fonicca desktop audio library and editor',
   srcExclude: ['architecture.md', 'builds.md', 'dependencies.md', 'releases/**'],
+  transformPageData(pageData, { siteConfig }) {
+    pageData.frontmatter.head ??= []
+    pageData.frontmatter.head.push(['link', { rel: 'icon', type: 'image/png', href: `${siteConfig.site.base}favicon.png` }])
+  },
   themeConfig: {
     socialLinks: [{ icon: 'github', link: repo }],
     outline: { level: [2, 3] },
