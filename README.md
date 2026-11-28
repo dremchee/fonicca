@@ -4,7 +4,7 @@ A desktop app for browsing, organizing and shaping your local audio library.
 
 Find a sound, audition it, edit a fragment or separate a track into stems — in one workspace. Fonicca works with your own audio files and runs audio analysis and processing on your computer.
 
-[Download releases](https://github.com/dremchee/fonicca/releases) · [User guide](docs/user-guide.md) · [Release notes](CHANGELOG.md) · [Build and release guide](docs/builds.md)
+[Download releases](https://github.com/dremchee/fonicca/releases) · [Documentation (EN)](https://dremchee.github.io/fonicca/) · [Документация (RU)](https://dremchee.github.io/fonicca/ru/) · [Release notes](CHANGELOG.md) · [Build and release guide](docs/builds.md)
 
 ![Fonicca library in the dark Tape theme, with waveform previews, color-coded tags and the floating mini-player](docs/screenshots/library.jpg)
 
@@ -47,6 +47,7 @@ View cover art, metadata, audio properties and analysis results in the track inf
 
 ## Installation
 
+<!-- #region installation -->
 Download an installer from [GitHub Releases](https://github.com/dremchee/fonicca/releases).
 
 | Platform | Requirements | Package |
@@ -58,6 +59,7 @@ Download an installer from [GitHub Releases](https://github.com/dremchee/fonicca
 Intel Macs are not supported by the current build. macOS packages are not notarized and Windows installers are not code-signed.
 
 Install the first version manually. Published stable updates can then be checked from **Settings → About** on macOS, Windows and AppImage installations. Debian installations use the package manager. Updater signatures are separate from operating-system code signing.
+<!-- #endregion installation -->
 
 ## Getting started
 
@@ -110,6 +112,18 @@ pnpm tauri build --ci -- --locked
 ```
 
 The first native build downloads dependencies and the ONNX Runtime distribution, so it can take a while. Build installers on their target operating system.
+
+### Documentation site
+
+The English and Russian VitePress pages live in `docs/`. From the repository root, run:
+
+```sh
+pnpm docs:dev      # start the documentation server
+pnpm docs:build    # generate static files in docs/.vitepress/dist
+pnpm docs:preview  # serve the generated site locally
+```
+
+The **Documentation** workflow builds and publishes the site to GitHub Pages when documentation changes land on `main`.
 
 ## Releases and project notes
 
